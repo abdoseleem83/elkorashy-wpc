@@ -52,8 +52,8 @@ button{cursor:pointer;border:0;background:none}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 /* ============ الهيدر ============ */
+#appbar{position:sticky;top:0;z-index:40}
 .top{
-  position:sticky;top:0;z-index:40;
   background:linear-gradient(160deg,var(--navy),var(--navy-2));
   color:#EAF2FA;padding:calc(9px + env(safe-area-inset-top)) 14px 9px;
   box-shadow:0 2px 14px rgba(0,32,80,.3);
@@ -71,21 +71,16 @@ button{cursor:pointer;border:0;background:none}
 
 
 /* شريط التثبيت/التحديث — تحت اللوجو على طول زي تطبيق الموزعين */
-.topbanner{
-  display:none;align-items:center;gap:10px;margin-top:9px;
-  background:rgba(255,255,255,.13);border:1px solid rgba(159,209,240,.4);
-  border-radius:11px;padding:8px 10px;
+/* شريط الإصدار/التحديث/التثبيت — أعلى الصفحة جنب اللوجو */
+.verstrip{display:flex;align-items:center;gap:7px;margin-top:8px}
+.verstrip .vs-ver{font-size:10.5px;color:#9CB6D2;flex:1;min-width:0}
+.verstrip button{
+  flex:0 0 auto;background:rgba(255,255,255,.14);border:1px solid rgba(159,209,240,.4);
+  color:#EAF2FA;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:600;
+  white-space:nowrap;
 }
-.topbanner.on{display:flex}
-.topbanner .tb-ic{font-size:19px;flex:0 0 auto}
-.topbanner .tb-tx{flex:1;min-width:0;line-height:1.35}
-.topbanner .tb-tx b{display:block;font-family:'Reem Kufi',sans-serif;font-size:12.5px;color:#EAF2FA}
-.topbanner .tb-tx span{font-size:10.5px;color:#9CB6D2}
-.topbanner button{
-  flex:0 0 auto;background:#fff;color:var(--navy);border-radius:9px;padding:7px 13px;
-  font-family:'Reem Kufi',sans-serif;font-weight:700;font-size:12.5px;
-}
-.topbanner .tb-x{background:none;color:#7E9BB8;font-size:16px;padding:4px 5px;font-weight:400}
+.verstrip button.vs-install{background:linear-gradient(180deg,var(--brand-lt),var(--brand));border-color:transparent;color:#fff}
+.verstrip button[hidden]{display:none}
 
 
 /* شريط الأقسام فوق (الأبواب / الإكسسوارات / حلق فقط / برور فقط) */
@@ -112,10 +107,10 @@ button{cursor:pointer;border:0;background:none}
 .doorpanel .dphead b{font-family:'Reem Kufi',sans-serif;font-size:14px;color:var(--navy)}
 .doorpanel .dphead span{font-size:11.5px;color:var(--muted)}
 .doorpanel .grp{font-size:11.5px;color:var(--muted);margin:11px 0 6px}
-.doorpanel .grp:first-child{margin-top:0}
+.doorpanel .dphead + .grp{margin-top:0}
 
 /* ============ التبويبات ============ */
-.tabs{position:sticky;top:0;z-index:35;display:flex;background:var(--card);border-bottom:1px solid var(--line)}
+.tabs{display:flex;background:var(--card);border-bottom:1px solid var(--line)}
 .tabs button{flex:1;padding:12px 2px 10px;font-size:12.5px;font-weight:500;color:var(--muted);border-bottom:3px solid transparent}
 .tabs button.on{color:var(--navy);border-bottom-color:var(--brand);font-weight:600}
 .tabs .badge{display:inline-block;min-width:19px;padding:0 5px;margin-inline-start:4px;background:var(--brand);color:#fff;border-radius:20px;font-size:11px;line-height:19px}
@@ -132,7 +127,7 @@ button{cursor:pointer;border:0;background:none}
 .card::before{
   content:'';position:absolute;inset:0;pointer-events:none;
   background:var(--mark) no-repeat left 8px bottom 8px;
-  background-size:82px auto;opacity:.045;
+  background-size:42px auto;opacity:.05;
 }
 .card>*{position:relative}
 
@@ -187,12 +182,6 @@ input::placeholder{color:#A8B4C2}
 .box{margin-top:11px;padding:11px;background:#F7FAFD;border:1px dashed var(--brand);border-radius:11px}
 .note{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.55}
 .note b{color:var(--brand)}
-.info{
-  background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:11px;
-  padding:11px 12px;font-size:12.5px;line-height:1.7;margin-top:12px;
-}
-.info b{display:block;font-family:'Reem Kufi',sans-serif;font-size:13px;margin-bottom:4px;color:#8A6512}
-
 /* ============ العداد ============ */
 .qty{display:flex;align-items:center;border:1.5px solid var(--line);border-radius:10px;overflow:hidden;width:fit-content;background:#FCFDFE}
 .qty button{width:40px;height:40px;font-size:19px;font-weight:600;color:var(--brand);display:grid;place-items:center}
@@ -267,9 +256,6 @@ input::placeholder{color:#A8B4C2}
 .bar .btn{flex:1;width:auto}
 
 .foot{text-align:center;font-size:11px;color:var(--muted);padding:8px 0 4px}
-.verline{display:flex;align-items:center;justify-content:center;gap:9px;padding:4px 0 10px}
-.verline .v{font-size:11.5px;color:var(--muted)}
-.verline button{font-size:11.5px;color:var(--brand);font-weight:600;border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 11px}
 
 /* ============ المستند (عرض سعر / طلب) ============ */
 #paper{position:fixed;top:-10000px;left:-10000px;width:794px;background:#fff}
@@ -277,6 +263,7 @@ input::placeholder{color:#A8B4C2}
 </head>
 <body>
 
+<div id="appbar">
 <header class="top">
   <div class="top-row">
     <img class="logo" id="hdrLogo" alt="ELKORASHI DOORS">
@@ -287,16 +274,10 @@ input::placeholder{color:#A8B4C2}
     <div class="wh-chip">المخزن<b>مصنع إنشاص</b></div>
   </div>
 
-  <div class="topbanner" id="instBanner">
-    <span class="tb-ic">📲</span>
-    <div class="tb-tx"><b>ثبّت التطبيق على موبايلك</b><span>يفتح من الشاشة الرئيسية ويشتغل من غير نت</span></div>
-    <button data-act="install">تثبيت</button>
-    <button class="tb-x" data-act="hide-inst">✕</button>
-  </div>
-  <div class="topbanner" id="updBanner">
-    <span class="tb-ic">🔄</span>
-    <div class="tb-tx"><b>فيه إصدار جديد</b><span>اضغط تحديث عشان تاخد آخر نسخة</span></div>
-    <button data-act="update">تحديث</button>
+  <div class="verstrip">
+    <span class="vs-ver" id="vsVer"></span>
+    <button data-act="update">🔄 تحديث</button>
+    <button data-act="install" id="vsInstall" class="vs-install">📲 تثبيت</button>
   </div>
 </header>
 
@@ -307,6 +288,7 @@ input::placeholder{color:#A8B4C2}
   <button data-tab="track">🚚 المتابعة</button>
   <button data-tab="admin">🏭 متابعة المصنع</button>
 </nav>
+</div>
 
 <main class="wrap" id="view"></main>
 
@@ -344,11 +326,11 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v11';
+const APP_BUILD   = 'v14';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
-const ADMIN_WHATS = '201067765483';
+const ADMIN_WHATS = '201067765483';   // مش مستخدم في إرسال الطلبات دلوقتي (الموزع بيختار بنفسه) — سايبه لو احتجناه تاني
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2aVRVaUVubR3w4a3weiQTHGp03SvMozh83NY3OtBD14n1YugCjbcWdYEJUPJb-s3E/exec';
 
 const ROD_LEN = 2.15;   // طول العود بالمتر — الحلق والبرور بيتباعوا بالعود
@@ -458,13 +440,7 @@ function render(){
   document.body.style.paddingBottom = show ? '104px' : '30px';
 }
 
-function verBar(){
-  return `<div class="verline">
-    <span class="v">الإصدار ${APP_BUILD}</span>
-    <button data-act="update">🔄 تحديث التطبيق</button>
-    <button data-act="install">📲 تثبيت</button>
-  </div>`;
-}
+function verBar(){ return ''; }   // الإصدار/التحديث/التثبيت بقوا في الشريط فوق
 
 function viewNew(){
   const p=state.pick, isCustom=p.size==='custom', bad=state.touched;
@@ -525,11 +501,9 @@ function viewNew(){
 
       <div class="grp">الحلق</div>
       <div class="chips">${frames}</div>
-      ${p.frame ? `<div class="note">✓ شامل مع الباب — بدون سعر إضافي.</div>` : ''}
 
       <div class="grp">البرور</div>
       <div class="chips">${dbrors}</div>
-      ${p.dbror ? `<div class="note">✓ شامل مع الباب — بدون سعر إضافي.</div>` : ''}
 
       <div class="grp">تفريز الكالون</div>
       <div class="chips">${mills}</div>
@@ -577,12 +551,7 @@ function viewNew(){
   const secAcc = `
   <section class="card">
     <div class="step"><span class="n">🔩</span><h2>إكسسوارات الأبواب</h2><span class="hint">اختياري</span></div>
-    <div class="note" style="margin-top:0">سعر الباب شامل الحلق والبرور فقط. الإكسسوارات دي لو العميل طلبها فعلاً — ضيفها من هنا وهتتحاسب لوحدها.</div>
-    <div class="info" style="margin-top:10px">
-      <b>ملحوظة للمصنع (تقدير استهلاك — مش شرط يتطلب):</b>
-      الباب الواحد بيستهلك تقريبًا ٥٫٥ متر جوان، ٤ زوايا كرسي، ٤ مفصلات.
-    </div>
-    <div class="accgrid" style="margin-top:12px">${accCards}</div>
+    <div class="accgrid">${accCards}</div>
     <button class="btn ghost sm" style="margin-top:12px" data-act="add-acc" ${accTotal?'':'disabled'}>
       ${accTotal?'أضف الإكسسوارات ('+money(accTotal)+' ج)':'اختر الكميات أولاً'}</button>
   </section>`;
@@ -690,7 +659,7 @@ function viewCart(){
     <div class="step"><span class="n">✓</span><h2>مراجعة الطلب</h2></div>
     ${lines}
     <div class="total"><span class="lbl">الإجمالي التقديري</span><span class="val">${money(cartTotal())} <small>ج</small></span></div>
-    <div class="note">${esc(PRICE_NOTE)}<br>الحلق والبرور مع الباب شاملين — الإضافي بيتباع بالعود (${ROD_LEN} م).</div>
+    <div class="note">${esc(PRICE_NOTE)}<br>تقدر تتابع حالة طلبك بعد الإرسال من تبويب 🚚 المتابعة.</div>
   </section>
 
   <section class="card">
@@ -914,7 +883,11 @@ document.addEventListener('click',e=>{
   switch(a){
     case 'go-cart': state.tab='cart'; render(); window.scrollTo({top:0}); break;
     case 'pick-door':
-      if(p.code!==el.dataset.code){
+      if(p.code===el.dataset.code){
+        // ضغط على نفس الباب المفتوح — يقفل ويلمّ
+        p.code=''; p.size=null; p.custom={w:'',h:''};
+        p.frame=null; p.dbror=null; p.mill=null; p.qty=1;
+      } else {
         // باب جديد = اختيارات جديدة، عشان الموزع يحدد كل حاجة بنفسه من الأول
         p.code=el.dataset.code; p.size=null; p.custom={w:'',h:''};
         p.frame=null; p.dbror=null; p.mill=null; p.qty=1;
@@ -943,7 +916,7 @@ document.addEventListener('click',e=>{
     case 'ord-quote': withOrder(el,o=>makeDoc(o,'quote')); break;
     case 'ord-xls':   withOrder(el,o=>exportExcel([o],'طلب_'+o.id)); break;
     case 'all-xls':   exportExcel(state.orders,'كل_الطلبات'); break;
-    case 'resend':    withOrder(el,o=>openWhatsApp(o.msg)); break;
+    case 'resend':    withOrder(el,o=>shareOrderImage(o)); break;
     case 'track-load': loadTrack(); break;
     case 'adm-login':  adminLoad(); break;
     case 'adm-reload': adminLoad(); break;
@@ -953,10 +926,6 @@ document.addEventListener('click',e=>{
       sessionStorage.removeItem('wpc_adm'); render(); break;
     case 'update': doUpdate(); break;
     case 'install': doInstall(); break;
-    case 'hide-inst':
-      sessionStorage.setItem('wpc_hide_inst','1');
-      document.getElementById('instBanner').classList.remove('on');
-      break;
   }
 });
 
@@ -969,7 +938,6 @@ document.addEventListener('input',e=>{
   if(a==='prof'){ state.profile[el.dataset.k]=el.value; save(LS_PROFILE,state.profile); return; }
   if(a==='cust'){ state.pick.custom[el.dataset.k]=el.value; refreshSummary(); return; }
   if(a==='qty-set'){ state.pick.qty=Math.max(1,parseInt(el.value,10)||1); refreshSummary(); return; }
-  if(a==='cust'||a==='qty-set') return;
   if(a==='acc-set'){ state.acc[el.dataset.id]=Math.max(0,parseFloat(el.value)||0); refreshAccBtn(); return; }
   if(a==='fr-rods'){ state.fr.rods=el.value; refreshRodBtn('add-fr'); return; }
   if(a==='br-rods'){ state.br.rods=el.value; refreshRodBtn('add-br'); return; }
@@ -1102,14 +1070,58 @@ function buildMessage(o){
     } else m+='   الكمية: '+it.qty+' '+(it.unit||'')+'\n';
   });
   m+='——————\nالإجمالي التقديري: '+money(o.total)+' جنيه\n';
-  m+='شكرًا لتعاملك مع '+COMPANY_AR;
+  m+='شكرًا لتعاملك مع '+COMPANY_AR+'\n';
+  m+='تقدر تتابع حالة الطلب من تبويب 🚚 المتابعة في التطبيق.';
   return m;
 }
 
-function openWhatsApp(msg){
-  // api.whatsapp.com بيفتح المحادثة مباشرة على رقم المصنع من غير ما يسيب الاختيار،
-  // وأضمن من wa.me على الكمبيوتر ومتصفحات الأندرويد المختلفة.
-  window.open('https://api.whatsapp.com/send?phone='+ADMIN_WHATS+'&text='+encodeURIComponent(msg),'_blank');
+// بيفتح واتساب من غير رقم متحدد — يسيب الموزع يختار المجموعة أو الشخص بنفسه،
+// بدل ما يتبعت لرقم ثابت.
+function openWhatsAppPicker(text){
+  window.open('https://api.whatsapp.com/send?text='+encodeURIComponent(text),'_blank');
+}
+
+function downloadBlob(blob,name){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+}
+
+// بيجهّز صورة للطلب (نفس تصميم المستند) ويحاول يفتح شاشة المشاركة بتاعة الموبايل
+// عشان الموزع يختار واتساب وبعدين المجموعة/الشخص من جوّه بنفسه.
+async function shareOrderImage(o){
+  const caption='طلب أبواب WPC #'+o.id+' — '+(o.name||'')+' — الإجمالي '+money(o.total)+' ج';
+
+  if(typeof html2canvas==='undefined'){
+    // مفيش نت كفاية لتجهيز الصورة — نفتح واتساب بالنص بس
+    openWhatsAppPicker(o.msg); return;
+  }
+
+  busy(true,'جارٍ تجهيز صورة الطلب…');
+  try{
+    const paper=document.getElementById('paper');
+    paper.innerHTML=docHTML(o,'order');
+    await new Promise(r=>setTimeout(r,320));
+    const canvas=await html2canvas(paper.firstElementChild,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+    paper.innerHTML='';
+    const blob=await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
+    const file=new File([blob],'طلب_'+o.id+'.png',{type:'image/png'});
+
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:'طلب أبواب WPC #'+o.id, text:caption});
+    } else {
+      // مفيش شاشة مشاركة (كمبيوتر مثلًا) — ننزّل الصورة ونفتح واتساب فاضي
+      downloadBlob(blob,'طلب_'+o.id+'.png');
+      openWhatsAppPicker(caption);
+      toast('اتحمّلت صورة الطلب — اختار المجموعة في واتساب وارفقها');
+    }
+  }catch(err){
+    if(err && err.name==='AbortError'){ busy(false); return; }   // الموزع قفل شاشة المشاركة
+    toast('تعذّر تجهيز صورة الطلب — هيتفتح واتساب بالنص');
+    openWhatsAppPicker(o.msg);
+  }
+  busy(false);
 }
 
 function submitOrder(){
@@ -1130,8 +1142,8 @@ function submitOrder(){
       headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify({action:'newOrder',order:o})}).catch(()=>{});
   }
-  openWhatsApp(o.msg);
   state.tab='orders'; render(); toast('اتسجّل الطلب #'+o.id);
+  shareOrderImage(o);
 }
 
 /* ============================================================
@@ -1160,7 +1172,7 @@ function docHTML(o,mode){
   const isQuote = mode==='quote';
   return `
   <div style="position:relative;font-family:'Readex Pro',sans-serif;direction:rtl;background:#fff;padding:34px 32px;color:#14243A;">
-    <div style="position:absolute;inset:0;background:url('${ASSETS.mark}') no-repeat center center;background-size:58% auto;opacity:.055;"></div>
+    <div style="position:absolute;inset:0;background:url('${ASSETS.mark}') no-repeat center center;background-size:34% auto;opacity:.06;"></div>
     <div style="position:relative">
 
       <div style="display:flex;align-items:center;gap:16px;border-bottom:3px solid #1080C0;padding-bottom:14px;">
@@ -1212,26 +1224,9 @@ function docHTML(o,mode){
         </table>
       </div>
 
-      ${(function(){
-        const hasFrame = o.items.some(it => (it.kind==='door' && it.frame) || it.kind==='frame');
-        const hasBror  = o.items.some(it => (it.kind==='door' && it.dbror) || it.kind==='bror');
-        const hasAcc   = o.items.some(it => it.kind==='acc');
-        let boxes = '';
-        if(hasFrame || hasBror){
-          boxes += `<div style="margin-top:18px;padding:11px 13px;background:#FFF6E5;border:1px solid #E8C77A;border-radius:9px;font-size:11.5px;line-height:1.75">
-            <b style="font-family:'Reem Kufi',sans-serif">الحلق والبرور:</b>
-            سعر الباب شامل الحلق والبرور المرفقين معاه فقط، من غير سعر إضافي. لو محتاج زيادة، بيتباع بالعود (${ROD_LEN} م).
-          </div>`;
-        }
-        if(hasAcc){
-          boxes += `<div style="margin-top:10px;padding:11px 13px;background:#F3F6FA;border:1px solid #DCE4EC;border-radius:9px;font-size:11.5px;line-height:1.75">
-            <b style="font-family:'Reem Kufi',sans-serif">إكسسوارات الأبواب:</b> محسوبة في هذا الطلب حسب الكميات المطلوبة.
-          </div>`;
-        }
-        return boxes;
-      })()}
-      <div style="margin-top:10px;padding:11px 13px;background:#EAF2FA;border:1px solid #B9D4EA;border-radius:9px;font-size:11.5px;line-height:1.75">
+      <div style="margin-top:18px;padding:11px 13px;background:#EAF2FA;border:1px solid #B9D4EA;border-radius:9px;font-size:11.5px;line-height:1.75">
         <b style="font-family:'Reem Kufi',sans-serif">شروط التسعير:</b> ${esc(PRICE_NOTE)}
+        <br>تقدر تتابع حالة طلبك في أي وقت من تبويب 🚚 المتابعة.
       </div>
 
       <div style="margin-top:22px;text-align:center;font-size:11px;color:#8A97A6;border-top:1px solid #DCE4EC;padding-top:11px">
@@ -1327,25 +1322,19 @@ let deferredPrompt=null;
 function isInstalled(){
   return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 }
-function showInstallBanner(){
-  if(isInstalled()) return;
-  if(sessionStorage.getItem('wpc_hide_inst')) return;
-  const b=document.getElementById('instBanner'); if(b) b.classList.add('on');
+function syncInstallBtn(){
+  const b=document.getElementById('vsInstall'); if(!b) return;
+  b.hidden = isInstalled();   // لو متثبّت خالص، نخبي الزرار خالص
 }
 
-// أندرويد/كروم: بيدّينا الحدث ده لما التطبيق يبقى قابل للتثبيت
+// أندرويد/كروم: بيدّينا الحدث ده لما التطبيق يبقى قابل للتثبيت الفوري (تاب واحد)
 window.addEventListener('beforeinstallprompt',e=>{
-  e.preventDefault(); deferredPrompt=e;
-  showInstallBanner();
+  e.preventDefault(); deferredPrompt=e; syncInstallBtn();
 });
 window.addEventListener('appinstalled',()=>{
-  deferredPrompt=null;
-  const b=document.getElementById('instBanner'); if(b) b.classList.remove('on');
-  toast('التطبيق اتثبّت ✅');
+  deferredPrompt=null; syncInstallBtn(); toast('التطبيق اتثبّت ✅');
 });
-
-// الآيفون مابيبعتش beforeinstallprompt، فبنظهر الشريط لوحدنا بعد ثانية
-setTimeout(()=>{ if(!isInstalled()) showInstallBanner(); }, 1200);
+syncInstallBtn();
 
 async function doInstall(){
   if(deferredPrompt){
@@ -1370,17 +1359,30 @@ const savedPw = sessionStorage.getItem('wpc_adm');
 if(savedPw){ state.admin.pw = savedPw; state.admin.open = true; }
 document.getElementById('hdrLogo').src = ASSETS.logo;
 document.documentElement.style.setProperty('--mark', 'url('+ASSETS.mark+')');
+document.getElementById('vsVer').textContent = 'الإصدار ' + APP_BUILD;
+
+// خانة أي رقم — لما تدوس عليها تتحدد كلها عشان تكتب على طول من غير ما تمسح بإيدك
+document.addEventListener('focusin', e => {
+  if(e.target.matches('input[type="number"]')) e.target.select();
+});
+
 render();
+function markUpdateReady(){
+  const btn=document.querySelector('.verstrip [data-act="update"]');
+  if(btn) btn.classList.add('vs-install');
+  toast('فيه إصدار جديد — اضغط 🔄 تحديث فوق');
+}
+
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>{
     navigator.serviceWorker.register('sw.js').then(reg=>{
-      // لو لقى نسخة جديدة مستنية، بنعرض شريط التحديث فوق
-      if(reg.waiting) document.getElementById('updBanner').classList.add('on');
+      // لو لقى نسخة جديدة مستنية، بننبّه على زرار التحديث فوق
+      if(reg.waiting) markUpdateReady();
       reg.addEventListener('updatefound',()=>{
         const nw=reg.installing; if(!nw) return;
         nw.addEventListener('statechange',()=>{
           if(nw.state==='installed' && navigator.serviceWorker.controller){
-            document.getElementById('updBanner').classList.add('on');
+            markUpdateReady();
           }
         });
       });
