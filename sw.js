@@ -1,6 +1,6 @@
 // Service worker — ELKORASHI DOORS / WPC
 // ⚠️ غيّر CACHE_VERSION مع كل تعديل عشان المتصفح ياخد النسخة الجديدة
-const CACHE_VERSION = 'v7';
+const CACHE_VERSION = 'v8';
 const CACHE_NAME = 'elkorashy-wpc-' + CACHE_VERSION;
 
 const CORE = [

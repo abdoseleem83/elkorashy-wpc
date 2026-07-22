@@ -69,6 +69,24 @@ button{cursor:pointer;border:0;background:none}
 }
 .wh-chip b{display:block;font-size:12px;color:#DCEEFB}
 
+
+/* شريط التثبيت/التحديث — تحت اللوجو على طول زي تطبيق الموزعين */
+.topbanner{
+  display:none;align-items:center;gap:10px;margin-top:9px;
+  background:rgba(255,255,255,.13);border:1px solid rgba(159,209,240,.4);
+  border-radius:11px;padding:8px 10px;
+}
+.topbanner.on{display:flex}
+.topbanner .tb-ic{font-size:19px;flex:0 0 auto}
+.topbanner .tb-tx{flex:1;min-width:0;line-height:1.35}
+.topbanner .tb-tx b{display:block;font-family:'Reem Kufi',sans-serif;font-size:12.5px;color:#EAF2FA}
+.topbanner .tb-tx span{font-size:10.5px;color:#9CB6D2}
+.topbanner button{
+  flex:0 0 auto;background:#fff;color:var(--navy);border-radius:9px;padding:7px 13px;
+  font-family:'Reem Kufi',sans-serif;font-weight:700;font-size:12.5px;
+}
+.topbanner .tb-x{background:none;color:#7E9BB8;font-size:16px;padding:4px 5px;font-weight:400}
+
 /* ============ التبويبات ============ */
 .tabs{position:sticky;top:0;z-index:35;display:flex;background:var(--card);border-bottom:1px solid var(--line)}
 .tabs button{flex:1;padding:12px 2px 10px;font-size:12.5px;font-weight:500;color:var(--muted);border-bottom:3px solid transparent}
@@ -241,6 +259,18 @@ input::placeholder{color:#A8B4C2}
     </div>
     <div class="wh-chip">المخزن<b>مصنع إنشاص</b></div>
   </div>
+
+  <div class="topbanner" id="instBanner">
+    <span class="tb-ic">📲</span>
+    <div class="tb-tx"><b>ثبّت التطبيق على موبايلك</b><span>يفتح من الشاشة الرئيسية ويشتغل من غير نت</span></div>
+    <button data-act="install">تثبيت</button>
+    <button class="tb-x" data-act="hide-inst">✕</button>
+  </div>
+  <div class="topbanner" id="updBanner">
+    <span class="tb-ic">🔄</span>
+    <div class="tb-tx"><b>فيه إصدار جديد</b><span>اضغط تحديث عشان تاخد آخر نسخة</span></div>
+    <button data-act="update">تحديث</button>
+  </div>
 </header>
 
 <nav class="tabs" id="tabs">
@@ -286,7 +316,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v7';
+const APP_BUILD   = 'v8';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -294,6 +324,7 @@ const ADMIN_WHATS = '201067765483';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2aVRVaUVubR3w4a3weiQTHGp03SvMozh83NY3OtBD14n1YugCjbcWdYEJUPJb-s3E/exec';
 
 const ROD_LEN = 2.15;   // طول العود بالمتر — الحلق والبرور بيتباعوا بالعود
+const PRICE_NOTE = 'الأسعار بعاليه حسب وقت التسعير وغير ملزمة إلا في حالة سداد المبلغ كامل أو نصفه.';
 
 const DOORS = [
   {code:'A01', name:'أرو',   en:'Arrow',  img:ASSETS.doors.A01},
@@ -346,8 +377,8 @@ const state = {
   cart:    load(LS_CART, []),
   orders:  load(LS_ORDERS, []),
   pick:{code:'A01', size:90, custom:{w:'',h:''}, frame:10, dbror:'6×9', mill:'normal', qty:1},
-  fr:{cm:10, rods:''},      // حلق إضافي بالعود
-  br:{size:'6×9', rods:''}, // برور إضافي بالعود
+  fr:{cm:10, rods:1},      // حلق إضافي بالعود
+  br:{size:'6×9', rods:1}, // برور إضافي بالعود
   acc:{},
   touched:false             // اتضغط إرسال؟ عشان نوضّح الحقول الناقصة
 };
@@ -585,7 +616,7 @@ function viewCart(){
     <div class="step"><span class="n">✓</span><h2>مراجعة الطلب</h2></div>
     ${lines}
     <div class="total"><span class="lbl">الإجمالي التقديري</span><span class="val">${money(cartTotal())} <small>ج</small></span></div>
-    <div class="note">الأسعار حسب قائمة موزعي أكسا 8-4-2026. الحلق مع الباب بدون سعر — الحلق والبرور الإضافي بالعود (${ROD_LEN} م).</div>
+    <div class="note">${esc(PRICE_NOTE)}<br>الحلق والبرور مع الباب شاملين — الإضافي بيتباع بالعود (${ROD_LEN} م).</div>
   </section>
 
   <section class="card">
@@ -744,6 +775,10 @@ document.addEventListener('click',e=>{
     case 'track-load': loadTrack(); break;
     case 'update': doUpdate(); break;
     case 'install': doInstall(); break;
+    case 'hide-inst':
+      sessionStorage.setItem('wpc_hide_inst','1');
+      document.getElementById('instBanner').classList.remove('on');
+      break;
   }
 });
 
@@ -755,10 +790,20 @@ document.addEventListener('input',e=>{
   if(a==='prof'){ state.profile[el.dataset.k]=el.value; save(LS_PROFILE,state.profile); return; }
   if(a==='cust'){ state.pick.custom[el.dataset.k]=el.value; refreshSummary(); return; }
   if(a==='qty-set'){ state.pick.qty=Math.max(1,parseInt(el.value,10)||1); refreshSummary(); return; }
-  if(a==='acc-set'){ state.acc[el.dataset.id]=Math.max(0,parseFloat(el.value)||0); return; }
+  if(a==='cust'||a==='qty-set') return;
+  if(a==='acc-set'){ state.acc[el.dataset.id]=Math.max(0,parseFloat(el.value)||0); refreshAccBtn(); return; }
   if(a==='fr-rods'){ state.fr.rods=el.value; refreshRodBtn('add-fr'); return; }
   if(a==='br-rods'){ state.br.rods=el.value; refreshRodBtn('add-br'); return; }
 });
+
+// زرار الإكسسوارات كان بيفضل مقفول لو الموزع كتب الكمية بإيده بدل ما يضغط +
+// لأن الصفحة مش بتترسم وقت الكتابة — فبنحدّثه هنا يدوي.
+function refreshAccBtn(){
+  const b=document.querySelector('[data-act="add-acc"]'); if(!b) return;
+  const t=ACCESSORIES.reduce((sum,a)=>sum+(state.acc[a.id]||0)*a.price,0);
+  b.disabled = !(t>0);
+  b.textContent = t>0 ? 'أضف الإكسسوارات ('+money(t)+' ج)' : 'اختر الكميات أولاً';
+}
 
 function refreshSummary(){const n=document.getElementById('sumline'); if(n) n.textContent=currentSummary();}
 
@@ -821,7 +866,7 @@ function addRod(kind){
   });
 
   save(LS_CART,state.cart);
-  if(isFrame) state.fr.rods=''; else state.br.rods='';
+  if(isFrame) state.fr.rods=1; else state.br.rods=1;
   toast('اتضاف '+rods+' عود');
   render();
 }
@@ -983,8 +1028,10 @@ function docHTML(o,mode){
       <div style="margin-top:18px;padding:11px 13px;background:#FFF6E5;border:1px solid #E8C77A;border-radius:9px;font-size:11.5px;line-height:1.75">
         <b style="font-family:'Reem Kufi',sans-serif">ملحوظة — الباب الواحد بياخد:</b>
         ٥٫٥ متر جوان · ٤ زوايا كرسي · ٤ مفصلات<br>
-        الحلق المرفق مع الباب بدون سعر. الحلق والبرور الإضافي بيتباعوا بالعود (${ROD_LEN} م).
-        ${isQuote?'<br>العرض ساري ١٤ يوم من تاريخه، والأسعار حسب قائمة موزعي أكسا 8-4-2026.':''}
+        الحلق والبرور المرفقين مع الباب شاملين في سعره. الإضافي منهم بيتباع بالعود (${ROD_LEN} م).
+      </div>
+      <div style="margin-top:10px;padding:11px 13px;background:#EAF2FA;border:1px solid #B9D4EA;border-radius:9px;font-size:11.5px;line-height:1.75">
+        <b style="font-family:'Reem Kufi',sans-serif">شروط التسعير:</b> ${esc(PRICE_NOTE)}
       </div>
 
       <div style="margin-top:22px;text-align:center;font-size:11px;color:#8A97A6;border-top:1px solid #DCE4EC;padding-top:11px">
@@ -1076,7 +1123,29 @@ async function doUpdate(){
 }
 
 let deferredPrompt=null;
-window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferredPrompt=e; });
+
+function isInstalled(){
+  return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+}
+function showInstallBanner(){
+  if(isInstalled()) return;
+  if(sessionStorage.getItem('wpc_hide_inst')) return;
+  const b=document.getElementById('instBanner'); if(b) b.classList.add('on');
+}
+
+// أندرويد/كروم: بيدّينا الحدث ده لما التطبيق يبقى قابل للتثبيت
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault(); deferredPrompt=e;
+  showInstallBanner();
+});
+window.addEventListener('appinstalled',()=>{
+  deferredPrompt=null;
+  const b=document.getElementById('instBanner'); if(b) b.classList.remove('on');
+  toast('التطبيق اتثبّت ✅');
+});
+
+// الآيفون مابيبعتش beforeinstallprompt، فبنظهر الشريط لوحدنا بعد ثانية
+setTimeout(()=>{ if(!isInstalled()) showInstallBanner(); }, 1200);
 
 async function doInstall(){
   if(deferredPrompt){
@@ -1101,7 +1170,21 @@ document.getElementById('hdrLogo').src = ASSETS.logo;
 document.documentElement.style.setProperty('--mark', 'url('+ASSETS.mark+')');
 render();
 if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').then(reg=>{
+      // لو لقى نسخة جديدة مستنية، بنعرض شريط التحديث فوق
+      if(reg.waiting) document.getElementById('updBanner').classList.add('on');
+      reg.addEventListener('updatefound',()=>{
+        const nw=reg.installing; if(!nw) return;
+        nw.addEventListener('statechange',()=>{
+          if(nw.state==='installed' && navigator.serviceWorker.controller){
+            document.getElementById('updBanner').classList.add('on');
+          }
+        });
+      });
+      setInterval(()=>reg.update().catch(()=>{}), 60*60*1000);   // بيدوّر على تحديث كل ساعة
+    }).catch(()=>{});
+  });
 }
 </script>
 </body>
