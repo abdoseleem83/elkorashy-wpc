@@ -3,243 +3,242 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>أبواب WPC — طلبات الموزعين</title>
-<meta name="theme-color" content="#2A1F18">
+<title>ELKORASHI DOORS — طلبات أبواب WPC</title>
+<meta name="theme-color" content="#002050">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="images/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="أبواب WPC">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ELKORASHI">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;600;700&family=Readex+Pro:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
-  --ink:#2A1F18;
-  --ink-2:#4A382C;
-  --timber:#8A5A34;
-  --timber-soft:#A8794F;
-  --brass:#B08D3F;
-  --brass-light:#D6B96A;
-  --bg:#F7F4EF;
+  --navy:#002050;
+  --navy-2:#003060;
+  --brand:#1080C0;
+  --brand-lt:#4FA8DC;
+  --bg:#F3F6FA;
   --card:#FFFFFF;
-  --line:#E6DFD4;
-  --muted:#7A6E62;
-  --ok:#2F7D5A;
-  --ok-bg:#E8F2EC;
+  --ink:#14243A;
+  --muted:#6B7A8C;
+  --line:#DCE4EC;
+  --ok:#1E7A54;
+  --ok-bg:#E7F3EE;
+  --warn-bg:#FFF6E5;
+  --warn-line:#E8C77A;
   --danger:#B3261E;
   --r:14px;
-  --shadow:0 2px 10px rgba(42,31,24,.07);
+  --shadow:0 2px 10px rgba(0,32,80,.07);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
 body{
   font-family:'Readex Pro',system-ui,sans-serif;
   background:var(--bg);color:var(--ink);
-  font-size:15px;line-height:1.6;
-  padding-bottom:96px;
+  font-size:15px;line-height:1.6;padding-bottom:30px;
   -webkit-text-size-adjust:100%;
 }
-h1,h2,h3,.display{font-family:'Reem Kufi',system-ui,sans-serif;font-weight:600;letter-spacing:0}
+h1,h2,h3{font-family:'Reem Kufi',system-ui,sans-serif;font-weight:600}
 button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
 button{cursor:pointer;border:0;background:none}
-:focus-visible{outline:2.5px solid var(--brass);outline-offset:2px;border-radius:6px}
+:focus-visible{outline:2.5px solid var(--brand);outline-offset:2px;border-radius:6px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
-/* ---------- الهيدر ---------- */
+/* ============ الهيدر ============ */
 .top{
   position:sticky;top:0;z-index:40;
-  background:var(--ink);color:#F3EDE4;
-  padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
-  box-shadow:0 2px 14px rgba(42,31,24,.28);
+  background:linear-gradient(160deg,var(--navy),var(--navy-2));
+  color:#EAF2FA;padding:calc(9px + env(safe-area-inset-top)) 14px 9px;
+  box-shadow:0 2px 14px rgba(0,32,80,.3);
 }
 .top-row{display:flex;align-items:center;gap:11px}
-.top img.logo{width:46px;height:46px;object-fit:contain;background:#fff;border-radius:10px;padding:4px;flex:0 0 auto}
-.top .t1{font-family:'Reem Kufi',sans-serif;font-size:17px;font-weight:600;line-height:1.25}
-.top .t2{font-size:11.5px;color:#B9A992;margin-top:1px}
+.top img.logo{height:38px;width:auto;background:#fff;border-radius:8px;padding:4px 7px;flex:0 0 auto}
+.top .t1{font-family:'Reem Kufi',sans-serif;font-size:14.5px;font-weight:600;line-height:1.3}
+.top .t2{font-size:11px;color:#9CB6D2;margin-top:1px}
 .wh-chip{
   margin-inline-start:auto;flex:0 0 auto;text-align:center;
-  background:rgba(214,185,106,.14);border:1px solid rgba(214,185,106,.4);
-  color:var(--brass-light);border-radius:9px;padding:5px 9px;font-size:11px;line-height:1.35;
+  background:rgba(79,168,220,.15);border:1px solid rgba(79,168,220,.42);
+  color:#9FD1F0;border-radius:9px;padding:4px 9px;font-size:10.5px;line-height:1.35;
 }
-.wh-chip b{display:block;font-size:12.5px;color:#EBD9A8}
+.wh-chip b{display:block;font-size:12px;color:#DCEEFB}
 
-/* ---------- التبويبات ---------- */
-.tabs{
-  position:sticky;top:0;z-index:35;display:flex;gap:0;
-  background:var(--card);border-bottom:1px solid var(--line);
-}
-.tabs button{
-  flex:1;padding:13px 4px 11px;font-size:13.5px;font-weight:500;color:var(--muted);
-  border-bottom:3px solid transparent;transition:color .15s,border-color .15s;
-}
-.tabs button.on{color:var(--ink);border-bottom-color:var(--timber);font-weight:600}
-.tabs .badge{
-  display:inline-block;min-width:19px;padding:0 5px;margin-inline-start:5px;
-  background:var(--timber);color:#fff;border-radius:20px;font-size:11px;line-height:19px;vertical-align:1px;
-}
+/* ============ التبويبات ============ */
+.tabs{position:sticky;top:0;z-index:35;display:flex;background:var(--card);border-bottom:1px solid var(--line)}
+.tabs button{flex:1;padding:12px 3px 10px;font-size:13px;font-weight:500;color:var(--muted);border-bottom:3px solid transparent}
+.tabs button.on{color:var(--navy);border-bottom-color:var(--brand);font-weight:600}
+.tabs .badge{display:inline-block;min-width:19px;padding:0 5px;margin-inline-start:4px;background:var(--brand);color:#fff;border-radius:20px;font-size:11px;line-height:19px}
 
-.wrap{padding:14px;max-width:640px;margin:0 auto}
+.wrap{padding:14px;max-width:660px;margin:0 auto;position:relative}
 
-/* ---------- الكروت ---------- */
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:13px;box-shadow:var(--shadow)}
-.step{display:flex;align-items:baseline;gap:9px;margin-bottom:12px}
+/* ============ الكروت + علامة مائية ============ */
+.card{
+  position:relative;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);padding:14px;margin-bottom:13px;box-shadow:var(--shadow);
+  overflow:hidden;
+}
+/* اللوجو خلفية باهتة في كل كارت */
+.card::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:url('images/mark.png') no-repeat left 8px bottom 8px;
+  background-size:82px auto;opacity:.045;
+}
+.card>*{position:relative}
+
+.step{display:flex;align-items:center;gap:9px;margin-bottom:12px}
 .step .n{
-  font-family:'Reem Kufi',sans-serif;font-size:12px;font-weight:700;color:var(--brass);
-  border:1.5px solid var(--brass);border-radius:50%;width:24px;height:24px;
-  display:grid;place-items:center;flex:0 0 auto;align-self:center;
+  font-family:'Reem Kufi',sans-serif;font-size:11.5px;font-weight:700;color:#fff;
+  background:var(--brand);border-radius:50%;width:23px;height:23px;
+  display:grid;place-items:center;flex:0 0 auto;
 }
-.step h2{font-size:15.5px;margin:0}
-.step .hint{font-size:11.5px;color:var(--muted);margin-inline-start:auto;font-weight:400}
+.step h2{font-size:15px;margin:0}
+.step .hint{font-size:11px;color:var(--muted);margin-inline-start:auto;font-weight:400}
 
 label.fld{display:block;margin-bottom:10px}
 label.fld span{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}
+label.fld span .req{color:var(--danger);font-weight:700}
 input[type=text],input[type=tel],input[type=number],select,textarea{
-  width:100%;padding:10px 11px;border:1.5px solid var(--line);border-radius:10px;
-  background:#FDFCFA;transition:border-color .15s;
+  width:100%;padding:10px 11px;border:1.5px solid var(--line);border-radius:10px;background:#FCFDFE;
 }
-input:focus,select:focus,textarea:focus{border-color:var(--timber);outline:none}
-input::placeholder{color:#B5AA9C}
+input:focus,select:focus,textarea:focus{border-color:var(--brand);outline:none}
+input.bad{border-color:var(--danger);background:#FFF6F5}
+input::placeholder{color:#A8B4C2}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
-/* ---------- الرف: الأبواب ---------- */
-.rail{
-  display:flex;gap:11px;overflow-x:auto;padding:4px 2px 12px;
-  scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
-  scrollbar-width:thin;
-}
+/* ============ رف الأبواب ============ */
+.rail{display:flex;gap:11px;overflow-x:auto;padding:4px 2px 12px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
 .rail::-webkit-scrollbar{height:5px}
 .rail::-webkit-scrollbar-thumb{background:var(--line);border-radius:9px}
-.door{
-  flex:0 0 auto;width:92px;scroll-snap-align:center;text-align:center;
-  background:none;padding:0;
-}
+.door{flex:0 0 auto;width:96px;scroll-snap-align:center;text-align:center;padding:0}
 .door .leaf{
-  position:relative;width:92px;height:132px;
-  border-radius:9px 9px 4px 4px;overflow:hidden;
-  border:2px solid var(--line);background:#EFE9E0;
-  transform-origin:right center;
-  transition:transform .25s ease,border-color .18s,box-shadow .18s;
-  box-shadow:0 1px 4px rgba(42,31,24,.1);
+  position:relative;width:96px;height:132px;border-radius:9px;overflow:hidden;
+  border:2px solid var(--line);background:#E9EEF4;
+  transform-origin:right center;transition:transform .25s ease,border-color .18s,box-shadow .18s;
+  box-shadow:0 1px 4px rgba(0,32,80,.1);
 }
 .door .leaf img{width:100%;height:100%;object-fit:cover;display:block}
-/* المقبض النحاسي على حرف الباب — بيوضّح إن ده باب مش مجرد عيّنة لون */
-.door .leaf::after{
-  content:'';position:absolute;top:50%;inset-inline-start:6px;
-  width:5px;height:15px;margin-top:-7px;border-radius:3px;
-  background:linear-gradient(180deg,var(--brass-light),var(--brass));
-  box-shadow:0 0 0 1px rgba(42,31,24,.18);
+.door .leaf.noimg{background:linear-gradient(160deg,#B9CBDD,#4A6580)}
+.door .leaf.noimg::before{
+  content:attr(data-code);position:absolute;inset:0;display:grid;place-items:center;
+  font-family:'Reem Kufi',sans-serif;font-size:19px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.4);
 }
-.door.on .leaf{
-  border-color:var(--timber);
-  transform:perspective(620px) rotateY(-13deg);
-  box-shadow:-6px 4px 16px rgba(42,31,24,.22);
-}
+.door.on .leaf{border-color:var(--brand);transform:perspective(620px) rotateY(-12deg);box-shadow:-6px 4px 16px rgba(0,32,80,.24)}
 .door .code{display:block;font-size:12.5px;font-weight:600;margin-top:7px;font-family:'Reem Kufi',sans-serif}
 .door .nm{display:block;font-size:11px;color:var(--muted);line-height:1.3}
-.door.on .code{color:var(--timber)}
+.door.on .code{color:var(--brand)}
 
-/* ---------- شرايح الاختيار ---------- */
+/* ============ الشرايح ============ */
 .chips{display:flex;flex-wrap:wrap;gap:8px}
-.chip{
-  padding:9px 14px;border:1.5px solid var(--line);border-radius:10px;
-  background:#FDFCFA;font-size:13.5px;font-weight:500;transition:all .15s;
-}
-.chip.on{background:var(--ink);border-color:var(--ink);color:#F3EDE4}
-.chip.on .sub{color:#BCA98C}
+.chip{padding:9px 14px;border:1.5px solid var(--line);border-radius:10px;background:#FCFDFE;font-size:13.5px;font-weight:500;text-align:center}
+.chip.on{background:var(--navy);border-color:var(--navy);color:#EAF2FA}
 .chip .sub{display:block;font-size:10.5px;color:var(--muted);font-weight:400;margin-top:-2px}
+.chip.on .sub{color:#9CB6D2}
+.chip .ic{display:block;font-size:20px;line-height:1.2;margin-bottom:1px}
 
-.custom-box{margin-top:11px;padding:11px;background:#FAF7F2;border:1px dashed var(--timber);border-radius:11px}
-.note{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.5}
-.note b{color:var(--timber)}
-
-/* ---------- العداد ---------- */
-.qty{display:flex;align-items:center;gap:0;border:1.5px solid var(--line);border-radius:10px;overflow:hidden;width:fit-content;background:#FDFCFA}
-.qty button{width:40px;height:40px;font-size:19px;font-weight:600;color:var(--timber);display:grid;place-items:center}
-.qty button:active{background:#F1EBE2}
-.qty input{width:52px;text-align:center;border:0;border-inline:1.5px solid var(--line);border-radius:0;padding:10px 0;background:transparent}
-
-/* ---------- الأزرار ---------- */
-.btn{
-  display:block;width:100%;padding:14px;border-radius:12px;
-  font-family:'Reem Kufi',sans-serif;font-size:15.5px;font-weight:600;text-align:center;
-  transition:transform .1s,opacity .15s;
+.box{margin-top:11px;padding:11px;background:#F7FAFD;border:1px dashed var(--brand);border-radius:11px}
+.note{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.55}
+.note b{color:var(--brand)}
+.info{
+  background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:11px;
+  padding:11px 12px;font-size:12.5px;line-height:1.7;margin-top:12px;
 }
+.info b{display:block;font-family:'Reem Kufi',sans-serif;font-size:13px;margin-bottom:4px;color:#8A6512}
+
+/* ============ العداد ============ */
+.qty{display:flex;align-items:center;border:1.5px solid var(--line);border-radius:10px;overflow:hidden;width:fit-content;background:#FCFDFE}
+.qty button{width:40px;height:40px;font-size:19px;font-weight:600;color:var(--brand);display:grid;place-items:center}
+.qty button:active{background:#EDF3F9}
+.qty input{width:54px;text-align:center;border:0;border-inline:1.5px solid var(--line);border-radius:0;padding:10px 0;background:transparent}
+
+/* ============ الأزرار ============ */
+.btn{display:block;width:100%;padding:13px;border-radius:12px;font-family:'Reem Kufi',sans-serif;font-size:15px;font-weight:600;text-align:center;transition:transform .1s}
 .btn:active{transform:scale(.985)}
-.btn.primary{background:var(--ink);color:#F3EDE4}
-.btn.gold{background:linear-gradient(180deg,var(--brass-light),var(--brass));color:#2A1F18}
-.btn.ghost{background:#fff;border:1.5px solid var(--line);color:var(--ink)}
-.btn[disabled]{opacity:.42;pointer-events:none}
-.btn.sm{padding:10px;font-size:13.5px}
+.btn.primary{background:var(--navy);color:#EAF2FA}
+.btn.brand{background:linear-gradient(180deg,var(--brand-lt),var(--brand));color:#fff}
+.btn.ghost{background:#fff;border:1.5px solid var(--line);color:var(--navy)}
+.btn[disabled]{opacity:.4;pointer-events:none}
+.btn.sm{padding:10px;font-size:13px}
+.btnrow{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 
-/* ---------- الإكسسوارات ---------- */
-.acc{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
-.acc:last-child{border-bottom:0;padding-bottom:0}
+/* ============ الإكسسوارات ============ */
+.acc{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.acc:last-of-type{border-bottom:0}
 .acc .an{flex:1;min-width:0}
-.acc .an b{display:block;font-size:13.5px;font-weight:500}
-.acc .an span{font-size:11.5px;color:var(--muted)}
-.acc .qty{transform:scale(.86);transform-origin:left center}
+.acc .an b{display:block;font-size:13px;font-weight:500}
+.acc .an span{font-size:11px;color:var(--muted)}
+.acc .qty{transform:scale(.84);transform-origin:left center}
 
-/* ---------- السلة ---------- */
-.line{display:flex;gap:11px;padding:12px 0;border-bottom:1px solid var(--line)}
+/* ============ السلة ============ */
+.line{display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--line)}
 .line:last-of-type{border-bottom:0}
-.line img{width:44px;height:62px;object-fit:cover;border-radius:6px;border:1px solid var(--line);flex:0 0 auto}
-.line .ic{width:44px;height:62px;display:grid;place-items:center;background:#F5F1EA;border-radius:6px;font-size:21px;flex:0 0 auto}
-.line .info{flex:1;min-width:0}
-.line .info b{font-size:13.5px;font-weight:600;display:block}
-.line .info .spec{font-size:11.5px;color:var(--muted);line-height:1.5}
-.line .info .pr{font-size:12.5px;color:var(--timber);font-weight:600;margin-top:2px}
-.line .del{color:var(--danger);font-size:19px;padding:0 4px;align-self:flex-start}
+.line img{width:44px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--line);flex:0 0 auto}
+.line .ic{width:44px;height:60px;display:grid;place-items:center;background:#EDF3F9;border-radius:6px;font-size:20px;flex:0 0 auto}
+.line .info2{flex:1;min-width:0}
+.line .info2 b{font-size:13px;font-weight:600;display:block}
+.line .info2 .spec{font-size:11.5px;color:var(--muted);line-height:1.55}
+.line .info2 .pr{font-size:12.5px;color:var(--brand);font-weight:600;margin-top:2px}
+.line .del{color:var(--danger);font-size:18px;padding:0 4px;align-self:flex-start}
 
-.total{display:flex;justify-content:space-between;align-items:baseline;padding-top:13px;margin-top:6px;border-top:2px solid var(--ink)}
-.total .lbl{font-size:13.5px;color:var(--muted)}
-.total .val{font-family:'Reem Kufi',sans-serif;font-size:22px;font-weight:700}
+.total{display:flex;justify-content:space-between;align-items:baseline;padding-top:12px;margin-top:6px;border-top:2px solid var(--navy)}
+.total .lbl{font-size:13px;color:var(--muted)}
+.total .val{font-family:'Reem Kufi',sans-serif;font-size:21px;font-weight:700}
 .total .val small{font-size:12px;font-weight:400;color:var(--muted)}
 
-/* ---------- طلباتي ---------- */
-.ord{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px;margin-bottom:11px;box-shadow:var(--shadow)}
-.ord .oh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px}
-.ord .oid{font-family:'Reem Kufi',sans-serif;font-weight:700;color:var(--timber);font-size:14px}
-.ord .od{font-size:11.5px;color:var(--muted)}
+/* ============ طلباتي ============ */
+.ord{position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px;margin-bottom:11px;box-shadow:var(--shadow)}
+.ord .oh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.ord .oid{font-family:'Reem Kufi',sans-serif;font-weight:700;color:var(--brand);font-size:14px}
+.ord .od{font-size:11px;color:var(--muted)}
 .ord .os{font-size:12.5px;color:var(--muted);line-height:1.6}
-.ord .oa{display:flex;gap:8px;margin-top:10px}
+.ord .oa{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.ord .oa .btn{padding:9px;font-size:12.5px}
 
 .empty{text-align:center;padding:44px 20px;color:var(--muted)}
-.empty .em{font-size:38px;display:block;margin-bottom:10px;opacity:.5}
-.empty p{margin:0;font-size:13.5px}
+.empty .em{font-size:38px;display:block;margin-bottom:10px;opacity:.45}
 
-/* ---------- التوست ---------- */
+/* ============ التوست + اللودر ============ */
 #toast{
-  position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));inset-inline:16px;z-index:90;
-  background:var(--ink);color:#F3EDE4;padding:13px 16px;border-radius:12px;
-  font-size:13.5px;text-align:center;box-shadow:0 6px 22px rgba(42,31,24,.3);
-  opacity:0;transform:translateY(14px);pointer-events:none;transition:opacity .2s,transform .2s;
+  position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));inset-inline:16px;z-index:95;
+  background:var(--navy);color:#EAF2FA;padding:13px 16px;border-radius:12px;font-size:13.5px;text-align:center;
+  box-shadow:0 6px 22px rgba(0,32,80,.35);opacity:0;transform:translateY(14px);pointer-events:none;transition:.2s;
 }
 #toast.show{opacity:1;transform:translateY(0)}
+#busy{position:fixed;inset:0;z-index:99;background:rgba(0,32,80,.55);display:none;place-items:center;color:#fff;font-size:14px}
+#busy.on{display:grid}
+#busy .b{background:var(--navy);padding:20px 26px;border-radius:14px;text-align:center}
+#busy .sp{width:26px;height:26px;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;margin:0 auto 10px;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
 
-/* ---------- الشريط السفلي ---------- */
-.bar{
-  position:fixed;bottom:0;inset-inline:0;z-index:50;
-  background:rgba(255,255,255,.97);backdrop-filter:blur(8px);
-  border-top:1px solid var(--line);
-  padding:10px 14px calc(10px + env(safe-area-inset-bottom));
-}
-.bar .inner{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:11px}
+/* ============ الشريط السفلي ============ */
+.bar{position:fixed;bottom:0;inset-inline:0;z-index:50;background:rgba(255,255,255,.97);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
+.bar .inner{max-width:660px;margin:0 auto;display:flex;align-items:center;gap:11px}
 .bar .sum{flex:0 0 auto;line-height:1.25}
-.bar .sum b{display:block;font-family:'Reem Kufi',sans-serif;font-size:17px}
+.bar .sum b{display:block;font-family:'Reem Kufi',sans-serif;font-size:16px}
 .bar .sum span{font-size:11px;color:var(--muted)}
 .bar .btn{flex:1;width:auto}
 
-.foot{text-align:center;font-size:11px;color:var(--muted);padding:6px 0 4px}
+.foot{text-align:center;font-size:11px;color:var(--muted);padding:8px 0 4px}
+.verline{display:flex;align-items:center;justify-content:center;gap:9px;padding:4px 0 10px}
+.verline .v{font-size:11.5px;color:var(--muted)}
+.verline button{font-size:11.5px;color:var(--brand);font-weight:600;border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 11px}
+
+/* ============ المستند (عرض سعر / طلب) ============ */
+#paper{position:fixed;top:-10000px;left:-10000px;width:794px;background:#fff}
 </style>
 </head>
 <body>
 
 <header class="top">
   <div class="top-row">
-    <img class="logo" src="images/logo.jpg" alt="أكسا إيجيبت">
+    <img class="logo" src="images/logo.png" alt="ELKORASHI DOORS">
     <div>
       <div class="t1">أبواب WPC</div>
-      <div class="t2">طلبات الموزعين — القرشي</div>
+      <div class="t2">طلبات الموزعين</div>
     </div>
     <div class="wh-chip">المخزن<b>مصنع إنشاص</b></div>
   </div>
@@ -256,24 +255,29 @@ input::placeholder{color:#B5AA9C}
 <div class="bar" id="bar" hidden>
   <div class="inner">
     <div class="sum"><b id="barTotal">0</b><span id="barCount">لا يوجد أصناف</span></div>
-    <button class="btn gold" data-act="go-cart">مراجعة الطلب</button>
+    <button class="btn brand" data-act="go-cart">مراجعة الطلب</button>
   </div>
 </div>
 
+<div id="paper"></div>
+<div id="busy"><div class="b"><div class="sp"></div><span id="busyTxt">جارٍ التجهيز…</span></div></div>
 <div id="toast"></div>
 
 <script>
 'use strict';
 
 /* ============================================================
-   الإعدادات — عدّل من هنا
+   الإعدادات
    ============================================================ */
-const APP_BUILD   = 'v4';
+const APP_BUILD   = 'v6';
+const COMPANY     = 'ELKORASHI DOORS';
+const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
-const ADMIN_WHATS = '201067765483';   // رقم استقبال الطلبات
+const ADMIN_WHATS = '201067765483';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2aVRVaUVubR3w4a3weiQTHGp03SvMozh83NY3OtBD14n1YugCjbcWdYEJUPJb-s3E/exec';
 
-/* الألوان — الصور مستخرجة من كتالوج الألوان */
+const ROD_LEN = 2.15;   // طول العود بالمتر — الحلق والبرور بيتباعوا بالعود
+
 const DOORS = [
   {code:'A01', name:'أرو',   en:'Arrow',  img:'images/A01.jpg'},
   {code:'A02', name:'خشبي',  en:'Wood',   img:'images/A02.jpg'},
@@ -287,35 +291,33 @@ const DOORS = [
   {code:'A10', name:'رمادي', en:'Grey',   img:'images/A10.jpg'}
 ];
 
-/* أسعار الأبواب — قائمة الموزعين 8-4-2026 */
-const SIZES = [
-  {w:70,  price:5200},
-  {w:80,  price:5200},
-  {w:90,  price:5400},
-  {w:100, price:6000}
-];
-const CUSTOM_EXTRA = 300;   // زيادة المقاسات خارج الاستاندر
+const SIZES = [{w:70,price:5200},{w:80,price:5200},{w:90,price:5400},{w:100,price:6000}];
+const CUSTOM_EXTRA = 300;
 
-/* الحلق — أسعار بالمتر الطولي */
-const FRAMES = [
-  {cm:8,  price:110.00},
-  {cm:10, price:117.81},
-  {cm:15, price:144.14}
+/* الحلق — سعر المتر الطولي، وبيتباع بالعود 2.15 م */
+const FRAMES = [{cm:8,price:110.00},{cm:10,price:117.81},{cm:15,price:144.14}];
+
+/* البرور — سعر المتر الطولي، وبيتباع بالعود 2.15 م */
+const BRORS = [{size:'6×9',price:79.46},{size:'4×8',price:68.20}];
+
+/* تفريز الكالون */
+const MILLS = [
+  {id:'smart',  ar:'سمارت', en:'Smart',   ic:'🔐'},
+  {id:'normal', ar:'عادي',  en:'Standard', ic:'🔑'}
 ];
 
 const ACCESSORIES = [
-  {id:'h1', name:'مقبض باب مودرن / نيو مودرن', en:'Door Handle - Modern / New Modern',  price:230,  unit:'قطعة'},
-  {id:'h2', name:'مقبض حمام مودرن / نيو مودرن', en:'Bathroom Handle - Modern / New Modern', price:250, unit:'قطعة'},
-  {id:'h3', name:'مفصلة أبواب WPC',             en:'WPC Door Hinge',                    price:36,   unit:'قطعة'},
-  {id:'h4', name:'زاوية كرسي للأبواب',           en:'Door Seat Angle',                   price:4.27, unit:'قطعة'},
-  {id:'h5', name:'قلب كالون نحاس',               en:'Brass Lock Core',                   price:180,  unit:'قطعة'},
-  {id:'h6', name:'كالون سلندر نحاس',             en:'Brass Cylinder Lock',               price:160,  unit:'قطعة'},
-  {id:'h7', name:'كالون إشارة نحاس',             en:'Brass Indicator Lock',              price:160,  unit:'قطعة'}
+  {id:'h1', name:'مقبض باب مودرن / نيو مودرن',  en:'Door Handle - Modern / New Modern',    price:230,  unit:'قطعة'},
+  {id:'h2', name:'مقبض حمام مودرن / نيو مودرن', en:'Bathroom Handle - Modern / New Modern', price:250,  unit:'قطعة'},
+  {id:'h3', name:'مفصلة أبواب WPC',              en:'WPC Door Hinge',                       price:36,   unit:'قطعة'},
+  {id:'h4', name:'زاوية كرسي للأبواب',            en:'Door Seat Angle',                      price:4.27, unit:'قطعة'},
+  {id:'h5', name:'قلب كالون نحاس',                en:'Brass Lock Core',                      price:180,  unit:'قطعة'},
+  {id:'h6', name:'كالون سلندر نحاس',              en:'Brass Cylinder Lock',                  price:160,  unit:'قطعة'},
+  {id:'h7', name:'كالون إشارة نحاس',              en:'Brass Indicator Lock',                 price:160,  unit:'قطعة'},
+  {id:'h8', name:'جوان',                          en:'Gasket',                               price:6,    unit:'متر'}
 ];
 
-const LS_PROFILE = 'wpc_profile';
-const LS_CART    = 'wpc_cart';
-const LS_ORDERS  = 'wpc_orders';
+const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders';
 
 /* ============================================================
    الحالة
@@ -325,140 +327,122 @@ const state = {
   profile: load(LS_PROFILE, {name:'', phone:'', region:''}),
   cart:    load(LS_CART, []),
   orders:  load(LS_ORDERS, []),
-  pick:{ code:'A01', size:90, custom:{w:'', h:''}, frame:10, qty:1 },
-  solo:{ cm:10, m:'' },
-  acc:{}
+  pick:{code:'A01', size:90, custom:{w:'',h:''}, frame:10, mill:'normal', qty:1},
+  fr:{cm:10, rods:''},      // حلق إضافي بالعود
+  br:{size:'6×9', rods:''}, // برور إضافي بالعود
+  acc:{},
+  touched:false             // اتضغط إرسال؟ عشان نوضّح الحقول الناقصة
 };
 
-function load(k, dflt){
-  try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : dflt; }
-  catch(e){ return dflt; }
-}
-function save(k, v){
-  try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){}
-}
+function load(k,d){ try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;} }
+function save(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){} }
 
 /* ============================================================
    مساعدات
    ============================================================ */
-function esc(s){
-  return String(s == null ? '' : s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
-function money(n){
-  const v = Math.round(Number(n) * 100) / 100;
-  return v.toLocaleString('en-EG', {minimumFractionDigits:0, maximumFractionDigits:2});
-}
-function doorByCode(c){ return DOORS.find(d => d.code === c) || DOORS[0]; }
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function money(n){const v=Math.round(Number(n)*100)/100;return v.toLocaleString('en-EG',{minimumFractionDigits:0,maximumFractionDigits:2});}
+function doorByCode(c){return DOORS.find(d=>d.code===c)||DOORS[0];}
+function millById(id){return MILLS.find(m=>m.id===id)||MILLS[1];}
+function priceForWidth(w){const n=Number(w)||0;for(const s of SIZES) if(n<=s.w) return s.price;return SIZES[SIZES.length-1].price;}
+function rodPrice(perMetre){return Math.round(perMetre*ROD_LEN*100)/100;}
+function linePrice(it){return (it.kind==='door'?it.unitPrice:it.price)*it.qty;}
+function cartTotal(){return state.cart.reduce((s,it)=>s+linePrice(it),0);}
+function cartCount(){return state.cart.length;}
+function phoneOk(p){return /^0?1[0-9]{9}$/.test(String(p).replace(/\s/g,''));}
+function profileOk(){return !!state.profile.name.trim() && phoneOk(state.profile.phone);}
 
-// المقاس الخاص بياخد سعر أقرب مقاس استاندر لأعلى + زيادة الـ 300
-function priceForWidth(w){
-  const n = Number(w) || 0;
-  for (const s of SIZES) if (n <= s.w) return s.price;
-  return SIZES[SIZES.length - 1].price;
-}
-function linePrice(it){
-  // الباب: سعره بس — الحلق اللي معاه مواصفة من غير سعر
-  if (it.kind === 'door') return it.unitPrice * it.qty;
-  // الحلق المنفصل: سعر المتر × عدد الأمتار
-  if (it.kind === 'frame') return it.price * it.qty;
-  return it.price * it.qty;
-}
-function cartTotal(){ return state.cart.reduce((s, it) => s + linePrice(it), 0); }
-// بنعدّ السطور مش القطع، عشان الحلق بيتقاس بالمتر (ممكن يكون 12.5)
-function cartCount(){ return state.cart.length; }
-
-function toast(msg, ms){
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toast._t);
-  toast._t = setTimeout(() => t.classList.remove('show'), ms || 2600);
-}
+function toast(m,ms){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms||2600);}
+function busy(on,txt){const b=document.getElementById('busy');if(txt)document.getElementById('busyTxt').textContent=txt;b.classList.toggle('on',!!on);}
+function dateStr(ts){return new Date(ts).toLocaleDateString('ar-EG',{day:'2-digit',month:'2-digit',year:'numeric'});}
 
 /* ============================================================
-   الشاشات
+   الرسم
    ============================================================ */
 function render(){
-  const v = document.getElementById('view');
-  if (state.tab === 'new')        v.innerHTML = viewNew();
-  else if (state.tab === 'cart')  v.innerHTML = viewCart();
-  else                            v.innerHTML = viewOrders();
+  const v=document.getElementById('view');
+  v.innerHTML = state.tab==='new' ? viewNew() : state.tab==='cart' ? viewCart() : viewOrders();
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===state.tab));
+  document.getElementById('cartBadge').textContent=cartCount();
 
-  document.querySelectorAll('#tabs button').forEach(b => {
-    b.classList.toggle('on', b.dataset.tab === state.tab);
-  });
-  document.getElementById('cartBadge').textContent = cartCount();
-
-  const bar = document.getElementById('bar');
-  const showBar = state.tab === 'new' && state.cart.length > 0;
-  bar.hidden = !showBar;
-  if (showBar){
-    document.getElementById('barTotal').textContent = money(cartTotal()) + ' ج';
-    document.getElementById('barCount').textContent = cartCount() + ' صنف في السلة';
+  const bar=document.getElementById('bar');
+  const show = state.tab==='new' && state.cart.length>0;
+  bar.hidden=!show;
+  if(show){
+    document.getElementById('barTotal').textContent=money(cartTotal())+' ج';
+    document.getElementById('barCount').textContent=cartCount()+' صنف في السلة';
   }
-  document.body.style.paddingBottom = showBar ? '104px' : '30px';
+  document.body.style.paddingBottom = show ? '104px' : '30px';
+}
+
+function verBar(){
+  return `<div class="verline">
+    <span class="v">الإصدار ${APP_BUILD}</span>
+    <button data-act="update">🔄 تحديث التطبيق</button>
+    <button data-act="install">📲 تثبيت</button>
+  </div>`;
 }
 
 function viewNew(){
-  const p = state.pick;
-  const isCustom = p.size === 'custom';
+  const p=state.pick, isCustom=p.size==='custom', bad=state.touched;
 
-  const doors = DOORS.map(d => `
-    <button class="door ${p.code === d.code ? 'on' : ''}" data-act="pick-door" data-code="${d.code}">
-      <div class="leaf"><img src="${d.img}" alt="باب ${esc(d.code)}" loading="lazy"></div>
-      <span class="code">${esc(d.code)}</span>
-      <span class="nm">${esc(d.name)}</span>
+  const doors=DOORS.map(d=>`
+    <button class="door ${p.code===d.code?'on':''}" data-act="pick-door" data-code="${d.code}">
+      <div class="leaf" data-code="${esc(d.code)}">
+        <img src="${d.img}" alt="" loading="lazy" onerror="this.closest('.leaf').classList.add('noimg');this.remove();">
+      </div>
+      <span class="code">${esc(d.code)}</span><span class="nm">${esc(d.name)}</span>
     </button>`).join('');
 
-  const sizes = SIZES.map(s => `
-    <button class="chip ${p.size === s.w ? 'on' : ''}" data-act="pick-size" data-w="${s.w}">
-      ${s.w} سم<span class="sub">${money(s.price)} ج</span>
-    </button>`).join('') + `
-    <button class="chip ${isCustom ? 'on' : ''}" data-act="pick-size" data-w="custom">
-      مقاس خاص<span class="sub">+${CUSTOM_EXTRA} ج</span>
-    </button>`;
+  const sizes=SIZES.map(s=>`
+    <button class="chip ${p.size===s.w?'on':''}" data-act="pick-size" data-w="${s.w}">
+      ${s.w} سم<span class="sub">${money(s.price)} ج</span></button>`).join('')
+    +`<button class="chip ${isCustom?'on':''}" data-act="pick-size" data-w="custom">مقاس خاص<span class="sub">+${CUSTOM_EXTRA} ج</span></button>`;
 
-  const frames = FRAMES.map(f => `
-    <button class="chip ${p.frame === f.cm ? 'on' : ''}" data-act="pick-frame" data-cm="${f.cm}">
-      ${f.cm} سم
-    </button>`).join('') + `
-    <button class="chip ${p.frame === 0 ? 'on' : ''}" data-act="pick-frame" data-cm="0">بدون حلق</button>`;
+  const frames=FRAMES.map(f=>`<button class="chip ${p.frame===f.cm?'on':''}" data-act="pick-frame" data-cm="${f.cm}">${f.cm} سم</button>`).join('')
+    +`<button class="chip ${p.frame===0?'on':''}" data-act="pick-frame" data-cm="0">بدون حلق</button>`;
 
-  // الحلق المنفصل — ده اللي بيتحاسب بالمتر
-  const soloFrames = FRAMES.map(f => `
-    <button class="chip ${state.solo.cm === f.cm ? 'on' : ''}" data-act="pick-solo" data-cm="${f.cm}">
-      ${f.cm} سم<span class="sub">${money(f.price)} ج/م</span>
-    </button>`).join('');
-  const soloF = FRAMES.find(x => x.cm === state.solo.cm) || FRAMES[0];
-  const soloM = Number(state.solo.m) || 0;
+  const mills=MILLS.map(m=>`
+    <button class="chip ${p.mill===m.id?'on':''}" data-act="pick-mill" data-id="${m.id}" style="min-width:104px">
+      <span class="ic">${m.ic}</span>${esc(m.ar)}</button>`).join('');
 
-  const accRows = ACCESSORIES.map(a => {
-    const q = state.acc[a.id] || 0;
+  // حلق إضافي بالعود
+  const frRods=Number(state.fr.rods)||0;
+  const frSel=FRAMES.find(f=>f.cm===state.fr.cm)||FRAMES[0];
+  const frChips=FRAMES.map(f=>`
+    <button class="chip ${state.fr.cm===f.cm?'on':''}" data-act="fr-cm" data-cm="${f.cm}">
+      ${f.cm} سم<span class="sub">${money(rodPrice(f.price))} ج/عود</span></button>`).join('');
+
+  // برور إضافي بالعود
+  const brRods=Number(state.br.rods)||0;
+  const brSel=BRORS.find(b=>b.size===state.br.size)||BRORS[0];
+  const brChips=BRORS.map(b=>`
+    <button class="chip ${state.br.size===b.size?'on':''}" data-act="br-size" data-size="${esc(b.size)}">
+      برور ${esc(b.size)}<span class="sub">${money(rodPrice(b.price))} ج/عود</span></button>`).join('');
+
+  const accRows=ACCESSORIES.map(a=>{
+    const q=state.acc[a.id]||0;
     return `<div class="acc">
       <div class="an"><b>${esc(a.name)}</b><span>${money(a.price)} ج / ${esc(a.unit)}</span></div>
       <div class="qty">
-        <button data-act="acc-minus" data-id="${a.id}" aria-label="ناقص">−</button>
-        <input type="number" inputmode="numeric" min="0" value="${q}" data-act="acc-set" data-id="${a.id}" aria-label="كمية ${esc(a.name)}">
-        <button data-act="acc-plus" data-id="${a.id}" aria-label="زائد">+</button>
-      </div>
-    </div>`;
-  }).join('');
-
-  const accTotal = ACCESSORIES.reduce((s, a) => s + (state.acc[a.id] || 0) * a.price, 0);
+        <button data-act="acc-minus" data-id="${a.id}">−</button>
+        <input type="number" inputmode="decimal" min="0" step="0.5" value="${q}" data-act="acc-set" data-id="${a.id}">
+        <button data-act="acc-plus" data-id="${a.id}">+</button>
+      </div></div>`;}).join('');
+  const accTotal=ACCESSORIES.reduce((s,a)=>s+(state.acc[a.id]||0)*a.price,0);
 
   return `
   <section class="card">
-    <div class="step"><span class="n">١</span><h2>بيانات الموزع</h2></div>
-    <label class="fld"><span>اسم الموزع</span>
-      <input type="text" id="pName" value="${esc(state.profile.name)}" placeholder="الاسم كما هو مسجّل" data-act="prof" data-k="name"></label>
+    <div class="step"><span class="n">١</span><h2>بيانات الموزع</h2><span class="hint">إجباري</span></div>
+    <label class="fld"><span>اسم الموزع <b class="req">*</b></span>
+      <input type="text" class="${bad && !state.profile.name.trim()?'bad':''}" value="${esc(state.profile.name)}" placeholder="الاسم كما هو مسجّل" data-act="prof" data-k="name"></label>
     <div class="row2">
-      <label class="fld"><span>رقم الموبايل</span>
-        <input type="tel" inputmode="tel" id="pPhone" value="${esc(state.profile.phone)}" placeholder="01xxxxxxxxx" data-act="prof" data-k="phone"></label>
+      <label class="fld"><span>رقم الموبايل <b class="req">*</b></span>
+        <input type="tel" inputmode="tel" class="${bad && !phoneOk(state.profile.phone)?'bad':''}" value="${esc(state.profile.phone)}" placeholder="01xxxxxxxxx" data-act="prof" data-k="phone"></label>
       <label class="fld"><span>المنطقة</span>
-        <input type="text" id="pRegion" value="${esc(state.profile.region)}" placeholder="طنطا مثلاً" data-act="prof" data-k="region"></label>
+        <input type="text" value="${esc(state.profile.region)}" placeholder="طنطا مثلاً" data-act="prof" data-k="region"></label>
     </div>
+    ${bad && !profileOk() ? `<div class="note" style="color:var(--danger)">الاسم ورقم الموبايل إجباريين — الرقم لازم يكون ١١ رقم يبدأ بـ 01.</div>` : ''}
   </section>
 
   <section class="card">
@@ -469,413 +453,537 @@ function viewNew(){
   <section class="card">
     <div class="step"><span class="n">٣</span><h2>المقاس</h2></div>
     <div class="chips">${sizes}</div>
-    ${isCustom ? `
-      <div class="custom-box">
-        <div class="row2">
-          <label class="fld"><span>العرض (سم)</span>
-            <input type="number" inputmode="numeric" min="1" value="${esc(p.custom.w)}" placeholder="مثال 85" data-act="cust" data-k="w"></label>
-          <label class="fld"><span>الارتفاع (سم)</span>
-            <input type="number" inputmode="numeric" min="1" value="${esc(p.custom.h)}" placeholder="مثال 210" data-act="cust" data-k="h"></label>
-        </div>
-        <div class="note">المقاسات خارج الاستاندر بيتضاف عليها <b>${CUSTOM_EXTRA} ج</b> على تكلفة الباب.</div>
-      </div>` : ''}
+    ${isCustom?`<div class="box"><div class="row2">
+        <label class="fld"><span>العرض (سم)</span><input type="number" inputmode="numeric" min="1" value="${esc(p.custom.w)}" placeholder="مثال 85" data-act="cust" data-k="w"></label>
+        <label class="fld"><span>الارتفاع (سم)</span><input type="number" inputmode="numeric" min="1" value="${esc(p.custom.h)}" placeholder="مثال 210" data-act="cust" data-k="h"></label>
+      </div><div class="note">المقاسات خارج الاستاندر بيتضاف عليها <b>${CUSTOM_EXTRA} ج</b>.</div></div>`:''}
   </section>
 
   <section class="card">
     <div class="step"><span class="n">٤</span><h2>الحلق مع الباب</h2><span class="hint">بدون سعر</span></div>
     <div class="chips">${frames}</div>
-    <div class="note">الحلق ده بيروح مع الباب كمواصفة ومش بيتحاسب. لو محتاج <b>حلق لوحده</b> فيه قسم مخصص تحت بيتحاسب بالمتر.</div>
+    <div class="note">الحلق ده بيروح مع الباب كمواصفة ومش بيتحاسب. لو العميل محتاج <b>زيادة</b>، فيه قسم مخصص تحت بيتباع بالعود.</div>
   </section>
 
   <section class="card">
-    <div class="step"><span class="n">٥</span><h2>الكمية</h2></div>
+    <div class="step"><span class="n">٥</span><h2>تفريز الكالون</h2></div>
+    <div class="chips">${mills}</div>
+  </section>
+
+  <section class="card">
+    <div class="step"><span class="n">٦</span><h2>الكمية</h2></div>
     <div class="qty">
-      <button data-act="qty-minus" aria-label="ناقص">−</button>
-      <input type="number" inputmode="numeric" min="1" value="${p.qty}" data-act="qty-set" aria-label="الكمية">
-      <button data-act="qty-plus" aria-label="زائد">+</button>
+      <button data-act="qty-minus">−</button>
+      <input type="number" inputmode="numeric" min="1" value="${p.qty}" data-act="qty-set">
+      <button data-act="qty-plus">+</button>
     </div>
-    <div class="note" style="margin-top:10px">${esc(currentSummary())}</div>
+    <div class="note" id="sumline">${esc(currentSummary())}</div>
     <button class="btn primary" style="margin-top:12px" data-act="add-door">أضف الباب للسلة</button>
   </section>
 
   <section class="card">
-    <div class="step"><span class="n">٦</span><h2>حلق منفصل</h2><span class="hint">بالمتر الطولي</span></div>
-    <div class="chips">${soloFrames}</div>
-    <label class="fld" style="margin-top:12px"><span>عدد الأمتار</span>
-      <input type="number" inputmode="decimal" min="0" step="0.1" value="${esc(state.solo.m)}" placeholder="مثال 12.5" data-act="solom"></label>
-    <button class="btn ghost sm" data-act="add-frame" ${soloM > 0 ? '' : 'disabled'}>
-      ${soloM > 0
-        ? 'أضف حلق ' + soloF.cm + ' سم — ' + soloM + ' م (' + money(soloM * soloF.price) + ' ج)'
-        : 'اكتب عدد الأمتار'}
-    </button>
+    <div class="step"><span class="n">٧</span><h2>حلق إضافي</h2><span class="hint">بالعود — ${ROD_LEN} م</span></div>
+    <div class="chips">${frChips}</div>
+    <label class="fld" style="margin-top:12px"><span>عدد العيدان</span>
+      <input type="number" inputmode="numeric" min="0" step="1" value="${esc(state.fr.rods)}" placeholder="مثال 4" data-act="fr-rods"></label>
+    <button class="btn ghost sm" data-act="add-fr" ${frRods>0?'':'disabled'}>
+      ${frRods>0 ? `أضف ${frRods} عود حلق ${frSel.cm} سم — ${money(frRods*rodPrice(frSel.price))} ج` : 'اكتب عدد العيدان'}</button>
   </section>
 
   <section class="card">
-    <div class="step"><span class="n">٧</span><h2>الإكسسوارات</h2><span class="hint">اختياري</span></div>
-    ${accRows}
-    <button class="btn ghost sm" style="margin-top:13px" data-act="add-acc" ${accTotal ? '' : 'disabled'}>
-      ${accTotal ? 'أضف الإكسسوارات (' + money(accTotal) + ' ج)' : 'اختر كميات الإكسسوارات أولاً'}
-    </button>
+    <div class="step"><span class="n">٨</span><h2>برور إضافي</h2><span class="hint">بالعود — ${ROD_LEN} م</span></div>
+    <div class="chips">${brChips}</div>
+    <label class="fld" style="margin-top:12px"><span>عدد العيدان</span>
+      <input type="number" inputmode="numeric" min="0" step="1" value="${esc(state.br.rods)}" placeholder="مثال 3" data-act="br-rods"></label>
+    <button class="btn ghost sm" data-act="add-br" ${brRods>0?'':'disabled'}>
+      ${brRods>0 ? `أضف ${brRods} عود برور ${brSel.size} — ${money(brRods*rodPrice(brSel.price))} ج` : 'اكتب عدد العيدان'}</button>
   </section>
 
-  <div class="foot">نسخة ${APP_BUILD}</div>`;
+  <section class="card">
+    <div class="step"><span class="n">٩</span><h2>إكسسوارات الأبواب</h2><span class="hint">اختياري</span></div>
+    <div class="info">
+      <b>ملحوظة — الباب الواحد بياخد:</b>
+      • ٥٫٥ متر جوان<br>
+      • ٤ زوايا كرسي<br>
+      • ٤ مفصلات
+    </div>
+    <div style="margin-top:12px">${accRows}</div>
+    <button class="btn ghost sm" style="margin-top:12px" data-act="add-acc" ${accTotal?'':'disabled'}>
+      ${accTotal?'أضف الإكسسوارات ('+money(accTotal)+' ج)':'اختر الكميات أولاً'}</button>
+  </section>
+
+  ${verBar()}`;
 }
 
 function currentSummary(){
-  const p = state.pick;
-  const d = doorByCode(p.code);
-  let sizeTxt, unit;
-  if (p.size === 'custom'){
-    const w = Number(p.custom.w) || 0, h = Number(p.custom.h) || 0;
-    if (!w || !h) return 'اكتب العرض والارتفاع عشان يظهر السعر.';
-    sizeTxt = w + '×' + h + ' سم (خاص)';
-    unit = priceForWidth(w) + CUSTOM_EXTRA;
-  } else {
-    sizeTxt = p.size + ' سم';
-    unit = priceForWidth(p.size);
-  }
-  let txt = 'باب ' + d.code + ' ' + d.name + ' — ' + sizeTxt + ' × ' + p.qty + ' = ' + money(unit * p.qty) + ' ج';
-  if (p.frame) txt += ' | حلق ' + p.frame + ' سم (بدون سعر)';
-  return txt;
+  const p=state.pick, d=doorByCode(p.code);
+  let sizeTxt,unit;
+  if(p.size==='custom'){
+    const w=Number(p.custom.w)||0,h=Number(p.custom.h)||0;
+    if(!w||!h) return 'اكتب العرض والارتفاع عشان يظهر السعر.';
+    sizeTxt=w+'×'+h+' سم (خاص)'; unit=priceForWidth(w)+CUSTOM_EXTRA;
+  } else { sizeTxt=p.size+' سم'; unit=priceForWidth(p.size); }
+  let t='باب '+d.code+' '+d.name+' — '+sizeTxt+' × '+p.qty+' = '+money(unit*p.qty)+' ج';
+  if(p.frame) t+=' | حلق '+p.frame+' سم (بدون سعر)';
+  t+=' | تفريز '+millById(p.mill).ar;
+  return t;
 }
 
 function viewCart(){
-  if (!state.cart.length){
-    return `<div class="empty"><span class="em">🚪</span><p>السلة فاضية — ارجع لتبويب «طلب جديد» واختر الأبواب.</p></div>`;
-  }
+  if(!state.cart.length) return `<div class="empty"><span class="em">🚪</span><p>السلة فاضية — ارجع لتبويب «طلب جديد».</p></div>${verBar()}`;
 
-  const lines = state.cart.map((it, i) => {
-    const thumb = it.kind === 'door'
-      ? `<img src="${esc(it.img)}" alt="">`
-      : `<div class="ic">${it.kind === 'frame' ? '📏' : '🔩'}</div>`;
+  const lines=state.cart.map((it,i)=>{
+    const th = it.kind==='door' ? `<img src="${esc(it.img)}" alt="" onerror="this.outerHTML='<div class=\\'ic\\'>🚪</div>'">`
+             : `<div class="ic">${it.kind==='frame'?'📏':it.kind==='bror'?'📐':'🔩'}</div>`;
     let spec;
-    if (it.kind === 'door'){
-      spec = it.sizeTxt + ' · ' + money(it.unitPrice) + ' ج × ' + it.qty;
-      if (it.frame) spec += '<br>حلق ' + it.frame + ' سم — بدون سعر';
-    } else if (it.kind === 'frame'){
-      spec = it.qty + ' متر × ' + money(it.price) + ' ج/م';
-    } else {
-      spec = money(it.price) + ' ج × ' + it.qty;
-    }
-    return `<div class="line">
-      ${thumb}
-      <div class="info">
-        <b>${esc(it.title)}</b>
-        <div class="spec">${spec}</div>
-        <div class="pr">${money(linePrice(it))} ج</div>
-      </div>
-      <button class="del" data-act="del" data-i="${i}" aria-label="حذف">✕</button>
-    </div>`;
-  }).join('');
+    if(it.kind==='door'){
+      spec=it.sizeTxt+' · '+money(it.unitPrice)+' ج × '+it.qty;
+      if(it.frame) spec+='<br>حلق '+it.frame+' سم — بدون سعر';
+      spec+='<br>تفريز الكالون: '+it.millAr;
+    } else if(it.kind==='frame'||it.kind==='bror'){
+      spec=it.qty+' عود × '+money(it.price)+' ج ('+ROD_LEN+' م/عود)';
+    } else spec=money(it.price)+' ج × '+it.qty;
 
-  const missing = !state.profile.name || !state.profile.phone;
+    return `<div class="line">${th}<div class="info2"><b>${esc(it.title)}</b>
+      <div class="spec">${spec}</div><div class="pr">${money(linePrice(it))} ج</div></div>
+      <button class="del" data-act="del" data-i="${i}">✕</button></div>`;}).join('');
 
+  const ok=profileOk();
   return `
   <section class="card">
     <div class="step"><span class="n">✓</span><h2>مراجعة الطلب</h2></div>
     ${lines}
-    <div class="total">
-      <span class="lbl">الإجمالي التقديري</span>
-      <span class="val">${money(cartTotal())} <small>ج</small></span>
-    </div>
-    <div class="note">الأسعار حسب قائمة موزعي أكسا 8-4-2026. الحلق اللي مع الباب بدون سعر — الحلق المنفصل بالمتر الطولي.</div>
+    <div class="total"><span class="lbl">الإجمالي التقديري</span><span class="val">${money(cartTotal())} <small>ج</small></span></div>
+    <div class="note">الأسعار حسب قائمة موزعي أكسا 8-4-2026. الحلق مع الباب بدون سعر — الحلق والبرور الإضافي بالعود (${ROD_LEN} م).</div>
   </section>
 
   <section class="card">
     <div class="step"><span class="n">↗</span><h2>إرسال الطلب</h2></div>
     <div class="note" style="margin-top:0;margin-bottom:12px">
-      الموزع: <b>${esc(state.profile.name || '—')}</b> · ${esc(state.profile.region || 'المنطقة غير محددة')}<br>
+      الموزع: <b>${esc(state.profile.name||'—')}</b> · ${esc(state.profile.region||'المنطقة غير محددة')}<br>
       المخزن: <b>${esc(WAREHOUSE)}</b>
-      ${missing ? '<br><span style="color:var(--danger)">اكتب اسم الموزع ورقم الموبايل في تبويب «طلب جديد» قبل الإرسال.</span>' : ''}
+      ${ok?'':'<br><span style="color:var(--danger)">اكتب اسم الموزع ورقم الموبايل في تبويب «طلب جديد» قبل الإرسال.</span>'}
     </div>
-    <button class="btn gold" data-act="submit" ${missing ? 'disabled' : ''}>إرسال الطلب على واتساب</button>
-    <button class="btn ghost sm" style="margin-top:9px" data-act="clear">تفريغ السلة</button>
-  </section>`;
+    <button class="btn brand" data-act="submit">إرسال الطلب على واتساب</button>
+    <div class="btnrow" style="margin-top:9px">
+      <button class="btn ghost sm" data-act="quote-cart">📄 عرض سعر PDF</button>
+      <button class="btn ghost sm" data-act="clear">تفريغ السلة</button>
+    </div>
+  </section>
+  ${verBar()}`;
 }
 
 function viewOrders(){
-  if (!state.orders.length){
-    return `<div class="empty"><span class="em">📄</span><p>لسه مفيش طلبات مسجّلة على الجهاز ده.</p></div>`;
-  }
-  return state.orders.map(o => `
+  if(!state.orders.length) return `<div class="empty"><span class="em">📄</span><p>لسه مفيش طلبات مسجّلة على الجهاز ده.</p></div>${verBar()}`;
+  return state.orders.map(o=>`
     <div class="ord">
-      <div class="oh">
-        <span class="oid">#${esc(o.id)}</span>
-        <span class="od">${esc(new Date(o.ts).toLocaleDateString('ar-EG', {day:'2-digit', month:'2-digit', year:'numeric'}))}</span>
-      </div>
-      <div class="os">
-        ${o.items.length} صنف · إجمالي ${money(o.total)} ج<br>
-        ${esc(o.items.map(x => x.title).slice(0, 3).join('، '))}${o.items.length > 3 ? '…' : ''}
-      </div>
+      <div class="oh"><span class="oid">#${esc(o.id)}</span><span class="od">${esc(dateStr(o.ts))}</span></div>
+      <div class="os">${o.items.length} صنف · إجمالي ${money(o.total)} ج<br>
+        ${esc(o.items.map(x=>x.title).slice(0,3).join('، '))}${o.items.length>3?'…':''}</div>
       <div class="oa">
-        <button class="btn ghost sm" data-act="resend" data-id="${esc(o.id)}">إرسال مرة تانية</button>
+        <button class="btn ghost sm" data-act="ord-pdf"   data-id="${esc(o.id)}">📄 PDF</button>
+        <button class="btn ghost sm" data-act="ord-xls"   data-id="${esc(o.id)}">📊 إكسيل</button>
+        <button class="btn ghost sm" data-act="ord-quote" data-id="${esc(o.id)}">💰 عرض سعر</button>
+        <button class="btn ghost sm" data-act="resend"    data-id="${esc(o.id)}">↗ إرسال</button>
       </div>
-    </div>`).join('');
+    </div>`).join('')
+    + `<button class="btn ghost sm" data-act="all-xls" style="margin-bottom:12px">📊 تصدير كل الطلبات إكسيل</button>`
+    + verBar();
 }
 
 /* ============================================================
    الأحداث
    ============================================================ */
-document.getElementById('tabs').addEventListener('click', e => {
-  const b = e.target.closest('button[data-tab]');
-  if (!b) return;
-  state.tab = b.dataset.tab;
-  render();
-  window.scrollTo({top:0, behavior:'smooth'});
+document.getElementById('tabs').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-tab]'); if(!b) return;
+  state.tab=b.dataset.tab; render(); window.scrollTo({top:0,behavior:'smooth'});
 });
 
-document.addEventListener('click', e => {
-  const el = e.target.closest('[data-act]');
-  if (!el) return;
-  const act = el.dataset.act;
-  const p = state.pick;
-
-  switch(act){
-    case 'go-cart': state.tab = 'cart'; render(); window.scrollTo({top:0}); break;
-
-    case 'pick-door': p.code = el.dataset.code; render(); break;
-
-    case 'pick-size':
-      p.size = el.dataset.w === 'custom' ? 'custom' : Number(el.dataset.w);
-      render(); break;
-
-    case 'pick-frame': p.frame = Number(el.dataset.cm); render(); break;
-    case 'pick-solo':  state.solo.cm = Number(el.dataset.cm); render(); break;
-    case 'add-frame':  addFrame(); break;
-
-    case 'qty-minus': p.qty = Math.max(1, p.qty - 1); render(); break;
-    case 'qty-plus':  p.qty = p.qty + 1; render(); break;
-
-    case 'acc-minus': state.acc[el.dataset.id] = Math.max(0, (state.acc[el.dataset.id] || 0) - 1); render(); break;
-    case 'acc-plus':  state.acc[el.dataset.id] = (state.acc[el.dataset.id] || 0) + 1; render(); break;
-
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-act]'); if(!el) return;
+  const a=el.dataset.act, p=state.pick;
+  switch(a){
+    case 'go-cart': state.tab='cart'; render(); window.scrollTo({top:0}); break;
+    case 'pick-door': p.code=el.dataset.code; render(); break;
+    case 'pick-size': p.size = el.dataset.w==='custom'?'custom':Number(el.dataset.w); render(); break;
+    case 'pick-frame': p.frame=Number(el.dataset.cm); render(); break;
+    case 'pick-mill': p.mill=el.dataset.id; render(); break;
+    case 'qty-minus': p.qty=Math.max(1,p.qty-1); render(); break;
+    case 'qty-plus':  p.qty=p.qty+1; render(); break;
+    case 'fr-cm': state.fr.cm=Number(el.dataset.cm); render(); break;
+    case 'br-size': state.br.size=el.dataset.size; render(); break;
     case 'add-door': addDoor(); break;
-    case 'add-acc':  addAccessories(); break;
-
-    case 'del':
-      state.cart.splice(Number(el.dataset.i), 1);
-      save(LS_CART, state.cart); render(); break;
-
-    case 'clear':
-      if (confirm('تفريغ السلة بالكامل؟')){ state.cart = []; save(LS_CART, state.cart); render(); }
-      break;
-
+    case 'add-fr': addRod('frame'); break;
+    case 'add-br': addRod('bror'); break;
+    case 'acc-minus': state.acc[el.dataset.id]=Math.max(0,(state.acc[el.dataset.id]||0)-1); render(); break;
+    case 'acc-plus':  state.acc[el.dataset.id]=(state.acc[el.dataset.id]||0)+1; render(); break;
+    case 'add-acc': addAccessories(); break;
+    case 'del': state.cart.splice(Number(el.dataset.i),1); save(LS_CART,state.cart); render(); break;
+    case 'clear': if(confirm('تفريغ السلة بالكامل؟')){state.cart=[];save(LS_CART,state.cart);render();} break;
     case 'submit': submitOrder(); break;
-    case 'resend': {
-      const o = state.orders.find(x => x.id === el.dataset.id);
-      if (o) openWhatsApp(o.msg);
-      break;
-    }
+    case 'quote-cart': makeDoc(draftOrder(), 'quote'); break;
+    case 'ord-pdf':   withOrder(el,o=>makeDoc(o,'order')); break;
+    case 'ord-quote': withOrder(el,o=>makeDoc(o,'quote')); break;
+    case 'ord-xls':   withOrder(el,o=>exportExcel([o],'طلب_'+o.id)); break;
+    case 'all-xls':   exportExcel(state.orders,'كل_الطلبات'); break;
+    case 'resend':    withOrder(el,o=>openWhatsApp(o.msg)); break;
+    case 'update': doUpdate(); break;
+    case 'install': doInstall(); break;
   }
 });
 
-// الحقول: بنسمع على input عشان القيم تتحفظ وإحنا بنكتب
-document.addEventListener('input', e => {
-  const el = e.target.closest('[data-act]');
-  if (!el) return;
+function withOrder(el,fn){const o=state.orders.find(x=>x.id===el.dataset.id); if(o) fn(o); }
 
-  if (el.dataset.act === 'prof'){
-    state.profile[el.dataset.k] = el.value;
-    save(LS_PROFILE, state.profile);
-    return;                       // من غير render عشان الكيبورد ما يقفلش
-  }
-  if (el.dataset.act === 'cust'){
-    state.pick.custom[el.dataset.k] = el.value;
-    updateSummaryInline();
-    return;
-  }
-  if (el.dataset.act === 'solom'){
-    state.solo.m = el.value;
-    render();
-    const box = document.querySelector('[data-act="solom"]');
-    if (box){ box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
-    return;
-  }
-  if (el.dataset.act === 'qty-set'){
-    state.pick.qty = Math.max(1, parseInt(el.value, 10) || 1);
-    updateSummaryInline();
-    return;
-  }
-  if (el.dataset.act === 'acc-set'){
-    state.acc[el.dataset.id] = Math.max(0, parseInt(el.value, 10) || 0);
-    return;
-  }
+document.addEventListener('input',e=>{
+  const el=e.target.closest('[data-act]'); if(!el) return;
+  const a=el.dataset.act;
+  if(a==='prof'){ state.profile[el.dataset.k]=el.value; save(LS_PROFILE,state.profile); return; }
+  if(a==='cust'){ state.pick.custom[el.dataset.k]=el.value; refreshSummary(); return; }
+  if(a==='qty-set'){ state.pick.qty=Math.max(1,parseInt(el.value,10)||1); refreshSummary(); return; }
+  if(a==='acc-set'){ state.acc[el.dataset.id]=Math.max(0,parseFloat(el.value)||0); return; }
+  if(a==='fr-rods'){ state.fr.rods=el.value; refreshRodBtn('add-fr'); return; }
+  if(a==='br-rods'){ state.br.rods=el.value; refreshRodBtn('add-br'); return; }
 });
 
-// تحديث سطر الملخّص من غير إعادة رسم الصفحة (عشان الكتابة ما تتقطعش)
-function updateSummaryInline(){
-  const box = document.querySelector('[data-act="add-door"]');
-  if (!box) return;
-  const note = box.previousElementSibling;
-  if (note && note.classList.contains('note')) note.textContent = currentSummary();
+function refreshSummary(){const n=document.getElementById('sumline'); if(n) n.textContent=currentSummary();}
+
+// بنحدّث زرار الإضافة من غير render عشان الكيبورد ما يقفلش وإحنا بنكتب
+function refreshRodBtn(act){
+  const b=document.querySelector('[data-act="'+act+'"]'); if(!b) return;
+  if(act==='add-fr'){
+    const r=Number(state.fr.rods)||0, f=FRAMES.find(x=>x.cm===state.fr.cm)||FRAMES[0];
+    b.disabled=!(r>0);
+    b.textContent = r>0 ? `أضف ${r} عود حلق ${f.cm} سم — ${money(r*rodPrice(f.price))} ج` : 'اكتب عدد العيدان';
+  } else {
+    const r=Number(state.br.rods)||0, s=BRORS.find(x=>x.size===state.br.size)||BRORS[0];
+    b.disabled=!(r>0);
+    b.textContent = r>0 ? `أضف ${r} عود برور ${s.size} — ${money(r*rodPrice(s.price))} ج` : 'اكتب عدد العيدان';
+  }
 }
 
 /* ============================================================
    السلة
    ============================================================ */
 function addDoor(){
-  const p = state.pick;
-  const d = doorByCode(p.code);
-  let sizeTxt, unitPrice;
-
-  let sizeEn;
-
-  if (p.size === 'custom'){
-    const w = Number(p.custom.w) || 0, h = Number(p.custom.h) || 0;
-    if (!w || !h){ toast('اكتب العرض والارتفاع للمقاس الخاص'); return; }
-    sizeTxt = w + '×' + h + ' سم (مقاس خاص)';
-    sizeEn  = w + 'x' + h + ' cm (custom)';
-    unitPrice = priceForWidth(w) + CUSTOM_EXTRA;
-  } else {
-    sizeTxt = p.size + ' سم';
-    sizeEn  = p.size + ' cm';
-    unitPrice = priceForWidth(p.size);
-  }
+  const p=state.pick, d=doorByCode(p.code), m=millById(p.mill);
+  let sizeTxt,sizeEn,unitPrice;
+  if(p.size==='custom'){
+    const w=Number(p.custom.w)||0,h=Number(p.custom.h)||0;
+    if(!w||!h){toast('اكتب العرض والارتفاع للمقاس الخاص');return;}
+    sizeTxt=w+'×'+h+' سم (مقاس خاص)'; sizeEn=w+'x'+h+' cm (custom)'; unitPrice=priceForWidth(w)+CUSTOM_EXTRA;
+  } else { sizeTxt=p.size+' سم'; sizeEn=p.size+' cm'; unitPrice=priceForWidth(p.size); }
 
   state.cart.push({
     kind:'door',
-    title:'باب WPC ' + d.code + ' — ' + d.name,
-    titleEn:'WPC Door ' + d.code + ' - ' + d.en,
-    code:d.code, img:d.img,
-    sizeTxt, sizeEn, unitPrice,
-    qty:p.qty,
-    frame:p.frame || 0      // مواصفة بس — مش داخلة في السعر
+    title:'باب WPC '+d.code+' — '+d.name,
+    titleEn:'WPC Door '+d.code+' - '+d.en,
+    code:d.code, img:d.img, sizeTxt, sizeEn, unitPrice, qty:p.qty,
+    frame:p.frame||0, mill:m.id, millAr:m.ar, millEn:m.en
   });
-  save(LS_CART, state.cart);
-
-  toast('اتضاف للسلة: ' + d.code + ' — ' + sizeTxt);
-  state.pick.qty = 1;
-  render();
+  save(LS_CART,state.cart);
+  toast('اتضاف للسلة: '+d.code+' — '+sizeTxt);
+  state.pick.qty=1; render();
 }
 
-function addFrame(){
-  const f = FRAMES.find(x => x.cm === state.solo.cm) || FRAMES[0];
-  const m = Number(state.solo.m) || 0;
-  if (m <= 0){ toast('اكتب عدد الأمتار'); return; }
+function addRod(kind){
+  const isFrame = kind==='frame';
+  const st = isFrame?state.fr:state.br;
+  const rods = Math.round(Number(st.rods)||0);
+  if(rods<=0){toast('اكتب عدد العيدان');return;}
 
-  // لو نفس المقاس موجود قبل كده، بنجمّع الأمتار بدل سطر جديد
-  const ex = state.cart.find(it => it.kind === 'frame' && it.cm === f.cm);
-  if (ex) ex.qty = Math.round((ex.qty + m) * 100) / 100;
+  const src = isFrame ? (FRAMES.find(f=>f.cm===st.cm)||FRAMES[0]) : (BRORS.find(b=>b.size===st.size)||BRORS[0]);
+  const key = isFrame ? ('حلق'+src.cm) : ('برور'+src.size);
+  const price = rodPrice(src.price);
+
+  const ex=state.cart.find(it=>it.kind===kind && it.key===key);
+  if(ex) ex.qty+=rods;
   else state.cart.push({
-    kind:'frame',
-    cm:f.cm,
-    title:'حلق باب ' + f.cm + ' سم',
-    titleEn:'Door Frame ' + f.cm + ' cm',
-    price:f.price,
-    qty:m
+    kind, key, price, qty:rods,
+    spec: isFrame ? (src.cm+' سم') : src.size,
+    perM: src.price,
+    title:  isFrame ? ('حلق باب '+src.cm+' سم — عود '+ROD_LEN+' م') : ('برور '+src.size+' — عود '+ROD_LEN+' م'),
+    titleEn:isFrame ? ('Door Frame '+src.cm+' cm - '+ROD_LEN+'m rod') : ('Bror '+src.size+' - '+ROD_LEN+'m rod')
   });
 
-  save(LS_CART, state.cart);
-  state.solo.m = '';
-  toast('اتضاف حلق ' + f.cm + ' سم — ' + m + ' متر');
+  save(LS_CART,state.cart);
+  if(isFrame) state.fr.rods=''; else state.br.rods='';
+  toast('اتضاف '+rods+' عود');
   render();
 }
 
 function addAccessories(){
-  let n = 0;
-  ACCESSORIES.forEach(a => {
-    const q = state.acc[a.id] || 0;
-    if (!q) return;
-    const ex = state.cart.find(it => it.kind === 'acc' && it.id === a.id);
-    if (ex) ex.qty += q;
-    else state.cart.push({kind:'acc', id:a.id, title:a.name, titleEn:a.en, price:a.price, qty:q});
-    n += q;
+  let n=0;
+  ACCESSORIES.forEach(a=>{
+    const q=state.acc[a.id]||0; if(!q) return;
+    const ex=state.cart.find(it=>it.kind==='acc'&&it.id===a.id);
+    if(ex) ex.qty=Math.round((ex.qty+q)*100)/100;
+    else state.cart.push({kind:'acc',id:a.id,title:a.name,titleEn:a.en,price:a.price,qty:q,unit:a.unit});
+    n+=q;
   });
-  if (!n){ toast('محددتش أي كميات'); return; }
-  state.acc = {};
-  save(LS_CART, state.cart);
-  toast('اتضاف ' + n + ' قطعة إكسسوار');
-  render();
+  if(!n){toast('محددتش أي كميات');return;}
+  state.acc={}; save(LS_CART,state.cart); toast('اتضافت الإكسسوارات'); render();
 }
 
 /* ============================================================
-   الإرسال
+   الطلب
    ============================================================ */
 function newOrderId(){
-  const d = new Date();
-  const p = n => String(n).padStart(2, '0');
-  return 'W' + String(d.getFullYear()).slice(2) + p(d.getMonth() + 1) + p(d.getDate())
-       + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+  const d=new Date(),p=n=>String(n).padStart(2,'0');
+  return 'W'+String(d.getFullYear()).slice(2)+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
+}
+
+function draftOrder(){
+  return {
+    id:newOrderId(), ts:Date.now(),
+    name:state.profile.name, phone:state.profile.phone, region:state.profile.region,
+    warehouse:WAREHOUSE, items:JSON.parse(JSON.stringify(state.cart)), total:cartTotal()
+  };
 }
 
 function buildMessage(o){
-  let m = '🚪 طلب أبواب WPC\n';
-  m += 'رقم الطلب: #' + o.id + '\n';
-  m += 'الموزع: ' + (o.name || '-') + '\n';
-  m += 'المنطقة: ' + (o.region || '-') + '\n';
-  m += 'الموبايل: ' + (o.phone || '-') + '\n';
-  m += 'المخزن: ' + WAREHOUSE + '\n';
-  m += '——————\n';
-
-  o.items.forEach((it, i) => {
-    m += (i + 1) + '. ' + it.title + '\n';
-    if (it.kind === 'door'){
-      m += '   المقاس: ' + it.sizeTxt + ' — الكمية: ' + it.qty + '\n';
-      if (it.frame) m += '   الحلق: ' + it.frame + ' سم (مع الباب)\n';
-    } else if (it.kind === 'frame'){
-      m += '   ' + it.qty + ' متر × ' + money(it.price) + ' ج/م\n';
-    } else {
-      m += '   الكمية: ' + it.qty + '\n';
-    }
+  let m='🚪 طلب أبواب WPC — '+COMPANY+'\n';
+  m+='رقم الطلب: #'+o.id+'\n';
+  m+='الموزع: '+(o.name||'-')+'\n';
+  m+='المنطقة: '+(o.region||'-')+'\n';
+  m+='الموبايل: '+(o.phone||'-')+'\n';
+  m+='المخزن: '+WAREHOUSE+'\n——————\n';
+  o.items.forEach((it,i)=>{
+    m+=(i+1)+'. '+it.title+'\n';
+    if(it.kind==='door'){
+      m+='   المقاس: '+it.sizeTxt+' — الكمية: '+it.qty+'\n';
+      if(it.frame) m+='   الحلق: '+it.frame+' سم (مع الباب)\n';
+      m+='   تفريز الكالون: '+it.millAr+'\n';
+    } else if(it.kind==='frame'||it.kind==='bror'){
+      m+='   '+it.qty+' عود × '+money(it.price)+' ج\n';
+    } else m+='   الكمية: '+it.qty+' '+(it.unit||'')+'\n';
   });
-
-  m += '——————\n';
-  m += 'الإجمالي التقديري: ' + money(o.total) + ' جنيه\n';
-  m += 'شكرًا لتعاملك مع القرشي لأبواب وشبابيك الـ UPVC';
+  m+='——————\nالإجمالي التقديري: '+money(o.total)+' جنيه\n';
+  m+='شكرًا لتعاملك مع '+COMPANY_AR;
   return m;
 }
 
-function openWhatsApp(msg){
-  window.open('https://wa.me/' + ADMIN_WHATS + '?text=' + encodeURIComponent(msg), '_blank');
-}
+function openWhatsApp(msg){window.open('https://wa.me/'+ADMIN_WHATS+'?text='+encodeURIComponent(msg),'_blank');}
 
 function submitOrder(){
-  if (!state.cart.length){ toast('السلة فاضية'); return; }
-  if (!state.profile.name || !state.profile.phone){ toast('اكتب اسم الموزع ورقم الموبايل'); return; }
-
-  const o = {
-    id: newOrderId(),
-    ts: Date.now(),
-    name: state.profile.name,
-    phone: state.profile.phone,
-    region: state.profile.region,
-    warehouse: WAREHOUSE,
-    items: JSON.parse(JSON.stringify(state.cart)),
-    total: cartTotal()
-  };
-  o.msg = buildMessage(o);
-
-  state.orders.unshift(o);
-  save(LS_ORDERS, state.orders.slice(0, 60));
-  state.cart = [];
-  save(LS_CART, state.cart);
-
-  // لو الـ Apps Script متظبّط، بنبعت نسخة للشيت كمان — والطلب بيتبعت على واتساب
-  // في كل الحالات، فلو النت وقع مايضيعش.
-  if (APPS_SCRIPT_URL){
-    fetch(APPS_SCRIPT_URL, {
-      method:'POST',
-      mode:'no-cors',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({action:'newOrder', order:o})
-    }).catch(() => {});
+  if(!state.cart.length){toast('السلة فاضية');return;}
+  if(!profileOk()){
+    state.touched=true; state.tab='new'; render();
+    window.scrollTo({top:0,behavior:'smooth'});
+    toast('اكتب اسم الموزع ورقم موبايل صحيح — إجباري');
+    return;
   }
+  const o=draftOrder();
+  o.msg=buildMessage(o);
+  state.orders.unshift(o); save(LS_ORDERS,state.orders.slice(0,80));
+  state.cart=[]; save(LS_CART,state.cart); state.touched=false;
 
+  if(APPS_SCRIPT_URL){
+    fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'newOrder',order:o})}).catch(()=>{});
+  }
   openWhatsApp(o.msg);
-  state.tab = 'orders';
-  render();
-  toast('اتسجّل الطلب #' + o.id);
+  state.tab='orders'; render(); toast('اتسجّل الطلب #'+o.id);
+}
+
+/* ============================================================
+   المستندات — عرض سعر / طلب (PDF)
+   ============================================================ */
+function docRows(o){
+  return o.items.map((it,i)=>{
+    let spec='', qty=it.qty, unit;
+    if(it.kind==='door'){
+      spec=it.sizeTxt+(it.frame?' · حلق '+it.frame+' سم':'')+' · تفريز '+it.millAr;
+      unit='باب';
+    } else if(it.kind==='frame'||it.kind==='bror'){
+      spec='عود '+ROD_LEN+' م · '+it.spec; unit='عود';
+    } else { spec='—'; unit=it.unit||'قطعة'; }
+    return `<tr>
+      <td style="text-align:center">${i+1}</td>
+      <td><b>${esc(it.title)}</b></td>
+      <td style="font-size:11px;color:#5B6B7D">${esc(spec)}</td>
+      <td style="text-align:center">${qty} ${esc(unit)}</td>
+      <td style="text-align:center">${money(it.kind==='door'?it.unitPrice:it.price)}</td>
+      <td style="text-align:center;font-weight:700">${money(linePrice(it))}</td>
+    </tr>`;}).join('');
+}
+
+function docHTML(o,mode){
+  const isQuote = mode==='quote';
+  return `
+  <div style="position:relative;font-family:'Readex Pro',sans-serif;direction:rtl;background:#fff;padding:34px 32px;color:#14243A;">
+    <div style="position:absolute;inset:0;background:url('images/mark.png') no-repeat center center;background-size:58% auto;opacity:.055;"></div>
+    <div style="position:relative">
+
+      <div style="display:flex;align-items:center;gap:16px;border-bottom:3px solid #1080C0;padding-bottom:14px;">
+        <img src="images/logo.png" style="height:56px;width:auto">
+        <div style="flex:1">
+          <div style="font-family:'Reem Kufi',sans-serif;font-size:22px;font-weight:700;color:#002050">
+            ${isQuote?'عرض سعر':'طلب أبواب WPC'}
+          </div>
+          <div style="font-size:12px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} · ${esc(WAREHOUSE)}</div>
+        </div>
+        <div style="text-align:left">
+          <div style="font-family:'Reem Kufi',sans-serif;font-size:15px;font-weight:700;color:#1080C0">#${esc(o.id)}</div>
+          <div style="font-size:11.5px;color:#6B7A8C">${esc(dateStr(o.ts))}</div>
+        </div>
+      </div>
+
+      <table style="width:100%;margin-top:16px;font-size:12.5px;border-collapse:collapse">
+        <tr>
+          <td style="padding:5px 0;color:#6B7A8C;width:78px">الموزع</td><td style="font-weight:700">${esc(o.name||'-')}</td>
+          <td style="padding:5px 0;color:#6B7A8C;width:78px">الموبايل</td><td style="font-weight:700">${esc(o.phone||'-')}</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 0;color:#6B7A8C">المنطقة</td><td style="font-weight:700">${esc(o.region||'-')}</td>
+          <td style="padding:5px 0;color:#6B7A8C">المخزن</td><td style="font-weight:700">${esc(o.warehouse||WAREHOUSE)}</td>
+        </tr>
+      </table>
+
+      <table style="width:100%;margin-top:18px;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:#002050;color:#EAF2FA;font-family:'Reem Kufi',sans-serif">
+            <th style="padding:9px 6px;width:30px">م</th>
+            <th style="padding:9px 6px;text-align:right">الصنف</th>
+            <th style="padding:9px 6px;text-align:right">المواصفات</th>
+            <th style="padding:9px 6px;width:78px">الكمية</th>
+            <th style="padding:9px 6px;width:74px">السعر</th>
+            <th style="padding:9px 6px;width:84px">الإجمالي</th>
+          </tr>
+        </thead>
+        <tbody style="background:#fff">${docRows(o)}</tbody>
+      </table>
+
+      <div style="display:flex;justify-content:flex-start;margin-top:16px">
+        <table style="border-collapse:collapse;font-size:13.5px;min-width:250px">
+          <tr style="background:#F3F6FA">
+            <td style="padding:11px 14px;font-family:'Reem Kufi',sans-serif;font-weight:700">الإجمالي</td>
+            <td style="padding:11px 14px;font-family:'Reem Kufi',sans-serif;font-weight:700;font-size:18px;color:#002050">
+              ${money(o.total)} ج</td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="margin-top:18px;padding:11px 13px;background:#FFF6E5;border:1px solid #E8C77A;border-radius:9px;font-size:11.5px;line-height:1.75">
+        <b style="font-family:'Reem Kufi',sans-serif">ملحوظة — الباب الواحد بياخد:</b>
+        ٥٫٥ متر جوان · ٤ زوايا كرسي · ٤ مفصلات<br>
+        الحلق المرفق مع الباب بدون سعر. الحلق والبرور الإضافي بيتباعوا بالعود (${ROD_LEN} م).
+        ${isQuote?'<br>العرض ساري ١٤ يوم من تاريخه، والأسعار حسب قائمة موزعي أكسا 8-4-2026.':''}
+      </div>
+
+      <div style="margin-top:22px;text-align:center;font-size:11px;color:#8A97A6;border-top:1px solid #DCE4EC;padding-top:11px">
+        ${esc(COMPANY)} · ${esc(COMPANY_AR)} — الإصدار ${APP_BUILD}
+      </div>
+    </div>
+  </div>`;
+}
+
+async function makeDoc(o,mode){
+  if(!o.items || !o.items.length){toast('مفيش أصناف');return;}
+  if(typeof html2canvas==='undefined' || !window.jspdf){toast('محتاج نت أول مرة عشان يجهّز الـ PDF');return;}
+  busy(true,'جارٍ تجهيز المستند…');
+  try{
+    const paper=document.getElementById('paper');
+    paper.innerHTML=docHTML(o,mode);
+    await new Promise(r=>setTimeout(r,320));           // نستنى الصور والخطوط
+    const canvas=await html2canvas(paper.firstElementChild,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF('p','mm','a4');
+    const pw=210, ph=297;
+    const iw=pw, ih=canvas.height*pw/canvas.width;
+    const img=canvas.toDataURL('image/jpeg',0.92);
+    if(ih<=ph){ pdf.addImage(img,'JPEG',0,0,iw,ih); }
+    else {
+      let left=ih, pos=0;
+      while(left>0){ pdf.addImage(img,'JPEG',0,pos,iw,ih); left-=ph; pos-=ph; if(left>0) pdf.addPage(); }
+    }
+    pdf.save((mode==='quote'?'عرض_سعر_':'طلب_')+o.id+'.pdf');
+    paper.innerHTML='';
+  }catch(err){ toast('تعذّر تجهيز الـ PDF: '+(err&&err.message?err.message:err)); }
+  busy(false);
+}
+
+/* ============================================================
+   تصدير إكسيل
+   ============================================================ */
+function exportExcel(orders,fname){
+  if(typeof XLSX==='undefined'){toast('محتاج نت أول مرة عشان يجهّز الإكسيل');return;}
+  if(!orders.length){toast('مفيش طلبات');return;}
+  busy(true,'جارٍ تجهيز الإكسيل…');
+  try{
+    const sum=[['Order No','Date','Distributor','Phone','Region','Warehouse','Lines','Total']];
+    const det=[['Order No','Date','Distributor','Type','Item','Colour','Size','Frame (with door)','Milling','Unit','Qty','Unit Price','Line Total']];
+
+    orders.forEach(o=>{
+      sum.push([o.id, dateStr(o.ts), o.name||'', String(o.phone||''), o.region||'', o.warehouse||WAREHOUSE, o.items.length, Number(o.total)||0]);
+      o.items.forEach(it=>{
+        const isDoor=it.kind==='door', isRod=it.kind==='frame'||it.kind==='bror';
+        det.push([
+          o.id, dateStr(o.ts), o.name||'',
+          isDoor?'Door':(it.kind==='frame'?'Frame':it.kind==='bror'?'Bror':'Accessory'),
+          it.titleEn||it.title||'', it.code||'',
+          isDoor?(it.sizeEn||it.sizeTxt||''):(isRod?(it.spec||''):''),
+          (isDoor&&it.frame)?(it.frame+' cm (no charge)'):'',
+          isDoor?(it.millEn||''):'',
+          isDoor?'door':(isRod?('rod '+ROD_LEN+'m'):(it.unit||'pc')),
+          Number(it.qty)||0,
+          Number(isDoor?it.unitPrice:it.price)||0,
+          Number(linePrice(it))||0
+        ]);
+      });
+    });
+
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sum), 'Orders');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(det), 'Order_Items');
+    XLSX.writeFile(wb, fname+'.xlsx');
+  }catch(err){ toast('تعذّر التصدير: '+(err&&err.message?err.message:err)); }
+  busy(false);
+}
+
+/* ============================================================
+   التحديث والتثبيت
+   ============================================================ */
+async function doUpdate(){
+  busy(true,'جارٍ التحديث…');
+  try{
+    if('caches' in window){
+      const keys=await caches.keys();
+      await Promise.all(keys.map(k=>caches.delete(k)));
+    }
+    if('serviceWorker' in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister()));
+    }
+  }catch(e){}
+  location.reload(true);
+}
+
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferredPrompt=e; });
+
+async function doInstall(){
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt=null;
+    return;
+  }
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  if(window.matchMedia('(display-mode: standalone)').matches || navigator.standalone){
+    toast('التطبيق متثبّت بالفعل ✅'); return;
+  }
+  alert(isIOS
+    ? 'للتثبيت على الآيفون:\n\n١ — افتح الصفحة من متصفح Safari\n٢ — اضغط زرار المشاركة ⬆️ تحت\n٣ — اختار «إضافة إلى الشاشة الرئيسية»'
+    : 'للتثبيت على أندرويد:\n\n١ — افتح الصفحة من متصفح Chrome\n٢ — اضغط القائمة ⋮ فوق\n٣ — اختار «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية»');
 }
 
 /* ============================================================
    التشغيل
    ============================================================ */
 render();
-
-if ('serviceWorker' in navigator){
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  });
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 }
 </script>
 </body>
