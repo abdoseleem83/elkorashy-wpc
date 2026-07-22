@@ -87,6 +87,33 @@ button{cursor:pointer;border:0;background:none}
 }
 .topbanner .tb-x{background:none;color:#7E9BB8;font-size:16px;padding:4px 5px;font-weight:400}
 
+
+/* شريط الأقسام فوق (الأبواب / الإكسسوارات / حلق فقط / برور فقط) */
+.secnav{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:13px}
+.secnav button{
+  background:var(--card);border:1.5px solid var(--line);border-radius:12px;
+  padding:10px 4px;text-align:center;box-shadow:var(--shadow);
+}
+.secnav button .ic{display:block;font-size:21px;line-height:1.15;margin-bottom:3px}
+.secnav button .tx{display:block;font-size:11px;font-weight:600;color:var(--muted)}
+.secnav button.on{border-color:var(--brand);background:linear-gradient(180deg,#fff,#F3F9FE)}
+.secnav button.on .tx{color:var(--navy)}
+
+/* شبكة الإكسسوارات المصغّرة — ٣ في الصف */
+.accgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.accgrid .ac{border:1.5px solid var(--line);border-radius:11px;padding:8px 6px 7px;text-align:center;background:#FCFDFE}
+.accgrid .ac b{display:block;font-size:11px;font-weight:600;line-height:1.28;min-height:28px}
+.accgrid .ac .pr{font-size:10px;color:var(--muted);margin:2px 0 7px}
+.accgrid .ac .qty{transform:scale(.82);transform-origin:center;margin:0 auto;width:fit-content}
+
+/* لوحة تفاصيل الباب — بتظهر تحت صف الباب المختار جوه نفس الشبكة */
+.doorpanel{grid-column:1/-1;background:#F7FAFD;border:1px dashed var(--brand);border-radius:12px;padding:12px;margin:2px 0 4px}
+.doorpanel .dphead{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+.doorpanel .dphead b{font-family:'Reem Kufi',sans-serif;font-size:14px;color:var(--navy)}
+.doorpanel .dphead span{font-size:11.5px;color:var(--muted)}
+.doorpanel .grp{font-size:11.5px;color:var(--muted);margin:11px 0 6px}
+.doorpanel .grp:first-child{margin-top:0}
+
 /* ============ التبويبات ============ */
 .tabs{position:sticky;top:0;z-index:35;display:flex;background:var(--card);border-bottom:1px solid var(--line)}
 .tabs button{flex:1;padding:12px 2px 10px;font-size:12.5px;font-weight:500;color:var(--muted);border-bottom:3px solid transparent}
@@ -278,7 +305,7 @@ input::placeholder{color:#A8B4C2}
   <button data-tab="cart">السلة<span class="badge" id="cartBadge">0</span></button>
   <button data-tab="orders">طلباتي</button>
   <button data-tab="track">🚚 المتابعة</button>
-  <button data-tab="admin">🔒</button>
+  <button data-tab="admin">🏭 متابعة المصنع</button>
 </nav>
 
 <main class="wrap" id="view"></main>
@@ -317,7 +344,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v9';
+const APP_BUILD   = 'v10';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -379,6 +406,7 @@ const state = {
   cart:    load(LS_CART, []),
   orders:  load(LS_ORDERS, []),
   pick:{code:'A01', size:90, custom:{w:'',h:''}, frame:10, dbror:'6×9', mill:'normal', qty:1},
+  newSection:'doors',   // doors | acc | frame | bror
   fr:{cm:10, rods:1},      // حلق إضافي بالعود
   br:{size:'6×9', rods:1}, // برور إضافي بالعود
   acc:{},
@@ -441,14 +469,6 @@ function verBar(){
 function viewNew(){
   const p=state.pick, isCustom=p.size==='custom', bad=state.touched;
 
-  const doors=DOORS.map(d=>`
-    <button class="door ${p.code===d.code?'on':''}" data-act="pick-door" data-code="${d.code}">
-      <div class="leaf" data-code="${esc(d.code)}">
-        <img src="${d.img}" alt="" loading="lazy" onerror="this.closest('.leaf').classList.add('noimg');this.remove();">
-      </div>
-      <span class="code">${esc(d.code)}</span><span class="nm">${esc(d.name)}</span>
-    </button>`).join('');
-
   const sizes=SIZES.map(s=>`
     <button class="chip ${p.size===s.w?'on':''}" data-act="pick-size" data-w="${s.w}">
       ${s.w} سم<span class="sub">${money(s.price)} ج</span></button>`).join('')
@@ -457,7 +477,6 @@ function viewNew(){
   const frames=FRAMES.map(f=>`<button class="chip ${p.frame===f.cm?'on':''}" data-act="pick-frame" data-cm="${f.cm}">${f.cm} سم</button>`).join('')
     +`<button class="chip ${p.frame===0?'on':''}" data-act="pick-frame" data-cm="0">بدون حلق</button>`;
 
-  // البرور اللي بيروح مع الباب — شامل زي الحلق، من غير سعر
   const dbrors=BRORS.map(b=>`<button class="chip ${p.dbror===b.size?'on':''}" data-act="pick-dbror" data-size="${esc(b.size)}">برور ${esc(b.size)}</button>`).join('')
     +`<button class="chip ${p.dbror===''?'on':''}" data-act="pick-dbror" data-size="">بدون برور</button>`;
 
@@ -465,30 +484,127 @@ function viewNew(){
     <button class="chip ${p.mill===m.id?'on':''}" data-act="pick-mill" data-id="${m.id}" style="min-width:104px">
       <span class="ic">${m.ic}</span>${esc(m.ar)}</button>`).join('');
 
-  // حلق إضافي بالعود
   const frRods=Number(state.fr.rods)||0;
   const frSel=FRAMES.find(f=>f.cm===state.fr.cm)||FRAMES[0];
   const frChips=FRAMES.map(f=>`
     <button class="chip ${state.fr.cm===f.cm?'on':''}" data-act="fr-cm" data-cm="${f.cm}">
       ${f.cm} سم<span class="sub">${money(rodPrice(f.price))} ج/عود</span></button>`).join('');
 
-  // برور إضافي بالعود
   const brRods=Number(state.br.rods)||0;
   const brSel=BRORS.find(b=>b.size===state.br.size)||BRORS[0];
   const brChips=BRORS.map(b=>`
     <button class="chip ${state.br.size===b.size?'on':''}" data-act="br-size" data-size="${esc(b.size)}">
       برور ${esc(b.size)}<span class="sub">${money(rodPrice(b.price))} ج/عود</span></button>`).join('');
 
-  const accRows=ACCESSORIES.map(a=>{
+  const accCards=ACCESSORIES.map(a=>{
     const q=state.acc[a.id]||0;
-    return `<div class="acc">
-      <div class="an"><b>${esc(a.name)}</b><span>${money(a.price)} ج / ${esc(a.unit)}</span></div>
+    return `<div class="ac">
+      <b>${esc(a.name)}</b><div class="pr">${money(a.price)} ج/${esc(a.unit)}</div>
       <div class="qty">
         <button data-act="acc-minus" data-id="${a.id}">−</button>
         <input type="number" inputmode="decimal" min="0" step="0.5" value="${q}" data-act="acc-set" data-id="${a.id}">
         <button data-act="acc-plus" data-id="${a.id}">+</button>
       </div></div>`;}).join('');
   const accTotal=ACCESSORIES.reduce((s,a)=>s+(state.acc[a.id]||0)*a.price,0);
+
+  // ── لوحة تفاصيل الباب — بتتحط تحت الصف اللي فيه الباب المختار ──
+  const detailPanel = `
+    <div class="doorpanel">
+      <div class="dphead"><b>${esc(p.code)}</b><span>${esc(doorByCode(p.code).name)}</span></div>
+
+      <div class="grp">المقاس</div>
+      <div class="chips">${sizes}</div>
+      ${isCustom?`<div class="box"><div class="row2">
+          <label class="fld"><span>العرض (سم)</span><input type="number" inputmode="numeric" min="1" value="${esc(p.custom.w)}" placeholder="مثال 85" data-act="cust" data-k="w"></label>
+          <label class="fld"><span>الارتفاع (سم)</span><input type="number" inputmode="numeric" min="1" value="${esc(p.custom.h)}" placeholder="مثال 210" data-act="cust" data-k="h"></label>
+        </div><div class="note">المقاسات خارج الاستاندر بيتضاف عليها <b>${CUSTOM_EXTRA} ج</b>.</div></div>`:''}
+
+      <div class="grp">الحلق (شامل — بدون سعر)</div>
+      <div class="chips">${frames}</div>
+
+      <div class="grp">البرور (شامل — بدون سعر)</div>
+      <div class="chips">${dbrors}</div>
+
+      <div class="grp">تفريز الكالون</div>
+      <div class="chips">${mills}</div>
+
+      <div class="grp">الكمية</div>
+      <div class="qty">
+        <button data-act="qty-minus">−</button>
+        <input type="number" inputmode="numeric" min="1" value="${p.qty}" data-act="qty-set">
+        <button data-act="qty-plus">+</button>
+      </div>
+      <div class="note" id="sumline">${esc(currentSummary())}</div>
+      <button class="btn primary" style="margin-top:12px" data-act="add-door">أضف الباب للسلة</button>
+    </div>`;
+
+  // ── شبكة الأبواب مقسّمة صفوف من ٤، واللوحة بتتحط تحت الصف اللي فيه المختار ──
+  let doorsGrid='';
+  for(let i=0;i<DOORS.length;i+=4){
+    const row=DOORS.slice(i,i+4);
+    const hasSel = row.some(d=>d.code===p.code);
+    doorsGrid += row.map(d=>`
+      <button class="door ${p.code===d.code?'on':''}" data-act="pick-door" data-code="${d.code}">
+        <div class="leaf" data-code="${esc(d.code)}">
+          <img src="${d.img}" alt="" loading="lazy" onerror="this.closest('.leaf').classList.add('noimg');this.remove();">
+        </div>
+        <span class="code">${esc(d.code)}</span><span class="nm">${esc(d.name)}</span>
+      </button>`).join('');
+    if(hasSel) doorsGrid += detailPanel;
+  }
+
+  const nav = `
+  <div class="secnav">
+    <button class="${state.newSection==='doors'?'on':''}" data-act="sec" data-s="doors"><span class="ic">🚪</span><span class="tx">الأبواب</span></button>
+    <button class="${state.newSection==='acc'?'on':''}"   data-act="sec" data-s="acc"><span class="ic">🔩</span><span class="tx">الإكسسوارات</span></button>
+    <button class="${state.newSection==='frame'?'on':''}" data-act="sec" data-s="frame"><span class="ic">📏</span><span class="tx">حلق فقط</span></button>
+    <button class="${state.newSection==='bror'?'on':''}"  data-act="sec" data-s="bror"><span class="ic">📐</span><span class="tx">برور فقط</span></button>
+  </div>`;
+
+  const secDoors = `
+  <section class="card">
+    <div class="step"><span class="n">🚪</span><h2>اختر الباب</h2><span class="hint">١٠ ألوان</span></div>
+    <div class="rail" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px 9px">${doorsGrid}</div>
+  </section>`;
+
+  const secAcc = `
+  <section class="card">
+    <div class="step"><span class="n">🔩</span><h2>إكسسوارات الأبواب</h2><span class="hint">اختياري</span></div>
+    <div class="info">
+      <b>ملحوظة — الباب الواحد بياخد:</b>
+      • ٥٫٥ متر جوان<br>
+      • ٤ زوايا كرسي<br>
+      • ٤ مفصلات
+    </div>
+    <div class="accgrid" style="margin-top:12px">${accCards}</div>
+    <button class="btn ghost sm" style="margin-top:12px" data-act="add-acc" ${accTotal?'':'disabled'}>
+      ${accTotal?'أضف الإكسسوارات ('+money(accTotal)+' ج)':'اختر الكميات أولاً'}</button>
+  </section>`;
+
+  const secFrame = `
+  <section class="card">
+    <div class="step"><span class="n">📏</span><h2>حلق فقط</h2><span class="hint">بالعود — ${ROD_LEN} م</span></div>
+    <div class="chips">${frChips}</div>
+    <label class="fld" style="margin-top:12px"><span>عدد العيدان</span>
+      <input type="number" inputmode="numeric" min="0" step="1" value="${esc(state.fr.rods)}" placeholder="مثال 4" data-act="fr-rods"></label>
+    <button class="btn ghost sm" data-act="add-fr" ${frRods>0?'':'disabled'}>
+      ${frRods>0 ? `أضف ${frRods} عود حلق ${frSel.cm} سم — ${money(frRods*rodPrice(frSel.price))} ج` : 'اكتب عدد العيدان'}</button>
+  </section>`;
+
+  const secBror = `
+  <section class="card">
+    <div class="step"><span class="n">📐</span><h2>برور فقط</h2><span class="hint">بالعود — ${ROD_LEN} م</span></div>
+    <div class="chips">${brChips}</div>
+    <label class="fld" style="margin-top:12px"><span>عدد العيدان</span>
+      <input type="number" inputmode="numeric" min="0" step="1" value="${esc(state.br.rods)}" placeholder="مثال 3" data-act="br-rods"></label>
+    <button class="btn ghost sm" data-act="add-br" ${brRods>0?'':'disabled'}>
+      ${brRods>0 ? `أضف ${brRods} عود برور ${brSel.size} — ${money(brRods*rodPrice(brSel.price))} ج` : 'اكتب عدد العيدان'}</button>
+  </section>`;
+
+  const body = state.newSection==='doors' ? secDoors
+             : state.newSection==='acc'   ? secAcc
+             : state.newSection==='frame' ? secFrame
+             : secBror;
 
   return `
   <section class="card">
@@ -504,75 +620,8 @@ function viewNew(){
     ${bad && !profileOk() ? `<div class="note" style="color:var(--danger)">الاسم ورقم الموبايل إجباريين — الرقم لازم يكون ١١ رقم يبدأ بـ 01.</div>` : ''}
   </section>
 
-  <section class="card">
-    <div class="step"><span class="n">٢</span><h2>اختر الباب</h2><span class="hint">١٠ ألوان</span></div>
-    <div class="rail">${doors}</div>
-  </section>
-
-  <section class="card">
-    <div class="step"><span class="n">٣</span><h2>المقاس</h2></div>
-    <div class="chips">${sizes}</div>
-    ${isCustom?`<div class="box"><div class="row2">
-        <label class="fld"><span>العرض (سم)</span><input type="number" inputmode="numeric" min="1" value="${esc(p.custom.w)}" placeholder="مثال 85" data-act="cust" data-k="w"></label>
-        <label class="fld"><span>الارتفاع (سم)</span><input type="number" inputmode="numeric" min="1" value="${esc(p.custom.h)}" placeholder="مثال 210" data-act="cust" data-k="h"></label>
-      </div><div class="note">المقاسات خارج الاستاندر بيتضاف عليها <b>${CUSTOM_EXTRA} ج</b>.</div></div>`:''}
-  </section>
-
-  <section class="card">
-    <div class="step"><span class="n">٤</span><h2>الحلق والبرور مع الباب</h2><span class="hint">شامل — بدون سعر</span></div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">الحلق</div>
-    <div class="chips">${frames}</div>
-    <div style="font-size:12px;color:var(--muted);margin:13px 0 6px">البرور</div>
-    <div class="chips">${dbrors}</div>
-    <div class="note">دول بيروحوا مع الباب كمواصفة وشاملين في سعره ومش بيتحاسبوا. لو العميل محتاج <b>زيادة</b>، فيه قسمين تحت بيتباعوا بالعود.</div>
-  </section>
-
-  <section class="card">
-    <div class="step"><span class="n">٥</span><h2>تفريز الكالون</h2></div>
-    <div class="chips">${mills}</div>
-  </section>
-
-  <section class="card">
-    <div class="step"><span class="n">٦</span><h2>الكمية</h2></div>
-    <div class="qty">
-      <button data-act="qty-minus">−</button>
-      <input type="number" inputmode="numeric" min="1" value="${p.qty}" data-act="qty-set">
-      <button data-act="qty-plus">+</button>
-    </div>
-    <div class="note" id="sumline">${esc(currentSummary())}</div>
-    <button class="btn primary" style="margin-top:12px" data-act="add-door">أضف الباب للسلة</button>
-  </section>
-
-  <section class="card">
-    <div class="step"><span class="n">٧</span><h2>حلق إضافي</h2><span class="hint">بالعود — ${ROD_LEN} م</span></div>
-    <div class="chips">${frChips}</div>
-    <label class="fld" style="margin-top:12px"><span>عدد العيدان</span>
-      <input type="number" inputmode="numeric" min="0" step="1" value="${esc(state.fr.rods)}" placeholder="مثال 4" data-act="fr-rods"></label>
-    <button class="btn ghost sm" data-act="add-fr" ${frRods>0?'':'disabled'}>
-      ${frRods>0 ? `أضف ${frRods} عود حلق ${frSel.cm} سم — ${money(frRods*rodPrice(frSel.price))} ج` : 'اكتب عدد العيدان'}</button>
-  </section>
-
-  <section class="card">
-    <div class="step"><span class="n">٨</span><h2>برور إضافي</h2><span class="hint">بالعود — ${ROD_LEN} م</span></div>
-    <div class="chips">${brChips}</div>
-    <label class="fld" style="margin-top:12px"><span>عدد العيدان</span>
-      <input type="number" inputmode="numeric" min="0" step="1" value="${esc(state.br.rods)}" placeholder="مثال 3" data-act="br-rods"></label>
-    <button class="btn ghost sm" data-act="add-br" ${brRods>0?'':'disabled'}>
-      ${brRods>0 ? `أضف ${brRods} عود برور ${brSel.size} — ${money(brRods*rodPrice(brSel.price))} ج` : 'اكتب عدد العيدان'}</button>
-  </section>
-
-  <section class="card">
-    <div class="step"><span class="n">٩</span><h2>إكسسوارات الأبواب</h2><span class="hint">اختياري</span></div>
-    <div class="info">
-      <b>ملحوظة — الباب الواحد بياخد:</b>
-      • ٥٫٥ متر جوان<br>
-      • ٤ زوايا كرسي<br>
-      • ٤ مفصلات
-    </div>
-    <div style="margin-top:12px">${accRows}</div>
-    <button class="btn ghost sm" style="margin-top:12px" data-act="add-acc" ${accTotal?'':'disabled'}>
-      ${accTotal?'أضف الإكسسوارات ('+money(accTotal)+' ج)':'اختر الكميات أولاً'}</button>
-  </section>
+  ${nav}
+  ${body}
 
   ${verBar()}`;
 }
@@ -784,7 +833,7 @@ function viewAdmin(){
 
   if(!a.open){
     return `<section class="card">
-      <div class="step"><span class="n">🔒</span><h2>دخول المصنع</h2></div>
+      <div class="step"><span class="n">🔒</span><h2>متابعة المصنع</h2></div>
       <div class="note" style="margin-top:0">الشاشة دي لموظفي المصنع بس — منها بتتحدّد حالة كل طلب،
       والموزع بيشوف الحالة على طول في تبويب «المتابعة».</div>
       <label class="fld" style="margin-top:12px"><span>كلمة السر</span>
@@ -819,7 +868,7 @@ function viewAdmin(){
   }).join('');
 
   return `<section class="card">
-      <div class="step"><span class="n">🏭</span><h2>حالة الطلبات</h2><span class="hint">${a.rows.length} طلب</span></div>
+      <div class="step"><span class="n">🏭</span><h2>متابعة المصنع</h2><span class="hint">${a.rows.length} طلب</span></div>
       <div class="note" style="margin-top:0">اضغط المرحلة اللي وصلها الطلب — بتتسجّل في الشيت والموزع يشوفها فورًا.</div>
       <div class="btnrow" style="margin-top:11px">
         <button class="btn ghost sm" data-act="adm-reload">🔄 تحديث</button>
@@ -843,6 +892,7 @@ document.addEventListener('click',e=>{
   switch(a){
     case 'go-cart': state.tab='cart'; render(); window.scrollTo({top:0}); break;
     case 'pick-door': p.code=el.dataset.code; render(); break;
+    case 'sec': state.newSection=el.dataset.s; render(); window.scrollTo({top:0,behavior:'smooth'}); break;
     case 'pick-size': p.size = el.dataset.w==='custom'?'custom':Number(el.dataset.w); render(); break;
     case 'pick-frame': p.frame=Number(el.dataset.cm); render(); break;
     case 'pick-dbror': p.dbror=el.dataset.size; render(); break;
@@ -1024,7 +1074,11 @@ function buildMessage(o){
   return m;
 }
 
-function openWhatsApp(msg){window.open('https://wa.me/'+ADMIN_WHATS+'?text='+encodeURIComponent(msg),'_blank');}
+function openWhatsApp(msg){
+  // api.whatsapp.com بيفتح المحادثة مباشرة على رقم المصنع من غير ما يسيب الاختيار،
+  // وأضمن من wa.me على الكمبيوتر ومتصفحات الأندرويد المختلفة.
+  window.open('https://api.whatsapp.com/send?phone='+ADMIN_WHATS+'&text='+encodeURIComponent(msg),'_blank');
+}
 
 function submitOrder(){
   if(!state.cart.length){toast('السلة فاضية');return;}
