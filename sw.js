@@ -1,17 +1,13 @@
 // ⚠️ مهم: غيّر رقم النسخة دي في كل مرة ترفع تحديث جديد.
 // ده اللي بيخلي المتصفح يرمي الكاش القديم ويجيب الملفات الجديدة.
-const CACHE_VERSION = 'v15';
-const CACHE_NAME = 'elkorashy-wpc-' + CACHE_VERSION;
+const CACHE_VERSION = 'v111';
+const CACHE_NAME = 'elkorashy-' + CACHE_VERSION;
 
 const PRECACHE = [
   './',
   './index.html',
-  './manifest.json',
-  './images/icon-192.png',
-  './images/icon-512.png'
+  './manifest.json'
 ];
-// ملحوظة: صور الأبواب واللوجو مدمجين جوه index.html نفسه (base64)،
-// فمفيش ملفات صور تانية محتاجة تتخزّن هنا غير أيقونات التثبيت.
 
 self.addEventListener('install', (event) => {
   // 🔑 دي أهم سطر في الملف: النسخة الجديدة بتفرض نفسها فورًا من غير ما تستنى
@@ -29,7 +25,7 @@ self.addEventListener('activate', (event) => {
     // امسح كل الكاشات القديمة بتاعة النسخ السابقة
     const keys = await caches.keys();
     await Promise.all(
-      keys.filter(k => k.startsWith('elkorashy-wpc-') && k !== CACHE_NAME)
+      keys.filter(k => k.startsWith('elkorashy-') && k !== CACHE_NAME)
           .map(k => caches.delete(k))
     );
     // خد السيطرة على كل الصفحات المفتوحة فورًا من غير ما تستنى إعادة فتح
@@ -52,6 +48,36 @@ self.addEventListener('message', (event) => {
   }
 });
 
+
+// ===== Push Notification Handler =====
+self.addEventListener('push', (event) => {
+  let data = { title: '🔔 القرشي', body: 'إشعار جديد' };
+  try{ if(event.data) data = event.data.json(); }catch(e){}
+  event.waitUntil(
+    self.registration.showNotification(data.title || '🔔 القرشي', {
+      body: data.body || '',
+      icon: './icons/icon-192.png',
+      badge: './icons/icon-96.png',
+      dir: 'rtl',
+      lang: 'ar',
+      tag: data.tag || 'elkorashy-push',
+      renotify: true,
+      data: { url: data.url || './' }
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || './';
+  event.waitUntil(
+    self.clients.matchAll({ type:'window', includeUncontrolled:true }).then(clients => {
+      for(const c of clients){ if(c.url.includes('index.html') || c.url.endsWith('/')){ c.focus(); return; } }
+      return self.clients.openWindow(url);
+    })
+  );
+});
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
 
@@ -69,8 +95,8 @@ self.addEventListener('fetch', (event) => {
                  (req.headers.get('accept') || '').includes('text/html');
 
   if (isHTML) {
-    // ✅ Network-first للـ HTML: ده اللي يضمن إن أي تحديث بترفعه يوصل للناس فورًا
-    // (بدل ما الكاش يرجّع نسخة index.html قديمة).
+    // ✅ Network-first للـ HTML: ده اللي يضمن إن أي تحديث بترفعه يوصل للناس فورًا.
+    // (المشكلة القديمة: الكاش كان بيرجّع نسخة index.html القديمة على طول.)
     event.respondWith((async () => {
       try {
         const fresh = await fetch(req);
@@ -86,11 +112,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // باقي الملفات (خطوط، مكتبات، أيقونات...): stale-while-revalidate
+  // باقي الملفات (مكتبات، أيقونات...): stale-while-revalidate
   event.respondWith((async () => {
     const cached = await caches.match(req);
     const network = fetch(req).then(res => {
-      if (res && res.status === 200) {
+      if (res && res.status === 200 && res.type === 'basic') {
         caches.open(CACHE_NAME).then(c => c.put(req, res.clone())).catch(() => {});
       }
       return res;
