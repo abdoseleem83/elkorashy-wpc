@@ -1,54 +1,100 @@
-// Service worker — ELKORASHI DOORS / WPC
-// ⚠️ غيّر CACHE_VERSION مع كل تعديل عشان المتصفح ياخد النسخة الجديدة
-const CACHE_VERSION = 'v9';
+// ⚠️ مهم: غيّر رقم النسخة دي في كل مرة ترفع تحديث جديد.
+// ده اللي بيخلي المتصفح يرمي الكاش القديم ويجيب الملفات الجديدة.
+const CACHE_VERSION = 'v15';
 const CACHE_NAME = 'elkorashy-wpc-' + CACHE_VERSION;
 
-const CORE = [
-  './','./index.html','./manifest.json',
-  './images/icon-192.png','./images/icon-512.png'
+const PRECACHE = [
+  './',
+  './index.html',
+  './manifest.json',
+  './images/icon-192.png',
+  './images/icon-512.png'
 ];
 // ملحوظة: صور الأبواب واللوجو مدمجين جوه index.html نفسه (base64)،
-// فمفيش ملفات صور محتاجة تتخزّن هنا غير أيقونات التثبيت.
+// فمفيش ملفات صور تانية محتاجة تتخزّن هنا غير أيقونات التثبيت.
 
-self.addEventListener('install', e => {
+self.addEventListener('install', (event) => {
+  // 🔑 دي أهم سطر في الملف: النسخة الجديدة بتفرض نفسها فورًا من غير ما تستنى
+  // إذن من الصفحة ولا تستنى التابات تتقفل. ده اللي بيخرّج الأجهزة العالقة على
+  // نسخة قديمة من غير ما المستخدم يعمل أي حاجة.
   self.skipWaiting();
-  e.waitUntil(caches.open(CACHE_NAME).then(c => Promise.allSettled(CORE.map(u => c.add(u)))));
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(PRECACHE).catch(() => {}))
+  );
 });
 
-self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(
-    keys.filter(k => k.startsWith('elkorashy-wpc-') && k !== CACHE_NAME).map(k => caches.delete(k))
-  )).then(() => self.clients.claim()));
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    // امسح كل الكاشات القديمة بتاعة النسخ السابقة
+    const keys = await caches.keys();
+    await Promise.all(
+      keys.filter(k => k.startsWith('elkorashy-wpc-') && k !== CACHE_NAME)
+          .map(k => caches.delete(k))
+    );
+    // خد السيطرة على كل الصفحات المفتوحة فورًا من غير ما تستنى إعادة فتح
+    await self.clients.claim();
+
+    // اقفل/حدّث كل الصفحات المفتوحة عشان تشتغل بالكود الجديد على طول.
+    // النسخ القديمة من index.html مش بتعرف تعمل reload لوحدها، فبنعملهولها احنا.
+    const clients = await self.clients.matchAll({ type: 'window' });
+    clients.forEach(client => {
+      if ('navigate' in client) client.navigate(client.url).catch(() => {});
+    });
+  })());
 });
 
-self.addEventListener('fetch', e => {
-  const req = e.request;
+// الصفحة بتبعتلنا الرسالة دي أول ما تلاقي نسخة جديدة مستنية،
+// فبنشتغل على طول بدل ما نفضل في حالة waiting لأجل غير مسمى.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+
   if (req.method !== 'GET') return;
+
   const url = new URL(req.url);
 
-  // مكتبات الـ CDN (PDF / إكسيل): من الكاش لو اتحمّلت قبل كده
-  if (url.origin !== self.location.origin) {
-    if (/cdnjs|fonts\.(googleapis|gstatic)/.test(url.hostname)) {
-      e.respondWith(
-        caches.match(req).then(hit => hit || fetch(req).then(res => {
-          caches.open(CACHE_NAME).then(c => c.put(req, res.clone())).catch(() => {});
-          return res;
-        }).catch(() => hit))
-      );
-    }
+  // مانتدخلش خالص في نداءات Apps Script — لازم تروح للنت دايمًا
+  if (url.hostname.includes('script.google.com') ||
+      url.hostname.includes('googleusercontent.com')) {
     return;
   }
 
-  if (/\.(jpg|jpeg|png|webp|svg)$/i.test(url.pathname)) {
-    e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => {
-      caches.open(CACHE_NAME).then(c => c.put(req, res.clone())).catch(() => {});
+  const isHTML = req.mode === 'navigate' ||
+                 (req.headers.get('accept') || '').includes('text/html');
+
+  if (isHTML) {
+    // ✅ Network-first للـ HTML: ده اللي يضمن إن أي تحديث بترفعه يوصل للناس فورًا
+    // (بدل ما الكاش يرجّع نسخة index.html قديمة).
+    event.respondWith((async () => {
+      try {
+        const fresh = await fetch(req);
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(req, fresh.clone()).catch(() => {});
+        return fresh;
+      } catch (e) {
+        // مفيش نت → رجّع آخر نسخة متخزنة عشان التطبيق يفضل شغال أوفلاين
+        const cached = await caches.match(req);
+        return cached || caches.match('./index.html');
+      }
+    })());
+    return;
+  }
+
+  // باقي الملفات (خطوط، مكتبات، أيقونات...): stale-while-revalidate
+  event.respondWith((async () => {
+    const cached = await caches.match(req);
+    const network = fetch(req).then(res => {
+      if (res && res.status === 200) {
+        caches.open(CACHE_NAME).then(c => c.put(req, res.clone())).catch(() => {});
+      }
       return res;
-    }).catch(() => hit)));
-    return;
-  }
-
-  e.respondWith(fetch(req).then(res => {
-    caches.open(CACHE_NAME).then(c => c.put(req, res.clone())).catch(() => {});
-    return res;
-  }).catch(() => caches.match(req).then(hit => hit || caches.match('./index.html'))));
+    }).catch(() => null);
+    return cached || network || new Response('', { status: 504 });
+  })());
 });

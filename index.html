@@ -103,6 +103,18 @@ button{cursor:pointer;border:0;background:none}
 
 /* لوحة تفاصيل الباب — بتظهر تحت صف الباب المختار جوه نفس الشبكة */
 .doorpanel{grid-column:1/-1;background:#F7FAFD;border:1px dashed var(--brand);border-radius:12px;padding:12px;margin:2px 0 4px}
+/* المقاس / الحلق / البرور / الكالون — أربع أعمدة جنب بعض تحت الباب المختار */
+.specgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:4px}
+.specol{display:flex;flex-direction:column;gap:5px;min-width:0}
+.specol .sol-h{font-size:10px;color:var(--muted);text-align:center;font-weight:600}
+.specol .colchip{
+  width:100%;padding:7px 2px;border:1.5px solid var(--line);border-radius:8px;
+  background:#FCFDFE;font-size:10.5px;font-weight:500;text-align:center;line-height:1.25;
+}
+.specol .colchip .ic{display:block;font-size:14px;line-height:1.1;margin-bottom:1px}
+.specol .colchip .sub{display:block;font-size:8.8px;color:var(--muted);font-weight:400;margin-top:1px}
+.specol .colchip.on{background:var(--navy);border-color:var(--navy);color:#EAF2FA}
+.specol .colchip.on .sub{color:#9CB6D2}
 .doorpanel .dphead{display:flex;align-items:center;gap:8px;margin-bottom:11px}
 .doorpanel .dphead b{font-family:'Reem Kufi',sans-serif;font-size:14px;color:var(--navy)}
 .doorpanel .dphead span{font-size:11.5px;color:var(--muted)}
@@ -326,7 +338,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v14';
+const APP_BUILD   = 'v15';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -445,19 +457,19 @@ function verBar(){ return ''; }   // الإصدار/التحديث/التثبي�
 function viewNew(){
   const p=state.pick, isCustom=p.size==='custom', bad=state.touched;
 
-  const sizes=SIZES.map(s=>`
-    <button class="chip ${p.size===s.w?'on':''}" data-act="pick-size" data-w="${s.w}">
-      ${s.w} سم<span class="sub">${money(s.price)} ج</span></button>`).join('')
-    +`<button class="chip ${isCustom?'on':''}" data-act="pick-size" data-w="custom">مقاس خاص<span class="sub">+${CUSTOM_EXTRA} ج</span></button>`;
+  const sizeCol=SIZES.map(s=>`
+    <button class="colchip ${p.size===s.w?'on':''}" data-act="pick-size" data-w="${s.w}">
+      ${s.w} سم<span class="sub">${money(s.price)}ج</span></button>`).join('')
+    +`<button class="colchip ${isCustom?'on':''}" data-act="pick-size" data-w="custom">خاص<span class="sub">+${CUSTOM_EXTRA}ج</span></button>`;
 
-  const frames=FRAMES.map(f=>`<button class="chip ${p.frame===f.cm?'on':''}" data-act="pick-frame" data-cm="${f.cm}">${f.cm} سم</button>`).join('')
-    +`<button class="chip ${p.frame===0?'on':''}" data-act="pick-frame" data-cm="0">بدون حلق</button>`;
+  const frameCol=FRAMES.map(f=>`<button class="colchip ${p.frame===f.cm?'on':''}" data-act="pick-frame" data-cm="${f.cm}">${f.cm} سم</button>`).join('')
+    +`<button class="colchip ${p.frame===0?'on':''}" data-act="pick-frame" data-cm="0">بدون</button>`;
 
-  const dbrors=BRORS.map(b=>`<button class="chip ${p.dbror===b.size?'on':''}" data-act="pick-dbror" data-size="${esc(b.size)}">برور ${esc(b.size)}</button>`).join('')
-    +`<button class="chip ${p.dbror===''?'on':''}" data-act="pick-dbror" data-size="">بدون برور</button>`;
+  const dbrorCol=BRORS.map(b=>`<button class="colchip ${p.dbror===b.size?'on':''}" data-act="pick-dbror" data-size="${esc(b.size)}">${esc(b.size)}</button>`).join('')
+    +`<button class="colchip ${p.dbror===''?'on':''}" data-act="pick-dbror" data-size="">بدون</button>`;
 
-  const mills=MILLS.map(m=>`
-    <button class="chip ${p.mill===m.id?'on':''}" data-act="pick-mill" data-id="${m.id}" style="min-width:104px">
+  const millCol=MILLS.map(m=>`
+    <button class="colchip ${p.mill===m.id?'on':''}" data-act="pick-mill" data-id="${m.id}">
       <span class="ic">${m.ic}</span>${esc(m.ar)}</button>`).join('');
 
   const frRods=Number(state.fr.rods)||0;
@@ -492,21 +504,17 @@ function viewNew(){
     <div class="doorpanel">
       <div class="dphead"><b>${esc(p.code)}</b><span>${esc(doorByCode(p.code).name)}</span></div>
 
-      <div class="grp">المقاس</div>
-      <div class="chips">${sizes}</div>
+      <div class="specgrid">
+        <div class="specol"><div class="sol-h">المقاس</div>${sizeCol}</div>
+        <div class="specol"><div class="sol-h">الحلق</div>${frameCol}</div>
+        <div class="specol"><div class="sol-h">البرور</div>${dbrorCol}</div>
+        <div class="specol"><div class="sol-h">الكالون</div>${millCol}</div>
+      </div>
+
       ${isCustom?`<div class="box"><div class="row2">
           <label class="fld"><span>العرض (سم)</span><input type="number" inputmode="numeric" min="1" value="${esc(p.custom.w)}" placeholder="مثال 85" data-act="cust" data-k="w"></label>
           <label class="fld"><span>الارتفاع (سم)</span><input type="number" inputmode="numeric" min="1" value="${esc(p.custom.h)}" placeholder="مثال 210" data-act="cust" data-k="h"></label>
         </div><div class="note">المقاسات خارج الاستاندر بيتضاف عليها <b>${CUSTOM_EXTRA} ج</b>.</div></div>`:''}
-
-      <div class="grp">الحلق</div>
-      <div class="chips">${frames}</div>
-
-      <div class="grp">البرور</div>
-      <div class="chips">${dbrors}</div>
-
-      <div class="grp">تفريز الكالون</div>
-      <div class="chips">${mills}</div>
 
       <div class="grp">الكمية</div>
       <div class="qty">
