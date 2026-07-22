@@ -278,6 +278,7 @@ input::placeholder{color:#A8B4C2}
   <button data-tab="cart">السلة<span class="badge" id="cartBadge">0</span></button>
   <button data-tab="orders">طلباتي</button>
   <button data-tab="track">🚚 المتابعة</button>
+  <button data-tab="admin">🔒</button>
 </nav>
 
 <main class="wrap" id="view"></main>
@@ -316,7 +317,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v8';
+const APP_BUILD   = 'v9';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -373,6 +374,7 @@ const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders'
 const state = {
   tab:'new',
   track:{loading:false, rows:null, err:'', at:0},
+  admin:{open:false, pw:'', loading:false, rows:null, err:'', busy:null},
   profile: load(LS_PROFILE, {name:'', phone:'', region:''}),
   cart:    load(LS_CART, []),
   orders:  load(LS_ORDERS, []),
@@ -413,6 +415,7 @@ function render(){
   v.innerHTML = state.tab==='new' ? viewNew()
               : state.tab==='cart' ? viewCart()
               : state.tab==='track' ? viewTrack()
+              : state.tab==='admin' ? viewAdmin()
               : viewOrders();
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===state.tab));
   document.getElementById('cartBadge').textContent=cartCount();
@@ -658,16 +661,19 @@ function viewOrders(){
    متابعة الطلبات — بتقرا الحالة من الشيت
    ============================================================ */
 const STATUS = {
-  'New':        {ar:'تحت المراجعة', bg:'#EAF2FA', fg:'#0B4A7A'},
-  'In Progress':{ar:'تحت التنفيذ',  bg:'#FFF6E5', fg:'#8A6512'},
-  'Ready':      {ar:'جاهز للاستلام', bg:'#E7F3EE', fg:'#1E7A54'},
-  'Delivered':  {ar:'تم التسليم',    bg:'#EDF0F3', fg:'#5B6B7D'},
-  'Cancelled':  {ar:'ملغي',          bg:'#FDECEA', fg:'#B3261E'}
+  'New':        {ar:'طلب جديد',        ic:'🆕', bg:'#EDF0F3', fg:'#5B6B7D'},
+  'Received':   {ar:'تم استلام الطلب',  ic:'📥', bg:'#EAF2FA', fg:'#0B4A7A'},
+  'In Progress':{ar:'تحت التنفيذ',      ic:'🏭', bg:'#FFF6E5', fg:'#8A6512'},
+  'Ready':      {ar:'جاهز للتحميل',     ic:'✅', bg:'#E7F3EE', fg:'#1E7A54'},
+  'Delivered':  {ar:'تم التسليم',       ic:'🚚', bg:'#EDF0F3', fg:'#5B6B7D'},
+  'Cancelled':  {ar:'ملغي',             ic:'✖',  bg:'#FDECEA', fg:'#B3261E'}
 };
+// المراحل اللي المصنع بيحرّكها — بالترتيب
+const FLOW = ['Received','In Progress','Ready','Delivered'];
 function statusPill(v){
-  const st = STATUS[v] || {ar:(v||'—'), bg:'#EDF0F3', fg:'#5B6B7D'};
+  const st = STATUS[v] || {ar:(v||'—'), ic:'•', bg:'#EDF0F3', fg:'#5B6B7D'};
   return `<span style="display:inline-block;padding:3px 11px;border-radius:20px;font-size:11.5px;
-    font-weight:600;background:${st.bg};color:${st.fg}">${esc(st.ar)}</span>`;
+    font-weight:600;background:${st.bg};color:${st.fg}">${st.ic} ${esc(st.ar)}</span>`;
 }
 
 // بنستخدم JSONP (وسم script) بدل fetch — أضمن مع Apps Script ومفيش مشاكل CORS
@@ -735,6 +741,94 @@ function viewTrack(){
     ${rows}${verBar()}`;
 }
 
+
+/* ============================================================
+   شاشة المصنع — تغيير حالة الطلب (بكلمة سر)
+   ============================================================ */
+async function adminLoad(){
+  state.admin.loading = true; state.admin.err = ''; render();
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL + '?action=list&pw=' + encodeURIComponent(state.admin.pw));
+    if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
+    state.admin.rows = d.orders || [];
+    state.admin.open = true;
+    sessionStorage.setItem('wpc_adm', state.admin.pw);
+  }catch(err){
+    state.admin.err = err.message || String(err);
+    state.admin.open = false;
+  }
+  state.admin.loading = false; render();
+}
+
+async function setStatus(id, st){
+  state.admin.busy = id; render();
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL
+      + '?action=setStatus&pw=' + encodeURIComponent(state.admin.pw)
+      + '&id=' + encodeURIComponent(id)
+      + '&status=' + encodeURIComponent(st));
+    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل التحديث');
+    const row = (state.admin.rows||[]).find(o=>String(o.id)===String(id));
+    if(row) row.status = st;
+    toast('اتحدّثت حالة #' + id + ' → ' + (STATUS[st] ? STATUS[st].ar : st));
+  }catch(err){
+    toast('تعذّر التحديث: ' + (err.message || err));
+  }
+  state.admin.busy = null; render();
+}
+
+function viewAdmin(){
+  const a = state.admin;
+
+  if(a.loading) return `<div class="empty"><span class="em">⏳</span><p>جارٍ التحميل…</p></div>`;
+
+  if(!a.open){
+    return `<section class="card">
+      <div class="step"><span class="n">🔒</span><h2>دخول المصنع</h2></div>
+      <div class="note" style="margin-top:0">الشاشة دي لموظفي المصنع بس — منها بتتحدّد حالة كل طلب،
+      والموزع بيشوف الحالة على طول في تبويب «المتابعة».</div>
+      <label class="fld" style="margin-top:12px"><span>كلمة السر</span>
+        <input type="password" inputmode="numeric" value="${esc(a.pw)}" placeholder="••••" data-act="adm-pw"></label>
+      ${a.err?`<div class="note" style="color:var(--danger)">${esc(a.err)}</div>`:''}
+      <button class="btn primary" data-act="adm-login" ${a.pw?'':'disabled'}>دخول</button>
+    </section>${verBar()}`;
+  }
+
+  if(!a.rows || !a.rows.length){
+    return `<div class="empty"><span class="em">📋</span><p>مفيش طلبات لسه.</p>
+      <button class="btn ghost sm" style="margin-top:14px;max-width:220px;margin-inline:auto" data-act="adm-reload">تحديث</button></div>${verBar()}`;
+  }
+
+  const rows = a.rows.map(o=>{
+    const busy = a.busy === o.id;
+    const btns = FLOW.map(st=>{
+      const c = STATUS[st];
+      const on = o.status === st;
+      return `<button class="chip ${on?'on':''}" data-act="adm-set" data-id="${esc(o.id)}" data-st="${esc(st)}"
+        ${busy?'disabled':''} style="flex:1;min-width:0;padding:8px 4px;font-size:11.5px">
+        <span class="ic" style="font-size:16px">${c.ic}</span>${esc(c.ar)}</button>`;
+    }).join('');
+
+    return `<div class="ord">
+      <div class="oh"><span class="oid">#${esc(o.id)}</span>${statusPill(o.status)}</div>
+      <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}<br>
+        ${esc(o.date||'')} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''} · ${money(o.total||0)} ج</div>
+      <div class="chips" style="margin-top:10px;gap:6px;flex-wrap:nowrap">${btns}</div>
+      ${busy?'<div class="note">جارٍ الحفظ…</div>':''}
+    </div>`;
+  }).join('');
+
+  return `<section class="card">
+      <div class="step"><span class="n">🏭</span><h2>حالة الطلبات</h2><span class="hint">${a.rows.length} طلب</span></div>
+      <div class="note" style="margin-top:0">اضغط المرحلة اللي وصلها الطلب — بتتسجّل في الشيت والموزع يشوفها فورًا.</div>
+      <div class="btnrow" style="margin-top:11px">
+        <button class="btn ghost sm" data-act="adm-reload">🔄 تحديث</button>
+        <button class="btn ghost sm" data-act="adm-logout">🔒 خروج</button>
+      </div>
+    </section>
+    ${rows}${verBar()}`;
+}
+
 /* ============================================================
    الأحداث
    ============================================================ */
@@ -773,6 +867,12 @@ document.addEventListener('click',e=>{
     case 'all-xls':   exportExcel(state.orders,'كل_الطلبات'); break;
     case 'resend':    withOrder(el,o=>openWhatsApp(o.msg)); break;
     case 'track-load': loadTrack(); break;
+    case 'adm-login':  adminLoad(); break;
+    case 'adm-reload': adminLoad(); break;
+    case 'adm-set':    setStatus(el.dataset.id, el.dataset.st); break;
+    case 'adm-logout':
+      state.admin={open:false,pw:'',loading:false,rows:null,err:'',busy:null};
+      sessionStorage.removeItem('wpc_adm'); render(); break;
     case 'update': doUpdate(); break;
     case 'install': doInstall(); break;
     case 'hide-inst':
@@ -787,6 +887,7 @@ function withOrder(el,fn){const o=state.orders.find(x=>x.id===el.dataset.id); if
 document.addEventListener('input',e=>{
   const el=e.target.closest('[data-act]'); if(!el) return;
   const a=el.dataset.act;
+  if(a==='adm-pw'){ state.admin.pw=el.value; const b=document.querySelector('[data-act="adm-login"]'); if(b) b.disabled=!el.value; return; }
   if(a==='prof'){ state.profile[el.dataset.k]=el.value; save(LS_PROFILE,state.profile); return; }
   if(a==='cust'){ state.pick.custom[el.dataset.k]=el.value; refreshSummary(); return; }
   if(a==='qty-set'){ state.pick.qty=Math.max(1,parseInt(el.value,10)||1); refreshSummary(); return; }
@@ -1166,6 +1267,8 @@ async function doInstall(){
 /* ============================================================
    التشغيل
    ============================================================ */
+const savedPw = sessionStorage.getItem('wpc_adm');
+if(savedPw){ state.admin.pw = savedPw; state.admin.open = true; }
 document.getElementById('hdrLogo').src = ASSETS.logo;
 document.documentElement.style.setProperty('--mark', 'url('+ASSETS.mark+')');
 render();
