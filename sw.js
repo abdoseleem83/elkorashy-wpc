@@ -1,15 +1,14 @@
 // Service worker — ELKORASHI DOORS / WPC
 // ⚠️ غيّر CACHE_VERSION مع كل تعديل عشان المتصفح ياخد النسخة الجديدة
-const CACHE_VERSION = 'v6';
+const CACHE_VERSION = 'v7';
 const CACHE_NAME = 'elkorashy-wpc-' + CACHE_VERSION;
 
 const CORE = [
   './','./index.html','./manifest.json',
-  './images/logo.png','./images/mark.png',
-  './images/icon-192.png','./images/icon-512.png',
-  './images/A01.jpg','./images/A02.jpg','./images/A03.jpg','./images/A04.jpg','./images/A05.jpg',
-  './images/A06.jpg','./images/A07.jpg','./images/A08.jpg','./images/A09.jpg','./images/A10.jpg'
+  './images/icon-192.png','./images/icon-512.png'
 ];
+// ملحوظة: صور الأبواب واللوجو مدمجين جوه index.html نفسه (base64)،
+// فمفيش ملفات صور محتاجة تتخزّن هنا غير أيقونات التثبيت.
 
 self.addEventListener('install', e => {
   self.skipWaiting();
