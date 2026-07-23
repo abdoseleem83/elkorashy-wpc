@@ -369,7 +369,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v28';
+const APP_BUILD   = 'v29';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -967,13 +967,26 @@ async function setItemAvail(id, idx, avail){
 }
 
 // بيبني order object موحّد من بيانات شاشة المصنع (list + orderItems) — مستخدم في تصدير الـ PDF وفي مشاركة الصورة
+// السيرفر بيخزّن اسم الصنف بالإنجليزي بس (Order_Items عمود Item). بنعيد بناء الاسم العربي
+// من نفس الكتالوجات اللي التطبيق أصلًا شغال بيها (DOORS/ACCESSORIES)، مش نص إنجليزي متسيّب.
+const ACC_EN_TO_AR_ = {}; ACCESSORIES.forEach(a=>{ ACC_EN_TO_AR_[a.en] = a.name; });
+function arabicItemTitle_(it){
+  if(it.type==='Door'){
+    const d = DOORS.find(x=>x.code===it.code);
+    return d ? ('باب WPC '+d.code+' — '+d.name) : (it.title||'');
+  }
+  if(it.type==='Frame') return 'حلق باب '+(it.size||'')+' — عود '+ROD_LEN+' م';
+  if(it.type==='Bror')  return 'برور '+(it.size||'')+' — عود '+ROD_LEN+' م';
+  return ACC_EN_TO_AR_[it.title] || it.title || '';
+}
+
 function buildAdminDocOrder_(o, its){
   return {
     id:o.id, ts:o.date?new Date(o.date).getTime():Date.now(),
     name:o.dist, phone:o.phone, region:o.region, warehouse:'', total:o.total,
     items: its.map(it=>({
       kind: it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':'acc')),
-      title: (it.avail===false?'⚠️ غير متاح — ':'') + (it.title||'') + (it.code?' ('+it.code+')':''),
+      title: (it.avail===false?'⚠️ غير متاح — ':'') + arabicItemTitle_(it) + (it.type==='Door'&&it.code?' ('+it.code+')':''),
       sizeTxt: it.size||'', spec: it.size||'', unit: it.unit||'', qty: it.qty||0,
       unitPrice: it.unitPrice||0, price: it.unitPrice||0,
       frame: it.frame||'', dbror: it.dbror||''
@@ -1055,7 +1068,7 @@ function mergeReportItems_(items){
   const map = {}, ord = [];
   (items||[]).forEach(it=>{
     const key = (it.title||'')+'|'+(it.code||'')+'|'+(it.size||'')+'|'+(it.unit||'')+'|'+(it.frame||'')+'|'+(it.dbror||'');
-    if(!map[key]){ map[key] = {title:it.title, code:it.code, size:it.size, frame:it.frame, dbror:it.dbror, unit:it.unit, qty:0, avail:true}; ord.push(key); }
+    if(!map[key]){ map[key] = {title:arabicItemTitle_(it), code:it.code, size:it.size, frame:it.frame, dbror:it.dbror, unit:it.unit, qty:0, avail:true}; ord.push(key); }
     map[key].qty += Number(it.qty)||0;
     if(it.avail===false) map[key].avail = false;
   });
