@@ -203,6 +203,11 @@ input::placeholder{color:#A8B4C2}
   font-family:'Reem Kufi',sans-serif;font-size:16px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.4);
 }
 .door.on .leaf{border-color:var(--brand);transform:perspective(620px) rotateY(-12deg);box-shadow:-6px 4px 16px rgba(0,32,80,.24)}
+.door .zoombadge{
+  position:absolute;top:5px;inset-inline-end:5px;width:24px;height:24px;border-radius:50%;
+  background:rgba(0,20,50,.55);color:#fff;display:grid;place-items:center;font-size:13px;
+  backdrop-filter:blur(2px);z-index:2;
+}
 .door .code{display:block;font-size:12px;font-weight:600;margin-top:7px;font-family:'Reem Kufi',sans-serif}
 .door .nm{display:block;font-size:10.5px;color:var(--muted);line-height:1.3}
 .door.on .code{color:var(--brand)}
@@ -364,7 +369,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v19';
+const APP_BUILD   = 'v21';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -443,6 +448,40 @@ function save(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){} }
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function money(n){const v=Math.round(Number(n)*100)/100;return v.toLocaleString('en-EG',{minimumFractionDigits:0,maximumFractionDigits:2});}
 function doorByCode(c){return DOORS.find(d=>d.code===c)||DOORS[0];}
+
+function selectDoor(code){
+  const p=state.pick;
+  if(p.code===code){
+    // ضغط على نفس الباب المفتوح — يقفل ويلمّ
+    p.code=''; p.size=null; p.custom={w:'',h:''};
+    p.frame=null; p.dbror=null; p.qty=1;
+  } else {
+    // باب جديد = اختيارات جديدة، عشان الموزع يحدد كل حاجة بنفسه من الأول
+    p.code=code; p.size=null; p.custom={w:'',h:''};
+    p.frame=null; p.dbror=null; p.qty=1;
+  }
+  render();
+}
+
+function showDoorPreview(code){
+  const d=doorByCode(code);
+  const old=document.getElementById('doorPreviewOverlay'); if(old) old.remove();
+  const ov=document.createElement('div');
+  ov.id='doorPreviewOverlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:300;background:rgba(0,10,30,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px';
+  ov.innerHTML=`
+    <div style="width:100%;max-width:360px;text-align:center">
+      <img src="${d.img}" alt="${esc(d.name)}" style="width:100%;max-height:62vh;object-fit:contain;border-radius:14px;background:#fff;box-shadow:0 10px 30px rgba(0,0,0,.4)">
+      <div style="color:#fff;margin-top:14px;font-family:'Reem Kufi',sans-serif;font-size:17px;font-weight:700">${esc(d.code)} — ${esc(d.name)}</div>
+      <div style="display:flex;gap:10px;margin-top:18px">
+        <button data-act="preview-select" data-code="${esc(d.code)}" style="flex:1;background:linear-gradient(180deg,var(--brand-lt),var(--brand));color:#fff;padding:12px;border-radius:12px;font-weight:700;font-size:14px">اختار الباب ده</button>
+        <button id="closeDoorPreview" style="flex:0 0 auto;background:rgba(255,255,255,.15);color:#fff;padding:12px 20px;border-radius:12px;font-size:14px">إغلاق</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click', e=>{ if(e.target===ov) ov.remove(); });
+  document.getElementById('closeDoorPreview').onclick = () => ov.remove();
+}
 function millById(id){return MILLS.find(m=>m.id===id)||MILLS[1];}
 function priceForWidth(w){const n=Number(w)||0;for(const s of SIZES) if(n<=s.w) return s.price;return SIZES[SIZES.length-1].price;}
 function rodPrice(perMetre){return Math.round(perMetre*ROD_LEN*100)/100;}
@@ -575,6 +614,7 @@ function viewNew(){
       <button class="door ${p.code===d.code?'on':''}" data-act="pick-door" data-code="${d.code}">
         <div class="leaf" data-code="${esc(d.code)}">
           <img src="${d.img}" alt="" loading="lazy" onerror="this.closest('.leaf').classList.add('noimg');this.remove();">
+          <span class="zoombadge" data-act="door-preview" data-code="${esc(d.code)}">🔍</span>
         </div>
         <span class="code">${esc(d.code)}</span><span class="nm">${esc(d.name)}</span>
       </button>`).join('');
@@ -933,18 +973,14 @@ document.addEventListener('click',e=>{
   const a=el.dataset.act, p=state.pick;
   switch(a){
     case 'go-cart': state.tab='cart'; render(); window.scrollTo({top:0}); break;
-    case 'pick-door':
-      if(p.code===el.dataset.code){
-        // ضغط على نفس الباب المفتوح — يقفل ويلمّ
-        p.code=''; p.size=null; p.custom={w:'',h:''};
-        p.frame=null; p.dbror=null; p.qty=1;
-      } else {
-        // باب جديد = اختيارات جديدة، عشان الموزع يحدد كل حاجة بنفسه من الأول
-        p.code=el.dataset.code; p.size=null; p.custom={w:'',h:''};
-        p.frame=null; p.dbror=null; p.qty=1;
-      }
-      render(); break;
+    case 'pick-door': selectDoor(el.dataset.code); break;
     case 'sec': state.newSection=el.dataset.s; render(); window.scrollTo({top:0,behavior:'smooth'}); break;
+    case 'door-preview': showDoorPreview(el.dataset.code); break;
+    case 'preview-select':
+      { const ov=document.getElementById('doorPreviewOverlay'); if(ov) ov.remove(); }
+      selectDoor(el.dataset.code);
+      window.scrollTo({top:0,behavior:'smooth'});
+      break;
     case 'pick-size': p.size = el.dataset.w==='custom'?'custom':Number(el.dataset.w); render(); break;
     case 'pick-frame': p.frame=Number(el.dataset.cm); render(); break;
     case 'pick-dbror': p.dbror=el.dataset.size; render(); break;
@@ -1404,13 +1440,11 @@ function syncInstallBtn(){
   b.hidden = isInstalled();   // لو متثبّت خالص، نخبي الزرار خالص
 }
 
-// بوابة التثبيت — شاشة كاملة قبل أي حاجة تانية، بترجع تظهر في أي تحميل جديد
-// للصفحة لحد ما التطبيق يتثبّت فعلاً (زي تطبيق الموزعين بالظبط).
+// بوابة التثبيت اتشالت — بنعتمد دلوقتي على أيقونة التثبيت بتاعة المتصفح نفسه
+// (جنب النجمة في شريط العنوان) بدل شاشة كاملة قبل أي حاجة تانية.
 function updateInstallGate(){
   const g=document.getElementById('installGate');
-  if(isInstalled() || state.gateBypassed){ g.classList.add('hidden'); g.innerHTML=''; return; }
-  g.classList.remove('hidden');
-  g.innerHTML = gateHTML();
+  g.classList.add('hidden'); g.innerHTML='';
 }
 
 function gateHTML(){
