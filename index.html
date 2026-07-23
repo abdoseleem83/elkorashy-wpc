@@ -369,12 +369,14 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v21';
+const APP_BUILD   = 'v22';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
 const ADMIN_WHATS = '201067765483';   // مش مستخدم في إرسال الطلبات دلوقتي (الموزع بيختار بنفسه) — سايبه لو احتجناه تاني
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2aVRVaUVubR3w4a3weiQTHGp03SvMozh83NY3OtBD14n1YugCjbcWdYEJUPJb-s3E/exec';
+// كل طلبات الأوردر لازم تتبعت على واتساب لرقم القرشي ده تحديدًا — مفيش اختيار مجموعة/شخص تاني.
+const WHATSAPP_NUMBER = '201119932111';
 
 const ROD_LEN = 2.15;   // طول العود بالمتر — الحلق والبرور بيتباعوا بالعود
 const PRICE_NOTE = 'الأسعار بعاليه حسب وقت التسعير وغير ملزمة إلا في حالة سداد المبلغ كامل أو نصفه.';
@@ -1170,10 +1172,9 @@ function buildMessage(o){
   return m;
 }
 
-// بيفتح واتساب من غير رقم متحدد — يسيب الموزع يختار المجموعة أو الشخص بنفسه،
-// بدل ما يتبعت لرقم ثابت.
+// كل الطلبات لازم تتبعت على واتساب لرقم القرشي الثابت — مفيش اختيار مجموعة/شخص تاني.
 function openWhatsAppPicker(text){
-  window.open('https://api.whatsapp.com/send?text='+encodeURIComponent(text),'_blank');
+  window.open('https://api.whatsapp.com/send?phone='+WHATSAPP_NUMBER+'&text='+encodeURIComponent(text),'_blank');
 }
 
 function downloadBlob(blob,name){
@@ -1183,13 +1184,14 @@ function downloadBlob(blob,name){
   setTimeout(()=>URL.revokeObjectURL(url),4000);
 }
 
-// بيجهّز صورة للطلب (نفس تصميم المستند) ويحاول يفتح شاشة المشاركة بتاعة الموبايل
-// عشان الموزع يختار واتساب وبعدين المجموعة/الشخص من جوّه بنفسه.
+// بيجهّز صورة للطلب (نفس تصميم المستند)، وبينزّلها على الجهاز، وبعدين بيفتح
+// شات واتساب القرشي مباشرة (الرقم الثابت) مع نص الطلب — الموزع يرفق الصورة
+// يدوي من جوه الشات. ماحطيناش شاشة المشاركة العامة (Web Share) عشان
+// الإرسال يفضل إجباري على رقم القرشي بس، مش أي جهة تانية.
 async function shareOrderImage(o){
   const caption='طلب أوردر #'+o.id+' — '+(o.name||'')+(pricesVisible()?' — الإجمالي '+money(o.total)+' ج':'');
 
   if(typeof html2canvas==='undefined'){
-    // مفيش نت كفاية لتجهيز الصورة — نفتح واتساب بالنص بس
     openWhatsAppPicker(o.msg); return;
   }
 
@@ -1201,18 +1203,10 @@ async function shareOrderImage(o){
     const canvas=await html2canvas(paper.firstElementChild,{scale:2,backgroundColor:'#ffffff',useCORS:true});
     paper.innerHTML='';
     const blob=await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
-    const file=new File([blob],'طلب_'+o.id+'.png',{type:'image/png'});
-
-    if(navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file], title:'طلب أوردر #'+o.id, text:caption});
-    } else {
-      // مفيش شاشة مشاركة (كمبيوتر مثلًا) — ننزّل الصورة ونفتح واتساب فاضي
-      downloadBlob(blob,'طلب_'+o.id+'.png');
-      openWhatsAppPicker(caption);
-      toast('اتحمّلت صورة الطلب — اختار المجموعة في واتساب وارفقها');
-    }
+    downloadBlob(blob,'طلب_'+o.id+'.png');
+    openWhatsAppPicker(o.msg);
+    toast('اتحمّلت صورة الطلب — أرفقها في شات القرشي اللي فتح على واتساب');
   }catch(err){
-    if(err && err.name==='AbortError'){ busy(false); return; }   // العميل قفل شاشة المشاركة
     toast('تعذّر تجهيز صورة الطلب — هيتفتح واتساب بالنص');
     openWhatsAppPicker(o.msg);
   }
