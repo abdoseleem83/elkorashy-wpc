@@ -369,7 +369,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v31';
+const APP_BUILD   = 'v32';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -981,17 +981,31 @@ function arabicItemTitle_(it){
   return ACC_EN_TO_AR_[it.title] || it.title || '';
 }
 
+// السيرفر بيخزّن المقاس بالإنجليزي ("70 cm" أو "80x210 cm (custom)") — بنحوّله لنفس صيغة
+// العميل العربية ("70 سم" أو "80×210 سم (مقاس خاص)") قبل ما نعرضه في أي مستند
+function arabicSizeText_(sizeEn){
+  const s = String(sizeEn||'').trim();
+  let m = /^(\d+)\s*cm$/i.exec(s);
+  if(m) return m[1]+' سم';
+  m = /^(\d+)\s*x\s*(\d+)\s*cm\s*\(custom\)$/i.exec(s);
+  if(m) return m[1]+'×'+m[2]+' سم (مقاس خاص)';
+  return s;
+}
+
 function buildAdminDocOrder_(o, its){
   return {
     id:o.id, ts:o.date?new Date(o.date).getTime():Date.now(),
     name:o.dist, phone:o.phone, region:o.region, warehouse:'', total:o.total,
-    items: its.map(it=>({
-      kind: it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':'acc')),
-      title: (it.avail===false?'⚠️ غير متاح — ':'') + arabicItemTitle_(it) + (it.type==='Door'&&it.code?' ('+it.code+')':''),
-      sizeTxt: it.size||'', spec: it.size||'', unit: it.unit||'', qty: it.qty||0,
-      unitPrice: it.unitPrice||0, price: it.unitPrice||0,
-      frame: it.frame||'', dbror: it.dbror||''
-    }))
+    items: its.map(it=>{
+      const sz = it.type==='Door' ? arabicSizeText_(it.size) : (it.size||'');
+      return {
+        kind: it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':'acc')),
+        title: (it.avail===false?'⚠️ غير متاح — ':'') + arabicItemTitle_(it) + (it.type==='Door'&&it.code?' ('+it.code+')':''),
+        sizeTxt: sz, spec: sz, unit: it.unit||'', qty: it.qty||0,
+        unitPrice: it.unitPrice||0, price: it.unitPrice||0,
+        frame: it.frame||'', dbror: it.dbror||''
+      };
+    })
   };
 }
 
