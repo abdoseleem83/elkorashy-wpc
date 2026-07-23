@@ -369,14 +369,13 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v22';
+const APP_BUILD   = 'v21';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
-const ADMIN_WHATS = '201067765483';   // مش مستخدم في إرسال الطلبات دلوقتي (الموزع بيختار بنفسه) — سايبه لو احتجناه تاني
+const ADMIN_WHATS = '201067765483';   // مش مستخدم في إرسال الطلبات دلوقتي — سايبه لو احتجناه تاني
+const ORDER_WHATS  = '201119932111';  // الرقم الإجباري لاستلام كل طلبات الأوردر عبر واتساب
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2aVRVaUVubR3w4a3weiQTHGp03SvMozh83NY3OtBD14n1YugCjbcWdYEJUPJb-s3E/exec';
-// كل طلبات الأوردر لازم تتبعت على واتساب لرقم القرشي ده تحديدًا — مفيش اختيار مجموعة/شخص تاني.
-const WHATSAPP_NUMBER = '201119932111';
 
 const ROD_LEN = 2.15;   // طول العود بالمتر — الحلق والبرور بيتباعوا بالعود
 const PRICE_NOTE = 'الأسعار بعاليه حسب وقت التسعير وغير ملزمة إلا في حالة سداد المبلغ كامل أو نصفه.';
@@ -429,7 +428,8 @@ const state = {
   tab:'new',
   gateBypassed:false,   // تثبيت التطبيق — بيرجع يظهر تاني في أي تحميل جديد للصفحة
   track:{loading:false, rows:null, err:'', at:0},
-  admin:{open:false, pw:'', loading:false, rows:null, err:'', busy:null},
+  admin:{open:false, pw:'', loading:false, rows:null, err:'', busy:null,
+    itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null},
   profile: load(LS_PROFILE, {name:'', phone:'', region:''}),
   cart:    load(LS_CART, []),
   orders:  load(LS_ORDERS, []),
@@ -909,6 +909,94 @@ async function setStatus(id, st){
   state.admin.busy = null; render();
 }
 
+async function deleteOrder(id){
+  if(!confirm('تأكيد حذف الطلب #'+id+'؟ الإجراء ده نهائي ومش هيترجع.')) return;
+  state.admin.delBusy = id; render();
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL
+      + '?action=deleteOrder&pw=' + encodeURIComponent(state.admin.pw)
+      + '&id=' + encodeURIComponent(id));
+    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل الحذف');
+    state.admin.rows = (state.admin.rows||[]).filter(o=>String(o.id)!==String(id));
+    delete state.admin.items[id]; delete state.admin.itemsOpen[id];
+    toast('اتحذف الطلب #' + id);
+  }catch(err){
+    toast('تعذّر الحذف: ' + (err.message || err));
+  }
+  state.admin.delBusy = null; render();
+}
+
+async function toggleOrderItems(id){
+  const a = state.admin;
+  if(a.itemsOpen[id]){ a.itemsOpen[id]=false; render(); return; }
+  a.itemsOpen[id] = true;
+  if(a.items[id]){ render(); return; }   // متجهزة من قبل — مفيش داعي نطلبها تاني
+  a.itemsLoading = id; render();
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL
+      + '?action=orderItems&pw=' + encodeURIComponent(a.pw)
+      + '&id=' + encodeURIComponent(id));
+    if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
+    a.items[id] = d.items || [];
+  }catch(err){
+    toast('تعذّر تحميل أصناف الطلب: ' + (err.message || err));
+    a.itemsOpen[id] = false;
+  }
+  a.itemsLoading = null; render();
+}
+
+async function setItemAvail(id, idx, avail){
+  state.admin.itemBusy = id+':'+idx; render();
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL
+      + '?action=setItemAvail&pw=' + encodeURIComponent(state.admin.pw)
+      + '&id=' + encodeURIComponent(id) + '&idx=' + idx + '&avail=' + (avail?1:0));
+    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل التحديث');
+    const it = (state.admin.items[id]||[])[idx];
+    if(it) it.avail = avail;
+    toast(avail?'اتعلّم الصنف متاح':'اتعلّم الصنف غير متاح');
+  }catch(err){
+    toast('تعذّر التحديث: ' + (err.message || err));
+  }
+  state.admin.itemBusy = null; render();
+}
+
+// بيبني مستند PDF للطلب من بيانات شاشة المصنع (بعد ما أصنافه تتحمّل)
+async function exportAdminOrderPdf(o){
+  const a = state.admin;
+  if(!a.items[o.id]){
+    a.itemsOpen[o.id] = true;
+    await toggleOrderItemsLoadOnly_(o.id);
+  }
+  const its = a.items[o.id] || [];
+  if(!its.length){ toast('مفيش أصناف لهذا الطلب'); return; }
+  const doc = {
+    id:o.id, ts:o.date?new Date(o.date).getTime():Date.now(),
+    name:o.dist, phone:o.phone, region:o.region, warehouse:'', total:o.total,
+    items: its.map(it=>({
+      kind: it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':'acc')),
+      title: (it.avail===false?'⚠️ غير متاح — ':'') + (it.title||'') + (it.code?' ('+it.code+')':''),
+      sizeTxt: it.size||'', spec: it.size||'', unit: it.unit||'', qty: it.qty||0,
+      unitPrice: it.unitPrice||0, price: it.unitPrice||0
+    }))
+  };
+  makeDoc(doc,'order');
+}
+function toggleOrderItemsLoadOnly_(id){
+  // زي toggleOrderItems بس من غير ما يقفل القايمة لو مفتوحة أصلًا — مستخدمة قبل تصدير الـ PDF
+  return (async()=>{
+    if(state.admin.items[id]) return;
+    state.admin.itemsLoading = id; render();
+    try{
+      const d = await jsonp(APPS_SCRIPT_URL
+        + '?action=orderItems&pw=' + encodeURIComponent(state.admin.pw)
+        + '&id=' + encodeURIComponent(id));
+      if(d && d.ok) state.admin.items[id] = d.items || [];
+    }catch(err){}
+    state.admin.itemsLoading = null; render();
+  })();
+}
+
 function viewAdmin(){
   const a = state.admin;
 
@@ -933,6 +1021,7 @@ function viewAdmin(){
 
   const rows = a.rows.map(o=>{
     const busy = a.busy === o.id;
+    const delBusy = a.delBusy === o.id;
     const btns = FLOW.map(st=>{
       const c = STATUS[st];
       const on = o.status === st;
@@ -941,12 +1030,44 @@ function viewAdmin(){
         <span class="ic" style="font-size:16px">${c.ic}</span>${esc(c.ar)}</button>`;
     }).join('');
 
+    const itemsOpen = !!a.itemsOpen[o.id];
+    const itemsLoading = a.itemsLoading === o.id;
+    const its = a.items[o.id];
+    let itemsHtml = '';
+    if(itemsOpen){
+      if(itemsLoading) itemsHtml = `<div class="note">جارٍ تحميل الأصناف…</div>`;
+      else if(its) itemsHtml = `<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">${
+        its.map((it,idx)=>{
+          const ib = a.itemBusy === (o.id+':'+idx);
+          const unavail = it.avail===false;
+          return `<div style="display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:9px;background:${unavail?'#FDECEA':'#F7F9FB'}">
+            <div style="flex:1;font-size:12px;${unavail?'color:#B3261E':''}">
+              <b>${esc(it.title||'')}</b>${it.code?' — <span style="color:#6B7A8C">'+esc(it.code)+'</span>':''}
+              <br><span style="font-size:11px;color:#6B7A8C">${esc(it.size||'')} · ${esc(it.qty||0)} ${esc(it.unit||'')}</span>
+            </div>
+            <button class="btn ${unavail?'ghost':'sm'}" data-act="adm-item-avail" data-id="${esc(o.id)}" data-idx="${idx}" data-avail="${unavail?1:0}"
+              ${ib?'disabled':''} style="font-size:11px;padding:6px 9px;white-space:nowrap;${unavail?'border-color:#B3261E;color:#B3261E':''}">
+              ${ib?'…':(unavail?'❌ غير متاح':'✅ متاح')}
+            </button>
+          </div>`;
+        }).join('')
+      }</div>`;
+      else itemsHtml = `<div class="note" style="color:var(--danger)">تعذّر تحميل الأصناف</div>`;
+    }
+
     return `<div class="ord">
       <div class="oh"><span class="oid">#${esc(o.id)}</span>${statusPill(o.status)}</div>
       <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}<br>
         ${esc(o.date||'')} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''} · ${money(o.total||0)} ج</div>
       <div class="chips" style="margin-top:10px;gap:6px;flex-wrap:nowrap">${btns}</div>
       ${busy?'<div class="note">جارٍ الحفظ…</div>':''}
+      <div class="btnrow" style="margin-top:9px;gap:6px">
+        <button class="btn ghost sm" data-act="adm-toggle-items" data-id="${esc(o.id)}">${itemsOpen?'🔽 قفل الأصناف':'📋 الأصناف'}</button>
+        <button class="btn ghost sm" data-act="adm-pdf" data-id="${esc(o.id)}">📄 PDF</button>
+        <button class="btn ghost sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}
+          style="border-color:#B3261E;color:#B3261E">${delBusy?'جارٍ الحذف…':'🗑️ حذف'}</button>
+      </div>
+      ${itemsHtml}
     </div>`;
   }).join('');
 
@@ -1008,6 +1129,10 @@ document.addEventListener('click',e=>{
     case 'adm-login':  adminLoad(); break;
     case 'adm-reload': adminLoad(); break;
     case 'adm-set':    setStatus(el.dataset.id, el.dataset.st); break;
+    case 'adm-toggle-items': toggleOrderItems(el.dataset.id); break;
+    case 'adm-pdf':     { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) exportAdminOrderPdf(o); } break;
+    case 'adm-del':     deleteOrder(el.dataset.id); break;
+    case 'adm-item-avail': setItemAvail(el.dataset.id, Number(el.dataset.idx), el.dataset.avail==='1'); break;
     case 'adm-logout':
       state.admin={open:false,pw:'',loading:false,rows:null,err:'',busy:null};
       sessionStorage.removeItem('wpc_adm'); render(); break;
@@ -1172,9 +1297,9 @@ function buildMessage(o){
   return m;
 }
 
-// كل الطلبات لازم تتبعت على واتساب لرقم القرشي الثابت — مفيش اختيار مجموعة/شخص تاني.
+// بيفتح واتساب مباشرة على محادثة رقم استلام الأوردرات الثابت (إجباري، مفيش اختيار تاني).
 function openWhatsAppPicker(text){
-  window.open('https://api.whatsapp.com/send?phone='+WHATSAPP_NUMBER+'&text='+encodeURIComponent(text),'_blank');
+  window.open('https://wa.me/'+ORDER_WHATS+'?text='+encodeURIComponent(text),'_blank');
 }
 
 function downloadBlob(blob,name){
@@ -1184,15 +1309,18 @@ function downloadBlob(blob,name){
   setTimeout(()=>URL.revokeObjectURL(url),4000);
 }
 
-// بيجهّز صورة للطلب (نفس تصميم المستند)، وبينزّلها على الجهاز، وبعدين بيفتح
-// شات واتساب القرشي مباشرة (الرقم الثابت) مع نص الطلب — الموزع يرفق الصورة
-// يدوي من جوه الشات. ماحطيناش شاشة المشاركة العامة (Web Share) عشان
-// الإرسال يفضل إجباري على رقم القرشي بس، مش أي جهة تانية.
+// بيجهّز صورة للطلب (نفس تصميم المستند)، ينزّلها، وبعدين يفتح واتساب مباشرة
+// على محادثة رقم استلام الأوردرات الثابت (ORDER_WHATS) مع رسالة نصية جاهزة.
+// ملحوظة تقنية مهمة: واتساب من المتصفح (wa.me) بيقدر يفتح محادثة على رقم محدد
+// بنص جاهز، لكن معندوش أي طريقة برمجية ترفق صورة/PDF تلقائيًا مع الرقم المحدد
+// ده في نفس الوقت (ده قيد من واتساب نفسه، مش قصور في التطبيق). فالأضمن لضمان
+// إن الطلب يوصل للرقم الصح دايمًا هو: تنزيل الصورة أولًا، وفتح المحادثة على
+// الرقم الثابت بالرسالة، والموزع/العميل يرفق الصورة بضغطة واحدة (📎) من جواها.
 async function shareOrderImage(o){
-  const caption='طلب أوردر #'+o.id+' — '+(o.name||'')+(pricesVisible()?' — الإجمالي '+money(o.total)+' ج':'');
-
   if(typeof html2canvas==='undefined'){
-    openWhatsAppPicker(o.msg); return;
+    openWhatsAppPicker(o.msg);
+    toast('مفيش نت كفاية لتجهيز الصورة — هيتفتح واتساب بالنص فقط');
+    return;
   }
 
   busy(true,'جارٍ تجهيز صورة الطلب…');
@@ -1205,7 +1333,7 @@ async function shareOrderImage(o){
     const blob=await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
     downloadBlob(blob,'طلب_'+o.id+'.png');
     openWhatsAppPicker(o.msg);
-    toast('اتحمّلت صورة الطلب — أرفقها في شات القرشي اللي فتح على واتساب');
+    toast('اتحمّلت صورة الطلب — دوس 📎 في واتساب وارفقها من المعرض');
   }catch(err){
     toast('تعذّر تجهيز صورة الطلب — هيتفتح واتساب بالنص');
     openWhatsAppPicker(o.msg);
