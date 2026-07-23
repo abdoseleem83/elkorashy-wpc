@@ -369,7 +369,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v29';
+const APP_BUILD   = 'v30';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -419,13 +419,13 @@ const ACCESSORIES = [
   {id:'h8', name:'جوان',                          en:'Gasket',                               price:6,    unit:'متر'}
 ];
 
-const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders';
+const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders', LS_TAB = 'wpc_tab', LS_SECTION = 'wpc_section';
 
 /* ============================================================
    الحالة
    ============================================================ */
 const state = {
-  tab:'new',
+  tab: load(LS_TAB, 'new'),
   gateBypassed:false,   // تثبيت التطبيق — بيرجع يظهر تاني في أي تحميل جديد للصفحة
   track:{loading:false, rows:null, err:'', at:0},
   admin:{open:false, pw:'', loading:false, rows:null, err:'', busy:null,
@@ -434,7 +434,7 @@ const state = {
   cart:    load(LS_CART, []),
   orders:  load(LS_ORDERS, []),
   pick:{code:'', size:null, custom:{w:'',h:''}, frame:null, dbror:null, qty:1},
-  newSection:'',   // '' (لسه محددش) | doors | acc | frame | bror
+  newSection: load(LS_SECTION, ''),   // '' (لسه محددش) | doors | acc | frame | bror
   fr:{cm:10, rods:1},      // حلق إضافي بالعود
   br:{size:'6×9', rods:1}, // برور إضافي بالعود
   acc:{},
@@ -516,6 +516,7 @@ function render(){
 
   const allowed=allowedTabs();
   if(!allowed.includes(state.tab)) state.tab=allowed[0];
+  save(LS_TAB, state.tab);
   document.querySelectorAll('#tabs button[data-tab]').forEach(b=>{
     const on=allowed.includes(b.dataset.tab);
     b.hidden=!on;
@@ -1331,7 +1332,7 @@ document.addEventListener('click',e=>{
   switch(a){
     case 'go-cart': state.tab='cart'; render(); window.scrollTo({top:0}); break;
     case 'pick-door': selectDoor(el.dataset.code); break;
-    case 'sec': state.newSection=el.dataset.s; render(); window.scrollTo({top:0,behavior:'smooth'}); break;
+    case 'sec': state.newSection=el.dataset.s; save(LS_SECTION,state.newSection); render(); window.scrollTo({top:0,behavior:'smooth'}); break;
     case 'door-preview': showDoorPreview(el.dataset.code); break;
     case 'preview-select':
       { const ov=document.getElementById('doorPreviewOverlay'); if(ov) ov.remove(); }
