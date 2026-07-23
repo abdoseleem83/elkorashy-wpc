@@ -74,19 +74,6 @@ button{cursor:pointer;border:0;background:none}
 .gatestep b{flex:0 0 auto;width:20px;height:20px;border-radius:50%;background:var(--brand);color:#fff;font-size:11px;display:grid;place-items:center}
 .gateskip{margin-top:20px;font-size:12.5px;color:#9CB6D2;text-decoration:underline;background:none}
 
-/* ============ شاشات الدخول: عميل / موزع ============ */
-.authwrap{max-width:400px;margin:40px auto;padding:0 16px}
-.roleCard{
-  display:flex;align-items:center;gap:13px;width:100%;padding:16px;border-radius:14px;
-  background:var(--card);border:1.5px solid var(--line);box-shadow:var(--shadow);margin-bottom:12px;text-align:right;
-}
-.roleCard .ric{font-size:28px;flex:0 0 auto}
-.roleCard .rtx{flex:1}
-.roleCard .rtx b{display:block;font-family:'Reem Kufi',sans-serif;font-size:14.5px;color:var(--navy)}
-.roleCard .rtx span{font-size:12px;color:var(--muted)}
-.pendingbox{text-align:center;padding:30px 18px}
-.pendingbox .em{font-size:42px;display:block;margin-bottom:14px}
-
 /* ============ الهيدر ============ */
 #appbar{position:sticky;top:0;z-index:40}
 .top{
@@ -277,7 +264,7 @@ input::placeholder{color:#A8B4C2}
 .ord .oid{font-family:'Reem Kufi',sans-serif;font-weight:700;color:var(--brand);font-size:14px}
 .ord .od{font-size:11px;color:var(--muted)}
 .ord .os{font-size:12.5px;color:var(--muted);line-height:1.6}
-.ord .oa{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.ord .oa{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
 .ord .oa .btn{padding:9px;font-size:12.5px}
 
 .empty{text-align:center;padding:44px 20px;color:var(--muted)}
@@ -320,7 +307,7 @@ input::placeholder{color:#A8B4C2}
     <img class="logo" id="hdrLogo" alt="ELKORASHI DOORS">
     <div>
       <div class="t1">أبواب WPC</div>
-      <div class="t2">طلبات الموزعين</div>
+      <div class="t2">طلب أوردر أبواب</div>
     </div>
     <div class="wh-chip">المخزن<b>مصنع إنشاص</b></div>
   </div>
@@ -377,7 +364,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v17';
+const APP_BUILD   = 'v18';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -431,16 +418,11 @@ const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders'
 /* ============================================================
    الحالة
    ============================================================ */
-const LS_AUTH = 'wpc_auth';
-
 const state = {
   tab:'new',
   gateBypassed:false,   // تثبيت التطبيق — بيرجع يظهر تاني في أي تحميل جديد للصفحة
-  auth: load(LS_AUTH, null),   // null | {role:'customer'} | {role:'distributor',name,phone,region,status}
-  authScreen:'select',   // select | signup
-  authForm:{name:'', phone:'', region:'', busy:false},
   track:{loading:false, rows:null, err:'', at:0},
-  admin:{open:false, pw:'', loading:false, rows:null, err:'', busy:null, dist:null, distBusy:null},
+  admin:{open:false, pw:'', loading:false, rows:null, err:'', busy:null},
   profile: load(LS_PROFILE, {name:'', phone:'', region:''}),
   cart:    load(LS_CART, []),
   orders:  load(LS_ORDERS, []),
@@ -477,31 +459,18 @@ function dateStr(ts){return new Date(ts).toLocaleDateString('ar-EG',{day:'2-digi
 /* ============================================================
    الرسم
    ============================================================ */
-// الدخول: عميل بيدخل على طول من غير أسعار، الموزع لازم يتسجّل ويتوافق عليه الأدمن
-function isCustomer(){ return state.auth && state.auth.role==='customer'; }
-function isApprovedDist(){ return state.auth && state.auth.role==='distributor' && state.auth.status==='Approved'; }
-function pricesVisible(){ return isApprovedDist(); }
-function needsAuthGate(){ return !state.auth || (state.auth.role==='distributor' && state.auth.status!=='Approved'); }
-function priceTxt(n, suffix){ return pricesVisible() ? (money(n) + (suffix||' ج')) : ''; }
+// ⚠️ عميل بس دلوقتي — نظام الموزع/الموافقة اتشال، ومفيش أسعار في أي حتة خالص.
+// السطر ده بس اللي يتغيّر لو حبينا نرجّع الأسعار تاني يوم ما.
+function pricesVisible(){ return false; }
 
-// التبويبات المسموحة حسب نوع الحساب
-function allowedTabs(){
-  if(isCustomer()) return ['new','cart'];
-  return ['new','cart','orders','track','admin'];
-}
+// كل التبويبات متاحة للجميع (مفيش تقييد حسابات دلوقتي)
+function allowedTabs(){ return ['new','cart','orders','track','admin']; }
 
 function render(){
   updateInstallGate();
 
   const nav=document.getElementById('tabs');
   const bar=document.getElementById('bar');
-
-  if(needsAuthGate()){
-    nav.hidden=true; bar.hidden=true;
-    document.getElementById('view').innerHTML = viewAuthGate();
-    document.body.style.paddingBottom='30px';
-    return;
-  }
   nav.hidden=false;
 
   const allowed=allowedTabs();
@@ -548,14 +517,12 @@ function viewNew(){
   const frRods=Number(state.fr.rods)||0;
   const frSel=FRAMES.find(f=>f.cm===state.fr.cm)||FRAMES[0];
   const frChips=FRAMES.map(f=>`
-    <button class="chip ${state.fr.cm===f.cm?'on':''}" data-act="fr-cm" data-cm="${f.cm}">
-      ${f.cm} سم<span class="sub">${money(rodPrice(f.price))} ج/عود</span></button>`).join('');
+    <button class="chip ${state.fr.cm===f.cm?'on':''}" data-act="fr-cm" data-cm="${f.cm}">${f.cm} سم</button>`).join('');
 
   const brRods=Number(state.br.rods)||0;
   const brSel=BRORS.find(b=>b.size===state.br.size)||BRORS[0];
   const brChips=BRORS.map(b=>`
-    <button class="chip ${state.br.size===b.size?'on':''}" data-act="br-size" data-size="${esc(b.size)}">
-      برور ${esc(b.size)}<span class="sub">${money(rodPrice(b.price))} ج/عود</span></button>`).join('');
+    <button class="chip ${state.br.size===b.size?'on':''}" data-act="br-size" data-size="${esc(b.size)}">برور ${esc(b.size)}</button>`).join('');
 
   const accCards=ACCESSORIES.map(a=>{
     const q=state.acc[a.id]||0;
@@ -615,12 +582,11 @@ function viewNew(){
   }
 
   const nav = `
-  <div class="secnav" style="${pricesVisible()?'':'grid-template-columns:repeat(2,1fr)'}">
+  <div class="secnav">
     <button class="${state.newSection==='doors'?'on':''}" data-act="sec" data-s="doors"><span class="ic">🚪</span><span class="tx">الأبواب</span></button>
     <button class="${state.newSection==='acc'?'on':''}"   data-act="sec" data-s="acc"><span class="ic">🔩</span><span class="tx">الإكسسوارات</span></button>
-    ${pricesVisible() ? `
     <button class="${state.newSection==='frame'?'on':''}" data-act="sec" data-s="frame"><span class="ic">📏</span><span class="tx">حلق فقط</span></button>
-    <button class="${state.newSection==='bror'?'on':''}"  data-act="sec" data-s="bror"><span class="ic">📐</span><span class="tx">برور فقط</span></button>` : ''}
+    <button class="${state.newSection==='bror'?'on':''}"  data-act="sec" data-s="bror"><span class="ic">📐</span><span class="tx">برور فقط</span></button>
   </div>`;
 
   const secDoors = `
@@ -634,7 +600,7 @@ function viewNew(){
     <div class="step"><span class="n">🔩</span><h2>إكسسوارات الأبواب</h2><span class="hint">اختياري</span></div>
     <div class="accgrid">${accCards}</div>
     <button class="btn ghost sm" style="margin-top:12px" data-act="add-acc" ${accTotal?'':'disabled'}>
-      ${accTotal?'أضف الإكسسوارات ('+money(accTotal)+' ج)':'اختر الكميات أولاً'}</button>
+      ${accTotal?'أضف الإكسسوارات':'اختر الكميات أولاً'}</button>
   </section>`;
 
   const secFrame = `
@@ -644,7 +610,7 @@ function viewNew(){
     <label class="fld" style="margin-top:12px"><span>عدد العيدان</span>
       <input type="number" inputmode="numeric" min="0" step="1" value="${esc(state.fr.rods)}" placeholder="مثال 4" data-act="fr-rods"></label>
     <button class="btn ghost sm" data-act="add-fr" ${frRods>0?'':'disabled'}>
-      ${frRods>0 ? `أضف ${frRods} عود حلق ${frSel.cm} سم — ${money(frRods*rodPrice(frSel.price))} ج` : 'اكتب عدد العيدان'}</button>
+      ${frRods>0 ? `أضف ${frRods} عود حلق ${frSel.cm} سم` : 'اكتب عدد العيدان'}</button>
   </section>`;
 
   const secBror = `
@@ -654,7 +620,7 @@ function viewNew(){
     <label class="fld" style="margin-top:12px"><span>عدد العيدان</span>
       <input type="number" inputmode="numeric" min="0" step="1" value="${esc(state.br.rods)}" placeholder="مثال 3" data-act="br-rods"></label>
     <button class="btn ghost sm" data-act="add-br" ${brRods>0?'':'disabled'}>
-      ${brRods>0 ? `أضف ${brRods} عود برور ${brSel.size} — ${money(brRods*rodPrice(brSel.price))} ج` : 'اكتب عدد العيدان'}</button>
+      ${brRods>0 ? `أضف ${brRods} عود برور ${brSel.size}` : 'اكتب عدد العيدان'}</button>
   </section>`;
 
   const secEmpty = `
@@ -671,8 +637,8 @@ function viewNew(){
 
   return `
   <section class="card">
-    <div class="step"><span class="n">١</span><h2>بيانات الموزع</h2><span class="hint">إجباري</span></div>
-    <label class="fld"><span>اسم الموزع <b class="req">*</b></span>
+    <div class="step"><span class="n">١</span><h2>بياناتك</h2><span class="hint">إجباري</span></div>
+    <label class="fld"><span>الاسم <b class="req">*</b></span>
       <input type="text" class="${bad && !state.profile.name.trim()?'bad':''}" value="${esc(state.profile.name)}" placeholder="الاسم كما هو مسجّل" data-act="prof" data-k="name"></label>
     <div class="row2">
       <label class="fld"><span>رقم الموبايل <b class="req">*</b></span>
@@ -740,116 +706,36 @@ function viewCart(){
     ${lines}
     ${priced?`<div class="total"><span class="lbl">الإجمالي التقديري</span><span class="val">${money(cartTotal())} <small>ج</small></span></div>
     <div class="note">${esc(PRICE_NOTE)}<br>تقدر تتابع حالة طلبك بعد الإرسال من تبويب 🚚 المتابعة.</div>`
-    :`<div class="note" style="margin-top:12px">هيتبعت كاستفسار للمصنع من غير أسعار — هيتواصلوا معاك بالتفاصيل.</div>`}
+    :`<div class="note" style="margin-top:12px">هيتواصل معاك المصنع بالتفاصيل والسعر بعد إرسال الطلب — تقدر تتابع حالته من تبويب 🚚 المتابعة.</div>`}
   </section>
 
   <section class="card">
-    <div class="step"><span class="n">↗</span><h2>إرسال الطلب</h2></div>
+    <div class="step"><span class="n">↗</span><h2>إرسال طلب أوردر</h2></div>
     <div class="note" style="margin-top:0;margin-bottom:12px">
       الاسم: <b>${esc(state.profile.name||'—')}</b> · ${esc(state.profile.region||'المنطقة غير محددة')}<br>
       المخزن: <b>${esc(WAREHOUSE)}</b>
       ${ok?'':'<br><span style="color:var(--danger)">اكتب الاسم ورقم الموبايل في تبويب «طلب جديد» قبل الإرسال.</span>'}
     </div>
-    <button class="btn brand" data-act="submit">${priced?'إرسال الطلب على واتساب':'إرسال استفسار على واتساب'}</button>
+    <button class="btn brand" data-act="submit">إرسال طلب الأوردر على واتساب</button>
     <div class="btnrow" style="margin-top:9px">
-      ${priced?`<button class="btn ghost sm" data-act="quote-cart">📄 عرض سعر PDF</button>`:''}
+      <button class="btn ghost sm" data-act="quote-cart">📄 PDF الطلب</button>
       <button class="btn ghost sm" data-act="clear">تفريغ السلة</button>
     </div>
   </section>
   ${verBar()}`;
 }
 
-/* ============================================================
-   شاشة الدخول — عميل يدخل على طول، الموزع لازم يتسجّل ويتوافق عليه
-   ============================================================ */
-function viewAuthGate(){
-  if(!state.auth) return state.authScreen==='signup' ? viewDistSignupForm() : viewRoleSelect();
-  if(state.auth.role==='distributor'){
-    if(state.auth.status==='Rejected') return viewDistRejected();
-    return viewDistPending();
-  }
-  return viewRoleSelect();
-}
-
-function viewRoleSelect(){
-  return `
-  <div class="authwrap">
-    <div style="text-align:center;margin-bottom:20px">
-      <img src="${ASSETS.logo}" style="height:44px;margin-bottom:10px">
-      <div style="font-family:'Reem Kufi',sans-serif;font-size:15px;color:var(--navy)">اختر نوع الدخول</div>
-    </div>
-    <button class="roleCard" data-act="role-customer">
-      <span class="ric">🙋</span>
-      <span class="rtx"><b>عميل</b><span>تصفّح الأبواب والألوان من غير أسعار</span></span>
-    </button>
-    <button class="roleCard" data-act="role-distributor">
-      <span class="ric">🧑‍💼</span>
-      <span class="rtx"><b>موزع</b><span>تسجيل حساب موزع — بعد موافقة الأدمن تقدر تشوف الأسعار وتبعت طلبات</span></span>
-    </button>
-  </div>`;
-}
-
-function viewDistSignupForm(){
-  const f=state.authForm, bad=state.touched;
-  return `
-  <div class="authwrap">
-    <div style="text-align:center;margin-bottom:16px">
-      <img src="${ASSETS.logo}" style="height:40px;margin-bottom:8px">
-      <div style="font-family:'Reem Kufi',sans-serif;font-size:14.5px;color:var(--navy)">تسجيل حساب موزع</div>
-    </div>
-    <section class="card">
-      <label class="fld"><span>اسم الموزع <b class="req">*</b></span>
-        <input type="text" class="${bad&&!f.name.trim()?'bad':''}" value="${esc(f.name)}" placeholder="الاسم كما هو مسجّل" data-act="authf" data-k="name"></label>
-      <label class="fld"><span>رقم الموبايل <b class="req">*</b></span>
-        <input type="tel" inputmode="tel" class="${bad&&!phoneOk(f.phone)?'bad':''}" value="${esc(f.phone)}" placeholder="01xxxxxxxxx" data-act="authf" data-k="phone"></label>
-      <label class="fld"><span>المنطقة</span>
-        <input type="text" value="${esc(f.region)}" placeholder="طنطا مثلاً" data-act="authf" data-k="region"></label>
-      ${bad?`<div class="note" style="color:var(--danger)">الاسم ورقم الموبايل إجباريين.</div>`:''}
-      <button class="btn brand" style="margin-top:8px" data-act="dist-submit">إرسال طلب التسجيل</button>
-      <button class="btn ghost sm" style="margin-top:9px" data-act="role-back">رجوع</button>
-    </section>
-  </div>`;
-}
-
-function viewDistPending(){
-  const a=state.auth;
-  return `
-  <div class="authwrap">
-    <div class="pendingbox card">
-      <span class="em">⏳</span>
-      <div style="font-family:'Reem Kufi',sans-serif;font-size:15px;color:var(--navy);margin-bottom:8px">طلبك قيد المراجعة</div>
-      <div class="note" style="margin-top:0">حسابك (${esc(a.name||'')}) لسه مستني موافقة الأدمن. تقدر تحدّث الحالة أو تبدأ كـ«عميل» لحد ما يوافق.</div>
-      <button class="btn primary" style="margin-top:14px" data-act="dist-recheck" ${state.authForm.busy?'disabled':''}>
-        ${state.authForm.busy?'⏳ جارٍ التحقق…':'🔄 تحقق من الحالة'}</button>
-      <button class="btn ghost sm" style="margin-top:9px" data-act="role-customer">تصفّح كعميل الآن</button>
-    </div>
-  </div>`;
-}
-
-function viewDistRejected(){
-  return `
-  <div class="authwrap">
-    <div class="pendingbox card">
-      <span class="em">✖</span>
-      <div style="font-family:'Reem Kufi',sans-serif;font-size:15px;color:var(--navy);margin-bottom:8px">الطلب اتقفل</div>
-      <div class="note" style="margin-top:0">حساب الموزع ده مش متوافق عليه دلوقتي. تقدر تبعت طلب تسجيل جديد أو تكمّل كعميل.</div>
-      <button class="btn primary" style="margin-top:14px" data-act="role-distributor">تقديم طلب تسجيل جديد</button>
-      <button class="btn ghost sm" style="margin-top:9px" data-act="role-customer">تصفّح كعميل الآن</button>
-    </div>
-  </div>`;
-}
-
 function viewOrders(){
   if(!state.orders.length) return `<div class="empty"><span class="em">📄</span><p>لسه مفيش طلبات مسجّلة على الجهاز ده.</p></div>${verBar()}`;
+  const priced=pricesVisible();
   return state.orders.map(o=>`
     <div class="ord">
       <div class="oh"><span class="oid">#${esc(o.id)}</span><span class="od">${esc(dateStr(o.ts))}</span></div>
-      <div class="os">${o.items.length} صنف · إجمالي ${money(o.total)} ج<br>
+      <div class="os">${o.items.length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}<br>
         ${esc(o.items.map(x=>x.title).slice(0,3).join('، '))}${o.items.length>3?'…':''}</div>
       <div class="oa">
         <button class="btn ghost sm" data-act="ord-pdf"   data-id="${esc(o.id)}">📄 PDF</button>
         <button class="btn ghost sm" data-act="ord-xls"   data-id="${esc(o.id)}">📊 إكسيل</button>
-        <button class="btn ghost sm" data-act="ord-quote" data-id="${esc(o.id)}">💰 عرض سعر</button>
         <button class="btn ghost sm" data-act="resend"    data-id="${esc(o.id)}">↗ إرسال</button>
       </div>
     </div>`).join('')
@@ -891,45 +777,7 @@ function jsonp(url, timeout){
   });
 }
 
-async function distSubmit(){
-  const f=state.authForm;
-  if(!f.name.trim() || !phoneOk(f.phone)){ state.touched=true; render(); toast('اكتب الاسم ورقم موبايل صحيح'); return; }
-  state.authForm.busy=true; render();
-  try{
-    if(APPS_SCRIPT_URL){
-      await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',
-        headers:{'Content-Type':'text/plain;charset=utf-8'},
-        body:JSON.stringify({action:'distSignup', dist:{name:f.name,phone:f.phone,region:f.region}})});
-    }
-    state.auth={role:'distributor', name:f.name, phone:f.phone, region:f.region, status:'Pending'};
-    save(LS_AUTH,state.auth);
-    state.touched=false;
-    toast('اتبعت طلب التسجيل — استنى موافقة الأدمن');
-  }catch(err){
-    toast('تعذّر إرسال الطلب — جرّب تاني');
-  }
-  state.authForm.busy=false; render();
-}
 
-async function distRecheck(){
-  if(!state.auth || !state.auth.phone) return;
-  state.authForm.busy=true; render();
-  try{
-    const d=await jsonp(APPS_SCRIPT_URL+'?action=distStatus&phone='+encodeURIComponent(state.auth.phone));
-    if(d && d.ok && d.status && d.status!=='NotFound'){
-      state.auth.status=d.status;
-      save(LS_AUTH,state.auth);
-      if(d.status==='Approved') toast('اتوافق على حسابك ✅');
-      else if(d.status==='Rejected') toast('الطلب اتقفل');
-      else toast('لسه قيد المراجعة');
-    } else {
-      toast('لسه قيد المراجعة');
-    }
-  }catch(err){
-    toast('تعذّر التحقق — جرّب تاني');
-  }
-  state.authForm.busy=false; render();
-}
 
 async function loadTrack(){
   if(!APPS_SCRIPT_URL){ state.track.err='مفيش رابط سيرفر متظبّط'; render(); return; }
@@ -969,8 +817,8 @@ function viewTrack(){
   const rows = t.rows.map(o=>`
     <div class="ord">
       <div class="oh"><span class="oid">#${esc(o.id)}</span>${statusPill(o.status)}</div>
-      <div class="os">${esc(o.date||'')} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''}<br>
-        الإجمالي ${money(o.total||0)} ج ${o.note?('<br><b style="color:var(--brand)">'+esc(o.note)+'</b>'):''}</div>
+      <div class="os">${esc(o.date||'')} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''}${pricesVisible()?' · الإجمالي '+money(o.total||0)+' ج':''}
+        ${o.note?('<br><b style="color:var(--brand)">'+esc(o.note)+'</b>'):''}</div>
     </div>`).join('');
 
   return `<section class="card">
@@ -994,10 +842,6 @@ async function adminLoad(){
     state.admin.rows = d.orders || [];
     state.admin.open = true;
     sessionStorage.setItem('wpc_adm', state.admin.pw);
-    try{
-      const dd = await jsonp(APPS_SCRIPT_URL + '?action=distList&pw=' + encodeURIComponent(state.admin.pw));
-      state.admin.dist = (dd && dd.ok) ? dd.list : [];
-    }catch(e2){ state.admin.dist = []; }
   }catch(err){
     state.admin.err = err.message || String(err);
     state.admin.open = false;
@@ -1005,22 +849,6 @@ async function adminLoad(){
   state.admin.loading = false; render();
 }
 
-async function distDecide(phone, decision){
-  state.admin.distBusy = phone; render();
-  try{
-    const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=distDecide&pw=' + encodeURIComponent(state.admin.pw)
-      + '&phone=' + encodeURIComponent(phone)
-      + '&decision=' + encodeURIComponent(decision));
-    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل التحديث');
-    const row=(state.admin.dist||[]).find(x=>String(x.phone)===String(phone));
-    if(row) row.status=decision;
-    toast(decision==='Approved' ? 'اتقبل الموزع ✅' : 'اترفض الطلب');
-  }catch(err){
-    toast('تعذّر التحديث: '+(err.message||err));
-  }
-  state.admin.distBusy = null; render();
-}
 
 async function setStatus(id, st){
   state.admin.busy = id; render();
@@ -1048,7 +876,7 @@ function viewAdmin(){
     return `<section class="card">
       <div class="step"><span class="n">🔒</span><h2>متابعة المصنع</h2></div>
       <div class="note" style="margin-top:0">الشاشة دي لموظفي المصنع بس — منها بتتحدّد حالة كل طلب،
-      والموزع بيشوف الحالة على طول في تبويب «المتابعة».</div>
+      وصاحب الطلب بيشوف الحالة على طول في تبويب «المتابعة».</div>
       <label class="fld" style="margin-top:12px"><span>كلمة السر</span>
         <input type="password" inputmode="numeric" value="${esc(a.pw)}" placeholder="••••" data-act="adm-pw"></label>
       ${a.err?`<div class="note" style="color:var(--danger)">${esc(a.err)}</div>`:''}
@@ -1057,7 +885,7 @@ function viewAdmin(){
   }
 
   if(!a.rows || !a.rows.length){
-    return `${distSection(a)}<div class="empty"><span class="em">📋</span><p>مفيش طلبات لسه.</p>
+    return `<div class="empty"><span class="em">📋</span><p>مفيش طلبات لسه.</p>
       <button class="btn ghost sm" style="margin-top:14px;max-width:220px;margin-inline:auto" data-act="adm-reload">تحديث</button></div>${verBar()}`;
   }
 
@@ -1080,9 +908,9 @@ function viewAdmin(){
     </div>`;
   }).join('');
 
-  return `${distSection(a)}<section class="card">
+  return `<section class="card">
       <div class="step"><span class="n">🏭</span><h2>متابعة المصنع</h2><span class="hint">${a.rows.length} طلب</span></div>
-      <div class="note" style="margin-top:0">اضغط المرحلة اللي وصلها الطلب — بتتسجّل في الشيت والموزع يشوفها فورًا.</div>
+      <div class="note" style="margin-top:0">اضغط المرحلة اللي وصلها الطلب — بتتسجّل في الشيت وصاحب الطلب يشوفها فورًا.</div>
       <div class="btnrow" style="margin-top:11px">
         <button class="btn ghost sm" data-act="adm-reload">🔄 تحديث</button>
         <button class="btn ghost sm" data-act="adm-logout">🔒 خروج</button>
@@ -1091,26 +919,6 @@ function viewAdmin(){
     ${rows}${verBar()}`;
 }
 
-function distSection(a){
-  const pending=(a.dist||[]).filter(d=>d.status==='Pending');
-  if(!a.dist) return '';   // لسه بيتحمّل
-  if(!pending.length) return '';
-  const rows=pending.map(d=>{
-    const busy=a.distBusy===d.phone;
-    return `<div class="ord">
-      <div class="oh"><span class="oid">${esc(d.name||'—')}</span>${statusPill('New')}</div>
-      <div class="os">${esc(d.phone||'')} · ${esc(d.region||'-')}</div>
-      <div class="btnrow" style="margin-top:10px">
-        <button class="btn primary sm" data-act="dist-approve" data-phone="${esc(d.phone)}" ${busy?'disabled':''}>✅ قبول</button>
-        <button class="btn ghost sm" data-act="dist-reject" data-phone="${esc(d.phone)}" ${busy?'disabled':''}>✖ رفض</button>
-      </div>
-    </div>`;
-  }).join('');
-  return `<section class="card">
-    <div class="step"><span class="n">🧑‍💼</span><h2>طلبات تسجيل الموزعين</h2><span class="hint">${pending.length} طلب</span></div>
-    ${rows}
-  </section>`;
-}
 
 /* ============================================================
    الأحداث
@@ -1125,11 +933,6 @@ document.addEventListener('click',e=>{
   const a=el.dataset.act, p=state.pick;
   switch(a){
     case 'go-cart': state.tab='cart'; render(); window.scrollTo({top:0}); break;
-    case 'role-customer': state.auth={role:'customer'}; save(LS_AUTH,state.auth); render(); break;
-    case 'role-distributor': state.authScreen='signup'; state.touched=false; render(); break;
-    case 'role-back': state.authScreen='select'; render(); break;
-    case 'dist-submit': distSubmit(); break;
-    case 'dist-recheck': distRecheck(); break;
     case 'pick-door':
       if(p.code===el.dataset.code){
         // ضغط على نفس الباب المفتوح — يقفل ويلمّ
@@ -1158,9 +961,8 @@ document.addEventListener('click',e=>{
     case 'del': state.cart.splice(Number(el.dataset.i),1); save(LS_CART,state.cart); render(); break;
     case 'clear': if(confirm('تفريغ السلة بالكامل؟')){state.cart=[];save(LS_CART,state.cart);render();} break;
     case 'submit': submitOrder(); break;
-    case 'quote-cart': makeDoc(draftOrder(), 'quote'); break;
+    case 'quote-cart': makeDoc(draftOrder(), 'order'); break;
     case 'ord-pdf':   withOrder(el,o=>makeDoc(o,'order')); break;
-    case 'ord-quote': withOrder(el,o=>makeDoc(o,'quote')); break;
     case 'ord-xls':   withOrder(el,o=>exportExcel([o],'طلب_'+o.id)); break;
     case 'all-xls':   exportExcel(state.orders,'كل_الطلبات'); break;
     case 'resend':    withOrder(el,o=>shareOrderImage(o)); break;
@@ -1168,10 +970,8 @@ document.addEventListener('click',e=>{
     case 'adm-login':  adminLoad(); break;
     case 'adm-reload': adminLoad(); break;
     case 'adm-set':    setStatus(el.dataset.id, el.dataset.st); break;
-    case 'dist-approve': distDecide(el.dataset.phone, 'Approved'); break;
-    case 'dist-reject':  distDecide(el.dataset.phone, 'Rejected'); break;
     case 'adm-logout':
-      state.admin={open:false,pw:'',loading:false,rows:null,err:'',busy:null,dist:null,distBusy:null};
+      state.admin={open:false,pw:'',loading:false,rows:null,err:'',busy:null};
       sessionStorage.removeItem('wpc_adm'); render(); break;
     case 'update': doUpdate(); break;
     case 'install': doInstall(); break;
@@ -1187,7 +987,6 @@ document.addEventListener('input',e=>{
   const el=e.target.closest('[data-act]'); if(!el) return;
   const a=el.dataset.act;
   if(a==='adm-pw'){ state.admin.pw=el.value; const b=document.querySelector('[data-act="adm-login"]'); if(b) b.disabled=!el.value; return; }
-  if(a==='authf'){ state.authForm[el.dataset.k]=el.value; return; }
   if(a==='prof'){ state.profile[el.dataset.k]=el.value; save(LS_PROFILE,state.profile); return; }
   if(a==='cust'){ state.pick.custom[el.dataset.k]=el.value; refreshSummary(); return; }
   if(a==='qty-set'){ state.pick.qty=Math.max(1,parseInt(el.value,10)||1); refreshSummary(); return; }
@@ -1202,7 +1001,7 @@ function refreshAccBtn(){
   const b=document.querySelector('[data-act="add-acc"]'); if(!b) return;
   const t=ACCESSORIES.reduce((sum,a)=>sum+(state.acc[a.id]||0)*a.price,0);
   b.disabled = !(t>0);
-  b.textContent = t>0 ? 'أضف الإكسسوارات ('+money(t)+' ج)' : 'اختر الكميات أولاً';
+  b.textContent = t>0 ? 'أضف الإكسسوارات' : 'اختر الكميات أولاً';
 }
 
 function refreshSummary(){const n=document.getElementById('sumline'); if(n) n.textContent=currentSummary();}
@@ -1213,11 +1012,11 @@ function refreshRodBtn(act){
   if(act==='add-fr'){
     const r=Number(state.fr.rods)||0, f=FRAMES.find(x=>x.cm===state.fr.cm)||FRAMES[0];
     b.disabled=!(r>0);
-    b.textContent = r>0 ? `أضف ${r} عود حلق ${f.cm} سم — ${money(r*rodPrice(f.price))} ج` : 'اكتب عدد العيدان';
+    b.textContent = r>0 ? `أضف ${r} عود حلق ${f.cm} سم` : 'اكتب عدد العيدان';
   } else {
     const r=Number(state.br.rods)||0, s=BRORS.find(x=>x.size===state.br.size)||BRORS[0];
     b.disabled=!(r>0);
-    b.textContent = r>0 ? `أضف ${r} عود برور ${s.size} — ${money(r*rodPrice(s.price))} ج` : 'اكتب عدد العيدان';
+    b.textContent = r>0 ? `أضف ${r} عود برور ${s.size}` : 'اكتب عدد العيدان';
   }
 }
 
@@ -1246,7 +1045,9 @@ function addDoor(){
   });
   save(LS_CART,state.cart);
   toast('اتضاف للسلة: '+d.code+' — '+sizeTxt);
-  state.pick.qty=1; render();
+  // نلمّ الاختيارات ونقفل اللوحة عشان يختار باب تاني بارتياح
+  state.pick={code:'', size:null, custom:{w:'',h:''}, frame:null, dbror:null, qty:1};
+  render();
 }
 
 function addRod(kind){
@@ -1306,7 +1107,7 @@ function draftOrder(){
 
 function buildMessage(o){
   const priced=pricesVisible();
-  let m=(priced?'🚪 طلب أبواب WPC':'❓ استفسار أبواب WPC')+' — '+COMPANY+'\n';
+  let m='🚪 طلب أوردر — '+COMPANY+'\n';
   m+='رقم الطلب: #'+o.id+'\n';
   m+='الاسم: '+(o.name||'-')+'\n';
   m+='المنطقة: '+(o.region||'-')+'\n';
@@ -1326,10 +1127,10 @@ function buildMessage(o){
   if(priced){
     m+='الإجمالي التقديري: '+money(o.total)+' جنيه\n';
     m+='شكرًا لتعاملك مع '+COMPANY_AR+'\n';
-    m+='تقدر تتابع حالة الطلب من تبويب 🚚 المتابعة في التطبيق.';
   } else {
-    m+='ده استفسار عميل من غير أسعار — برجاء التواصل بالتفاصيل والسعر.';
+    m+='هيتواصل معاك المصنع بالتفاصيل والسعر.\n';
   }
+  m+='تقدر تتابع حالة الطلب من تبويب 🚚 المتابعة في التطبيق.';
   return m;
 }
 
@@ -1349,10 +1150,7 @@ function downloadBlob(blob,name){
 // بيجهّز صورة للطلب (نفس تصميم المستند) ويحاول يفتح شاشة المشاركة بتاعة الموبايل
 // عشان الموزع يختار واتساب وبعدين المجموعة/الشخص من جوّه بنفسه.
 async function shareOrderImage(o){
-  // العميل: استفسار نصّي بس من غير صورة فيها أسعار
-  if(!pricesVisible()){ openWhatsAppPicker(o.msg); return; }
-
-  const caption='طلب أبواب WPC #'+o.id+' — '+(o.name||'')+' — الإجمالي '+money(o.total)+' ج';
+  const caption='طلب أوردر #'+o.id+' — '+(o.name||'')+(pricesVisible()?' — الإجمالي '+money(o.total)+' ج':'');
 
   if(typeof html2canvas==='undefined'){
     // مفيش نت كفاية لتجهيز الصورة — نفتح واتساب بالنص بس
@@ -1370,7 +1168,7 @@ async function shareOrderImage(o){
     const file=new File([blob],'طلب_'+o.id+'.png',{type:'image/png'});
 
     if(navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file], title:'طلب أبواب WPC #'+o.id, text:caption});
+      await navigator.share({files:[file], title:'طلب أوردر #'+o.id, text:caption});
     } else {
       // مفيش شاشة مشاركة (كمبيوتر مثلًا) — ننزّل الصورة ونفتح واتساب فاضي
       downloadBlob(blob,'طلب_'+o.id+'.png');
@@ -1378,7 +1176,7 @@ async function shareOrderImage(o){
       toast('اتحمّلت صورة الطلب — اختار المجموعة في واتساب وارفقها');
     }
   }catch(err){
-    if(err && err.name==='AbortError'){ busy(false); return; }   // الموزع قفل شاشة المشاركة
+    if(err && err.name==='AbortError'){ busy(false); return; }   // العميل قفل شاشة المشاركة
     toast('تعذّر تجهيز صورة الطلب — هيتفتح واتساب بالنص');
     openWhatsAppPicker(o.msg);
   }
@@ -1390,7 +1188,7 @@ function submitOrder(){
   if(!profileOk()){
     state.touched=true; state.tab='new'; render();
     window.scrollTo({top:0,behavior:'smooth'});
-    toast('اكتب اسم الموزع ورقم موبايل صحيح — إجباري');
+    toast('اكتب الاسم ورقم موبايل صحيح — إجباري');
     return;
   }
   const o=draftOrder();
@@ -1403,7 +1201,7 @@ function submitOrder(){
       headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify({action:'newOrder',order:o})}).catch(()=>{});
   }
-  state.tab='orders'; render(); toast('اتسجّل الطلب #'+o.id);
+  state.tab='orders'; render(); toast('اتسجّل طلب الأوردر #'+o.id);
   shareOrderImage(o);
 }
 
@@ -1411,6 +1209,7 @@ function submitOrder(){
    المستندات — عرض سعر / طلب (PDF)
    ============================================================ */
 function docRows(o){
+  const priced=pricesVisible();
   return o.items.map((it,i)=>{
     let spec='', qty=it.qty, unit;
     if(it.kind==='door'){
@@ -1424,13 +1223,14 @@ function docRows(o){
       <td><b>${esc(it.title)}</b></td>
       <td style="font-size:11px;color:#5B6B7D">${esc(spec)}</td>
       <td style="text-align:center">${qty} ${esc(unit)}</td>
-      <td style="text-align:center">${money(it.kind==='door'?it.unitPrice:it.price)}</td>
-      <td style="text-align:center;font-weight:700">${money(linePrice(it))}</td>
+      ${priced?`<td style="text-align:center">${money(it.kind==='door'?it.unitPrice:it.price)}</td>
+      <td style="text-align:center;font-weight:700">${money(linePrice(it))}</td>`:''}
     </tr>`;}).join('');
 }
 
 function docHTML(o,mode){
   const isQuote = mode==='quote';
+  const priced = pricesVisible();
   return `
   <div style="position:relative;font-family:'Readex Pro',sans-serif;direction:rtl;background:#fff;padding:34px 32px;color:#14243A;">
     <div style="position:absolute;inset:0;background:url('${ASSETS.mark}') no-repeat center center;background-size:34% auto;opacity:.06;"></div>
@@ -1440,7 +1240,7 @@ function docHTML(o,mode){
         <img src="${ASSETS.logo}" style="height:56px;width:auto">
         <div style="flex:1">
           <div style="font-family:'Reem Kufi',sans-serif;font-size:22px;font-weight:700;color:#002050">
-            ${isQuote?'عرض سعر':'طلب أبواب WPC'}
+            ${isQuote?'عرض سعر':'طلب أوردر'}
           </div>
           <div style="font-size:12px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} · ${esc(WAREHOUSE)}</div>
         </div>
@@ -1452,7 +1252,7 @@ function docHTML(o,mode){
 
       <table style="width:100%;margin-top:16px;font-size:12.5px;border-collapse:collapse">
         <tr>
-          <td style="padding:5px 0;color:#6B7A8C;width:78px">الموزع</td><td style="font-weight:700">${esc(o.name||'-')}</td>
+          <td style="padding:5px 0;color:#6B7A8C;width:78px">الاسم</td><td style="font-weight:700">${esc(o.name||'-')}</td>
           <td style="padding:5px 0;color:#6B7A8C;width:78px">الموبايل</td><td style="font-weight:700">${esc(o.phone||'-')}</td>
         </tr>
         <tr>
@@ -1468,14 +1268,14 @@ function docHTML(o,mode){
             <th style="padding:9px 6px;text-align:right">الصنف</th>
             <th style="padding:9px 6px;text-align:right">المواصفات</th>
             <th style="padding:9px 6px;width:78px">الكمية</th>
-            <th style="padding:9px 6px;width:74px">السعر</th>
-            <th style="padding:9px 6px;width:84px">الإجمالي</th>
+            ${priced?`<th style="padding:9px 6px;width:74px">السعر</th>
+            <th style="padding:9px 6px;width:84px">الإجمالي</th>`:''}
           </tr>
         </thead>
         <tbody style="background:#fff">${docRows(o)}</tbody>
       </table>
 
-      <div style="display:flex;justify-content:flex-start;margin-top:16px">
+      ${priced?`<div style="display:flex;justify-content:flex-start;margin-top:16px">
         <table style="border-collapse:collapse;font-size:13.5px;min-width:250px">
           <tr style="background:#F3F6FA">
             <td style="padding:11px 14px;font-family:'Reem Kufi',sans-serif;font-weight:700">الإجمالي</td>
@@ -1484,11 +1284,12 @@ function docHTML(o,mode){
           </tr>
         </table>
       </div>
-
       <div style="margin-top:18px;padding:11px 13px;background:#EAF2FA;border:1px solid #B9D4EA;border-radius:9px;font-size:11.5px;line-height:1.75">
         <b style="font-family:'Reem Kufi',sans-serif">شروط التسعير:</b> ${esc(PRICE_NOTE)}
         <br>تقدر تتابع حالة طلبك في أي وقت من تبويب 🚚 المتابعة.
-      </div>
+      </div>`:`<div style="margin-top:18px;padding:11px 13px;background:#EAF2FA;border:1px solid #B9D4EA;border-radius:9px;font-size:11.5px;line-height:1.75">
+        هيتواصل معاك المصنع بالتفاصيل والسعر. تقدر تتابع حالة الطلب في أي وقت من تبويب 🚚 المتابعة.
+      </div>`}
 
       <div style="margin-top:22px;text-align:center;font-size:11px;color:#8A97A6;border-top:1px solid #DCE4EC;padding-top:11px">
         ${esc(COMPANY)} · ${esc(COMPANY_AR)} — الإصدار ${APP_BUILD}
@@ -1528,16 +1329,19 @@ async function makeDoc(o,mode){
 function exportExcel(orders,fname){
   if(typeof XLSX==='undefined'){toast('محتاج نت أول مرة عشان يجهّز الإكسيل');return;}
   if(!orders.length){toast('مفيش طلبات');return;}
+  const priced=pricesVisible();
   busy(true,'جارٍ تجهيز الإكسيل…');
   try{
-    const sum=[['Order No','Date','Distributor','Phone','Region','Warehouse','Lines','Total']];
-    const det=[['Order No','Date','Distributor','Type','Item','Colour','Size','Frame (with door)','Milling','Unit','Qty','Unit Price','Line Total']];
+    const sum=[['Order No','Date','Distributor','Phone','Region','Warehouse','Lines'].concat(priced?['Total']:[])];
+    const det=[['Order No','Date','Distributor','Type','Item','Colour','Size','Frame (with door)','Milling','Unit','Qty'].concat(priced?['Unit Price','Line Total']:[])];
 
     orders.forEach(o=>{
-      sum.push([o.id, dateStr(o.ts), o.name||'', String(o.phone||''), o.region||'', o.warehouse||WAREHOUSE, o.items.length, Number(o.total)||0]);
+      const sumRow=[o.id, dateStr(o.ts), o.name||'', String(o.phone||''), o.region||'', o.warehouse||WAREHOUSE, o.items.length];
+      if(priced) sumRow.push(Number(o.total)||0);
+      sum.push(sumRow);
       o.items.forEach(it=>{
         const isDoor=it.kind==='door', isRod=it.kind==='frame'||it.kind==='bror';
-        det.push([
+        const row=[
           o.id, dateStr(o.ts), o.name||'',
           isDoor?'Door':(it.kind==='frame'?'Frame':it.kind==='bror'?'Bror':'Accessory'),
           it.titleEn||it.title||'', it.code||'',
@@ -1545,10 +1349,10 @@ function exportExcel(orders,fname){
           isDoor?[(it.frame?it.frame+' cm frame':''),(it.dbror?'bror '+it.dbror:'')].filter(Boolean).join(' + ')+(it.frame||it.dbror?' (incl.)':''):'',
           isDoor?(it.millEn||''):'',
           isDoor?'door':(isRod?('rod '+ROD_LEN+'m'):(it.unit||'pc')),
-          Number(it.qty)||0,
-          Number(isDoor?it.unitPrice:it.price)||0,
-          Number(linePrice(it))||0
-        ]);
+          Number(it.qty)||0
+        ];
+        if(priced) row.push(Number(isDoor?it.unitPrice:it.price)||0, Number(linePrice(it))||0);
+        det.push(row);
       });
     });
 
@@ -1628,7 +1432,11 @@ function gateHTML(){
   } else {
     mid = `
       <button class="gatebtn" data-act="gate-install">📲 تثبيت التطبيق الآن</button>
-      <p class="gatehint">لو الزرار مش شغال، افتح قائمة المتصفح (⋮) واختار «تثبيت التطبيق» أو «Add to Home screen»</p>`;
+      <div class="gatesteps">
+        <div class="gatestep"><b>!</b> لو الزرار مش عامل حاجة، ثبّته يدوي:</div>
+        <div class="gatestep"><b>1</b> افتح قائمة المتصفح ⋮ فوق على اليمين</div>
+        <div class="gatestep"><b>2</b> اختار «تثبيت التطبيق» أو «Add to Home screen»</div>
+      </div>`;
   }
   return `
     <img class="gatelogo" src="${ASSETS.logo}" alt="ELKORASHI">
@@ -1640,12 +1448,16 @@ function gateHTML(){
 
 async function gateInstall(){
   if(deferredPrompt){
-    deferredPrompt.prompt();
-    try{ await deferredPrompt.userChoice; }catch(e){}
+    try{
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+    }catch(e){}
     deferredPrompt=null;
     return;
   }
-  toast('افتح قائمة المتصفح (⋮) واختار «تثبيت التطبيق»');
+  // مفيش دعوة تثبيت جاهزة من المتصفح (شائع خارج كروم/إدج، أو لو المتصفح لسه ما قرّرش)
+  // — الخطوات اليدوية ظاهرة تحت الزرار بالفعل، فبس بننبّه بتوست كمان.
+  toast('استخدم الخطوات تحت الزرار للتثبيت اليدوي');
 }
 
 function gateCopyLink(){
