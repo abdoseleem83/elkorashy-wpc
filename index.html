@@ -369,7 +369,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v32';
+const APP_BUILD   = 'v33';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1680,25 +1680,75 @@ function submitOrder(){
 /* ============================================================
    المستندات — عرض سعر / طلب (PDF)
    ============================================================ */
+function docRowHTML_(it, idx, priced){
+  let size='', frameTxt='—', brorTxt='—', qty=it.qty, unit;
+  if(it.kind==='door'){
+    size=it.sizeTxt; frameTxt=it.frame?(it.frame+' سم'):'—'; brorTxt=it.dbror?it.dbror:'—'; unit='باب';
+  } else if(it.kind==='frame'||it.kind==='bror'){
+    size='عود '+ROD_LEN+' م · '+it.spec; unit='عود';
+  } else { size='—'; unit=it.unit||'قطعة'; }
+  return `<tr>
+    <td style="text-align:center">${idx}</td>
+    <td><b>${esc(it.title)}</b></td>
+    <td style="font-size:11px;color:#5B6B7D">${esc(size)}</td>
+    <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(frameTxt)}</td>
+    <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(brorTxt)}</td>
+    <td style="text-align:center">${qty} ${esc(unit)}</td>
+    ${priced?`<td style="text-align:center">${money(it.kind==='door'?it.unitPrice:it.price)}</td>
+    <td style="text-align:center;font-weight:700">${money(linePrice(it))}</td>`:''}
+  </tr>`;
+}
+
+// بيرتّب مفاتيح مقاسات الأبواب (نص عربي زي "70 سم") تصاعديًا، والمقاسات الخاصة آخر القايمة
+function sortSizeKeys_(keys){
+  return keys.sort((a,b)=>{
+    const aStd=/^\d+\s*سم$/.test(a), bStd=/^\d+\s*سم$/.test(b);
+    if(aStd&&bStd) return parseInt(a)-parseInt(b);
+    if(aStd) return -1;
+    if(bStd) return 1;
+    return 0;
+  });
+}
+
 function docRows(o){
   const priced=pricesVisible();
-  return o.items.map((it,i)=>{
-    let size='', frameTxt='—', brorTxt='—', qty=it.qty, unit;
-    if(it.kind==='door'){
-      size=it.sizeTxt; frameTxt=it.frame?(it.frame+' سم'):'—'; brorTxt=it.dbror?it.dbror:'—'; unit='باب';
-    } else if(it.kind==='frame'||it.kind==='bror'){
-      size='عود '+ROD_LEN+' م · '+it.spec; unit='عود';
-    } else { size='—'; unit=it.unit||'قطعة'; }
-    return `<tr>
-      <td style="text-align:center">${i+1}</td>
-      <td><b>${esc(it.title)}</b></td>
-      <td style="font-size:11px;color:#5B6B7D">${esc(size)}</td>
-      <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(frameTxt)}</td>
-      <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(brorTxt)}</td>
-      <td style="text-align:center">${qty} ${esc(unit)}</td>
-      ${priced?`<td style="text-align:center">${money(it.kind==='door'?it.unitPrice:it.price)}</td>
-      <td style="text-align:center;font-weight:700">${money(linePrice(it))}</td>`:''}
-    </tr>`;}).join('');
+  const items=o.items||[];
+  const doorItems=items.filter(it=>it.kind==='door');
+  const otherItems=items.filter(it=>it.kind!=='door');
+  const colspan=priced?8:6;
+
+  const groups={};
+  doorItems.forEach(it=>{ const k=it.sizeTxt||''; (groups[k]=groups[k]||[]).push(it); });
+  const order=sortSizeKeys_(Object.keys(groups));
+
+  let n=0, rows='';
+  order.forEach(k=>{
+    rows += `<tr><td colspan="${colspan}" style="background:#EAF2FA;padding:6px 8px;font-weight:700;color:#0B4A7A;font-size:11.5px;font-family:'Reem Kufi',sans-serif">🚪 أبواب مقاس ${esc(k)}</td></tr>`;
+    groups[k].forEach(it=>{ rows += docRowHTML_(it, ++n, priced); });
+  });
+  if(otherItems.length){
+    rows += `<tr><td colspan="${colspan}" style="background:#F3F6FA;padding:6px 8px;font-weight:700;color:#5B6B7D;font-size:11.5px;font-family:'Reem Kufi',sans-serif">🔩 حلق / برور / إكسسوارات</td></tr>`;
+    otherItems.forEach(it=>{ rows += docRowHTML_(it, ++n, priced); });
+  }
+  return rows;
+}
+
+// صندوق إجماليات لكل مقاس باب + إجمالي الأبواب + الإجمالي الكلي — نفس فكرة التقرير الشامل بس لطلب واحد
+function docTotalsHTML(o){
+  const items=o.items||[];
+  const doorItems=items.filter(it=>it.kind==='door');
+  if(!doorItems.length) return '';
+  const perSize={};
+  doorItems.forEach(it=>{ const k=it.sizeTxt||''; perSize[k]=(perSize[k]||0)+(Number(it.qty)||0); });
+  const keys=sortSizeKeys_(Object.keys(perSize));
+  const lines=keys.map(k=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span>أبواب مقاس ${esc(k)}</span><b>${perSize[k]} باب</b></div>`).join('');
+  const doorsTotal=keys.reduce((s,k)=>s+perSize[k],0);
+  const overallTotal=items.reduce((s,it)=>s+(Number(it.qty)||0),0);
+  return `<div style="margin-top:14px;padding:10px 13px;background:#F3F6FA;border-radius:9px">
+    ${lines}
+    <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0 0;border-top:1px dashed #DCE4EC;margin-top:4px"><span><b>إجمالي الأبواب</b></span><b>${doorsTotal} باب</b></div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span><b>الإجمالي الكلي</b></span><b>${overallTotal} قطعة</b></div>
+  </div>`;
 }
 
 function docHTML(o,mode){
@@ -1749,6 +1799,7 @@ function docHTML(o,mode){
         </thead>
         <tbody style="background:#fff">${docRows(o)}</tbody>
       </table>
+      ${docTotalsHTML(o)}
 
       ${priced?`<div style="display:flex;justify-content:flex-start;margin-top:16px">
         <table style="border-collapse:collapse;font-size:13.5px;min-width:250px">
