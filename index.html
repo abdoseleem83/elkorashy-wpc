@@ -364,7 +364,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v18';
+const APP_BUILD   = 'v19';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1415,8 +1415,17 @@ function updateInstallGate(){
 
 function gateHTML(){
   const ios = isIOSDevice();
+  const inApp = isInAppWebView();
   let mid;
-  if(ios){
+  if(inApp){
+    mid = `
+      <div class="gatesteps" style="border:1.5px solid #C9A227">
+        <div class="gatestep" style="color:#F0D98A"><b>!</b> فاتح اللينك من جوه تطبيق تاني (زي فيسبوك/انستجرام) — التثبيت ما بيشتغلش من هنا.</div>
+        <div class="gatestep"><b>1</b> دوس ⋮ (تلات نقط) فوق يمين الشاشة</div>
+        <div class="gatestep"><b>2</b> اختار «فتح في المتصفح» أو «Open in Chrome»</div>
+      </div>
+      <button class="gatebtn" data-act="gate-copy">📋 نسخ لينك التطبيق</button>`;
+  } else if(ios){
     mid = isIOSSafari() ? `
       <div class="gatesteps">
         <div class="gatestep"><b>1</b> دوس زرار المشاركة ⬆️ تحت في نص الشاشة</div>
@@ -1477,6 +1486,48 @@ window.addEventListener('appinstalled',()=>{
 syncInstallBtn();
 
 
+// المتصفحات المدمجة جوه بعض التطبيقات (زي فيسبوك/انستجرام) بتمنع window.alert() بصمت
+// (من غير أي رسالة خطأ في الكونسول)، وكمان مبتدّيش beforeinstallprompt خالص.
+// عشان كده مستخدم بيدوس زرار التثبيت ومفيش أي رد فعل. الحل: مودال جوه
+// الصفحة نفسها (عنصر HTML عادي) بدل alert()، بيشتغل في كل الحالات.
+function isInAppWebView(){
+  const ua = navigator.userAgent;
+  return /FBAN|FBAV|Instagram|Line\/|MicroMessenger|; ?wv\)/i.test(ua);
+}
+
+function showInstallHelp(){
+  const isIOS = isIOSDevice();
+  const inApp = isInAppWebView();
+  let body;
+  if(inApp){
+    body = `<b>لازم تفتح الصفحة من متصفح حقيقي الأول</b><br><br>
+      دلوقتي فاتحها من جوه تطبيق تاني مباشرة، وده بيمنع التثبيت.<br><br>
+      ١ — دوس على ⋮ (تلات نقط) فوق يمين الشاشة<br>
+      ٢ — اختار «فتح في المتصفح» أو «Open in Chrome»<br>
+      ٣ — من هناك جرّب زرار التثبيت تاني`;
+  } else if(isIOS){
+    body = `<b>للتثبيت على الآيفون:</b><br><br>
+      ١ — افتح الصفحة من متصفح Safari<br>
+      ٢ — اضغط زرار المشاركة ⬆️ تحت<br>
+      ٣ — اختار «إضافة إلى الشاشة الرئيسية»`;
+  } else {
+    body = `<b>للتثبيت على أندرويد:</b><br><br>
+      ١ — دوس على قائمة المتصفح ⋮ فوق يمين الشاشة<br>
+      ٢ — اختار «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية»`;
+  }
+  const old = document.getElementById('installHelpOverlay'); if(old) old.remove();
+  const ov = document.createElement('div');
+  ov.id = 'installHelpOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(0,20,50,.72);display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML = `<div style="background:#fff;border-radius:16px;padding:24px 20px;max-width:340px;text-align:center;font-size:14.5px;line-height:2;color:#12233d;font-family:'Readex Pro',sans-serif">
+    ${body}
+    <button id="closeInstallHelp" style="margin-top:20px;background:#002050;color:#fff;padding:11px 26px;border-radius:10px;font-weight:700;font-size:14px">تمام</button>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click', e=>{ if(e.target===ov) ov.remove(); });
+  document.getElementById('closeInstallHelp').onclick = () => ov.remove();
+}
+
 async function doInstall(){
   if(deferredPrompt){
     deferredPrompt.prompt();
@@ -1484,13 +1535,10 @@ async function doInstall(){
     deferredPrompt=null;
     return;
   }
-  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
   if(window.matchMedia('(display-mode: standalone)').matches || navigator.standalone){
     toast('التطبيق متثبّت بالفعل ✅'); return;
   }
-  alert(isIOS
-    ? 'للتثبيت على الآيفون:\n\n١ — افتح الصفحة من متصفح Safari\n٢ — اضغط زرار المشاركة ⬆️ تحت\n٣ — اختار «إضافة إلى الشاشة الرئيسية»'
-    : 'للتثبيت على أندرويد:\n\n١ — افتح الصفحة من متصفح Chrome\n٢ — اضغط القائمة ⋮ فوق\n٣ — اختار «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية»');
+  showInstallHelp();
 }
 
 /* ============================================================
