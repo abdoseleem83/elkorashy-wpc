@@ -369,7 +369,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v26';
+const APP_BUILD   = 'v28';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -971,15 +971,13 @@ function buildAdminDocOrder_(o, its){
   return {
     id:o.id, ts:o.date?new Date(o.date).getTime():Date.now(),
     name:o.dist, phone:o.phone, region:o.region, warehouse:'', total:o.total,
-    items: its.map(it=>{
-      const sz = (it.size||'') + (it.included ? ' · '+it.included : '');
-      return {
-        kind: it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':'acc')),
-        title: (it.avail===false?'⚠️ غير متاح — ':'') + (it.title||'') + (it.code?' ('+it.code+')':''),
-        sizeTxt: sz, spec: sz, unit: it.unit||'', qty: it.qty||0,
-        unitPrice: it.unitPrice||0, price: it.unitPrice||0
-      };
-    })
+    items: its.map(it=>({
+      kind: it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':'acc')),
+      title: (it.avail===false?'⚠️ غير متاح — ':'') + (it.title||'') + (it.code?' ('+it.code+')':''),
+      sizeTxt: it.size||'', spec: it.size||'', unit: it.unit||'', qty: it.qty||0,
+      unitPrice: it.unitPrice||0, price: it.unitPrice||0,
+      frame: it.frame||'', dbror: it.dbror||''
+    }))
   };
 }
 
@@ -1052,6 +1050,18 @@ function toggleOrderItemsLoadOnly_(id){
 }
 
 // تقرير PDF شامل: كل الطلبات مقسّمة حسب المرحلة، كل طلب بتاريخه واسم صاحبه وأصنافه وكمياتها
+// بيجمع الأصناف المتكررة (نفس الاسم/الكود/المقاس) في سطر واحد بكميتهم مجمّعة
+function mergeReportItems_(items){
+  const map = {}, ord = [];
+  (items||[]).forEach(it=>{
+    const key = (it.title||'')+'|'+(it.code||'')+'|'+(it.size||'')+'|'+(it.unit||'')+'|'+(it.frame||'')+'|'+(it.dbror||'');
+    if(!map[key]){ map[key] = {title:it.title, code:it.code, size:it.size, frame:it.frame, dbror:it.dbror, unit:it.unit, qty:0, avail:true}; ord.push(key); }
+    map[key].qty += Number(it.qty)||0;
+    if(it.avail===false) map[key].avail = false;
+  });
+  return ord.map(k=>map[k]);
+}
+
 function reportHTML(orders){
   const ORDER_KEYS = ['New','Received','In Progress','Ready','Delivered','Cancelled'];
   const groups = {};
@@ -1059,34 +1069,31 @@ function reportHTML(orders){
 
   const sections = ORDER_KEYS.filter(k=>groups[k] && groups[k].length).map(k=>{
     const st = STATUS[k] || {ar:k, ic:'•'};
-    const rows = groups[k].map(o=>{
-      const itemsTxt = (o.items||[]).map(it=>
-        (it.avail===false?'⚠️ ':'') + esc(it.title||'') + (it.code?' ('+esc(it.code)+')':'') +
-        ' × ' + esc(it.qty||0) + (it.unit?' '+esc(it.unit):'')
-      ).join('، ') || '—';
-      const totalQty = (o.items||[]).reduce((s,it)=>s+(Number(it.qty)||0),0);
-      return `<tr>
-        <td style="padding:6px 5px;text-align:center;font-size:11px;border-bottom:1px solid #EDF0F3">#${esc(o.id)}</td>
-        <td style="padding:6px 5px;font-size:11px;border-bottom:1px solid #EDF0F3">${esc(o.date||'')}</td>
-        <td style="padding:6px 5px;font-size:11px;border-bottom:1px solid #EDF0F3"><b>${esc(o.dist||'')}</b></td>
-        <td style="padding:6px 5px;font-size:10.5px;border-bottom:1px solid #EDF0F3">${itemsTxt}</td>
-        <td style="padding:6px 5px;text-align:center;font-size:11px;border-bottom:1px solid #EDF0F3">${totalQty}</td>
-      </tr>`;
+    const cards = groups[k].map(o=>{
+      const merged = mergeReportItems_(o.items);
+      const totalQty = merged.reduce((s,it)=>s+(Number(it.qty)||0),0);
+      const itemRows = merged.map(it=>`
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:5px 0;border-bottom:1px dashed #E4EAF0">
+          <span style="font-size:11.5px;${it.avail===false?'color:#B3261E':''}">
+            ${it.avail===false?'⚠️ ':''}<b>${esc(it.title||'')}</b>${it.code?' <span style="color:#6B7A8C">('+esc(it.code)+')</span>':''}
+            ${it.size||it.frame||it.dbror?'<br><span style="font-size:10.5px;color:#6B7A8C">'+esc((it.size||'')+(it.frame?' · حلق '+it.frame+' سم':'')+(it.dbror?' · برور '+it.dbror:''))+'</span>':''}
+          </span>
+          <span style="font-size:12px;font-weight:700;white-space:nowrap">${esc(it.qty||0)} ${esc(it.unit||'')}</span>
+        </div>`).join('') || '<div style="padding:6px 0;color:#8A97A6;font-size:11px">مفيش أصناف</div>';
+
+      return `<div style="border:1px solid #DCE4EC;border-radius:9px;margin-top:9px;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;background:#F3F6FA;padding:7px 11px">
+          <div style="font-size:11.5px"><b style="font-family:'Reem Kufi',sans-serif;color:#002050">#${esc(o.id)}</b> — <b>${esc(o.dist||'')}</b> — ${esc(o.date||'')}</div>
+          <div style="font-size:11px;color:#6B7A8C">إجمالي: <b>${totalQty}</b> قطعة</div>
+        </div>
+        <div style="padding:2px 11px">${itemRows}</div>
+      </div>`;
     }).join('');
-    return `<div style="margin-top:16px">
-      <div style="background:#002050;color:#EAF2FA;padding:8px 12px;border-radius:8px 8px 0 0;font-family:'Reem Kufi',sans-serif;font-size:13px">
+    return `<div style="margin-top:18px">
+      <div style="background:#002050;color:#EAF2FA;padding:8px 12px;border-radius:8px;font-family:'Reem Kufi',sans-serif;font-size:13px">
         ${st.ic} ${esc(st.ar)} — ${groups[k].length} طلب
       </div>
-      <table style="width:100%;border-collapse:collapse">
-        <thead><tr style="background:#F3F6FA;color:#5B6B7D">
-          <th style="padding:6px 5px;width:46px;font-size:10.5px">رقم</th>
-          <th style="padding:6px 5px;width:68px;font-size:10.5px">التاريخ</th>
-          <th style="padding:6px 5px;width:105px;font-size:10.5px">اسم العميل</th>
-          <th style="padding:6px 5px;text-align:right;font-size:10.5px">الأصناف والكمية</th>
-          <th style="padding:6px 5px;width:46px;font-size:10.5px">الإجمالي</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
+      ${cards}
     </div>`;
   }).join('');
 
@@ -1598,17 +1605,18 @@ function submitOrder(){
 function docRows(o){
   const priced=pricesVisible();
   return o.items.map((it,i)=>{
-    let spec='', qty=it.qty, unit;
+    let size='', frameTxt='—', brorTxt='—', qty=it.qty, unit;
     if(it.kind==='door'){
-      spec=it.sizeTxt+(it.frame?' · حلق '+it.frame+' سم':'')+(it.dbror?' · برور '+it.dbror:'');
-      unit='باب';
+      size=it.sizeTxt; frameTxt=it.frame?(it.frame+' سم'):'—'; brorTxt=it.dbror?it.dbror:'—'; unit='باب';
     } else if(it.kind==='frame'||it.kind==='bror'){
-      spec='عود '+ROD_LEN+' م · '+it.spec; unit='عود';
-    } else { spec='—'; unit=it.unit||'قطعة'; }
+      size='عود '+ROD_LEN+' م · '+it.spec; unit='عود';
+    } else { size='—'; unit=it.unit||'قطعة'; }
     return `<tr>
       <td style="text-align:center">${i+1}</td>
       <td><b>${esc(it.title)}</b></td>
-      <td style="font-size:11px;color:#5B6B7D">${esc(spec)}</td>
+      <td style="font-size:11px;color:#5B6B7D">${esc(size)}</td>
+      <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(frameTxt)}</td>
+      <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(brorTxt)}</td>
       <td style="text-align:center">${qty} ${esc(unit)}</td>
       ${priced?`<td style="text-align:center">${money(it.kind==='door'?it.unitPrice:it.price)}</td>
       <td style="text-align:center;font-weight:700">${money(linePrice(it))}</td>`:''}
@@ -1651,12 +1659,14 @@ function docHTML(o,mode){
       <table style="width:100%;margin-top:18px;border-collapse:collapse;font-size:12px">
         <thead>
           <tr style="background:#002050;color:#EAF2FA;font-family:'Reem Kufi',sans-serif">
-            <th style="padding:9px 6px;width:30px">م</th>
-            <th style="padding:9px 6px;text-align:right">الصنف</th>
-            <th style="padding:9px 6px;text-align:right">المواصفات</th>
-            <th style="padding:9px 6px;width:78px">الكمية</th>
-            ${priced?`<th style="padding:9px 6px;width:74px">السعر</th>
-            <th style="padding:9px 6px;width:84px">الإجمالي</th>`:''}
+            <th style="padding:9px 5px;width:26px">م</th>
+            <th style="padding:9px 5px;text-align:right">الصنف</th>
+            <th style="padding:9px 5px;width:66px">المقاس</th>
+            <th style="padding:9px 5px;width:54px">الحلق</th>
+            <th style="padding:9px 5px;width:54px">البرور</th>
+            <th style="padding:9px 5px;width:60px">الكمية</th>
+            ${priced?`<th style="padding:9px 5px;width:64px">السعر</th>
+            <th style="padding:9px 5px;width:74px">الإجمالي</th>`:''}
           </tr>
         </thead>
         <tbody style="background:#fff">${docRows(o)}</tbody>
