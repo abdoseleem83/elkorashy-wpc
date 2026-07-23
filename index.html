@@ -329,7 +329,7 @@ input::placeholder{color:#A8B4C2}
   <button data-tab="cart">السلة<span class="badge" id="cartBadge">0</span></button>
   <button data-tab="orders">طلباتي</button>
   <button data-tab="track">🚚 المتابعة</button>
-  <button data-tab="admin">🏭 متابعة المصنع</button>
+  <button data-tab="admin">🏭 متابعة المصنع<span class="badge" id="admBadge" hidden>0</span></button>
 </nav>
 </div>
 
@@ -529,6 +529,7 @@ function render(){
               : viewOrders();
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===state.tab));
   document.getElementById('cartBadge').textContent=cartCount();
+  updateAdmBadge();
 
   const show = state.tab==='new' && state.cart.length>0;
   bar.hidden=!show;
@@ -884,6 +885,10 @@ async function adminLoad(){
     state.admin.rows = d.orders || [];
     state.admin.open = true;
     sessionStorage.setItem('wpc_adm', state.admin.pw);
+    markAdminSeen_(state.admin.rows);       // فتح الشاشة فعليًا = المصنع شاف كل الطلبات الحالية
+    state.admin.pendingCount = 0; updateAdmBadge();
+    if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
+    startAdminPolling();
   }catch(err){
     state.admin.err = err.message || String(err);
     state.admin.open = false;
@@ -961,16 +966,9 @@ async function setItemAvail(id, idx, avail){
   state.admin.itemBusy = null; render();
 }
 
-// بيبني مستند PDF للطلب من بيانات شاشة المصنع (بعد ما أصنافه تتحمّل)
-async function exportAdminOrderPdf(o){
-  const a = state.admin;
-  if(!a.items[o.id]){
-    a.itemsOpen[o.id] = true;
-    await toggleOrderItemsLoadOnly_(o.id);
-  }
-  const its = a.items[o.id] || [];
-  if(!its.length){ toast('مفيش أصناف لهذا الطلب'); return; }
-  const doc = {
+// بيبني order object موحّد من بيانات شاشة المصنع (list + orderItems) — مستخدم في تصدير الـ PDF وفي مشاركة الصورة
+function buildAdminDocOrder_(o, its){
+  return {
     id:o.id, ts:o.date?new Date(o.date).getTime():Date.now(),
     name:o.dist, phone:o.phone, region:o.region, warehouse:'', total:o.total,
     items: its.map(it=>({
@@ -980,8 +978,61 @@ async function exportAdminOrderPdf(o){
       unitPrice: it.unitPrice||0, price: it.unitPrice||0
     }))
   };
-  makeDoc(doc,'order');
 }
+
+// بيبني مستند PDF للطلب من بيانات شاشة المصنع (بعد ما أصنافه تتحمّل)
+async function exportAdminOrderPdf(o){
+  await toggleOrderItemsLoadOnly_(o.id);
+  const its = state.admin.items[o.id] || [];
+  if(!its.length){ toast('مفيش أصناف لهذا الطلب'); return; }
+  makeDoc(buildAdminDocOrder_(o, its),'order');
+}
+
+// بيفتح واتساب من غير رقم محدد — عكس تدفق العميل بالظبط، هنا المصنع هو اللي بيختار
+// يبعت الصورة لمين (موزع/مجموعة/أي حد) بدل ما تتقفل على رقم ثابت.
+function openWhatsAppFree(text){
+  window.open('https://api.whatsapp.com/send?text='+encodeURIComponent(text),'_blank');
+}
+
+// بيجهّز صورة الطلب من شاشة المصنع ويسيب المصنع يختار المستلم بنفسه (زرار "📤 إرسال" في كل كارت)
+async function shareAdminOrderImage(o){
+  await toggleOrderItemsLoadOnly_(o.id);
+  const its = state.admin.items[o.id] || [];
+  if(!its.length){ toast('مفيش أصناف لهذا الطلب'); return; }
+  const doc = buildAdminDocOrder_(o, its);
+  const caption = 'طلب أوردر #'+o.id+' — '+(o.dist||'');
+
+  if(typeof html2canvas==='undefined'){
+    openWhatsAppFree(caption);
+    toast('مفيش نت كفاية لتجهيز الصورة — هيتفتح واتساب بالنص بس');
+    return;
+  }
+  busy(true,'جارٍ تجهيز صورة الطلب…');
+  try{
+    const paper=document.getElementById('paper');
+    paper.innerHTML=docHTML(doc,'order');
+    await new Promise(r=>setTimeout(r,320));
+    const canvas=await html2canvas(paper.firstElementChild,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+    paper.innerHTML='';
+    const blob=await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
+    const file=new File([blob],'طلب_'+o.id+'.png',{type:'image/png'});
+
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      // شاشة المشاركة الأصلية بتاعة الموبايل — يختار واتساب وبعدين الشخص/المجموعة بنفسه
+      await navigator.share({files:[file], title:'طلب أوردر #'+o.id, text:caption});
+    } else {
+      downloadBlob(blob,'طلب_'+o.id+'.png');
+      openWhatsAppFree(caption);
+      toast('اتحمّلت صورة الطلب — اختار واتساب والمستلم وارفقها');
+    }
+  }catch(err){
+    if(err && err.name==='AbortError'){ busy(false); return; }
+    toast('تعذّر تجهيز صورة الطلب — هيتفتح واتساب بالنص');
+    openWhatsAppFree(caption);
+  }
+  busy(false);
+}
+
 function toggleOrderItemsLoadOnly_(id){
   // زي toggleOrderItems بس من غير ما يقفل القايمة لو مفتوحة أصلًا — مستخدمة قبل تصدير الـ PDF
   return (async()=>{
@@ -996,6 +1047,72 @@ function toggleOrderItemsLoadOnly_(id){
     state.admin.itemsLoading = null; render();
   })();
 }
+
+function updateAdmBadge(){
+  const el = document.getElementById('admBadge'); if(!el) return;
+  const n = state.admin.pendingCount || 0;
+  el.hidden = n<=0;
+  el.textContent = n>9 ? '9+' : String(n);
+}
+
+function loadAdminSeen_(){
+  try{ return JSON.parse(localStorage.getItem('wpc_admin_seen')||'{}'); }catch(err){ return {}; }
+}
+function saveAdminSeen_(map){
+  try{ localStorage.setItem('wpc_admin_seen', JSON.stringify(map)); }catch(err){}
+}
+// المصنع فعليًا شاف القايمة (فتح الشاشة بالباسورد) — نسجّل كل الحالات الحالية كـ"متابَعة" ونصفّر الأيقونة
+function markAdminSeen_(rows){
+  const seen = {};
+  (rows||[]).forEach(o=>{ seen[o.id] = o.status; });
+  saveAdminSeen_(seen);
+}
+
+function notifyAdmin_(title, body){
+  try{
+    if('Notification' in window && Notification.permission==='granted'){
+      new Notification(title, {body: body||'', icon: 'images/icon-192.png'});
+      return;
+    }
+  }catch(err){}
+  toast(title);
+}
+
+let adminPollTimer = null;
+function startAdminPolling(){
+  if(adminPollTimer || !APPS_SCRIPT_URL) return;
+  adminPollTimer = setInterval(()=>adminPoll(), 90000);   // فحص خلفي كل ٩٠ ثانية طول ما الشاشة مفتوحة
+}
+
+// فحص خلفي: بيقارن آخر حالة معروفة لكل طلب بالحالة الجديدة —
+// طلب جديد خالص → يزوّد عداد "معلق" فوق تبويب 🏭. طلب اتغيّرت حالته → إشعار فوري.
+async function adminPoll(){
+  if(!APPS_SCRIPT_URL || !state.admin.pw) return;
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL + '?action=list&pw=' + encodeURIComponent(state.admin.pw));
+    if(!d || !d.ok) return;
+    const rows = d.orders || [];
+    const seen = loadAdminSeen_();
+    let pending = 0;
+    rows.forEach(o=>{
+      const prev = seen[o.id];
+      if(prev===undefined){
+        pending++;
+        notifyAdmin_('📥 طلب جديد #'+o.id, o.dist?('من: '+o.dist):'');
+      } else if(prev !== o.status){
+        const stAr = (STATUS[o.status] && STATUS[o.status].ar) || o.status;
+        notifyAdmin_('طلب #'+o.id+' تم تعديله لـ '+stAr, o.dist?('صاحب الطلب: '+o.dist):'');
+      }
+      seen[o.id] = o.status;
+    });
+    saveAdminSeen_(seen);
+    state.admin.pendingCount = pending;
+    updateAdmBadge();
+    // لو شاشة متابعة المصنع مفتوحة فعلًا قدام المستخدم، حدّث القايمة المعروضة كمان
+    if(state.admin.open && state.tab==='admin'){ state.admin.rows = rows; render(); }
+  }catch(err){ /* أعطال الشبكة في الفحص الخلفي بنتجاهلها بصمت */ }
+}
+
 
 function viewAdmin(){
   const a = state.admin;
@@ -1064,6 +1181,7 @@ function viewAdmin(){
       <div class="btnrow" style="margin-top:9px;gap:6px">
         <button class="btn ghost sm" data-act="adm-toggle-items" data-id="${esc(o.id)}">${itemsOpen?'🔽 قفل الأصناف':'📋 الأصناف'}</button>
         <button class="btn ghost sm" data-act="adm-pdf" data-id="${esc(o.id)}">📄 PDF</button>
+        <button class="btn ghost sm" data-act="adm-share" data-id="${esc(o.id)}">📤 إرسال</button>
         <button class="btn ghost sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}
           style="border-color:#B3261E;color:#B3261E">${delBusy?'جارٍ الحذف…':'🗑️ حذف'}</button>
       </div>
@@ -1131,11 +1249,15 @@ document.addEventListener('click',e=>{
     case 'adm-set':    setStatus(el.dataset.id, el.dataset.st); break;
     case 'adm-toggle-items': toggleOrderItems(el.dataset.id); break;
     case 'adm-pdf':     { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) exportAdminOrderPdf(o); } break;
+    case 'adm-share':    { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) shareAdminOrderImage(o); } break;
     case 'adm-del':     deleteOrder(el.dataset.id); break;
     case 'adm-item-avail': setItemAvail(el.dataset.id, Number(el.dataset.idx), el.dataset.avail==='1'); break;
     case 'adm-logout':
-      state.admin={open:false,pw:'',loading:false,rows:null,err:'',busy:null};
-      sessionStorage.removeItem('wpc_adm'); render(); break;
+      state.admin={open:false, pw:'', loading:false, rows:null, err:'', busy:null,
+        itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null, pendingCount:0};
+      sessionStorage.removeItem('wpc_adm');
+      if(adminPollTimer){ clearInterval(adminPollTimer); adminPollTimer=null; }
+      updateAdmBadge(); render(); break;
     case 'update': doUpdate(); break;
     case 'install': doInstall(); break;
     case 'gate-install': gateInstall(); break;
@@ -1145,6 +1267,16 @@ document.addEventListener('click',e=>{
 });
 
 function withOrder(el,fn){const o=state.orders.find(x=>x.id===el.dataset.id); if(o) fn(o); }
+
+// إنتر في خانة كلمة سر متابعة المصنع يعمل دخول على طول
+document.addEventListener('keydown', e=>{
+  if(e.key!=='Enter') return;
+  const el = e.target.closest('[data-act="adm-pw"]');
+  if(!el) return;
+  e.preventDefault();
+  const b = document.querySelector('[data-act="adm-login"]');
+  if(b && !b.disabled) b.click();
+});
 
 document.addEventListener('input',e=>{
   const el=e.target.closest('[data-act]'); if(!el) return;
@@ -1701,7 +1833,7 @@ async function doInstall(){
    التشغيل
    ============================================================ */
 const savedPw = sessionStorage.getItem('wpc_adm');
-if(savedPw){ state.admin.pw = savedPw; state.admin.open = true; }
+if(savedPw){ state.admin.pw = savedPw; state.admin.open = true; startAdminPolling(); adminPoll(); }
 document.getElementById('hdrLogo').src = ASSETS.logo;
 document.documentElement.style.setProperty('--mark', 'url('+ASSETS.mark+')');
 document.getElementById('vsVer').textContent = 'الإصدار ' + APP_BUILD;
