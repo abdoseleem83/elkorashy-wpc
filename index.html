@@ -369,7 +369,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v21';
+const APP_BUILD   = 'v26';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -971,12 +971,15 @@ function buildAdminDocOrder_(o, its){
   return {
     id:o.id, ts:o.date?new Date(o.date).getTime():Date.now(),
     name:o.dist, phone:o.phone, region:o.region, warehouse:'', total:o.total,
-    items: its.map(it=>({
-      kind: it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':'acc')),
-      title: (it.avail===false?'⚠️ غير متاح — ':'') + (it.title||'') + (it.code?' ('+it.code+')':''),
-      sizeTxt: it.size||'', spec: it.size||'', unit: it.unit||'', qty: it.qty||0,
-      unitPrice: it.unitPrice||0, price: it.unitPrice||0
-    }))
+    items: its.map(it=>{
+      const sz = (it.size||'') + (it.included ? ' · '+it.included : '');
+      return {
+        kind: it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':'acc')),
+        title: (it.avail===false?'⚠️ غير متاح — ':'') + (it.title||'') + (it.code?' ('+it.code+')':''),
+        sizeTxt: sz, spec: sz, unit: it.unit||'', qty: it.qty||0,
+        unitPrice: it.unitPrice||0, price: it.unitPrice||0
+      };
+    })
   };
 }
 
@@ -1047,6 +1050,98 @@ function toggleOrderItemsLoadOnly_(id){
     state.admin.itemsLoading = null; render();
   })();
 }
+
+// تقرير PDF شامل: كل الطلبات مقسّمة حسب المرحلة، كل طلب بتاريخه واسم صاحبه وأصنافه وكمياتها
+function reportHTML(orders){
+  const ORDER_KEYS = ['New','Received','In Progress','Ready','Delivered','Cancelled'];
+  const groups = {};
+  orders.forEach(o=>{ (groups[o.status] = groups[o.status]||[]).push(o); });
+
+  const sections = ORDER_KEYS.filter(k=>groups[k] && groups[k].length).map(k=>{
+    const st = STATUS[k] || {ar:k, ic:'•'};
+    const rows = groups[k].map(o=>{
+      const itemsTxt = (o.items||[]).map(it=>
+        (it.avail===false?'⚠️ ':'') + esc(it.title||'') + (it.code?' ('+esc(it.code)+')':'') +
+        ' × ' + esc(it.qty||0) + (it.unit?' '+esc(it.unit):'')
+      ).join('، ') || '—';
+      const totalQty = (o.items||[]).reduce((s,it)=>s+(Number(it.qty)||0),0);
+      return `<tr>
+        <td style="padding:6px 5px;text-align:center;font-size:11px;border-bottom:1px solid #EDF0F3">#${esc(o.id)}</td>
+        <td style="padding:6px 5px;font-size:11px;border-bottom:1px solid #EDF0F3">${esc(o.date||'')}</td>
+        <td style="padding:6px 5px;font-size:11px;border-bottom:1px solid #EDF0F3"><b>${esc(o.dist||'')}</b></td>
+        <td style="padding:6px 5px;font-size:10.5px;border-bottom:1px solid #EDF0F3">${itemsTxt}</td>
+        <td style="padding:6px 5px;text-align:center;font-size:11px;border-bottom:1px solid #EDF0F3">${totalQty}</td>
+      </tr>`;
+    }).join('');
+    return `<div style="margin-top:16px">
+      <div style="background:#002050;color:#EAF2FA;padding:8px 12px;border-radius:8px 8px 0 0;font-family:'Reem Kufi',sans-serif;font-size:13px">
+        ${st.ic} ${esc(st.ar)} — ${groups[k].length} طلب
+      </div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:#F3F6FA;color:#5B6B7D">
+          <th style="padding:6px 5px;width:46px;font-size:10.5px">رقم</th>
+          <th style="padding:6px 5px;width:68px;font-size:10.5px">التاريخ</th>
+          <th style="padding:6px 5px;width:105px;font-size:10.5px">اسم العميل</th>
+          <th style="padding:6px 5px;text-align:right;font-size:10.5px">الأصناف والكمية</th>
+          <th style="padding:6px 5px;width:46px;font-size:10.5px">الإجمالي</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+
+  return `
+  <div style="font-family:'Readex Pro',sans-serif;direction:rtl;background:#fff;padding:30px 26px;color:#14243A;">
+    <div style="display:flex;align-items:center;gap:14px;border-bottom:3px solid #1080C0;padding-bottom:12px">
+      <img src="${ASSETS.logo}" style="height:48px;width:auto">
+      <div style="flex:1">
+        <div style="font-family:'Reem Kufi',sans-serif;font-size:19px;font-weight:700;color:#002050">تقرير الطلبات الشامل</div>
+        <div style="font-size:11px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} — ${new Date().toLocaleDateString('ar-EG')}</div>
+      </div>
+      <div style="font-size:12px;color:#6B7A8C">إجمالي الطلبات: ${orders.length}</div>
+    </div>
+    ${sections}
+    <div style="margin-top:20px;text-align:center;font-size:10px;color:#8A97A6;border-top:1px solid #DCE4EC;padding-top:9px">
+      ${esc(COMPANY)} — الإصدار ${APP_BUILD}
+    </div>
+  </div>`;
+}
+
+async function buildFullReportPdf_(orders){
+  if(typeof html2canvas==='undefined' || !window.jspdf){ toast('محتاج نت أول مرة عشان يجهّز الـ PDF'); return; }
+  const paper=document.getElementById('paper');
+  paper.innerHTML=reportHTML(orders);
+  await new Promise(r=>setTimeout(r,320));
+  const canvas=await html2canvas(paper.firstElementChild,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+  paper.innerHTML='';
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF('p','mm','a4');
+  const pw=210, ph=297;
+  const iw=pw, ih=canvas.height*pw/canvas.width;
+  const img=canvas.toDataURL('image/jpeg',0.92);
+  if(ih<=ph){ pdf.addImage(img,'JPEG',0,0,iw,ih); }
+  else{
+    let left=ih, pos=0;
+    while(left>0){ pdf.addImage(img,'JPEG',0,pos,iw,ih); left-=ph; pos-=ph; if(left>0) pdf.addPage(); }
+  }
+  pdf.save('تقرير_الطلبات_'+new Date().toISOString().slice(0,10)+'.pdf');
+}
+
+async function exportAdminFullReport(){
+  if(!APPS_SCRIPT_URL || !state.admin.pw) return;
+  busy(true,'جارٍ تجهيز التقرير…');
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL + '?action=listWithItems&pw=' + encodeURIComponent(state.admin.pw), 25000);
+    if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
+    const orders = d.orders || [];
+    if(!orders.length){ toast('مفيش طلبات لسه'); busy(false); return; }
+    await buildFullReportPdf_(orders);
+  }catch(err){
+    toast('تعذّر تجهيز التقرير: ' + (err.message || err));
+  }
+  busy(false);
+}
+
 
 function updateAdmBadge(){
   const el = document.getElementById('admBadge'); if(!el) return;
@@ -1194,6 +1289,7 @@ function viewAdmin(){
       <div class="note" style="margin-top:0">اضغط المرحلة اللي وصلها الطلب — بتتسجّل في الشيت وصاحب الطلب يشوفها فورًا.</div>
       <div class="btnrow" style="margin-top:11px">
         <button class="btn ghost sm" data-act="adm-reload">🔄 تحديث</button>
+        <button class="btn ghost sm" data-act="adm-report">📑 تقرير شامل PDF</button>
         <button class="btn ghost sm" data-act="adm-logout">🔒 خروج</button>
       </div>
     </section>
@@ -1250,6 +1346,7 @@ document.addEventListener('click',e=>{
     case 'adm-toggle-items': toggleOrderItems(el.dataset.id); break;
     case 'adm-pdf':     { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) exportAdminOrderPdf(o); } break;
     case 'adm-share':    { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) shareAdminOrderImage(o); } break;
+    case 'adm-report':   exportAdminFullReport(); break;
     case 'adm-del':     deleteOrder(el.dataset.id); break;
     case 'adm-item-avail': setItemAvail(el.dataset.id, Number(el.dataset.idx), el.dataset.avail==='1'); break;
     case 'adm-logout':
