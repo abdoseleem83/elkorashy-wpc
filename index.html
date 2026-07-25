@@ -329,7 +329,6 @@ input::placeholder{color:#A8B4C2}
   <button data-tab="new" class="on">طلب جديد</button>
   <button data-tab="cart">السلة<span class="badge" id="cartBadge">0</span></button>
   <button data-tab="orders">طلباتي</button>
-  <button data-tab="track">🚚 المتابعة</button>
   <button data-tab="admin">🏭 متابعة المصنع<span class="badge" id="admBadge" hidden>0</span></button>
 </nav>
 </div>
@@ -370,12 +369,11 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v37';
+const APP_BUILD   = 'v41';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
 const ADMIN_WHATS = '201067765483';   // مش مستخدم في إرسال الطلبات دلوقتي — سايبه لو احتجناه تاني
-const ORDER_WHATS  = '201119932111';  // الرقم الإجباري لاستلام كل طلبات الأوردر عبر واتساب
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2aVRVaUVubR3w4a3weiQTHGp03SvMozh83NY3OtBD14n1YugCjbcWdYEJUPJb-s3E/exec';
 
 const ROD_LEN = 2.15;   // طول العود بالمتر — الحلق والبرور بيتباعوا بالعود
@@ -430,7 +428,7 @@ const state = {
   gateBypassed:false,   // تثبيت التطبيق — بيرجع يظهر تاني في أي تحميل جديد للصفحة
   track:{loading:false, rows:null, err:'', at:0},
   admin:{open:false, pw:'', loading:false, rows:null, err:'', busy:null,
-    itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null},
+    itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null, docImages:{}, docImageBusy:null},
   profile: load(LS_PROFILE, {name:'', phone:'', region:''}),
   cart:    load(LS_CART, []),
   orders:  load(LS_ORDERS, []),
@@ -439,7 +437,8 @@ const state = {
   fr:{cm:10, rods:1},      // حلق إضافي بالعود
   br:{size:'6×9', rods:1}, // برور إضافي بالعود
   acc:{},
-  touched:false             // اتضغط إرسال؟ عشان نوضّح الحقول الناقصة
+  touched:false,             // اتضغط إرسال؟ عشان نوضّح الحقول الناقصة
+  editingId:null             // لو مش null، معناها العميل بيعدّل طلب موجود بدل ما يبعت طلب جديد
 };
 
 function load(k,d){ try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;} }
@@ -506,7 +505,7 @@ function dateStr(ts){return new Date(ts).toLocaleDateString('ar-EG',{day:'2-digi
 function pricesVisible(){ return false; }
 
 // كل التبويبات متاحة للجميع (مفيش تقييد حسابات دلوقتي)
-function allowedTabs(){ return ['new','cart','orders','track','admin']; }
+function allowedTabs(){ return ['new','cart','orders','admin']; }
 
 function render(){
   updateInstallGate();
@@ -526,7 +525,6 @@ function render(){
   const v=document.getElementById('view');
   v.innerHTML = state.tab==='new' ? viewNew()
               : state.tab==='cart' ? viewCart()
-              : state.tab==='track' ? viewTrack()
               : state.tab==='admin' ? viewAdmin()
               : viewOrders();
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===state.tab));
@@ -745,23 +743,28 @@ function viewCart(){
       <button class="del" data-act="del" data-i="${i}">✕</button></div>`;}).join('');
 
   const ok=profileOk();
+  const editing = !!state.editingId;
   return `
   <section class="card">
     <div class="step"><span class="n">✓</span><h2>مراجعة الطلب</h2></div>
+    ${editing?`<div class="note" style="margin-top:0;background:#FFF6E5;color:#8A6512;border-radius:8px;padding:9px 12px">
+      ✏️ بتعدّل الطلب <b>#${esc(state.editingId)}</b> — الإرسال هيحدّث نفس الطلب مش يعمل واحد جديد.
+      <button class="btn ghost sm" data-act="cancel-edit" style="margin-top:8px">إلغاء التعديل</button>
+    </div>`:''}
     ${lines}
     ${priced?`<div class="total"><span class="lbl">الإجمالي التقديري</span><span class="val">${money(cartTotal())} <small>ج</small></span></div>
-    <div class="note">${esc(PRICE_NOTE)}<br>تقدر تتابع حالة طلبك بعد الإرسال من تبويب 🚚 المتابعة.</div>`
-    :`<div class="note" style="margin-top:12px">هيتواصل معاك المصنع بالتفاصيل والسعر بعد إرسال الطلب — تقدر تتابع حالته من تبويب 🚚 المتابعة.</div>`}
+    <div class="note">${esc(PRICE_NOTE)}<br>تقدر تتابع حالة طلبك بعد الإرسال من تبويب «طلباتي».</div>`
+    :`<div class="note" style="margin-top:12px">هيتواصل معاك المصنع بالتفاصيل والسعر بعد إرسال الطلب — تقدر تتابع حالته من تبويب «طلباتي».</div>`}
   </section>
 
   <section class="card">
-    <div class="step"><span class="n">↗</span><h2>إرسال طلب أوردر</h2></div>
+    <div class="step"><span class="n">↗</span><h2>${editing?'حفظ التعديل':'إرسال طلب أوردر'}</h2></div>
     <div class="note" style="margin-top:0;margin-bottom:12px">
       الاسم: <b>${esc(state.profile.name||'—')}</b> · ${esc(state.profile.region||'المنطقة غير محددة')}<br>
       المخزن: <b>${esc(WAREHOUSE)}</b>
       ${ok?'':'<br><span style="color:var(--danger)">اكتب الاسم ورقم الموبايل في تبويب «طلب جديد» قبل الإرسال.</span>'}
     </div>
-    <button class="btn brand" data-act="submit">إرسال طلب الأوردر على واتساب</button>
+    <button class="btn brand" data-act="submit">${editing?'💾 حفظ التعديل وإرسال واتساب':'إرسال طلب الأوردر على واتساب'}</button>
     <div class="btnrow" style="margin-top:9px">
       <button class="btn ghost sm" data-act="quote-cart">📄 PDF الطلب</button>
       <button class="btn ghost sm" data-act="clear">تفريغ السلة</button>
@@ -773,17 +776,32 @@ function viewCart(){
 function viewOrders(){
   if(!state.orders.length) return `<div class="empty"><span class="em">📄</span><p>لسه مفيش طلبات مسجّلة على الجهاز ده.</p></div>${verBar()}`;
   const priced=pricesVisible();
-  return state.orders.map(o=>`
+  const t = state.track;
+  const liveById = {};
+  (t.rows||[]).forEach(r=>{ liveById[String(r.id)] = r; });
+
+  const refreshBtn = `<button class="btn ghost sm" style="margin-bottom:12px" data-act="track-load" ${t.loading?'disabled':''}>
+    ${t.loading?'⏳ جارٍ تحديث الحالة…':'🔄 تحديث حالة الطلبات من المصنع'}</button>`;
+  const errNote = t.err ? `<div class="note" style="color:var(--danger);margin-bottom:10px">${esc(t.err)}</div>` : '';
+
+  const cards = state.orders.map(o=>{
+    const live = liveById[String(o.id)];
+    return `
     <div class="ord">
-      <div class="oh"><span class="oid">#${esc(o.id)}</span><span class="od">${esc(dateStr(o.ts))}</span></div>
-      <div class="os">${o.items.length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}<br>
-        ${esc(o.items.map(x=>x.title).slice(0,3).join('، '))}${o.items.length>3?'…':''}</div>
+      <div class="oh"><span class="oid">#${esc(o.id)}</span>${live?statusPill(live.status):''}</div>
+      <div class="os">${esc(dateStr(o.ts))} · ${o.items.length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}<br>
+        ${esc(o.items.map(x=>x.title).slice(0,3).join('، '))}${o.items.length>3?'…':''}
+        ${live && live.note?('<br><b style="color:var(--brand)">'+esc(live.note)+'</b>'):''}</div>
       <div class="oa">
+        <button class="btn ghost sm" data-act="ord-edit"  data-id="${esc(o.id)}">✏️ تعديل</button>
         <button class="btn ghost sm" data-act="ord-pdf"   data-id="${esc(o.id)}">📄 PDF</button>
         <button class="btn ghost sm" data-act="ord-xls"   data-id="${esc(o.id)}">📊 إكسيل</button>
         <button class="btn ghost sm" data-act="resend"    data-id="${esc(o.id)}">↗ إرسال</button>
       </div>
-    </div>`).join('')
+    </div>`;
+  }).join('');
+
+  return refreshBtn + errNote + cards
     + `<button class="btn ghost sm" data-act="all-xls" style="margin-bottom:12px">📊 تصدير كل الطلبات إكسيل</button>`
     + verBar();
 }
@@ -838,43 +856,6 @@ async function loadTrack(){
   }
   state.track.loading = false; render();
 }
-
-function viewTrack(){
-  const t = state.track;
-
-  if(t.loading) return `<div class="empty"><span class="em">⏳</span><p>جارٍ تحميل حالة الطلبات…</p></div>`;
-
-  if(t.rows === null){
-    return `<section class="card">
-      <div class="step"><span class="n">🚚</span><h2>متابعة الطلبات</h2></div>
-      <div class="note" style="margin-top:0">هنا بتشوف حالة طلباتك عند المصنع — تحت المراجعة، تحت التنفيذ، جاهز، أو تم التسليم.
-      بيتحمّل من السيرفر فمحتاج نت.</div>
-      <button class="btn brand" style="margin-top:12px" data-act="track-load">تحميل حالة الطلبات</button>
-      ${t.err?`<div class="note" style="color:var(--danger)">${esc(t.err)}</div>`:''}
-    </section>${verBar()}`;
-  }
-
-  if(!t.rows.length){
-    return `<div class="empty"><span class="em">🚚</span><p>مفيش طلبات مسجّلة على رقمك عند المصنع.</p>
-      <button class="btn ghost sm" style="margin-top:14px;max-width:220px;margin-inline:auto" data-act="track-load">تحديث</button></div>${verBar()}`;
-  }
-
-  const rows = t.rows.map(o=>`
-    <div class="ord">
-      <div class="oh"><span class="oid">#${esc(o.id)}</span>${statusPill(o.status)}</div>
-      <div class="os">${esc(o.date||'')} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''}${pricesVisible()?' · الإجمالي '+money(o.total||0)+' ج':''}
-        ${o.note?('<br><b style="color:var(--brand)">'+esc(o.note)+'</b>'):''}</div>
-    </div>`).join('');
-
-  return `<section class="card">
-      <div class="step"><span class="n">🚚</span><h2>متابعة الطلبات</h2>
-        <span class="hint">${esc(new Date(t.at).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}))}</span></div>
-      <div class="note" style="margin-top:0">الحالة بتتحدّث من المصنع على الشيت.</div>
-      <button class="btn ghost sm" style="margin-top:11px" data-act="track-load">🔄 تحديث الحالة</button>
-    </section>
-    ${rows}${verBar()}`;
-}
-
 
 /* ============================================================
    شاشة المصنع — تغيير حالة الطلب (بكلمة سر)
@@ -955,23 +936,35 @@ async function clearDeliveredOrders(){
   state.admin.loading = false; render();
 }
 
-async function toggleOrderItems(id){
+function toggleOrderItemsPreview(o){
   const a = state.admin;
-  if(a.itemsOpen[id]){ a.itemsOpen[id]=false; render(); return; }
-  a.itemsOpen[id] = true;
-  if(a.items[id]){ render(); return; }   // متجهزة من قبل — مفيش داعي نطلبها تاني
-  a.itemsLoading = id; render();
+  if(a.itemsOpen[o.id]){ a.itemsOpen[o.id]=false; render(); return; }
+  a.itemsOpen[o.id] = true; render();
+  ensureAdminDocImage_(o);
+}
+
+// بيجهّز صورة معاينة الطلب (زي مستند الـ PDF بالظبط) وبيكاشها — تتعرض جوه شاشة المصنع
+// بدل ما المصنع يحتاج يدوس PDF كل مرة عشان يشوف شكل الطلب
+async function ensureAdminDocImage_(o){
+  const a = state.admin;
+  if(a.docImages[o.id] || a.docImageBusy===o.id) return;
+  await toggleOrderItemsLoadOnly_(o.id);
+  const its = a.items[o.id] || [];
+  if(!its.length) return;
+  if(typeof html2canvas==='undefined'){ toast('محتاج نت أول مرة عشان يجهّز المعاينة'); return; }
+  a.docImageBusy = o.id; render();
   try{
-    const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=orderItems&pw=' + encodeURIComponent(a.pw)
-      + '&id=' + encodeURIComponent(id));
-    if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
-    a.items[id] = d.items || [];
+    const doc = buildAdminDocOrder_(o, its);
+    const paper = document.getElementById('paper');
+    paper.innerHTML = docHTML(doc,'order');
+    await new Promise(r=>setTimeout(r,320));
+    const canvas = await html2canvas(paper.firstElementChild,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+    paper.innerHTML='';
+    a.docImages[o.id] = canvas.toDataURL('image/jpeg',0.9);
   }catch(err){
-    toast('تعذّر تحميل أصناف الطلب: ' + (err.message || err));
-    a.itemsOpen[id] = false;
+    toast('تعذّر تجهيز المعاينة');
   }
-  a.itemsLoading = null; render();
+  a.docImageBusy = null; render();
 }
 
 async function setItemAvail(id, idx, avail){
@@ -983,11 +976,16 @@ async function setItemAvail(id, idx, avail){
     if(!d || !d.ok) throw new Error((d && d.error) || 'فشل التحديث');
     const it = (state.admin.items[id]||[])[idx];
     if(it) it.avail = avail;
+    delete state.admin.docImages[id];   // المعاينة المتخزّنة بقت قديمة
     toast(avail?'اتعلّم الصنف متاح':'اتعلّم الصنف غير متاح');
   }catch(err){
     toast('تعذّر التحديث: ' + (err.message || err));
   }
   state.admin.itemBusy = null; render();
+  if(state.admin.itemsOpen[id]){
+    const o = (state.admin.rows||[]).find(x=>String(x.id)===String(id));
+    if(o) ensureAdminDocImage_(o);
+  }
 }
 
 // بيبني order object موحّد من بيانات شاشة المصنع (list + orderItems) — مستخدم في تصدير الـ PDF وفي مشاركة الصورة
@@ -1255,7 +1253,7 @@ async function exportAdminFullReport(){
 function adminOrdersToExcelShape_(orders){
   return orders.map(o=>({
     id:o.id, ts:o.date?new Date(o.date).getTime():Date.now(),
-    name:o.dist, phone:'', region:'', warehouse:'', status:o.status, total:0,
+    name:o.dist, phone:o.phone||'', region:o.region||'', warehouse:o.warehouse||'', status:o.status, total:0,
     items:(o.items||[]).map(it=>({
       kind: it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':'acc')),
       titleEn:it.title, code:it.code, sizeEn:it.size, spec:it.size,
@@ -1384,35 +1382,33 @@ function viewAdmin(){
     const itemsOpen = !!a.itemsOpen[o.id];
     const itemsLoading = a.itemsLoading === o.id;
     const its = a.items[o.id];
+    const docImg = a.docImages[o.id];
+    const imgBusy = a.docImageBusy === o.id;
     let itemsHtml = '';
     if(itemsOpen){
-      if(itemsLoading) itemsHtml = `<div class="note">جارٍ تحميل الأصناف…</div>`;
-      else if(its) itemsHtml = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;margin-top:8px">${
-        its.map((it,idx)=>{
-          const ib = a.itemBusy === (o.id+':'+idx);
-          const unavail = it.avail===false;
-          const door = it.type==='Door' ? DOORS.find(d=>d.code===it.code) : null;
-          const dispTitle = arabicItemTitle_(it);
-          const dispSize = it.type==='Door' ? arabicSizeText_(it.size) : (it.size||'');
-          const emoji = it.type==='Frame'?'📏':(it.type==='Bror'?'📐':'🔩');
-          return `<div style="border-radius:11px;overflow:hidden;background:${unavail?'#FDECEA':'#F7F9FB'};display:flex;flex-direction:column">
-            <div style="position:relative;aspect-ratio:1/1;background:#E7ECF2">
-              ${door?`<img src="${door.img}" style="width:100%;height:100%;object-fit:cover;display:block">`
-                    :`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:26px">${emoji}</div>`}
-              ${unavail?`<span style="position:absolute;top:4px;inset-inline-start:4px;background:#B3261E;color:#fff;font-size:9px;padding:2px 6px;border-radius:6px">غير متاح</span>`:''}
-            </div>
-            <div style="padding:6px 7px;flex:1;display:flex;flex-direction:column;gap:4px">
-              <b style="font-size:10.5px;line-height:1.3;${unavail?'color:#B3261E':''}">${esc(dispTitle)}</b>
-              <span style="font-size:9.5px;color:#6B7A8C">${esc(dispSize)} · ${esc(it.qty||0)} ${esc(it.unit||'')}</span>
+      if(docImg){
+        itemsHtml += `<div style="margin-top:8px"><img src="${docImg}" style="width:100%;border-radius:10px;border:1px solid #E4EAF0;display:block"></div>`;
+      } else if(imgBusy || itemsLoading){
+        itemsHtml += `<div class="note">جارٍ تجهيز معاينة الطلب…</div>`;
+      } else {
+        itemsHtml += `<div class="note" style="color:var(--danger)">تعذّر تجهيز المعاينة</div>`;
+      }
+      if(its && its.length){
+        itemsHtml += `<div style="margin-top:9px;display:flex;flex-direction:column;gap:5px">
+          <div style="font-size:11px;color:#6B7A8C;font-weight:700">تحديد الأصناف الغير متاحة:</div>
+          ${its.map((it,idx)=>{
+            const ib = a.itemBusy === (o.id+':'+idx);
+            const unavail = it.avail===false;
+            return `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:8px;background:${unavail?'#FDECEA':'#F7F9FB'}">
+              <span style="flex:1;font-size:11px;${unavail?'color:#B3261E':''}">${esc(arabicItemTitle_(it))}</span>
               <button class="btn ${unavail?'ghost':'sm'}" data-act="adm-item-avail" data-id="${esc(o.id)}" data-idx="${idx}" data-avail="${unavail?1:0}"
-                ${ib?'disabled':''} style="margin-top:auto;font-size:10px;padding:5px 6px;${unavail?'border-color:#B3261E;color:#B3261E':''}">
+                ${ib?'disabled':''} style="font-size:10px;padding:4px 7px;white-space:nowrap;${unavail?'border-color:#B3261E;color:#B3261E':''}">
                 ${ib?'…':(unavail?'❌ غير متاح':'✅ متاح')}
               </button>
-            </div>
-          </div>`;
-        }).join('')
-      }</div>`;
-      else itemsHtml = `<div class="note" style="color:var(--danger)">تعذّر تحميل الأصناف</div>`;
+            </div>`;
+          }).join('')}
+        </div>`;
+      }
     }
 
     return `<div class="ord">
@@ -1453,6 +1449,7 @@ function viewAdmin(){
 document.getElementById('tabs').addEventListener('click',e=>{
   const b=e.target.closest('button[data-tab]'); if(!b) return;
   state.tab=b.dataset.tab; render(); window.scrollTo({top:0,behavior:'smooth'});
+  if(state.tab==='orders' && state.track.rows===null && state.orders.length) loadTrack();
 });
 
 document.addEventListener('click',e=>{
@@ -1489,11 +1486,23 @@ document.addEventListener('click',e=>{
     case 'ord-xls':   withOrder(el,o=>exportExcel([o],'طلب_'+o.id)); break;
     case 'all-xls':   exportExcel(state.orders,'كل_الطلبات'); break;
     case 'resend':    withOrder(el,o=>shareOrderImage(o)); break;
+    case 'ord-edit':   withOrder(el,o=>{
+      state.cart = JSON.parse(JSON.stringify(o.items));
+      save(LS_CART,state.cart);
+      state.editingId = o.id;
+      state.tab='cart'; render(); window.scrollTo({top:0,behavior:'smooth'});
+      toast('بتعدّل الطلب #'+o.id+' — عدّل السلة واضغط «حفظ التعديل»');
+    }); break;
+    case 'cancel-edit': {
+      state.editingId = null; state.cart = []; save(LS_CART,state.cart);
+      state.tab='orders'; render(); window.scrollTo({top:0,behavior:'smooth'});
+      toast('اتلغى التعديل');
+    } break;
     case 'track-load': loadTrack(); break;
     case 'adm-login':  adminLoad(); break;
     case 'adm-reload': adminLoad(); break;
     case 'adm-set':    setStatus(el.dataset.id, el.dataset.st); break;
-    case 'adm-toggle-items': toggleOrderItems(el.dataset.id); break;
+    case 'adm-toggle-items': { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) toggleOrderItemsPreview(o); } break;
     case 'adm-pdf':     { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) exportAdminOrderPdf(o); } break;
     case 'adm-share':    { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) shareAdminOrderImage(o); } break;
     case 'adm-report':   exportAdminFullReport(); break;
@@ -1503,7 +1512,7 @@ document.addEventListener('click',e=>{
     case 'adm-item-avail': setItemAvail(el.dataset.id, Number(el.dataset.idx), el.dataset.avail==='1'); break;
     case 'adm-logout':
       state.admin={open:false, pw:'', loading:false, rows:null, err:'', busy:null,
-        itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null, pendingCount:0};
+        itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null, docImages:{}, docImageBusy:null, pendingCount:0};
       sessionStorage.removeItem('wpc_adm');
       if(adminPollTimer){ clearInterval(adminPollTimer); adminPollTimer=null; }
       updateAdmBadge(); render(); break;
@@ -1643,7 +1652,7 @@ function newOrderId(){
 
 function draftOrder(){
   return {
-    id:newOrderId(), ts:Date.now(),
+    id:state.editingId || newOrderId(), ts:Date.now(),
     name:state.profile.name, phone:state.profile.phone, region:state.profile.region,
     warehouse:WAREHOUSE, items:JSON.parse(JSON.stringify(state.cart)), total:cartTotal()
   };
@@ -1674,13 +1683,8 @@ function buildMessage(o){
   } else {
     m+='هيتواصل معاك المصنع بالتفاصيل والسعر.\n';
   }
-  m+='تقدر تتابع حالة الطلب من تبويب 🚚 المتابعة في التطبيق.';
+  m+='تقدر تتابع حالة الطلب من تبويب «طلباتي» في التطبيق.';
   return m;
-}
-
-// بيفتح واتساب مباشرة على محادثة رقم استلام الأوردرات الثابت (إجباري، مفيش اختيار تاني).
-function openWhatsAppPicker(text){
-  window.open('https://wa.me/'+ORDER_WHATS+'?text='+encodeURIComponent(text),'_blank');
 }
 
 function downloadBlob(blob,name){
@@ -1690,17 +1694,12 @@ function downloadBlob(blob,name){
   setTimeout(()=>URL.revokeObjectURL(url),4000);
 }
 
-// بيجهّز صورة للطلب (نفس تصميم المستند)، ينزّلها، وبعدين يفتح واتساب مباشرة
-// على محادثة رقم استلام الأوردرات الثابت (ORDER_WHATS) مع رسالة نصية جاهزة.
-// ملحوظة تقنية مهمة: واتساب من المتصفح (wa.me) بيقدر يفتح محادثة على رقم محدد
-// بنص جاهز، لكن معندوش أي طريقة برمجية ترفق صورة/PDF تلقائيًا مع الرقم المحدد
-// ده في نفس الوقت (ده قيد من واتساب نفسه، مش قصور في التطبيق). فالأضمن لضمان
-// إن الطلب يوصل للرقم الصح دايمًا هو: تنزيل الصورة أولًا، وفتح المحادثة على
-// الرقم الثابت بالرسالة، والموزع/العميل يرفق الصورة بضغطة واحدة (📎) من جواها.
+// بيجهّز صورة الطلب (نفس تصميم المستند) وبيفتح شاشة المشاركة الأصلية بتاعة الموبايل —
+// العميل يختار هو المستلم بنفسه (واتساب أو أي حد)، زي تطبيق القطاعات بالظبط.
+// لو الجهاز مبيدعمش المشاركة (كمبيوتر مثلًا)، بننزّل الصورة ويبعتها العميل يدويًا.
 async function shareOrderImage(o){
   if(typeof html2canvas==='undefined'){
-    openWhatsAppPicker(o.msg);
-    toast('مفيش نت كفاية لتجهيز الصورة — هيتفتح واتساب بالنص فقط');
+    toast('محتاج نت أول مرة عشان يجهّز الصورة');
     return;
   }
 
@@ -1712,12 +1711,17 @@ async function shareOrderImage(o){
     const canvas=await html2canvas(paper.firstElementChild,{scale:2,backgroundColor:'#ffffff',useCORS:true});
     paper.innerHTML='';
     const blob=await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
-    downloadBlob(blob,'طلب_'+o.id+'.png');
-    openWhatsAppPicker(o.msg);
-    toast('اتحمّلت صورة الطلب — دوس 📎 في واتساب وارفقها من المعرض');
+    const file=new File([blob],'طلب_'+o.id+'.png',{type:'image/png'});
+
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:'طلب أوردر #'+o.id, text:o.msg});
+    } else {
+      downloadBlob(blob,'طلب_'+o.id+'.png');
+      toast('اتحمّلت صورة الطلب — افتح واتساب وابعتها من المعرض');
+    }
   }catch(err){
-    toast('تعذّر تجهيز صورة الطلب — هيتفتح واتساب بالنص');
-    openWhatsAppPicker(o.msg);
+    if(err && err.name==='AbortError'){ busy(false); return; }   // العميل قفل شاشة المشاركة
+    toast('تعذّر تجهيز صورة الطلب');
   }
   busy(false);
 }
@@ -1730,17 +1734,25 @@ function submitOrder(){
     toast('اكتب الاسم ورقم موبايل صحيح — إجباري');
     return;
   }
+  const wasEditing = !!state.editingId;
   const o=draftOrder();
   o.msg=buildMessage(o);
-  state.orders.unshift(o); save(LS_ORDERS,state.orders.slice(0,80));
-  state.cart=[]; save(LS_CART,state.cart); state.touched=false;
+  if(wasEditing){
+    const idx = state.orders.findIndex(x=>String(x.id)===String(o.id));
+    if(idx>=0) state.orders[idx]=o; else state.orders.unshift(o);
+  } else {
+    state.orders.unshift(o);
+  }
+  save(LS_ORDERS,state.orders.slice(0,80));
+  state.cart=[]; save(LS_CART,state.cart); state.touched=false; state.editingId=null;
 
   if(APPS_SCRIPT_URL){
     fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify({action:'newOrder',order:o})}).catch(()=>{});
   }
-  state.tab='orders'; render(); toast('اتسجّل طلب الأوردر #'+o.id);
+  state.tab='orders'; render();
+  toast(wasEditing?'✅ اتحدّث الطلب #'+o.id:'اتسجّل طلب الأوردر #'+o.id);
   shareOrderImage(o);
 }
 
@@ -1879,9 +1891,9 @@ function docHTML(o,mode){
       </div>
       <div style="margin-top:18px;padding:11px 13px;background:#EAF2FA;border:1px solid #B9D4EA;border-radius:9px;font-size:11.5px;line-height:1.75">
         <b style="font-family:'Reem Kufi',sans-serif">شروط التسعير:</b> ${esc(PRICE_NOTE)}
-        <br>تقدر تتابع حالة طلبك في أي وقت من تبويب 🚚 المتابعة.
+        <br>تقدر تتابع حالة طلبك في أي وقت من تبويب «طلباتي».
       </div>`:`<div style="margin-top:18px;padding:11px 13px;background:#EAF2FA;border:1px solid #B9D4EA;border-radius:9px;font-size:11.5px;line-height:1.75">
-        هيتواصل معاك المصنع بالتفاصيل والسعر. تقدر تتابع حالة الطلب في أي وقت من تبويب 🚚 المتابعة.
+        هيتواصل معاك المصنع بالتفاصيل والسعر. تقدر تتابع حالة الطلب في أي وقت من تبويب «طلباتي».
       </div>`}
 
       <div style="margin-top:22px;text-align:center;font-size:11px;color:#8A97A6;border-top:1px solid #DCE4EC;padding-top:11px">
@@ -1926,7 +1938,7 @@ function exportExcel(orders,fname){
   busy(true,'جارٍ تجهيز الإكسيل…');
   try{
     const sum=[['Order No','Date','Distributor','Phone','Region','Warehouse','Status','Lines'].concat(priced?['Total']:[])];
-    const det=[['Order No','Date','Distributor','Type','Item','Colour','Size','Frame (with door)','Milling','Unit','Qty','Available'].concat(priced?['Unit Price','Line Total']:[])];
+    const det=[['Order No','Date','Distributor','Phone','Region','Status','Type','Item','Colour','Size','Frame (with door)','Milling','Unit','Qty','Available'].concat(priced?['Unit Price','Line Total']:[])];
 
     orders.forEach(o=>{
       const sumRow=[o.id, dateStr(o.ts), o.name||'', String(o.phone||''), o.region||'', o.warehouse||WAREHOUSE, o.status||'', o.items.length];
@@ -1935,7 +1947,7 @@ function exportExcel(orders,fname){
       o.items.forEach(it=>{
         const isDoor=it.kind==='door', isRod=it.kind==='frame'||it.kind==='bror';
         const row=[
-          o.id, dateStr(o.ts), o.name||'',
+          o.id, dateStr(o.ts), o.name||'', String(o.phone||''), o.region||'', o.status||'',
           isDoor?'Door':(it.kind==='frame'?'Frame':it.kind==='bror'?'Bror':'Accessory'),
           it.titleEn||it.title||'', it.code||'',
           isDoor?(it.sizeEn||it.sizeTxt||''):(isRod?(it.spec||''):''),
