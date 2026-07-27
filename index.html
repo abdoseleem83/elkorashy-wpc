@@ -17,7 +17,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;600;700&family=Readex+Pro:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
   --navy:#002050;
@@ -369,7 +368,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v41';
+const APP_BUILD   = 'v42';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -392,8 +391,20 @@ const DOORS = [
   {code:'A10', name:'رمادي', en:'Grey',   img:ASSETS.doors.A10}
 ];
 
-const SIZES = [{w:70,price:5200},{w:80,price:5200},{w:90,price:5400},{w:100,price:6000}];
+// leafPrice: سعر "ضلفة واحدة بس" (نص الباب) لكل مقاس — عدّل الأرقام دي للسعر الصحيح براحتك
+const SIZES = [
+  {w:70, price:5200, leafPrice:2600},
+  {w:80, price:5200, leafPrice:2600},
+  {w:90, price:5400, leafPrice:2700},
+  {w:100,price:6000, leafPrice:3000}
+];
 const CUSTOM_EXTRA = 300;
+const CUSTOM_EXTRA_LEAF = 150; // إضافة المقاس الخاص للضلفة الواحدة — عدّلها لو حبيت
+function leafPriceForWidth(w){
+  const n=Number(w)||0;
+  for(const s of SIZES) if(n<=s.w) return s.leafPrice;
+  return SIZES[SIZES.length-1].leafPrice;
+}
 
 /* الحلق — سعر المتر الطولي، وبيتباع بالعود 2.15 م */
 const FRAMES = [{cm:8,price:110.00},{cm:10,price:117.81},{cm:15,price:144.14}];
@@ -428,11 +439,11 @@ const state = {
   gateBypassed:false,   // تثبيت التطبيق — بيرجع يظهر تاني في أي تحميل جديد للصفحة
   track:{loading:false, rows:null, err:'', at:0},
   admin:{open:false, pw:'', loading:false, rows:null, err:'', busy:null,
-    itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null, docImages:{}, docImageBusy:null},
+    itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null, docImages:{}, docImageBusy:null, showArchive:false, unarchBusy:null},
   profile: load(LS_PROFILE, {name:'', phone:'', region:''}),
   cart:    load(LS_CART, []),
   orders:  load(LS_ORDERS, []),
-  pick:{code:'', size:null, custom:{w:'',h:''}, frame:null, dbror:null, qty:1},
+  pick:{code:'', size:null, custom:{w:'',h:''}, frame:null, dbror:null, qty:1, unitType:'full'},
   newSection: load(LS_SECTION, ''),   // '' (لسه محددش) | doors | acc | frame | bror
   fr:{cm:10, rods:1},      // حلق إضافي بالعود
   br:{size:'6×9', rods:1}, // برور إضافي بالعود
@@ -456,11 +467,11 @@ function selectDoor(code){
   if(p.code===code){
     // ضغط على نفس الباب المفتوح — يقفل ويلمّ
     p.code=''; p.size=null; p.custom={w:'',h:''};
-    p.frame=null; p.dbror=null; p.qty=1;
+    p.frame=null; p.dbror=null; p.qty=1; p.unitType='full';
   } else {
     // باب جديد = اختيارات جديدة، عشان الموزع يحدد كل حاجة بنفسه من الأول
     p.code=code; p.size=null; p.custom={w:'',h:''};
-    p.frame=null; p.dbror=null; p.qty=1;
+    p.frame=null; p.dbror=null; p.qty=1; p.unitType='full';
   }
   render();
 }
@@ -597,6 +608,12 @@ function viewNew(){
           <label class="fld"><span>الارتفاع (سم)</span><input type="number" inputmode="numeric" min="1" value="${esc(p.custom.h)}" placeholder="مثال 210" data-act="cust" data-k="h"></label>
         </div><div class="note">المقاسات خارج الاستاندر بيتضاف عليها <b>${CUSTOM_EXTRA} ج</b>.</div></div>`:''}
 
+      <div class="grp">نوع الطلب</div>
+      <div class="specol" style="display:flex;gap:8px">
+        <button class="colchip ${p.unitType!=='leaf'?'on':''}" data-act="pick-unittype" data-t="full" style="flex:1">الباب كامل</button>
+        <button class="colchip ${p.unitType==='leaf'?'on':''}" data-act="pick-unittype" data-t="leaf" style="flex:1">ضلفة واحدة بس</button>
+      </div>
+
       <div class="grp">الكمية</div>
       <div class="qty">
         <button data-act="qty-minus">−</button>
@@ -704,12 +721,14 @@ function currentSummary(){
   const d=doorByCode(p.code);
 
   if(p.size==null) return 'اختر المقاس.';
+  const isLeaf = p.unitType==='leaf';
   let sizeTxt,unit;
   if(p.size==='custom'){
     const w=Number(p.custom.w)||0,h=Number(p.custom.h)||0;
     if(!w||!h) return 'اكتب العرض والارتفاع.';
-    sizeTxt=w+'×'+h+' سم (خاص)'; unit=priceForWidth(w)+CUSTOM_EXTRA;
-  } else { sizeTxt=p.size+' سم'; unit=priceForWidth(p.size); }
+    sizeTxt=w+'×'+h+' سم (خاص)'; unit=isLeaf?(leafPriceForWidth(w)+CUSTOM_EXTRA_LEAF):(priceForWidth(w)+CUSTOM_EXTRA);
+  } else { sizeTxt=p.size+' سم'; unit=isLeaf?leafPriceForWidth(p.size):priceForWidth(p.size); }
+  if(isLeaf) sizeTxt+=' — ضلفة واحدة';
 
   if(p.frame==null) return 'اختر الحلق (أو «بدون حلق») عشان تكمّل.';
   if(p.dbror==null) return 'اختر البرور (أو «بدون برور») عشان تكمّل.';
@@ -795,15 +814,12 @@ function viewOrders(){
       <div class="oa">
         <button class="btn ghost sm" data-act="ord-edit"  data-id="${esc(o.id)}">✏️ تعديل</button>
         <button class="btn ghost sm" data-act="ord-pdf"   data-id="${esc(o.id)}">📄 PDF</button>
-        <button class="btn ghost sm" data-act="ord-xls"   data-id="${esc(o.id)}">📊 إكسيل</button>
         <button class="btn ghost sm" data-act="resend"    data-id="${esc(o.id)}">↗ إرسال</button>
       </div>
     </div>`;
   }).join('');
 
-  return refreshBtn + errNote + cards
-    + `<button class="btn ghost sm" data-act="all-xls" style="margin-bottom:12px">📊 تصدير كل الطلبات إكسيل</button>`
-    + verBar();
+  return refreshBtn + errNote + cards + verBar();
 }
 
 
@@ -914,6 +930,24 @@ async function deleteOrder(id){
   state.admin.delBusy = null; render();
 }
 
+// استرجاع طلب من الأرشيف يدويًا (من غير ما نغيّر حالته) — لو اتارشف بالغلط أو عايز تتابعه تاني
+async function unarchiveOrder(id){
+  state.admin.unarchBusy = id; render();
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL
+      + '?action=setArchived&pw=' + encodeURIComponent(state.admin.pw)
+      + '&id=' + encodeURIComponent(id)
+      + '&archived=0');
+    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل الاسترجاع');
+    const row = (state.admin.rows||[]).find(o=>String(o.id)===String(id));
+    if(row) row.archived = false;
+    toast('اترجع الطلب #' + id + ' من الأرشيف');
+  }catch(err){
+    toast('تعذّر الاسترجاع: ' + (err.message || err));
+  }
+  state.admin.unarchBusy = null; render();
+}
+
 // مسح كل الطلبات اللي حالتها "تم التسليم" دفعة واحدة — تنظيف دوري، إجراء نهائي وجماعي فمحتاج تأكيد قوي
 async function clearDeliveredOrders(){
   const n = (state.admin.rows||[]).filter(o=>o.status==='Delivered').length;
@@ -1005,18 +1039,21 @@ function arabicItemTitle_(it){
 // السيرفر بيخزّن المقاس بالإنجليزي ("70 cm" أو "80x210 cm (custom)") — بنحوّله لنفس صيغة
 // العميل العربية ("70 سم" أو "80×210 سم (مقاس خاص)") قبل ما نعرضه في أي مستند
 function arabicSizeText_(sizeEn){
-  const s = String(sizeEn||'').trim();
+  let s = String(sizeEn||'').trim();
+  const isLeaf = /\(single leaf\)\s*$/i.test(s);
+  if(isLeaf) s = s.replace(/\s*\(single leaf\)\s*$/i,'').trim();
+  const suffix = isLeaf ? ' — ضلفة واحدة' : '';
   let m = /^(\d+)\s*cm$/i.exec(s);
-  if(m) return m[1]+' سم';
+  if(m) return m[1]+' سم'+suffix;
   m = /^(\d+)\s*x\s*(\d+)\s*cm\s*\(custom\)$/i.exec(s);
-  if(m) return m[1]+'×'+m[2]+' سم (مقاس خاص — مقاس الفتحة المعمارية)';
-  return s;
+  if(m) return m[1]+'×'+m[2]+' سم (مقاس خاص — مقاس الفتحة المعمارية)'+suffix;
+  return s+suffix;
 }
 
 function buildAdminDocOrder_(o, its){
   return {
     id:o.id, ts:o.date?new Date(o.date).getTime():Date.now(),
-    name:o.dist, phone:o.phone, region:o.region, warehouse:'', total:o.total,
+    name:o.dist, phone:o.phone, region:o.region, warehouse:'', total:o.total, status:o.status,
     items: its.map(it=>{
       const sz = it.type==='Door' ? arabicSizeText_(it.size) : (it.size||'');
       return {
@@ -1113,7 +1150,7 @@ function mergeReportItems_(items){
 
 // بيرجّع عرض الباب بالسم لو المقاس قياسي ("70 cm") عشان نقدر نجمّع بيه، أو null لو مقاس خاص/غير قياسي
 function doorWidthGroup_(sizeStr){
-  const m = /^(\d+)\s*cm$/.exec(String(sizeStr||'').trim());
+  const m = /^(\d+)\s*cm\b/.exec(String(sizeStr||'').trim());
   return m ? Number(m[1]) : null;
 }
 
@@ -1249,37 +1286,6 @@ async function exportAdminFullReport(){
 }
 
 
-// بيحوّل بيانات شاشة المصنع (listWithItems) لنفس شكل o.items اللي exportExcel أصلًا شغالة بيه
-function adminOrdersToExcelShape_(orders){
-  return orders.map(o=>({
-    id:o.id, ts:o.date?new Date(o.date).getTime():Date.now(),
-    name:o.dist, phone:o.phone||'', region:o.region||'', warehouse:o.warehouse||'', status:o.status, total:0,
-    items:(o.items||[]).map(it=>({
-      kind: it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':'acc')),
-      titleEn:it.title, code:it.code, sizeEn:it.size, spec:it.size,
-      frame:it.frame, dbror:it.dbror, unit:it.unit, qty:it.qty,
-      unitPrice:it.unitPrice||0, price:it.unitPrice||0, avail:it.avail
-    }))
-  }));
-}
-
-async function exportAdminExcel(){
-  if(!APPS_SCRIPT_URL || !state.admin.pw) return;
-  busy(true,'جارٍ تجهيز الإكسيل…');
-  try{
-    const d = await jsonp(APPS_SCRIPT_URL + '?action=listWithItems&pw=' + encodeURIComponent(state.admin.pw), 25000);
-    if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
-    const orders = d.orders || [];
-    if(!orders.length){ toast('مفيش طلبات لسه'); busy(false); return; }
-    busy(false);
-    exportExcel(adminOrdersToExcelShape_(orders), 'تقرير_الطلبات_'+new Date().toISOString().slice(0,10));
-  }catch(err){
-    toast('تعذّر تجهيز الإكسيل: ' + (err.message || err));
-    busy(false);
-  }
-}
-
-
 function updateAdmBadge(){
   const el = document.getElementById('admBadge'); if(!el) return;
   const n = state.admin.pendingCount || 0;
@@ -1368,9 +1374,24 @@ function viewAdmin(){
       <button class="btn ghost sm" style="margin-top:14px;max-width:220px;margin-inline:auto" data-act="adm-reload">تحديث</button></div>${verBar()}`;
   }
 
-  const rows = a.rows.map(o=>{
+  const archivedCount = a.rows.filter(o=>o.archived).length;
+  const visibleRows = a.rows.filter(o=>a.showArchive ? o.archived : !o.archived);
+
+  if(!visibleRows.length){
+    return `<section class="card">
+        <div class="step"><span class="n">🏭</span><h2>متابعة المصنع</h2></div>
+        <div class="btnrow" style="margin-top:0">
+          <button class="btn ghost sm ${a.showArchive?'on':''}" data-act="adm-toggle-archive">${a.showArchive?'🏭 رجوع لقائمة المصنع':'📦 الأرشيف ('+archivedCount+')'}</button>
+          <button class="btn ghost sm" data-act="adm-reload">🔄 تحديث</button>
+        </div>
+      </section>
+      <div class="empty"><span class="em">📋</span><p>${a.showArchive?'مفيش طلبات مؤرشفة لسه.':'كل الطلبات الحالية اتارشفت — دوس «📦 الأرشيف» عشان تشوفها.'}</p></div>${verBar()}`;
+  }
+
+  const rows = visibleRows.map(o=>{
     const busy = a.busy === o.id;
     const delBusy = a.delBusy === o.id;
+    const unarchBusy = a.unarchBusy === o.id;
     const btns = FLOW.map(st=>{
       const c = STATUS[st];
       const on = o.status === st;
@@ -1412,7 +1433,7 @@ function viewAdmin(){
     }
 
     return `<div class="ord">
-      <div class="oh"><span class="oid">#${esc(o.id)}</span>${statusPill(o.status)}</div>
+      <div class="oh"><span class="oid">#${esc(o.id)}</span>${statusPill(o.status)}${o.archived?' <span style="font-size:10.5px;color:#6B7A8C">📦 مؤرشف</span>':''}</div>
       <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}<br>
         ${esc(o.date||'')} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''} · ${money(o.total||0)} ج</div>
       <div class="chips" style="margin-top:10px;gap:6px;flex-wrap:nowrap">${btns}</div>
@@ -1421,6 +1442,7 @@ function viewAdmin(){
         <button class="btn ghost sm" data-act="adm-toggle-items" data-id="${esc(o.id)}">${itemsOpen?'🔽 قفل الأصناف':'📋 الأصناف'}</button>
         <button class="btn ghost sm" data-act="adm-pdf" data-id="${esc(o.id)}">📄 PDF</button>
         <button class="btn ghost sm" data-act="adm-share" data-id="${esc(o.id)}">📤 إرسال</button>
+        ${o.archived?`<button class="btn ghost sm" data-act="adm-unarchive" data-id="${esc(o.id)}" ${unarchBusy?'disabled':''}>${unarchBusy?'جارٍ الاسترجاع…':'↩️ استرجاع'}</button>`:''}
         <button class="btn ghost sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}
           style="border-color:#B3261E;color:#B3261E">${delBusy?'جارٍ الحذف…':'🗑️ حذف'}</button>
       </div>
@@ -1429,13 +1451,15 @@ function viewAdmin(){
   }).join('');
 
   return `<section class="card">
-      <div class="step"><span class="n">🏭</span><h2>متابعة المصنع</h2><span class="hint">${a.rows.length} طلب</span></div>
-      <div class="note" style="margin-top:0">اضغط المرحلة اللي وصلها الطلب — بتتسجّل في الشيت وصاحب الطلب يشوفها فورًا.</div>
+      <div class="step"><span class="n">🏭</span><h2>متابعة المصنع</h2><span class="hint">${visibleRows.length} طلب</span></div>
+      <div class="note" style="margin-top:0">${a.showArchive
+        ? 'الطلبات اللي خلصت وتم تسليمها — بتتارشف هنا تلقائي وتختفي من القايمة الرئيسية.'
+        : 'اضغط المرحلة اللي وصلها الطلب — بتتسجّل في الشيت وصاحب الطلب يشوفها فورًا.'}</div>
       <div class="btnrow" style="margin-top:11px">
+        <button class="btn ghost sm ${a.showArchive?'on':''}" data-act="adm-toggle-archive">${a.showArchive?'🏭 رجوع لقائمة المصنع':'📦 الأرشيف ('+archivedCount+')'}</button>
         <button class="btn ghost sm" data-act="adm-reload">🔄 تحديث</button>
         <button class="btn ghost sm" data-act="adm-report">📑 تقرير شامل PDF</button>
-        <button class="btn ghost sm" data-act="adm-xls">📊 تصدير إكسيل</button>
-        <button class="btn ghost sm" data-act="adm-clear-delivered" style="border-color:#B3261E;color:#B3261E">🗑️ مسح المسلّم</button>
+        <button class="btn ghost sm" data-act="adm-clear-delivered" style="border-color:#B3261E;color:#B3261E">🗑️ مسح الأرشيف نهائيًا</button>
         <button class="btn ghost sm" data-act="adm-logout">🔒 خروج</button>
       </div>
     </section>
@@ -1466,6 +1490,7 @@ document.addEventListener('click',e=>{
       window.scrollTo({top:0,behavior:'smooth'});
       break;
     case 'pick-size': p.size = el.dataset.w==='custom'?'custom':Number(el.dataset.w); render(); break;
+    case 'pick-unittype': p.unitType = el.dataset.t==='leaf'?'leaf':'full'; render(); break;
     case 'pick-frame': p.frame=Number(el.dataset.cm); render(); break;
     case 'pick-dbror': p.dbror=el.dataset.size; render(); break;
     case 'qty-minus': p.qty=Math.max(1,p.qty-1); render(); break;
@@ -1482,9 +1507,10 @@ document.addEventListener('click',e=>{
     case 'clear': if(confirm('تفريغ السلة بالكامل؟')){state.cart=[];save(LS_CART,state.cart);render();} break;
     case 'submit': submitOrder(); break;
     case 'quote-cart': makeDoc(draftOrder(), 'order'); break;
-    case 'ord-pdf':   withOrder(el,o=>makeDoc(o,'order')); break;
-    case 'ord-xls':   withOrder(el,o=>exportExcel([o],'طلب_'+o.id)); break;
-    case 'all-xls':   exportExcel(state.orders,'كل_الطلبات'); break;
+    case 'ord-pdf':   withOrder(el,o=>{
+      const live=(state.track.rows||[]).find(r=>String(r.id)===String(o.id));
+      makeDoc(live?Object.assign({},o,{status:live.status}):o,'order');
+    }); break;
     case 'resend':    withOrder(el,o=>shareOrderImage(o)); break;
     case 'ord-edit':   withOrder(el,o=>{
       state.cart = JSON.parse(JSON.stringify(o.items));
@@ -1506,13 +1532,14 @@ document.addEventListener('click',e=>{
     case 'adm-pdf':     { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) exportAdminOrderPdf(o); } break;
     case 'adm-share':    { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) shareAdminOrderImage(o); } break;
     case 'adm-report':   exportAdminFullReport(); break;
-    case 'adm-xls':      exportAdminExcel(); break;
     case 'adm-clear-delivered': clearDeliveredOrders(); break;
+    case 'adm-toggle-archive':  state.admin.showArchive=!state.admin.showArchive; render(); break;
+    case 'adm-unarchive': unarchiveOrder(el.dataset.id); break;
     case 'adm-del':     deleteOrder(el.dataset.id); break;
     case 'adm-item-avail': setItemAvail(el.dataset.id, Number(el.dataset.idx), el.dataset.avail==='1'); break;
     case 'adm-logout':
       state.admin={open:false, pw:'', loading:false, rows:null, err:'', busy:null,
-        itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null, docImages:{}, docImageBusy:null, pendingCount:0};
+        itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null, docImages:{}, docImageBusy:null, pendingCount:0, showArchive:false, unarchBusy:null};
       sessionStorage.removeItem('wpc_adm');
       if(adminPollTimer){ clearInterval(adminPollTimer); adminPollTimer=null; }
       updateAdmBadge(); render(); break;
@@ -1582,24 +1609,30 @@ function addDoor(){
     toast('اختر المقاس والحلق والبرور أولاً'); return;
   }
   const d=doorByCode(p.code);
+  const isLeaf = p.unitType==='leaf';
   let sizeTxt,sizeEn,unitPrice;
   if(p.size==='custom'){
     const w=Number(p.custom.w)||0,h=Number(p.custom.h)||0;
     if(!w||!h){toast('اكتب العرض والارتفاع للمقاس الخاص');return;}
-    sizeTxt=w+'×'+h+' سم (مقاس خاص — مقاس الفتحة المعمارية)'; sizeEn=w+'x'+h+' cm (custom)'; unitPrice=priceForWidth(w)+CUSTOM_EXTRA;
-  } else { sizeTxt=p.size+' سم'; sizeEn=p.size+' cm'; unitPrice=priceForWidth(p.size); }
+    sizeTxt=w+'×'+h+' سم (مقاس خاص — مقاس الفتحة المعمارية)'; sizeEn=w+'x'+h+' cm (custom)';
+    unitPrice=isLeaf?(leafPriceForWidth(w)+CUSTOM_EXTRA_LEAF):(priceForWidth(w)+CUSTOM_EXTRA);
+  } else {
+    sizeTxt=p.size+' سم'; sizeEn=p.size+' cm';
+    unitPrice=isLeaf?leafPriceForWidth(p.size):priceForWidth(p.size);
+  }
+  if(isLeaf){ sizeTxt+=' — ضلفة واحدة'; sizeEn+=' (single leaf)'; }
 
   state.cart.push({
     kind:'door',
-    title:'باب WPC '+d.code+' — '+d.name,
-    titleEn:'WPC Door '+d.code+' - '+d.en,
-    code:d.code, img:d.img, sizeTxt, sizeEn, unitPrice, qty:p.qty,
+    title:'باب WPC '+d.code+' — '+d.name+(isLeaf?' (ضلفة واحدة)':''),
+    titleEn:'WPC Door '+d.code+' - '+d.en+(isLeaf?' (single leaf)':''),
+    code:d.code, img:d.img, sizeTxt, sizeEn, unitPrice, qty:p.qty, leaf:isLeaf,
     frame:p.frame||0, dbror:p.dbror||''
   });
   save(LS_CART,state.cart);
   toast('اتضاف للسلة: '+d.code+' — '+sizeTxt);
   // نلمّ الاختيارات ونقفل اللوحة عشان يختار باب تاني بارتياح
-  state.pick={code:'', size:null, custom:{w:'',h:''}, frame:null, dbror:null, qty:1};
+  state.pick={code:'', size:null, custom:{w:'',h:''}, frame:null, dbror:null, qty:1, unitType:'full'};
   render();
 }
 
@@ -1781,8 +1814,8 @@ function docRowHTML_(it, idx, priced){
 // بيرتّب مفاتيح مقاسات الأبواب (نص عربي زي "70 سم") تصاعديًا، والمقاسات الخاصة آخر القايمة
 function sortSizeKeys_(keys){
   return keys.sort((a,b)=>{
-    const aStd=/^\d+\s*سم$/.test(a), bStd=/^\d+\s*سم$/.test(b);
-    if(aStd&&bStd) return parseInt(a)-parseInt(b);
+    const aStd=/^\d+\s*سم/.test(a), bStd=/^\d+\s*سم/.test(b);
+    if(aStd&&bStd) return parseInt(a)-parseInt(b) || a.localeCompare(b,'ar');
     if(aStd) return -1;
     if(bStd) return 1;
     return 0;
@@ -1849,6 +1882,7 @@ function docHTML(o,mode){
         <div style="text-align:left">
           <div style="font-family:'Reem Kufi',sans-serif;font-size:15px;font-weight:700;color:#1080C0">#${esc(o.id)}</div>
           <div style="font-size:11.5px;color:#6B7A8C">${esc(dateStr(o.ts))}</div>
+          ${o.status?`<div style="margin-top:4px">${statusPill(o.status)}</div>`:''}
         </div>
       </div>
 
@@ -1925,48 +1959,6 @@ async function makeDoc(o,mode){
     pdf.save((mode==='quote'?'عرض_سعر_':'طلب_')+o.id+'.pdf');
     paper.innerHTML='';
   }catch(err){ toast('تعذّر تجهيز الـ PDF: '+(err&&err.message?err.message:err)); }
-  busy(false);
-}
-
-/* ============================================================
-   تصدير إكسيل
-   ============================================================ */
-function exportExcel(orders,fname){
-  if(typeof XLSX==='undefined'){toast('محتاج نت أول مرة عشان يجهّز الإكسيل');return;}
-  if(!orders.length){toast('مفيش طلبات');return;}
-  const priced=pricesVisible();
-  busy(true,'جارٍ تجهيز الإكسيل…');
-  try{
-    const sum=[['Order No','Date','Distributor','Phone','Region','Warehouse','Status','Lines'].concat(priced?['Total']:[])];
-    const det=[['Order No','Date','Distributor','Phone','Region','Status','Type','Item','Colour','Size','Frame (with door)','Milling','Unit','Qty','Available'].concat(priced?['Unit Price','Line Total']:[])];
-
-    orders.forEach(o=>{
-      const sumRow=[o.id, dateStr(o.ts), o.name||'', String(o.phone||''), o.region||'', o.warehouse||WAREHOUSE, o.status||'', o.items.length];
-      if(priced) sumRow.push(Number(o.total)||0);
-      sum.push(sumRow);
-      o.items.forEach(it=>{
-        const isDoor=it.kind==='door', isRod=it.kind==='frame'||it.kind==='bror';
-        const row=[
-          o.id, dateStr(o.ts), o.name||'', String(o.phone||''), o.region||'', o.status||'',
-          isDoor?'Door':(it.kind==='frame'?'Frame':it.kind==='bror'?'Bror':'Accessory'),
-          it.titleEn||it.title||'', it.code||'',
-          isDoor?(it.sizeEn||it.sizeTxt||''):(isRod?(it.spec||''):''),
-          isDoor?[(it.frame?it.frame+' cm frame':''),(it.dbror?'bror '+it.dbror:'')].filter(Boolean).join(' + ')+(it.frame||it.dbror?' (incl.)':''):'',
-          isDoor?(it.millEn||''):'',
-          isDoor?'door':(isRod?('rod '+ROD_LEN+'m'):(it.unit||'pc')),
-          Number(it.qty)||0,
-          it.avail===false?'N':'Y'
-        ];
-        if(priced) row.push(Number(isDoor?it.unitPrice:it.price)||0, Number(linePrice(it))||0);
-        det.push(row);
-      });
-    });
-
-    const wb=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sum), 'Orders');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(det), 'Order_Items');
-    XLSX.writeFile(wb, fname+'.xlsx');
-  }catch(err){ toast('تعذّر التصدير: '+(err&&err.message?err.message:err)); }
   busy(false);
 }
 
