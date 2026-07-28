@@ -232,13 +232,13 @@ input::placeholder{color:#A8B4C2}
 .qty input{width:54px;text-align:center;border:0;border-inline:1.5px solid var(--line);border-radius:0;padding:10px 0;background:transparent}
 
 /* ============ الأزرار ============ */
-.btn{display:block;width:100%;padding:13px;border-radius:12px;font-family:'Reem Kufi',sans-serif;font-size:15px;font-weight:600;text-align:center;transition:transform .1s}
+.btn{display:block;width:100%;padding:13px;border-radius:12px;font-family:'Reem Kufi',sans-serif;font-size:14px;font-weight:600;text-align:center;transition:transform .1s;font-variant-emoji:text}
 .btn:active{transform:scale(.985)}
 .btn.primary{background:var(--navy);color:#EAF2FA}
 .btn.brand{background:linear-gradient(180deg,var(--brand-lt),var(--brand));color:#fff}
 .btn.ghost{background:#fff;border:1.5px solid var(--line);color:var(--navy)}
 .btn[disabled]{opacity:.4;pointer-events:none}
-.btn.sm{padding:10px;font-size:13px}
+.btn.sm{padding:10px;font-size:12.5px}
 .btnrow{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 
 /* ============ الإكسسوارات ============ */
@@ -1525,30 +1525,215 @@ async function exportPendingDoorsReport(){
 }
 
 
-// بيحوّل بيانات شاشة المصنع (listWithItems) لنفس شكل o.items اللي exportExcel أصلًا شغالة بيه
-function adminOrdersToExcelShape_(orders){
-  return orders.map(o=>({
-    id:o.id, ts:o.date?new Date(o.date).getTime():Date.now(),
-    name:o.dist, phone:o.phone||'', region:o.region||'', warehouse:o.warehouse||'', status:o.status, total:0,
-    items:(o.items||[]).map(it=>({
-      kind: it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':'acc')),
-      titleEn:it.title, code:it.code, sizeEn:it.size, spec:it.size,
-      frame:it.frame, dbror:it.dbror, frameHeight:it.frameHeight, unit:it.unit, qty:it.qty,
-      unitPrice:it.unitPrice||0, price:it.unitPrice||0, avail:it.avail
-    }))
+// ============================================================
+// تصدير إكسيل — تقرير الطلبات (شاشة المصنع) — منظّم بالعربي، مجمّع لكل عميل
+// بنفس روح تصميم تقرير الأبواب المعلّقة/الـ PDF الشامل (لوجو + ألوان + عناوين عربي)
+// ============================================================
+const ITEM_TYPE_AR_ = { 'Door':'باب', 'Frame':'حلق', 'Bror':'برور' };
+function itemTypeAr_(t){ return ITEM_TYPE_AR_[t] || 'إكسسوار'; }
+function itemUnitAr_(u){
+  const s = String(u||'').trim();
+  if(s==='door') return 'باب';
+  if(s==='pc') return 'قطعة';
+  if(/^rod\s/.test(s)) return 'عود '+s.replace(/^rod\s/,'')+ (/م$/.test(s)?'':'م');
+  return s || '—';
+}
+// لو الصنف باب معروف (كود من A01..A10) بنرجّع اسمه العربي بدل الاعتماد على النص الإنجليزي المخزّن
+function itemNameAr_(it){
+  if(it.type==='Door'){
+    const d = DOORS.find(x=>x.code===it.code);
+    if(d) return 'باب '+d.name+' — '+it.code;
+  }
+  return it.title || it.code || '—';
+}
+
+function buildAdminOrdersDetail_(orders){
+  const byCustomer = {}, order = [];
+  orders.forEach(o=>{
+    const key = o.dist || '—';
+    if(!byCustomer[key]){ byCustomer[key]=[]; order.push(key); }
+    byCustomer[key].push(o);
+  });
+  return order.map(name=>{
+    const ords = byCustomer[name];
+    const codeTotals = {}; // key: type+code -> {label, qty}
+    let clientQty = 0;
+    ords.forEach(o=>(o.items||[]).forEach(it=>{
+      const qty = Number(it.qty)||0;
+      clientQty += qty;
+      const key = it.type+'|'+(it.code||it.title||'');
+      if(!codeTotals[key]) codeTotals[key] = { type:it.type, code:it.code||'', name:itemNameAr_(it), qty:0 };
+      codeTotals[key].qty += qty;
+    }));
+    return { name, orders:ords, clientQty, codeTotals: Object.values(codeTotals).sort((a,b)=>b.qty-a.qty) };
+  });
+}
+
+async function buildAdminOrdersExcel_(orders){
+  if(!orders.length){ toast('مفيش طلبات'); return; }
+  if(typeof ExcelJS==='undefined'){ toast('محتاج نت أول مرة عشان يجهّز الإكسيل'); return; }
+  busy(true,'جارٍ تجهيز الإكسيل…');
+
+  const NAVY='FF002050', BRAND='FF1080C0', LIGHT='FFEAF2FA', WHITE='FFFFFFFF',
+        BORDER_CLR='FFDCE4EC', ZEBRA='FFF7FAFC';
+  const thin = {style:'thin', color:{argb:BORDER_CLR}};
+  const border = {top:thin,left:thin,right:thin,bottom:thin};
+  const FONT='Arial';
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = COMPANY_AR;
+  wb.created = new Date();
+
+  let logoImgId = null;
+  try{ logoImgId = wb.addImage({ base64: ASSETS.logo.split(',')[1], extension:'png' }); }catch(e){}
+
+  function addHeaderBand_(ws, lastCol, title, subtitle){
+    ws.mergeCells(1,1,3,1);
+    ws.getRow(1).height = 26; ws.getRow(2).height = 20; ws.getRow(3).height = 18;
+    if(logoImgId){ ws.addImage(logoImgId, { tl:{col:0.15, row:0.15}, ext:{width:58, height:58} }); }
+    ws.mergeCells(1,2,1,lastCol);
+    const tCell = ws.getCell(1,2);
+    tCell.value = title;
+    tCell.font = {bold:true, size:16, color:{argb:NAVY}, name:'Arial'};
+    tCell.alignment = {horizontal:'right', vertical:'middle'};
+    ws.mergeCells(2,2,2,lastCol);
+    const sCell = ws.getCell(2,2);
+    sCell.value = subtitle;
+    sCell.font = {size:10.5, color:{argb:'FF6B7A8C'}, name:'Arial'};
+    sCell.alignment = {horizontal:'right', vertical:'middle'};
+    ws.mergeCells(3,2,3,lastCol);
+    ws.getCell(3,2).border = {bottom:{style:'medium', color:{argb:BRAND}}};
+    ws.getCell(3,1).border = {bottom:{style:'medium', color:{argb:BRAND}}};
+    return 4;
+  }
+
+  // ---------- ورقة 1: ملخص الطلبات ----------
+  const wsSum = wb.addWorksheet('ملخص الطلبات', { views:[{ rightToLeft:true }] });
+  wsSum.columns = [
+    {width:4},{key:'id',width:14},{key:'date',width:12},{key:'dist',width:24},
+    {key:'phone',width:14},{key:'region',width:13},{key:'wh',width:12},
+    {key:'status',width:15},{key:'qty',width:10}
+  ];
+  const sumLastCol = 9;
+  addHeaderBand_(wsSum, sumLastCol, 'تقرير الطلبات', COMPANY_AR+' — '+new Date().toLocaleDateString('ar-EG')+' — إجمالي الطلبات: '+orders.length);
+  wsSum.addRow([]);
+  const hdrSum = wsSum.addRow(['','رقم الطلب','التاريخ','العميل (الموزّع)','الهاتف','المنطقة','المخزن','الحالة','إجمالي الكمية']);
+  hdrSum.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVY}}; c.font={bold:true,color:{argb:WHITE},name:FONT,size:10.5}; c.alignment={horizontal:'center',vertical:'middle'}; c.border=border; });
+  hdrSum.height = 22;
+  wsSum.views = [{ rightToLeft:true, state:'frozen', ySplit:hdrSum.number }];
+
+  let grandQty = 0;
+  orders.forEach((o,idx)=>{
+    const qty = (o.items||[]).reduce((s,it)=>s+(Number(it.qty)||0),0);
+    grandQty += qty;
+    const st = STATUS[o.status] || {ar:o.status||'—'};
+    const r = wsSum.addRow(['', o.id, dateStr2_(o.date), o.dist||'', String(o.phone||''), o.region||'', o.warehouse||'', st.ar, qty]);
+    r.eachCell((c,i)=>{ if(i===1) return; c.border=border; c.font={name:FONT,size:10.5}; c.alignment={horizontal:'center',vertical:'middle'};
+      if(idx%2===1) c.fill={type:'pattern',pattern:'solid',fgColor:{argb:ZEBRA}}; });
+  });
+  const totRowSum = wsSum.addRow(['','','','','','','','الإجمالي الكلي', grandQty]);
+  totRowSum.eachCell((c,i)=>{ if(i===1) return; c.font={bold:true,name:FONT,size:11,color:{argb:NAVY}}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}}; c.border=border; c.alignment={horizontal:'center'}; });
+  wsSum.autoFilter = { from:{row:hdrSum.number,column:2}, to:{row:hdrSum.number,column:sumLastCol} };
+
+  // ---------- ورقة 2: تفاصيل حسب العميل ----------
+  const wsDet = wb.addWorksheet('تفاصيل حسب العميل', { views:[{ rightToLeft:true }] });
+  wsDet.columns = [ {width:4},{width:12},{width:12},{width:24},{width:12},{width:14},{width:10},{width:9} ];
+  const detLastCol = 8;
+  addHeaderBand_(wsDet, detLastCol, 'تفاصيل الطلبات حسب العميل', COMPANY_AR+' — '+new Date().toLocaleDateString('ar-EG'));
+  wsDet.addRow([]);
+
+  const data = buildAdminOrdersDetail_(orders);
+  data.forEach(cust=>{
+    const rName = wsDet.addRow(['', cust.name]);
+    wsDet.mergeCells(rName.number,2,rName.number,detLastCol);
+    rName.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVY}}; c.font={bold:true,color:{argb:WHITE},name:'Arial',size:13}; c.alignment={horizontal:'right',vertical:'middle'}; });
+    rName.height = 22;
+
+    cust.orders.forEach(o=>{
+      const st = STATUS[o.status] || {ar:o.status||'—'};
+      const rOrd = wsDet.addRow(['', 'طلب #'+o.id+'  —  '+dateStr2_(o.date)+'  —  '+st.ar]);
+      wsDet.mergeCells(rOrd.number,2,rOrd.number,detLastCol);
+      rOrd.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:BRAND}}; c.font={bold:true,color:{argb:WHITE},name:FONT,size:10.5}; c.alignment={horizontal:'right',vertical:'middle'}; });
+
+      const hdr = wsDet.addRow(['','النوع','الكود','الصنف','المقاس / الحلق / البرور','الوحدة','الكمية','متاح؟']);
+      hdr.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}}; c.font={bold:true,color:{argb:NAVY},name:FONT,size:10}; c.alignment={horizontal:'center'}; c.border=border; });
+
+      (o.items||[]).forEach(it=>{
+        const sizeBits = [];
+        if(it.size) sizeBits.push(it.size);
+        if(it.frame) sizeBits.push(frameText_(it.frame, it.frameHeight));
+        if(it.dbror) sizeBits.push('برور '+it.dbror);
+        const row = wsDet.addRow(['', itemTypeAr_(it.type), it.code||'—', itemNameAr_(it), sizeBits.join(' / ')||'—', itemUnitAr_(it.unit), Number(it.qty)||0, it.avail===false?'غير متاح':'متاح']);
+        row.eachCell((c,i)=>{ if(i===1) return; c.border=border; c.font={name:FONT,size:10}; c.alignment={horizontal:'center'};
+          if(i===8 && it.avail===false) c.font={name:FONT,size:10,color:{argb:'FFB3261E'},bold:true}; });
+      });
+    });
+
+    if(cust.codeTotals.length){
+      const rCodeHdr = wsDet.addRow(['','إجمالي كل صنف (كود) — '+cust.name]);
+      wsDet.mergeCells(rCodeHdr.number,2,rCodeHdr.number,detLastCol);
+      rCodeHdr.eachCell((c,i)=>{ if(i===1) return; c.font={bold:true,color:{argb:NAVY},name:FONT,size:10.5}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF3F6FA'}}; });
+      cust.codeTotals.forEach(ct=>{
+        const r = wsDet.addRow(['', itemTypeAr_(ct.type), ct.code||'—', ct.name, '', '', ct.qty, '']);
+        r.eachCell((c,i)=>{ if(i===1) return; c.font={name:FONT,size:10}; if((i>=2&&i<=4)||i===7) c.border=border; c.alignment={horizontal:'center'}; });
+      });
+    }
+
+    const rTot = wsDet.addRow(['', 'إجمالي '+cust.name+':  '+cust.clientQty+' قطعة']);
+    wsDet.mergeCells(rTot.number,2,rTot.number,detLastCol);
+    rTot.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}}; c.font={bold:true,color:{argb:NAVY},name:FONT,size:11.5}; c.alignment={horizontal:'right',vertical:'middle'}; });
+    rTot.height = 20;
+    wsDet.addRow([]);
+  });
+
+  // ---------- ورقة 3: إجمالي الأصناف (كل الأكواد، كل العملاء) ----------
+  const wsCodes = wb.addWorksheet('إجمالي الأصناف', { views:[{ rightToLeft:true }] });
+  wsCodes.columns = [ {width:4},{width:10},{width:12},{width:26},{width:14},{width:10} ];
+  const codesLastCol = 6;
+  addHeaderBand_(wsCodes, codesLastCol, 'إجمالي الأصناف — كل العملاء', COMPANY_AR+' — '+new Date().toLocaleDateString('ar-EG'));
+  wsCodes.addRow([]);
+  const hdrCodes = wsCodes.addRow(['','النوع','الكود','الصنف','عدد الطلبات','إجمالي الكمية']);
+  hdrCodes.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVY}}; c.font={bold:true,color:{argb:WHITE},name:FONT,size:10.5}; c.alignment={horizontal:'center'}; c.border=border; });
+  hdrCodes.height=22;
+  wsCodes.views = [{ rightToLeft:true, state:'frozen', ySplit:hdrCodes.number }];
+
+  const grand = {};
+  orders.forEach(o=>(o.items||[]).forEach(it=>{
+    const key = it.type+'|'+(it.code||it.title||'');
+    if(!grand[key]) grand[key] = { type:it.type, code:it.code||'', name:itemNameAr_(it), qty:0, orderIds:new Set() };
+    grand[key].qty += Number(it.qty)||0;
+    grand[key].orderIds.add(o.id);
   }));
+  const grandList = Object.values(grand).sort((a,b)=>b.qty-a.qty);
+  grandList.forEach((g,idx)=>{
+    const r = wsCodes.addRow(['', itemTypeAr_(g.type), g.code||'—', g.name, g.orderIds.size, g.qty]);
+    r.eachCell((c,i)=>{ if(i===1) return; c.border=border; c.font={name:FONT,size:10.5}; c.alignment={horizontal:'center'};
+      if(idx%2===1) c.fill={type:'pattern',pattern:'solid',fgColor:{argb:ZEBRA}}; });
+  });
+  const rGrandTot = wsCodes.addRow(['','','','','الإجمالي الكلي', grandQty]);
+  rGrandTot.eachCell((c,i)=>{ if(i===1) return; c.font={bold:true,color:{argb:NAVY},name:FONT,size:11}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}}; c.border=border; c.alignment={horizontal:'center'}; });
+  wsCodes.autoFilter = { from:{row:hdrCodes.number,column:2}, to:{row:hdrCodes.number,column:codesLastCol} };
+
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  downloadBlob(blob, 'تقرير_الطلبات_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  busy(false);
+}
+
+function dateStr2_(d){
+  if(!d) return '';
+  try{ return new Date(d).toLocaleDateString('ar-EG',{day:'2-digit',month:'2-digit',year:'numeric'}); }catch(e){ return String(d); }
 }
 
 async function exportAdminExcel(){
   if(!APPS_SCRIPT_URL || !state.admin.pw) return;
-  busy(true,'جارٍ تجهيز الإكسيل…');
+  busy(true,'جارٍ تحميل بيانات الطلبات…');
   try{
     const d = await jsonp(APPS_SCRIPT_URL + '?action=listWithItems&pw=' + encodeURIComponent(state.admin.pw), 25000);
     if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
     const orders = d.orders || [];
     if(!orders.length){ toast('مفيش طلبات لسه'); busy(false); return; }
-    busy(false);
-    exportExcel(adminOrdersToExcelShape_(orders), 'تقرير_الطلبات_'+new Date().toISOString().slice(0,10));
+    await buildAdminOrdersExcel_(orders);
   }catch(err){
     toast('تعذّر تجهيز الإكسيل: ' + (err.message || err));
     busy(false);
