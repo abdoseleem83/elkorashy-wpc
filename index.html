@@ -375,7 +375,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v46';
+const APP_BUILD   = 'v47';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1427,6 +1427,9 @@ function buildPendingDoorsData_(orders){
   const pending = orders.filter(o=>o.status!=='Cancelled');
   const byCustomer = {}, order = [];
   pending.forEach(o=>{
+    // التقرير ده للأبواب بس — الطلبات اللي مفيهاش أبواب (إكسسوارات أو حلق/برور فقط)
+    // بتتشال من الأساس عشان ما تظهرش كعناوين فاضية بإجمالي صفر
+    if(!(o.items||[]).some(it=>it.type==='Door')) return;
     const key = o.dist||'—';
     if(!byCustomer[key]){ byCustomer[key]=[]; order.push(key); }
     byCustomer[key].push(o);
@@ -1448,7 +1451,7 @@ function buildPendingDoorsData_(orders){
     });
     const total = ords.reduce((s,o)=>s+(o.items||[]).filter(it=>it.type==='Door').reduce((s2,it)=>s2+(Number(it.qty)||0),0),0);
     return { name, perOrder, total };
-  });
+  }).filter(c=>c.total>0);   // عميل مالوش ولا باب واحد مايظهرش خالص
 }
 
 function pendingDoorsHTML(data){
