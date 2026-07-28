@@ -18,6 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
 :root{
   --navy:#002050;
@@ -369,7 +370,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v42';
+const APP_BUILD   = 'v44';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1420,41 +1421,107 @@ async function buildPendingDoorsPdf_(orders){
   pdf.save('تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.pdf');
 }
 
-function buildPendingDoorsExcel_(orders){
+async function buildPendingDoorsExcel_(orders){
   const data = buildPendingDoorsData_(orders);
   if(!data.length){ toast('مفيش طلبات معلّقة'); return; }
-  const rows=[['اسم العميل','تاريخ الأوردر','المقاس','عدد','نوع','حلق','ارتفاع الحلق','برور']];
+  if(typeof ExcelJS==='undefined'){ toast('محتاج نت أول مرة عشان يجهّز الإكسيل'); return; }
+
+  const NAVY='FF002050', BRAND='FF1080C0', LIGHT='FFEAF2FA', WHITE='FFFFFFFF', BORDER_CLR='FFDCE4EC';
+  const thin = {style:'thin', color:{argb:BORDER_CLR}};
+  const border = {top:thin,left:thin,right:thin,bottom:thin};
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('الأبواب المعلّقة', { views:[{ rightToLeft:true }] });
+  ws.columns = [
+    { key:'date', width:14 },
+    { key:'qty',  width:9  },
+    { key:'code', width:12 },
+    { key:'frame',width:22 },
+    { key:'bror', width:12 }
+  ];
+
+  function mergedRow(text, fillArgb, fontArgb, bold, size){
+    const r = ws.addRow([text,'','','','']);
+    ws.mergeCells(r.number,1,r.number,5);
+    r.eachCell(c=>{
+      c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:fillArgb}};
+      c.font = {bold: !!bold, color:{argb:fontArgb}, size: size||11, name:'Arial'};
+      c.alignment = {horizontal:'right', vertical:'middle'};
+    });
+    r.height = 20;
+    return r;
+  }
+
   data.forEach(cust=>{
+    mergedRow(cust.name, NAVY, WHITE, true, 13);
+
     cust.perOrder.forEach(o=>{
+      // ما تظهرش قايمة مقاس أصلًا لو مفيش أبواب بيه — o.widths أصلًا بتشمل المقاسات الموجودة بس
       o.widths.forEach(w=>{
+        const sizeLabel = w==='خاص' ? 'أبواب مقاس خاص' : ('أبواب مقاس '+w+' سم');
+        mergedRow('🚪 '+sizeLabel+'  —  طلب #'+o.id+'  —  '+(o.date||''), BRAND, WHITE, true, 11);
+
+        const hdr = ws.addRow(['التاريخ','كمية','نوع','حلق','برور']);
+        hdr.eachCell(c=>{
+          c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}};
+          c.font = {bold:true, color:{argb:NAVY}, name:'Arial', size:10.5};
+          c.alignment = {horizontal:'center'};
+          c.border = border;
+        });
+
         o.groups[w].forEach(it=>{
-          rows.push([cust.name, o.date||'', w==='خاص'?'خاص':(w+' سم'), Number(it.qty)||0, it.code||'', it.frame||'', it.frameHeight||'', it.dbror||'']);
+          const row = ws.addRow([
+            o.date||'', Number(it.qty)||0, it.code||'',
+            it.frame ? frameText_(it.frame, it.frameHeight) : '—',
+            it.dbror || '—'
+          ]);
+          row.eachCell(c=>{
+            c.alignment = {horizontal:'center'};
+            c.border = border;
+            c.font = {name:'Arial', size:10.5};
+          });
         });
       });
     });
-    rows.push([cust.name, '', 'الإجمالي', cust.total, '', '', '', '']);
+
+    mergedRow('إجمالي '+cust.name+':  '+cust.total+' باب', LIGHT, NAVY, true, 12);
+    ws.addRow([]);
   });
-  const wb=XLSX.utils.book_new();
-  const ws=XLSX.utils.aoa_to_sheet(rows);
-  XLSX.utils.book_append_sheet(wb, ws, 'Pending Doors');
-  XLSX.writeFile(wb, 'تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.xlsx');
+
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  downloadBlob(blob, 'تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 
 async function exportPendingDoorsReport(){
   if(!APPS_SCRIPT_URL || !state.admin.pw) return;
   busy(true,'جارٍ تجهيز تقرير الأبواب المعلّقة…');
+  let orders;
   try{
     const d = await jsonp(APPS_SCRIPT_URL + '?action=listWithItems&pw=' + encodeURIComponent(state.admin.pw), 25000);
     if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
-    const orders = d.orders || [];
+    orders = d.orders || [];
     if(!orders.length){ toast('مفيش طلبات لسه'); busy(false); return; }
+  }catch(err){
+    toast('تعذّر تحميل بيانات التقرير: ' + (err.message || err));
     busy(false);
-    buildPendingDoorsExcel_(orders);
+    return;
+  }
+
+  try{
+    busy(true,'جارٍ تجهيز ملف الإكسيل…');
+    await buildPendingDoorsExcel_(orders);
+  }catch(err){
+    toast('تعذّر تجهيز الإكسيل: ' + (err.message || err));
+  }
+
+  try{
+    busy(true,'جارٍ تجهيز الـ PDF (ممكن ياخد شوية وقت لو الطلبات كتير)…');
     await buildPendingDoorsPdf_(orders);
   }catch(err){
-    toast('تعذّر تجهيز التقرير: ' + (err.message || err));
-    busy(false);
+    toast('تعذّر تجهيز الـ PDF: ' + (err.message || err));
   }
+  busy(false);
 }
 
 
