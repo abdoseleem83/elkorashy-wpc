@@ -375,7 +375,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v47';
+const APP_BUILD   = 'v49';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1214,6 +1214,12 @@ function reportHTML(orders){
   const th = `padding:6px 5px;background:${NAVY};color:#EAF2FA;font-size:10.5px;border:1px solid ${BRD};text-align:center`;
   const td = `padding:5px;font-size:10.5px;border:1px solid ${BRD};text-align:center`;
 
+  // التقرير ده للأبواب بس — بنشيل الإكسسوارات والحلق/البرور المنفصلين من كل الأقسام التلاتة
+  // من هنا مرة واحدة، وأي طلب مابقاش فيه ولا باب بيتشال بالكامل.
+  orders = orders
+    .map(o=>Object.assign({}, o, { items:(o.items||[]).filter(it=>it.type==='Door') }))
+    .filter(o=>o.items.length);
+
   let grandQty = 0;
   orders.forEach(o=>{ grandQty += (o.items||[]).reduce((s,it)=>s+(Number(it.qty)||0),0); });
 
@@ -1372,7 +1378,7 @@ function reportHTML(orders){
     <div style="display:flex;align-items:center;gap:14px;border-bottom:3px solid ${BRAND};padding-bottom:12px">
       <img src="${ASSETS.logo}" style="height:48px;width:auto">
       <div style="flex:1">
-        <div style="font-family:'Reem Kufi',sans-serif;font-size:19px;font-weight:700;color:${NAVY}">تقرير الطلبات الشامل</div>
+        <div style="font-family:'Reem Kufi',sans-serif;font-size:19px;font-weight:700;color:${NAVY}">تقرير الأبواب الشامل</div>
         <div style="font-size:11px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} — ${new Date().toLocaleDateString('ar-EG')}</div>
       </div>
       <div style="font-size:12px;color:#6B7A8C">إجمالي الطلبات: ${orders.length}</div>
@@ -1401,7 +1407,7 @@ async function buildFullReportPdf_(orders){
     let left=ih, pos=0;
     while(left>0){ pdf.addImage(img,'JPEG',0,pos,iw,ih); left-=ph; pos-=ph; if(left>0) pdf.addPage(); }
   }
-  pdf.save('تقرير_الطلبات_'+new Date().toISOString().slice(0,10)+'.pdf');
+  pdf.save('تقرير_الأبواب_'+new Date().toISOString().slice(0,10)+'.pdf');
 }
 
 async function exportAdminFullReport(){
@@ -1680,6 +1686,14 @@ function buildAdminOrdersDetail_(orders){
 async function buildAdminOrdersExcel_(orders){
   if(!orders.length){ toast('مفيش طلبات'); return; }
   if(typeof ExcelJS==='undefined'){ toast('محتاج نت أول مرة عشان يجهّز الإكسيل'); return; }
+
+  // أبواب بس — زي الـ PDF بالظبط: بنشيل الإكسسوارات والحلق/البرور المنفصلين،
+  // وأي طلب مابقاش فيه ولا باب بيتشال بالكامل من التلات شيتات.
+  orders = orders
+    .map(o=>Object.assign({}, o, { items:(o.items||[]).filter(it=>it.type==='Door') }))
+    .filter(o=>o.items.length);
+  if(!orders.length){ toast('مفيش أبواب في الطلبات الحالية'); return; }
+
   busy(true,'جارٍ تجهيز الإكسيل…');
 
   const NAVY='FF002050', BRAND='FF1080C0', LIGHT='FFEAF2FA', WHITE='FFFFFFFF',
@@ -1723,7 +1737,7 @@ async function buildAdminOrdersExcel_(orders){
     {key:'status',width:15},{key:'qty',width:10}
   ];
   const sumLastCol = 9;
-  addHeaderBand_(wsSum, sumLastCol, 'تقرير الطلبات', COMPANY_AR+' — '+new Date().toLocaleDateString('ar-EG')+' — إجمالي الطلبات: '+orders.length);
+  addHeaderBand_(wsSum, sumLastCol, 'تقرير الأبواب', COMPANY_AR+' — '+new Date().toLocaleDateString('ar-EG')+' — إجمالي الطلبات: '+orders.length);
   wsSum.addRow([]);
   const hdrSum = wsSum.addRow(['','رقم الطلب','التاريخ','العميل (الموزّع)','الهاتف','المنطقة','المخزن','الحالة','إجمالي الكمية']);
   hdrSum.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVY}}; c.font={bold:true,color:{argb:WHITE},name:FONT,size:10.5}; c.alignment={horizontal:'center',vertical:'middle'}; c.border=border; });
@@ -1824,7 +1838,7 @@ async function buildAdminOrdersExcel_(orders){
 
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-  downloadBlob(blob, 'تقرير_الطلبات_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  downloadBlob(blob, 'تقرير_الأبواب_'+new Date().toISOString().slice(0,10)+'.xlsx');
   busy(false);
 }
 
