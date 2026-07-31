@@ -12,9 +12,6 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ELKORASHI">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -42,13 +39,14 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
 body{
-  font-family:'Cairo',system-ui,sans-serif;
+  font-family:Arial,'Helvetica Neue',system-ui,sans-serif;
+  font-weight:700;                 /* الخط بولد في كل التطبيق */
   background:var(--bg);color:var(--ink);
   font-size:15px;line-height:1.6;padding-bottom:30px;
   -webkit-text-size-adjust:100%;
 }
-h1,h2,h3{font-family:'Cairo',system-ui,sans-serif;font-weight:700}
-button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+h1,h2,h3,b,strong{font-family:Arial,'Helvetica Neue',system-ui,sans-serif;font-weight:700}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit;font-weight:700}
 button{cursor:pointer;border:0;background:none}
 :focus-visible{outline:2.5px solid var(--brand);outline-offset:2px;border-radius:6px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -66,7 +64,7 @@ button{cursor:pointer;border:0;background:none}
 .gatebtn{
   display:block;width:100%;max-width:320px;padding:15px;border-radius:14px;
   background:linear-gradient(180deg,var(--gold-lt,#E4C766),var(--gold,#C9A227));
-  color:#2A1F18;font-family:'Cairo',sans-serif;font-size:15.5px;font-weight:700;
+  color:#2A1F18;font-family:Arial,'Helvetica Neue',sans-serif;font-size:15.5px;font-weight:700;
   box-shadow:0 6px 20px rgba(201,162,39,.35);
 }
 .gatehint{font-size:11.5px;color:#8FA3BC;margin-top:12px;max-width:300px;line-height:1.6}
@@ -85,7 +83,7 @@ button{cursor:pointer;border:0;background:none}
 }
 .top-row{display:flex;align-items:center;gap:11px}
 .top img.logo{height:38px;width:auto;background:#fff;border-radius:8px;padding:4px 7px;flex:0 0 auto}
-.top .t1{font-family:'Cairo',sans-serif;font-size:14.5px;font-weight:600;line-height:1.3}
+.top .t1{font-family:Arial,'Helvetica Neue',sans-serif;font-size:14.5px;font-weight:600;line-height:1.3}
 .top .t2{font-size:11px;color:#9CB6D2;margin-top:1px}
 .wh-chip{
   margin-inline-start:auto;flex:0 0 auto;text-align:center;
@@ -141,7 +139,7 @@ button{cursor:pointer;border:0;background:none}
 .specol .colchip.on{background:var(--navy);border-color:var(--navy);color:#EAF2FA}
 .specol .colchip.on .sub{color:#9CB6D2}
 .doorpanel .dphead{display:flex;align-items:center;gap:8px;margin-bottom:11px}
-.doorpanel .dphead b{font-family:'Cairo',sans-serif;font-size:14px;color:var(--navy)}
+.doorpanel .dphead b{font-family:Arial,'Helvetica Neue',sans-serif;font-size:14px;color:var(--navy)}
 .doorpanel .dphead span{font-size:11.5px;color:var(--muted)}
 .doorpanel .grp{font-size:11.5px;color:var(--muted);margin:11px 0 6px}
 .doorpanel .dphead + .grp{margin-top:0}
@@ -171,7 +169,7 @@ button{cursor:pointer;border:0;background:none}
 
 .step{display:flex;align-items:center;gap:9px;margin-bottom:12px}
 .step .n{
-  font-family:'Cairo',sans-serif;font-size:11.5px;font-weight:700;color:#fff;
+  font-family:Arial,'Helvetica Neue',sans-serif;font-size:11.5px;font-weight:700;color:#fff;
   background:var(--brand);border-radius:50%;width:23px;height:23px;
   display:grid;place-items:center;flex:0 0 auto;
 }
@@ -202,7 +200,7 @@ input::placeholder{color:#A8B4C2}
 .door .leaf.noimg{background:linear-gradient(160deg,#B9CBDD,#4A6580)}
 .door .leaf.noimg::before{
   content:attr(data-code);position:absolute;inset:0;display:grid;place-items:center;
-  font-family:'Cairo',sans-serif;font-size:16px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.4);
+  font-family:Arial,'Helvetica Neue',sans-serif;font-size:16px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.4);
 }
 .door.on .leaf{border-color:var(--brand);transform:perspective(620px) rotateY(-12deg);box-shadow:-6px 4px 16px rgba(0,32,80,.24)}
 .door .zoombadge{
@@ -210,7 +208,7 @@ input::placeholder{color:#A8B4C2}
   background:rgba(0,20,50,.55);color:#fff;display:grid;place-items:center;font-size:13px;
   backdrop-filter:blur(2px);z-index:2;
 }
-.door .code{display:block;font-size:12px;font-weight:600;margin-top:7px;font-family:'Cairo',sans-serif}
+.door .code{display:block;font-size:12px;font-weight:600;margin-top:7px;font-family:Arial,'Helvetica Neue',sans-serif}
 .door .nm{display:block;font-size:10.5px;color:var(--muted);line-height:1.3}
 .door.on .code{color:var(--brand)}
 
@@ -232,7 +230,7 @@ input::placeholder{color:#A8B4C2}
 .qty input{width:54px;text-align:center;border:0;border-inline:1.5px solid var(--line);border-radius:0;padding:10px 0;background:transparent}
 
 /* ============ الأزرار ============ */
-.btn{display:block;width:100%;padding:13px;border-radius:12px;font-family:'Cairo',sans-serif;font-size:14px;font-weight:600;text-align:center;transition:transform .1s;font-variant-emoji:text}
+.btn{display:block;width:100%;padding:13px;border-radius:12px;font-family:Arial,'Helvetica Neue',sans-serif;font-size:14px;font-weight:600;text-align:center;transition:transform .1s;font-variant-emoji:text}
 .btn:active{transform:scale(.985)}
 .btn.primary{background:var(--navy);color:#EAF2FA}
 .btn.brand{background:linear-gradient(180deg,var(--brand-lt),var(--brand));color:#fff}
@@ -245,6 +243,17 @@ input::placeholder{color:#A8B4C2}
 .toolgrid .btn{padding:9px 6px;font-size:11.5px;border-radius:10px;line-height:1.35}
 .cardacts{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:6px;margin-top:9px}
 .cardacts .btn{padding:8px 5px;font-size:11px;border-radius:9px}
+
+/* ألوان موحّدة حسب وظيفة الزرار — عشان العين تفرّق بينهم بسرعة من غير ما تقرا */
+.toolgrid .btn,.cardacts .btn{display:flex;align-items:center;justify-content:center;gap:5px}
+.toolgrid .btn i,.cardacts .btn i{font-style:normal;font-size:14px;line-height:1;font-variant-emoji:text}
+.btn.act-edit  {background:#EAF2FA;border:1.5px solid #9CC6E4;color:#0B4A7A}
+.btn.act-send  {background:#E7F3EE;border:1.5px solid #8FC7B0;color:#14603F}
+.btn.act-arch  {background:#FFF6E5;border:1.5px solid var(--warn-line);color:#8A6512}
+.btn.act-del   {background:#FDECEA;border:1.5px solid #E8A9A3;color:var(--danger)}
+.btn.act-tool  {background:#fff;border:1.5px solid var(--line);color:var(--navy)}
+.btn.act-report{background:#F1EEFA;border:1.5px solid #B7ABDD;color:#40308A}
+.btn:disabled{opacity:.55}
 
 /* ============ الإكسسوارات ============ */
 .acc{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
@@ -267,13 +276,13 @@ input::placeholder{color:#A8B4C2}
 
 .total{display:flex;justify-content:space-between;align-items:baseline;padding-top:12px;margin-top:6px;border-top:2px solid var(--navy)}
 .total .lbl{font-size:13px;color:var(--muted)}
-.total .val{font-family:'Cairo',sans-serif;font-size:21px;font-weight:700}
+.total .val{font-family:Arial,'Helvetica Neue',sans-serif;font-size:21px;font-weight:700}
 .total .val small{font-size:12px;font-weight:400;color:var(--muted)}
 
 /* ============ طلباتي ============ */
 .ord{position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px;margin-bottom:11px;box-shadow:var(--shadow)}
 .ord .oh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
-.ord .oid{font-family:'Cairo',sans-serif;font-weight:700;color:var(--brand);font-size:14px}
+.ord .oid{font-family:Arial,'Helvetica Neue',sans-serif;font-weight:700;color:var(--brand);font-size:14px}
 .ord .od{font-size:11px;color:var(--muted)}
 .ord .os{font-size:12.5px;color:var(--muted);line-height:1.6}
 .ord .oa{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
@@ -299,7 +308,7 @@ input::placeholder{color:#A8B4C2}
 .bar{position:fixed;bottom:0;inset-inline:0;z-index:50;background:rgba(255,255,255,.97);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
 .bar .inner{max-width:660px;margin:0 auto;display:flex;align-items:center;gap:11px}
 .bar .sum{flex:0 0 auto;line-height:1.25}
-.bar .sum b{display:block;font-family:'Cairo',sans-serif;font-size:16px}
+.bar .sum b{display:block;font-family:Arial,'Helvetica Neue',sans-serif;font-size:16px}
 .bar .sum span{font-size:11px;color:var(--muted)}
 .bar .btn{flex:1;width:auto}
 
@@ -375,7 +384,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v50';
+const APP_BUILD   = 'v51';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -451,7 +460,8 @@ const state = {
   br:{size:'6×9', code:'', rods:1}, // برور إضافي بالعود — code = كود/لون الباب (إجباري زي الحلق)
   acc:{},
   touched:false,             // اتضغط إرسال؟ عشان نوضّح الحقول الناقصة
-  editingId:null             // لو مش null، معناها العميل بيعدّل طلب موجود بدل ما يبعت طلب جديد
+  editingId:null,            // لو مش null، معناها بيتعدّل طلب موجود بدل ما يتبعت طلب جديد
+  editingMeta:null           // بيانات صاحب الطلب الأصلي لما المصنع هو اللي بيعدّل
 };
 
 function load(k,d){ try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;} }
@@ -487,7 +497,7 @@ function showDoorPreview(code){
   ov.innerHTML=`
     <div style="width:100%;max-width:360px;text-align:center">
       <img src="${d.img}" alt="${esc(d.name)}" style="width:100%;max-height:62vh;object-fit:contain;border-radius:14px;background:#fff;box-shadow:0 10px 30px rgba(0,0,0,.4)">
-      <div style="color:#fff;margin-top:14px;font-family:'Cairo',sans-serif;font-size:17px;font-weight:700">${esc(d.code)} — ${esc(d.name)}</div>
+      <div style="color:#fff;margin-top:14px;font-family:Arial,'Helvetica Neue',sans-serif;font-size:17px;font-weight:700">${esc(d.code)} — ${esc(d.name)}</div>
       <div style="display:flex;gap:10px;margin-top:18px">
         <button data-act="preview-select" data-code="${esc(d.code)}" style="flex:1;background:linear-gradient(180deg,var(--brand-lt),var(--brand));color:#fff;padding:12px;border-radius:12px;font-weight:700;font-size:14px">اختار الباب ده</button>
         <button id="closeDoorPreview" style="flex:0 0 auto;background:rgba(255,255,255,.15);color:#fff;padding:12px 20px;border-radius:12px;font-size:14px">إغلاق</button>
@@ -776,7 +786,7 @@ function viewCart(){
   <section class="card">
     <div class="step"><span class="n">✓</span><h2>مراجعة الطلب</h2></div>
     ${editing?`<div class="note" style="margin-top:0;background:#FFF6E5;color:#8A6512;border-radius:8px;padding:9px 12px">
-      ✏️ بتعدّل الطلب <b>#${esc(state.editingId)}</b> — الإرسال هيحدّث نفس الطلب مش يعمل واحد جديد.
+      ✏️ بتعدّل الطلب <b>#${esc(state.editingId)}</b>${state.editingMeta?' — العميل: <b>'+esc(state.editingMeta.name||'')+'</b>':''} — الحفظ هيحدّث نفس الطلب مش يعمل واحد جديد.
       <button class="btn ghost sm" data-act="cancel-edit" style="margin-top:8px">إلغاء التعديل</button>
     </div>`:''}
     ${lines}
@@ -1256,7 +1266,7 @@ function reportHTML(orders){
 
   const sheet1 = `
   <div style="margin-top:16px">
-    <div style="background:${NAVY};color:#EAF2FA;padding:8px 12px;border-radius:8px;font-family:'Cairo',sans-serif;font-size:13px">
+    <div style="background:${NAVY};color:#EAF2FA;padding:8px 12px;border-radius:8px;font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px">
       ١ · ملخص الطلبات — ${orders.length} طلب
     </div>
     <table style="width:100%;border-collapse:collapse;margin-top:6px">
@@ -1322,7 +1332,7 @@ function reportHTML(orders){
       </tr>`).join('');
 
     return `<div style="margin-top:14px;border:1px solid ${BRD};border-radius:10px;padding:10px 12px;break-inside:avoid">
-      <div style="background:${NAVY};color:#fff;padding:6px 11px;border-radius:7px;font-family:'Cairo',sans-serif;font-size:13px">${esc(cust.name)}</div>
+      <div style="background:${NAVY};color:#fff;padding:6px 11px;border-radius:7px;font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px">${esc(cust.name)}</div>
       ${ordBlocks}
       ${codeRows?`<div style="margin-top:9px">
         <div style="font-size:11px;font-weight:700;color:${NAVY};background:#F3F6FA;padding:4px 8px;border-radius:5px">إجمالي كل صنف (كود) — ${esc(cust.name)}</div>
@@ -1344,7 +1354,7 @@ function reportHTML(orders){
 
   const sheet2 = `
   <div style="margin-top:20px">
-    <div style="background:${NAVY};color:#EAF2FA;padding:8px 12px;border-radius:8px;font-family:'Cairo',sans-serif;font-size:13px">
+    <div style="background:${NAVY};color:#EAF2FA;padding:8px 12px;border-radius:8px;font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px">
       ٢ · تفاصيل الطلبات حسب العميل — ${data.length} عميل
     </div>
     ${custBlocks}
@@ -1371,7 +1381,7 @@ function reportHTML(orders){
 
   const sheet3 = `
   <div style="margin-top:20px">
-    <div style="background:${NAVY};color:#EAF2FA;padding:8px 12px;border-radius:8px;font-family:'Cairo',sans-serif;font-size:13px">
+    <div style="background:${NAVY};color:#EAF2FA;padding:8px 12px;border-radius:8px;font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px">
       ٣ · إجمالي الأصناف — كل العملاء
     </div>
     <table style="width:100%;border-collapse:collapse;margin-top:6px">
@@ -1389,11 +1399,11 @@ function reportHTML(orders){
   </div>`;
 
   return `
-  <div style="font-family:'Cairo',sans-serif;direction:rtl;background:#fff;padding:30px 26px;color:#14243A;">
+  <div style="font-family:Arial,'Helvetica Neue',sans-serif;direction:rtl;background:#fff;padding:30px 26px;color:#14243A;">
     <div style="display:flex;align-items:center;gap:14px;border-bottom:3px solid ${BRAND};padding-bottom:12px">
       <img src="${ASSETS.logo}" style="height:48px;width:auto">
       <div style="flex:1">
-        <div style="font-family:'Cairo',sans-serif;font-size:19px;font-weight:700;color:${NAVY}">تقرير الأبواب الشامل</div>
+        <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:19px;font-weight:700;color:${NAVY}">تقرير الأبواب الشامل</div>
         <div style="font-size:11px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} — ${new Date().toLocaleDateString('ar-EG')}</div>
       </div>
       <div style="font-size:12px;color:#6B7A8C">إجمالي الطلبات: ${orders.length}</div>
@@ -1503,7 +1513,7 @@ function pendingDoorsHTML(data){
       </div>`;
     }).join('');
     return `<div style="margin-top:16px;border:1px solid #DCE4EC;border-radius:10px;padding:12px 14px;break-inside:avoid">
-      <div style="font-family:'Cairo',sans-serif;font-size:14px;color:#002050">${esc(cust.name)}</div>
+      <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:14px;color:#002050">${esc(cust.name)}</div>
       ${orderBlocks}
       <div style="margin-top:10px;padding-top:8px;border-top:1px dashed #DCE4EC;display:flex;justify-content:space-between;font-weight:700;font-size:12px">
         <span>إجمالي ${esc(cust.name)}</span><span>${cust.total} باب</span>
@@ -1512,11 +1522,11 @@ function pendingDoorsHTML(data){
   }).join('');
 
   return `
-  <div style="font-family:'Cairo',sans-serif;direction:rtl;background:#fff;padding:30px 26px;color:#14243A;">
+  <div style="font-family:Arial,'Helvetica Neue',sans-serif;direction:rtl;background:#fff;padding:30px 26px;color:#14243A;">
     <div style="display:flex;align-items:center;gap:14px;border-bottom:3px solid #1080C0;padding-bottom:12px">
       <img src="${ASSETS.logo}" style="height:48px;width:auto">
       <div style="flex:1">
-        <div style="font-family:'Cairo',sans-serif;font-size:19px;font-weight:700;color:#002050">تقرير الأبواب المعلّقة</div>
+        <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:19px;font-weight:700;color:#002050">تقرير الأبواب المعلّقة</div>
         <div style="font-size:11px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} — ${new Date().toLocaleDateString('ar-EG')} — الطلبات اللي لسه ما اتسلّمتش</div>
       </div>
       <div style="font-size:12px;color:#6B7A8C">عدد العملاء: ${data.length}</div>
@@ -1969,13 +1979,13 @@ function viewAdmin(){
   }
 
   const headerBtns = `<div class="toolgrid">
-        <button class="btn ghost sm" data-act="adm-reload">🔄 تحديث</button>
-        <button class="btn ghost sm" data-act="adm-report">📑 تقرير شامل PDF</button>
-        <button class="btn ghost sm" data-act="adm-xls">📊 تصدير إكسيل</button>
-        <button class="btn ghost sm" data-act="adm-pending-report">📐 تقرير الأبواب المعلّقة</button>
-        <button class="btn ${viewingArchive?'brand':'ghost'} sm" data-act="adm-toggle-archive">${viewingArchive?'🔙 رجوع للنشط':'📁 الأرشيف'}</button>
-        ${viewingArchive?'':'<button class="btn ghost sm" data-act="adm-clear-delivered" style="border-color:#B3261E;color:#B3261E">🗑️ مسح المسلّم</button>'}
-        <button class="btn ghost sm" data-act="adm-logout">🔒 خروج</button>
+        <button class="btn act-tool sm" data-act="adm-reload"><i>🔄</i>تحديث</button>
+        <button class="btn act-report sm" data-act="adm-report"><i>📑</i>تقرير شامل PDF</button>
+        <button class="btn act-report sm" data-act="adm-xls"><i>📊</i>تصدير إكسيل</button>
+        <button class="btn act-report sm" data-act="adm-pending-report"><i>📐</i>الأبواب المعلّقة</button>
+        <button class="btn ${viewingArchive?'brand':'act-arch'} sm" data-act="adm-toggle-archive"><i>${viewingArchive?'🔙':'📁'}</i>${viewingArchive?'رجوع للنشط':'الأرشيف'}</button>
+        ${viewingArchive?'':'<button class="btn act-del sm" data-act="adm-clear-delivered"><i>🗑️</i>مسح المسلّم</button>'}
+        <button class="btn act-tool sm" data-act="adm-logout"><i>🔒</i>خروج</button>
       </div>`;
 
   if(!list || !list.length){
@@ -2031,15 +2041,12 @@ function viewAdmin(){
     }
 
     const actionBtns = viewingArchive
-      ? `<button class="btn ghost sm" data-act="adm-toggle-items" data-id="${esc(o.id)}">${itemsOpen?'🔽 قفل الأصناف':'📋 الأصناف'}</button>
-         <button class="btn ghost sm" data-act="adm-pdf" data-id="${esc(o.id)}">📄 PDF</button>
-         <button class="btn ghost sm" data-act="adm-unarchive" data-id="${esc(o.id)}" ${archBusy?'disabled':''}>${archBusy?'…':'↩️ رجّع من الأرشيف'}</button>
-         <button class="btn ghost sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}
-           style="border-color:#B3261E;color:#B3261E">${delBusy?'جارٍ الحذف…':'🗑️ حذف'}</button>`
-      : `<button class="btn ghost sm" data-act="adm-toggle-items" data-id="${esc(o.id)}">${itemsOpen?'🔽 قفل الأصناف':'📋 الأصناف'}</button>
-         <button class="btn ghost sm" data-act="adm-pdf" data-id="${esc(o.id)}">📄 PDF</button>
-         <button class="btn ghost sm" data-act="adm-share" data-id="${esc(o.id)}">📤 إرسال</button>
-         <button class="btn ghost sm" data-act="adm-archive" data-id="${esc(o.id)}" ${archBusy?'disabled':''}>${archBusy?'…':'📦 أرشفة'}</button>`;
+      ? `<button class="btn act-edit sm" data-act="adm-edit" data-id="${esc(o.id)}"><i>✏️</i>تعديل</button>
+         <button class="btn act-arch sm" data-act="adm-unarchive" data-id="${esc(o.id)}" ${archBusy?'disabled':''}><i>↩️</i>${archBusy?'…':'رجّع'}</button>
+         <button class="btn act-del sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}><i>🗑️</i>${delBusy?'جارٍ الحذف…':'حذف'}</button>`
+      : `<button class="btn act-edit sm" data-act="adm-edit" data-id="${esc(o.id)}"><i>✏️</i>تعديل</button>
+         <button class="btn act-send sm" data-act="adm-share" data-id="${esc(o.id)}"><i>📤</i>إرسال</button>
+         <button class="btn act-arch sm" data-act="adm-archive" data-id="${esc(o.id)}" ${archBusy?'disabled':''}><i>📦</i>${archBusy?'…':'أرشفة'}</button>`;
 
     return `<div class="ord">
       <div class="oh"><span class="oid">#${esc(o.id)}</span>${statusPill(o.status)}</div>
@@ -2125,8 +2132,9 @@ document.addEventListener('click',e=>{
       render();
     } break;
     case 'cancel-edit': {
-      state.editingId = null; state.cart = []; save(LS_CART,state.cart);
-      state.tab='orders'; render(); window.scrollTo({top:0,behavior:'smooth'});
+      const wasAdmin = !!state.editingMeta;
+      state.editingId = null; state.editingMeta = null; state.cart = []; save(LS_CART,state.cart);
+      state.tab = wasAdmin ? 'admin' : 'orders'; render(); window.scrollTo({top:0,behavior:'smooth'});
       toast('اتلغى التعديل');
     } break;
     case 'track-load': loadTrack(); break;
@@ -2136,6 +2144,8 @@ document.addEventListener('click',e=>{
     case 'adm-toggle-items': { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) toggleOrderItemsPreview(o); } break;
     case 'adm-pdf':     { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) exportAdminOrderPdf(o); } break;
     case 'adm-share':    { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) shareAdminOrderImage(o); } break;
+    case 'adm-edit':     { const list=(state.admin.viewArchive?state.admin.archRows:state.admin.rows)||[];
+                           const o=list.find(x=>String(x.id)===String(el.dataset.id)); if(o) adminEditOrder(o); } break;
     case 'adm-report':   exportAdminFullReport(); break;
     case 'adm-pending-report': exportPendingDoorsReport(); break;
     case 'adm-xls':      exportAdminExcel(); break;
@@ -2292,10 +2302,49 @@ function newOrderId(){
   return 'W'+String(d.getFullYear()).slice(2)+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
 }
 
+// تعديل الطلب من شاشة المصنع — بيحمّل أصناف الطلب في السلة ويفتح تبويب السلة،
+// وبيحتفظ ببيانات صاحب الطلب الأصلي (اسم/موبايل/منطقة) عشان الحفظ ما يغيّرهاش لبيانات المصنع.
+async function adminEditOrder(o){
+  busy(true,'جارٍ تحميل أصناف الطلب…');
+  await toggleOrderItemsLoadOnly_(o.id);
+  const its = state.admin.items[o.id] || [];
+  busy(false);
+  if(!its.length){ toast('مفيش أصناف في الطلب ده'); return; }
+
+  state.cart = its.map(it=>{
+    const qty = Number(it.qty)||0;
+    const price = Number(it.unitPrice)||0;
+    if(it.type==='Door'){
+      return { kind:'door', title:arabicItemTitle_(it), titleEn:it.title||'', code:it.code||'',
+               img:(DOORS.find(d=>d.code===it.code)||{}).img || '',
+               sizeTxt:arabicSizeText_(it.size), sizeEn:it.size||'', unitPrice:price, qty,
+               frame:Number(it.frame)||0, dbror:it.dbror||'', frameHeight:Number(it.frameHeight)||0 };
+    }
+    if(it.type==='Frame' || it.type==='Bror'){
+      const isFr = it.type==='Frame';
+      return { kind:isFr?'frame':'bror', key:(isFr?'حلق':'برور')+(it.size||'')+'|'+(it.code||''),
+               title:arabicItemTitle_(it), titleEn:it.title||'', code:it.code||'',
+               spec:it.size||'', price, qty };
+    }
+    return { kind:'acc', id:it.code||it.title||'', title:arabicItemTitle_(it), titleEn:it.title||'',
+             price, qty, unit:it.unit||'' };
+  });
+  save(LS_CART,state.cart);
+
+  state.editingId = o.id;
+  state.editingMeta = { name:o.dist||'', phone:o.phone||'', region:o.region||'' };
+  state.tab='cart'; render(); window.scrollTo({top:0,behavior:'smooth'});
+  toast('بتعدّل الطلب #'+o.id+' — عدّل السلة واضغط «حفظ التعديل»');
+}
+
 function draftOrder(){
+  // لو المصنع بيعدّل طلب عميل، بنحافظ على بيانات العميل الأصلي مش بيانات جهاز المصنع
+  const m = state.editingMeta;
   return {
     id:state.editingId || newOrderId(), ts:Date.now(),
-    name:state.profile.name, phone:state.profile.phone, region:state.profile.region,
+    name: m ? m.name : state.profile.name,
+    phone: m ? m.phone : state.profile.phone,
+    region: m ? m.region : state.profile.region,
     warehouse:WAREHOUSE, items:JSON.parse(JSON.stringify(state.cart)), total:cartTotal()
   };
 }
@@ -2370,7 +2419,8 @@ async function shareOrderImage(o){
 
 function submitOrder(){
   if(!state.cart.length){toast('السلة فاضية');return;}
-  if(!profileOk()){
+  // لو المصنع بيعدّل طلب عميل، بيانات العميل جاية من الطلب نفسه — مش لازم بروفايل الجهاز
+  if(!state.editingMeta && !profileOk()){
     state.touched=true; state.tab='new'; render();
     window.scrollTo({top:0,behavior:'smooth'});
     toast('اكتب الاسم ورقم موبايل صحيح — إجباري');
@@ -2386,12 +2436,21 @@ function submitOrder(){
     state.orders.unshift(o);
   }
   save(LS_ORDERS,state.orders.slice(0,80));
-  state.cart=[]; save(LS_CART,state.cart); state.touched=false; state.editingId=null;
+  const wasAdminEdit = !!state.editingMeta;
+  state.cart=[]; save(LS_CART,state.cart); state.touched=false;
+  state.editingId=null; state.editingMeta=null;
 
   if(APPS_SCRIPT_URL){
     fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify({action:'newOrder',order:o})}).catch(()=>{});
+  }
+  if(wasAdminEdit){
+    // المصنع رجع لشاشته، والقايمة بتتحدّث من السيرفر عشان تبان بالأصناف الجديدة
+    state.tab='admin'; render();
+    toast('✅ اتحدّث الطلب #'+o.id);
+    adminLoad();
+    return;
   }
   state.tab='orders'; render();
   toast(wasEditing?'✅ اتحدّث الطلب #'+o.id:'اتسجّل طلب الأوردر #'+o.id);
@@ -2444,11 +2503,11 @@ function docRows(o){
 
   let n=0, rows='';
   order.forEach(k=>{
-    rows += `<tr><td colspan="${colspan}" style="background:#EAF2FA;padding:6px 8px;font-weight:700;color:#0B4A7A;font-size:11.5px;font-family:'Cairo',sans-serif">🚪 أبواب مقاس ${esc(k)}</td></tr>`;
+    rows += `<tr><td colspan="${colspan}" style="background:#EAF2FA;padding:6px 8px;font-weight:700;color:#0B4A7A;font-size:11.5px;font-family:Arial,'Helvetica Neue',sans-serif">🚪 أبواب مقاس ${esc(k)}</td></tr>`;
     groups[k].forEach(it=>{ rows += docRowHTML_(it, ++n, priced); });
   });
   if(otherItems.length){
-    rows += `<tr><td colspan="${colspan}" style="background:#F3F6FA;padding:6px 8px;font-weight:700;color:#5B6B7D;font-size:11.5px;font-family:'Cairo',sans-serif">🔩 حلق / برور / إكسسوارات</td></tr>`;
+    rows += `<tr><td colspan="${colspan}" style="background:#F3F6FA;padding:6px 8px;font-weight:700;color:#5B6B7D;font-size:11.5px;font-family:Arial,'Helvetica Neue',sans-serif">🔩 حلق / برور / إكسسوارات</td></tr>`;
     otherItems.forEach(it=>{ rows += docRowHTML_(it, ++n, priced); });
   }
   return rows;
@@ -2476,20 +2535,20 @@ function docHTML(o,mode){
   const isQuote = mode==='quote';
   const priced = pricesVisible();
   return `
-  <div style="position:relative;font-family:'Cairo',sans-serif;direction:rtl;background:#fff;padding:34px 32px;color:#14243A;">
+  <div style="position:relative;font-family:Arial,'Helvetica Neue',sans-serif;direction:rtl;background:#fff;padding:34px 32px;color:#14243A;">
     <div style="position:absolute;inset:0;background:url('${ASSETS.mark}') no-repeat center center;background-size:34% auto;opacity:.06;"></div>
     <div style="position:relative">
 
       <div style="display:flex;align-items:center;gap:16px;border-bottom:3px solid #1080C0;padding-bottom:14px;">
         <img src="${ASSETS.logo}" style="height:56px;width:auto">
         <div style="flex:1">
-          <div style="font-family:'Cairo',sans-serif;font-size:22px;font-weight:700;color:#002050">
+          <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:22px;font-weight:700;color:#002050">
             ${isQuote?'عرض سعر':'طلب أوردر'}
           </div>
           <div style="font-size:12px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} · ${esc(WAREHOUSE)}</div>
         </div>
         <div style="text-align:left">
-          <div style="font-family:'Cairo',sans-serif;font-size:15px;font-weight:700;color:#1080C0">#${esc(o.id)}</div>
+          <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:15px;font-weight:700;color:#1080C0">#${esc(o.id)}</div>
           <div style="font-size:11.5px;color:#6B7A8C">${esc(dateStr(o.ts))}</div>
         </div>
       </div>
@@ -2507,7 +2566,7 @@ function docHTML(o,mode){
 
       <table style="width:100%;margin-top:18px;border-collapse:collapse;font-size:12px">
         <thead>
-          <tr style="background:#002050;color:#EAF2FA;font-family:'Cairo',sans-serif">
+          <tr style="background:#002050;color:#EAF2FA;font-family:Arial,'Helvetica Neue',sans-serif">
             <th style="padding:9px 5px;width:26px">م</th>
             <th style="padding:9px 5px;text-align:right">الصنف</th>
             <th style="padding:9px 5px;width:66px">المقاس</th>
@@ -2525,14 +2584,14 @@ function docHTML(o,mode){
       ${priced?`<div style="display:flex;justify-content:flex-start;margin-top:16px">
         <table style="border-collapse:collapse;font-size:13.5px;min-width:250px">
           <tr style="background:#F3F6FA">
-            <td style="padding:11px 14px;font-family:'Cairo',sans-serif;font-weight:700">الإجمالي</td>
-            <td style="padding:11px 14px;font-family:'Cairo',sans-serif;font-weight:700;font-size:18px;color:#002050">
+            <td style="padding:11px 14px;font-family:Arial,'Helvetica Neue',sans-serif;font-weight:700">الإجمالي</td>
+            <td style="padding:11px 14px;font-family:Arial,'Helvetica Neue',sans-serif;font-weight:700;font-size:18px;color:#002050">
               ${money(o.total)} ج</td>
           </tr>
         </table>
       </div>
       <div style="margin-top:18px;padding:11px 13px;background:#EAF2FA;border:1px solid #B9D4EA;border-radius:9px;font-size:11.5px;line-height:1.75">
-        <b style="font-family:'Cairo',sans-serif">شروط التسعير:</b> ${esc(PRICE_NOTE)}
+        <b style="font-family:Arial,'Helvetica Neue',sans-serif">شروط التسعير:</b> ${esc(PRICE_NOTE)}
         <br>تقدر تتابع حالة طلبك في أي وقت من تبويب «تابع طلبك».
       </div>`:`<div style="margin-top:18px;padding:11px 13px;background:#EAF2FA;border:1px solid #B9D4EA;border-radius:9px;font-size:11.5px;line-height:1.75">
         هيتواصل معاك المصنع بالتفاصيل والسعر. تقدر تتابع حالة الطلب في أي وقت من تبويب «تابع طلبك».
@@ -2767,7 +2826,7 @@ function showInstallHelp(){
   const ov = document.createElement('div');
   ov.id = 'installHelpOverlay';
   ov.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(0,20,50,.72);display:flex;align-items:center;justify-content:center;padding:20px';
-  ov.innerHTML = `<div style="background:#fff;border-radius:16px;padding:24px 20px;max-width:340px;text-align:center;font-size:14.5px;line-height:2;color:#12233d;font-family:'Cairo',sans-serif">
+  ov.innerHTML = `<div style="background:#fff;border-radius:16px;padding:24px 20px;max-width:340px;text-align:center;font-size:14.5px;line-height:2;color:#12233d;font-family:Arial,'Helvetica Neue',sans-serif">
     ${body}
     <button id="closeInstallHelp" style="margin-top:20px;background:#002050;color:#fff;padding:11px 26px;border-radius:10px;font-weight:700;font-size:14px">تمام</button>
   </div>`;
