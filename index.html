@@ -255,16 +255,6 @@ input::placeholder{color:#A8B4C2}
 .btn.act-report{background:#F1EEFA;border:1.5px solid #B7ABDD;color:#40308A}
 .btn:disabled{opacity:.55}
 
-/* المستخدمين المحفوظين */
-.people{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:11px}
-.person{display:inline-flex;align-items:stretch;border:1.5px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
-.person.on{border-color:var(--brand);background:#EAF2FA}
-.person>button{padding:6px 9px;font-size:11.5px;color:var(--navy);text-align:right;line-height:1.3}
-.person>button small{display:block;font-size:10px;color:var(--muted);font-weight:400}
-.person.on>button{color:#0B4A7A}
-.person .x{padding:0 8px;border-inline-start:1px solid var(--line);color:var(--muted);font-size:12px}
-.person .x:hover{color:var(--danger)}
-
 /* ============ الإكسسوارات ============ */
 .acc{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
 .acc:last-of-type{border-bottom:0}
@@ -449,7 +439,7 @@ const ACCESSORIES = [
   {id:'h8', name:'جوان',                          en:'Gasket',                               price:6,    unit:'متر'}
 ];
 
-const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders', LS_TAB = 'wpc_tab', LS_SECTION = 'wpc_section', LS_PEOPLE = 'wpc_people';
+const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders', LS_TAB = 'wpc_tab', LS_SECTION = 'wpc_section';
 
 /* ============================================================
    الحالة
@@ -462,7 +452,6 @@ const state = {
     itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null, docImages:{}, docImageBusy:null,
     viewArchive:false, archRows:null, archLoading:false, archBusy:null},
   profile: load(LS_PROFILE, {name:'', phone:'', region:''}),
-  people:  load(LS_PEOPLE, []),   // كل المستخدمين اللي اتسجّلوا على الجهاز ده — للتبديل بينهم
   cart:    load(LS_CART, []),
   orders:  load(LS_ORDERS, []),
   pick:{code:'', size:null, custom:{w:'',h:''}, frame:null, dbror:null, frameHeight:'', qty:1},
@@ -526,45 +515,6 @@ function cartTotal(){return state.cart.reduce((s,it)=>s+linePrice(it),0);}
 function cartCount(){return state.cart.length;}
 function phoneOk(p){return /^0?1[0-9]{9}$/.test(String(p).replace(/\s/g,''));}
 function profileOk(){return !!state.profile.name.trim() && phoneOk(state.profile.phone);}
-
-/* ============================================================
-   المستخدمين المحفوظين على الجهاز — تبديل من غير ما تكتب البيانات تاني
-   المفتاح هو رقم الموبايل (آخر ٩ أرقام) عشان نفس الشخص ما يتكررش.
-   ============================================================ */
-function phoneKey_(ph){ return String(ph||'').replace(/\D/g,'').slice(-9); }
-
-// بيحفظ/بيحدّث المستخدم الحالي في القايمة — بيتنادى بس لما البيانات تبقى مكتملة وصحيحة
-function rememberPerson_(){
-  if(!profileOk()) return;
-  const k = phoneKey_(state.profile.phone);
-  if(!k) return;
-  const list = (state.people||[]).filter(p=>phoneKey_(p.phone)!==k);
-  list.unshift({ name:state.profile.name.trim(), phone:state.profile.phone.trim(), region:(state.profile.region||'').trim() });
-  state.people = list.slice(0,15);   // آخر ١٥ مستخدم يكفوا
-  save(LS_PEOPLE, state.people);
-}
-
-function switchPerson_(key){
-  const p = (state.people||[]).find(x=>phoneKey_(x.phone)===key);
-  if(!p) return;
-  if(state.cart.length && !confirm('في سلة مفتوحة للمستخدم الحالي. التبديل هيسيب السلة زي ما هي — تحب تكمّل؟')) return;
-  state.profile = { name:p.name, phone:p.phone, region:p.region||'' };
-  save(LS_PROFILE, state.profile);
-  state.touched = false;
-  state.track.rows = null;   // حالة الطلبات بتتحمّل من جديد لصاحب الرقم الجديد
-  render();
-  toast('اتبدّل المستخدم: '+p.name);
-}
-
-function removePerson_(key){
-  const p = (state.people||[]).find(x=>phoneKey_(x.phone)===key);
-  if(!p) return;
-  if(!confirm('حذف «'+p.name+'» من قايمة المستخدمين المحفوظين؟')) return;
-  state.people = (state.people||[]).filter(x=>phoneKey_(x.phone)!==key);
-  save(LS_PEOPLE, state.people);
-  render();
-  toast('اتحذف من القايمة');
-}
 
 function toast(m,ms){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms||2600);}
 function busy(on,txt){const b=document.getElementById('busy');if(txt)document.getElementById('busyTxt').textContent=txt;b.classList.toggle('on',!!on);}
@@ -766,21 +716,9 @@ function viewNew(){
              : state.newSection==='bror'  ? secBror
              : secEmpty;
 
-  const curKey = phoneKey_(state.profile.phone);
-  const peopleChips = (state.people||[]).map(p=>{
-    const k = phoneKey_(p.phone);
-    const on = k && k===curKey;
-    return `<span class="person ${on?'on':''}">
-      <button data-act="person-pick" data-k="${esc(k)}">${on?'✅ ':''}${esc(p.name)}<small>${esc(p.phone)}</small></button>
-      <button class="x" data-act="person-del" data-k="${esc(k)}" title="حذف من القايمة">✕</button>
-    </span>`;
-  }).join('');
-
   return `
   <section class="card">
     <div class="step"><span class="n">١</span><h2>بياناتك</h2><span class="hint">إجباري</span></div>
-    ${peopleChips?`<div class="note" style="margin-top:0;margin-bottom:7px">المستخدمين المحفوظين — اضغط عشان تبدّل:</div>
-    <div class="people">${peopleChips}</div>`:''}
     <label class="fld"><span>الاسم <b class="req">*</b></span>
       <input type="text" class="${bad && !state.profile.name.trim()?'bad':''}" value="${esc(state.profile.name)}" placeholder="الاسم كما هو مسجّل" data-act="prof" data-k="name"></label>
     <div class="row2">
@@ -790,8 +728,6 @@ function viewNew(){
         <input type="text" value="${esc(state.profile.region)}" placeholder="طنطا مثلاً" data-act="prof" data-k="region"></label>
     </div>
     ${bad && !profileOk() ? `<div class="note" style="color:var(--danger)">الاسم ورقم الموبايل إجباريين — الرقم لازم يكون ١١ رقم يبدأ بـ 01.</div>` : ''}
-    ${profileOk() && !(state.people||[]).some(p=>phoneKey_(p.phone)===curKey)
-      ? `<button class="btn act-edit sm" style="margin-top:9px" data-act="person-save"><i>💾</i>احفظ المستخدم ده للتبديل بعدين</button>` : ''}
   </section>
 
   ${nav}
@@ -1202,6 +1138,15 @@ async function exportAdminOrderPdf(o){
   const its = state.admin.items[o.id] || [];
   if(!its.length){ toast('مفيش أصناف لهذا الطلب'); return; }
   makeDoc(buildAdminDocOrder_(o, its),'order');
+}
+
+// عرض سعر بالمبالغ — نفس مستند الطلب بالظبط بس بالأسعار ظاهرة، من غير ما نأثّر على باقي التطبيق
+// (pricesVisible() فاضلة false زي ما هي — الأسعار هنا بتتبعت صراحة لـ makeDoc/docHTML)
+async function exportAdminOrderQuote(o){
+  await toggleOrderItemsLoadOnly_(o.id);
+  const its = state.admin.items[o.id] || [];
+  if(!its.length){ toast('مفيش أصناف لهذا الطلب'); return; }
+  makeDoc(buildAdminDocOrder_(o, its),'quote',true);
 }
 
 // بيفتح واتساب من غير رقم محدد — عكس تدفق العميل بالظبط، هنا المصنع هو اللي بيختار
@@ -2110,6 +2055,7 @@ function viewAdmin(){
          <button class="btn act-del sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}><i>🗑️</i>${delBusy?'جارٍ الحذف…':'حذف'}</button>`
       : `<button class="btn act-edit sm" data-act="adm-edit" data-id="${esc(o.id)}"><i>✏️</i>تعديل</button>
          <button class="btn act-send sm" data-act="adm-share" data-id="${esc(o.id)}"><i>📤</i>إرسال</button>
+         <button class="btn act-report sm" data-act="adm-quote" data-id="${esc(o.id)}"><i>💰</i>عرض سعر</button>
          <button class="btn act-arch sm" data-act="adm-archive" data-id="${esc(o.id)}" ${archBusy?'disabled':''}><i>📦</i>${archBusy?'…':'أرشفة'}</button>`;
 
     return `<div class="ord">
@@ -2202,14 +2148,12 @@ document.addEventListener('click',e=>{
       toast('اتلغى التعديل');
     } break;
     case 'track-load': loadTrack(); break;
-    case 'person-pick': switchPerson_(el.dataset.k); break;
-    case 'person-del':  removePerson_(el.dataset.k); break;
-    case 'person-save': rememberPerson_(); render(); toast('اتحفظ المستخدم'); break;
     case 'adm-login':  adminLoad(); break;
     case 'adm-reload': state.admin.viewArchive ? loadArchive() : adminLoad(); break;
     case 'adm-set':    setStatus(el.dataset.id, el.dataset.st); break;
     case 'adm-toggle-items': { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) toggleOrderItemsPreview(o); } break;
     case 'adm-pdf':     { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) exportAdminOrderPdf(o); } break;
+    case 'adm-quote':   { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) exportAdminOrderQuote(o); } break;
     case 'adm-share':    { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) shareAdminOrderImage(o); } break;
     case 'adm-edit':     { const list=(state.admin.viewArchive?state.admin.archRows:state.admin.rows)||[];
                            const o=list.find(x=>String(x.id)===String(el.dataset.id)); if(o) adminEditOrder(o); } break;
@@ -2494,7 +2438,6 @@ function submitOrder(){
     return;
   }
   const wasEditing = !!state.editingId;
-  if(!state.editingMeta) rememberPerson_();   // المستخدم بيتحفظ تلقائي أول ما يبعت طلب
   const o=draftOrder();
   o.msg=buildMessage(o);
   if(wasEditing){
@@ -2558,8 +2501,7 @@ function sortSizeKeys_(keys){
   });
 }
 
-function docRows(o){
-  const priced=pricesVisible();
+function docRows(o, priced){
   const items=o.items||[];
   const doorItems=items.filter(it=>it.kind==='door');
   const otherItems=items.filter(it=>it.kind!=='door');
@@ -2599,9 +2541,9 @@ function docTotalsHTML(o){
   </div>`;
 }
 
-function docHTML(o,mode){
+function docHTML(o,mode,priced){
   const isQuote = mode==='quote';
-  const priced = pricesVisible();
+  if(priced===undefined) priced = pricesVisible();
   return `
   <div style="position:relative;font-family:Arial,'Helvetica Neue',sans-serif;direction:rtl;background:#fff;padding:34px 32px;color:#14243A;">
     <div style="position:absolute;inset:0;background:url('${ASSETS.mark}') no-repeat center center;background-size:34% auto;opacity:.06;"></div>
@@ -2645,7 +2587,7 @@ function docHTML(o,mode){
             <th style="padding:9px 5px;width:74px">الإجمالي</th>`:''}
           </tr>
         </thead>
-        <tbody style="background:#fff">${docRows(o)}</tbody>
+        <tbody style="background:#fff">${docRows(o,priced)}</tbody>
       </table>
       ${docTotalsHTML(o)}
 
@@ -2672,13 +2614,13 @@ function docHTML(o,mode){
   </div>`;
 }
 
-async function makeDoc(o,mode){
+async function makeDoc(o,mode,priced){
   if(!o.items || !o.items.length){toast('مفيش أصناف');return;}
   if(typeof html2canvas==='undefined' || !window.jspdf){toast('محتاج نت أول مرة عشان يجهّز الـ PDF');return;}
   busy(true,'جارٍ تجهيز المستند…');
   try{
     const paper=document.getElementById('paper');
-    paper.innerHTML=docHTML(o,mode);
+    paper.innerHTML=docHTML(o,mode,priced);
     await new Promise(r=>setTimeout(r,320));           // نستنى الصور والخطوط
     const canvas=await html2canvas(paper.firstElementChild,{scale:2,backgroundColor:'#ffffff',useCORS:true});
     const {jsPDF}=window.jspdf;
@@ -2691,7 +2633,7 @@ async function makeDoc(o,mode){
       let left=ih, pos=0;
       while(left>0){ pdf.addImage(img,'JPEG',0,pos,iw,ih); left-=ph; pos-=ph; if(left>0) pdf.addPage(); }
     }
-    pdf.save((mode==='quote'?'عرض_سعر_':'طلب_')+o.id+'.pdf');
+    pdf.save((mode==='quote'?'عرض_سعر_':'طلب_')+o.id+(priced?'_بالسعر':'')+'.pdf');
     paper.innerHTML='';
   }catch(err){ toast('تعذّر تجهيز الـ PDF: '+(err&&err.message?err.message:err)); }
   busy(false);
