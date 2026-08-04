@@ -219,6 +219,20 @@ input::placeholder{color:#A8B4C2}
 
 /* ============ رف الأبواب ============ */
 .rail{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 9px;padding:4px 2px 6px}
+/* وضع التركيز: الباب المختار لوحده وجنبه زرار الرجوع للأكواد */
+.focusrow{display:flex;align-items:center;gap:12px;padding:2px 2px 10px;border-bottom:1px solid var(--line);margin-bottom:11px}
+.focusrow .door{width:88px;flex:0 0 auto}
+.whoswitch{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.whoswitch .who{display:flex;align-items:center;gap:8px;padding:11px 12px;border:1.5px solid var(--line);
+  border-radius:11px;background:#fff;text-align:right;color:var(--muted);transition:.15s}
+.whoswitch .who span{display:block;font-size:12.5px;font-weight:700;line-height:1.35}
+.whoswitch .who small{display:block;font-size:10.5px;font-weight:400;color:var(--muted)}
+.whoswitch .who.on{border-color:var(--brand);background:#EAF2FA;color:var(--navy)}
+.whoswitch .who.on .i{color:var(--brand)}
+.fld textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 11px;
+  font-family:inherit;font-size:14px;font-weight:700;resize:vertical;background:#fff;color:var(--ink)}
+.fld textarea:focus{border-color:var(--brand);outline:none}
+.focusrow .changedoor{width:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;padding:9px 13px;font-size:12px}
 .door{text-align:center;padding:0;min-width:0}
 .door .leaf{
   position:relative;width:100%;aspect-ratio:3/4;border-radius:9px;overflow:hidden;
@@ -418,7 +432,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v55';
+const APP_BUILD   = 'v56';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -508,6 +522,8 @@ const state = {
   br:{size:'6×9', code:'', rods:1}, // برور إضافي بالعود — code = كود/لون الباب (إجباري زي الحلق)
   acc:{},
   touched:false,             // اتضغط إرسال؟ عشان نوضّح الحقول الناقصة
+  customer:{same:true, name:''},   // صاحب الأوردر: نفس المستخدم ولا عميل تاني
+  orderNote:'',                    // ملاحظات الطلب (اختياري)
   editingId:null,            // لو مش null، معناها بيتعدّل طلب موجود بدل ما يتبعت طلب جديد
   editingMeta:null           // بيانات صاحب الطلب الأصلي لما المصنع هو اللي بيعدّل
 };
@@ -689,19 +705,25 @@ function viewNew(){
     </div>` : '';
 
   // ── شبكة الأبواب مقسّمة صفوف من ٤، واللوحة بتتحط تحت الصف اللي فيه المختار ──
-  let doorsGrid='';
-  for(let i=0;i<DOORS.length;i+=4){
-    const row=DOORS.slice(i,i+4);
-    const hasSel = row.some(d=>d.code===p.code);
-    doorsGrid += row.map(d=>`
+  // لما يختار باب، بنعرض الباب ده لوحده + لوحة التفاصيل — باقي الأكواد بتختفي
+  // عشان ميحصلش لخبطة، وبترجع تظهر تاني أول ما يضيف للسلة أو يلغي الاختيار.
+  const doorCard = d => `
       <button class="door ${p.code===d.code?'on':''}" data-act="pick-door" data-code="${d.code}">
         <div class="leaf" data-code="${esc(d.code)}">
           <img src="${d.img}" alt="" loading="lazy" onerror="this.closest('.leaf').classList.add('noimg');this.remove();">
-          <span class="zoombadge" data-act="door-preview" data-code="${esc(d.code)}">🔍</span>
+          <span class="zoombadge" data-act="door-preview" data-code="${esc(d.code)}">${ico("search")}</span>
         </div>
         <span class="code">${esc(d.code)}</span><span class="nm">${esc(d.name)}</span>
-      </button>`).join('');
-    if(hasSel) doorsGrid += detailPanel;
+      </button>`;
+
+  let doorsGrid='';
+  if(p.code){
+    const sel = DOORS.find(d=>d.code===p.code);
+    doorsGrid = `<div class="focusrow">${doorCard(sel)}
+        <button class="btn ghost sm changedoor" data-act="pick-door" data-code="${esc(p.code)}">${ico("back")} غيّر الباب</button>
+      </div>${detailPanel}`;
+  } else {
+    doorsGrid = DOORS.map(doorCard).join('');
   }
 
   const nav = `
@@ -715,7 +737,7 @@ function viewNew(){
   const secDoors = `
   <section class="card">
     <div class="step"><span class="n">${ico("door","lg")}</span><h2>اختر الباب</h2><span class="hint">١٠ ألوان</span></div>
-    <div class="rail" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px 9px">${doorsGrid}</div>
+    <div class="rail" style="${p.code?'display:block':'display:grid;grid-template-columns:repeat(4,1fr);gap:12px 9px'}">${doorsGrid}</div>
   </section>`;
 
   const secAcc = `
@@ -776,6 +798,23 @@ function viewNew(){
         <input type="text" value="${esc(state.profile.region)}" placeholder="طنطا مثلاً" data-act="prof" data-k="region"></label>
     </div>
     ${bad && !profileOk() ? `<div class="note" style="color:var(--danger)">الاسم ورقم الموبايل إجباريين — الرقم لازم يكون ١١ رقم يبدأ بـ 01.</div>` : ''}
+  </section>
+
+  <section class="card">
+    <div class="step"><span class="n">${ico("user","lg")}</span><h2>صاحب الأوردر</h2><span class="hint">مين الطلب ده ليه؟</span></div>
+    <div class="whoswitch">
+      <button class="who ${state.customer.same?'on':''}" data-act="cust-same" data-v="1">
+        ${ico("checkC")}<span>نفس المستخدم<small>${esc(state.profile.name||'—')}</small></span></button>
+      <button class="who ${state.customer.same?'':'on'}" data-act="cust-same" data-v="0">
+        ${ico("user")}<span>عميل تاني<small>اكتب اسمه</small></span></button>
+    </div>
+    ${state.customer.same?'':`
+    <label class="fld" style="margin-top:11px"><span>اسم صاحب الطلب <b class="req">*</b></span>
+      <input type="text" class="${bad && !state.customer.name.trim()?'bad':''}" value="${esc(state.customer.name)}"
+        placeholder="اسم العميل صاحب الأوردر" data-act="cust-name"></label>
+    ${bad && !state.customer.name.trim()?`<div class="note" style="color:var(--danger)">اكتب اسم صاحب الطلب.</div>`:''}`}
+    <label class="fld" style="margin-top:11px"><span>ملاحظات <span style="font-weight:400;color:var(--muted)">(اختياري)</span></span>
+      <textarea rows="2" placeholder="أي تفاصيل إضافية عن الطلب" data-act="ord-note">${esc(state.orderNote)}</textarea></label>
   </section>
 
   ${nav}
@@ -882,8 +921,10 @@ function viewOrders(){
     return `
     <div class="ord">
       <div class="oh"><span class="oid">#${esc(o.id)}</span>${live?statusPill(live.status):''}</div>
-      <div class="os">${esc(dateStr(o.ts))} · ${o.items.length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}<br>
+      <div class="os">${esc(dateStr(o.ts))} · ${o.items.length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
+        ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}<br>
         ${esc(o.items.map(x=>x.title).slice(0,3).join('، '))}${o.items.length>3?'…':''}
+        ${o.note?('<br><span style="color:#8A6512">ملاحظات: '+esc(o.note)+'</span>'):''}
         ${live && live.note?('<br><b style="color:var(--brand)">'+esc(live.note)+'</b>'):''}</div>
       <div class="oa">
         ${editBtn}
@@ -2231,7 +2272,9 @@ function viewAdmin(){
 
     return `<div class="ord">
       <div class="oh"><span class="oid">#${esc(o.id)}</span>${statusPill(o.status)}</div>
-      <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}<br>
+      <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}
+        ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}
+        ${o.ordNote?`<br><span style="color:#8A6512">ملاحظات: ${esc(o.ordNote)}</span>`:''}<br>
         ${esc(o.date||'')} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''} · ${money(o.total||0)} ج</div>
       <div class="chips" style="margin-top:10px;gap:6px;flex-wrap:nowrap">${btns}</div>
       ${busy?'<div class="note">جارٍ الحفظ…</div>':''}
@@ -2264,6 +2307,9 @@ document.addEventListener('click',e=>{
   switch(a){
     case 'go-cart': state.tab='cart'; render(); window.scrollTo({top:0}); break;
     case 'pick-door': selectDoor(el.dataset.code); break;
+    case 'cust-same': state.customer.same = el.dataset.v==='1';
+                      if(state.customer.same) state.customer.name='';
+                      render(); break;
     case 'sec': state.newSection=el.dataset.s; save(LS_SECTION,state.newSection); render(); window.scrollTo({top:0,behavior:'smooth'}); break;
     case 'door-preview': showDoorPreview(el.dataset.code); break;
     case 'preview-select':
@@ -2374,6 +2420,8 @@ document.addEventListener('input',e=>{
   if(a==='adm-pw'){ state.admin.pw=el.value; const b=document.querySelector('[data-act="adm-login"]'); if(b) b.disabled=!el.value; return; }
   if(a==='prof'){ state.profile[el.dataset.k]=el.value; save(LS_PROFILE,state.profile); return; }
   if(a==='cust'){ state.pick.custom[el.dataset.k]=el.value; refreshSummary(); return; }
+  if(a==='cust-name'){ state.customer.name=el.value; return; }
+  if(a==='ord-note'){ state.orderNote=el.value; return; }
   if(a==='frame-height'){ state.pick.frameHeight=el.value; return; }
   if(a==='qty-set'){ state.pick.qty=Math.max(1,parseInt(el.value,10)||1); refreshSummary(); return; }
   if(a==='acc-set'){ state.acc[el.dataset.id]=Math.max(0,parseFloat(el.value)||0); refreshAccBtn(); return; }
@@ -2577,7 +2625,11 @@ function draftOrder(){
     name: m ? m.name : state.profile.name,
     phone: m ? m.phone : state.profile.phone,
     region: m ? m.region : state.profile.region,
-    warehouse:WAREHOUSE, items:JSON.parse(JSON.stringify(state.cart)), total:cartTotal()
+    warehouse:WAREHOUSE, items:JSON.parse(JSON.stringify(state.cart)), total:cartTotal(),
+    // صاحب الأوردر: لو مش نفس المستخدم بنسجّل اسمه، وده اللي بيتبعت للمصنع كـ Distributor
+    customer: (!m && !state.customer.same && state.customer.name.trim())
+                ? state.customer.name.trim() : '',
+    note: state.orderNote.trim()
   };
 }
 
@@ -2588,7 +2640,10 @@ function buildMessage(o){
   m+='الاسم: '+(o.name||'-')+'\n';
   m+='المنطقة: '+(o.region||'-')+'\n';
   m+='الموبايل: '+(o.phone||'-')+'\n';
-  m+='المخزن: '+WAREHOUSE+'\n——————\n';
+  if(o.customer) m+='صاحب الأوردر: '+o.customer+'\n';
+  m+='المخزن: '+WAREHOUSE+'\n';
+  if(o.note) m+='ملاحظات: '+o.note+'\n';
+  m+='——————\n';
   o.items.forEach((it,i)=>{
     m+=(i+1)+'. '+it.title+'\n';
     if(it.kind==='door'){
@@ -2658,6 +2713,12 @@ function submitOrder(){
     toast('اكتب الاسم ورقم موبايل صحيح — إجباري');
     return;
   }
+  if(!state.editingMeta && !state.customer.same && !state.customer.name.trim()){
+    state.touched=true; state.tab='new'; render();
+    window.scrollTo({top:0,behavior:'smooth'});
+    toast('اكتب اسم صاحب الطلب — إجباري');
+    return;
+  }
   const wasEditing = !!state.editingId;
   const o=draftOrder();
   o.msg=buildMessage(o);
@@ -2671,6 +2732,7 @@ function submitOrder(){
   const wasAdminEdit = !!state.editingMeta;
   state.cart=[]; save(LS_CART,state.cart); state.touched=false;
   state.editingId=null; state.editingMeta=null;
+  state.customer={same:true,name:''}; state.orderNote='';   // تصفير بيانات صاحب الأوردر للطلب الجاي
 
   if(APPS_SCRIPT_URL){
     fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',
@@ -2793,7 +2855,13 @@ function docHTML(o,mode,priced){
           <td style="padding:5px 0;color:#6B7A8C">المنطقة</td><td style="font-weight:700">${esc(o.region||'-')}</td>
           <td style="padding:5px 0;color:#6B7A8C">المخزن</td><td style="font-weight:700">${esc(o.warehouse||WAREHOUSE)}</td>
         </tr>
+        ${o.customer?`<tr>
+          <td style="padding:5px 0;color:#6B7A8C">صاحب الأوردر</td>
+          <td colspan="3" style="font-weight:700;color:#0B4A7A">${esc(o.customer)}</td>
+        </tr>`:''}
       </table>
+      ${o.note?`<div style="margin-top:12px;padding:9px 12px;background:#FFF6E5;border-inline-start:3px solid #E8C9A8;border-radius:7px;font-size:12px">
+        <b>ملاحظات:</b> ${esc(o.note)}</div>`:''}
 
       <table style="width:100%;margin-top:18px;border-collapse:collapse;font-size:12px">
         <thead>
