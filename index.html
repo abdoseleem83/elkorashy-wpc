@@ -222,6 +222,15 @@ input::placeholder{color:#A8B4C2}
 /* وضع التركيز: الباب المختار لوحده وجنبه زرار الرجوع للأكواد */
 .focusrow{display:flex;align-items:center;gap:12px;padding:2px 2px 10px;border-bottom:1px solid var(--line);margin-bottom:11px}
 .focusrow .door{width:88px;flex:0 0 auto}
+.rodrow{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.rodbox{border:1.5px solid var(--line);border-radius:11px;padding:10px;background:#fff;text-align:center}
+.rodbox .rl{font-size:12px;font-weight:700;color:var(--navy);line-height:1.4}
+.rodbox .rl b{color:var(--wood)}
+.rodbox .rl small{display:block;font-size:10px;font-weight:400;color:var(--muted)}
+.rodbox input{width:100%;margin-top:7px;border:1.5px solid var(--line);border-radius:9px;
+  padding:9px 6px;text-align:center;font-size:16px;font-weight:700;color:var(--ink)}
+.rodbox input:focus{border-color:var(--wood);outline:none}
+.rodbox .rp{margin-top:5px;font-size:10.5px;color:var(--muted)}
 .whoswitch{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .whoswitch .who{display:flex;align-items:center;gap:8px;padding:11px 12px;border:1.5px solid var(--line);
   border-radius:11px;background:#fff;text-align:right;color:var(--muted);transition:.15s}
@@ -432,14 +441,56 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v56';
+const APP_BUILD   = 'v58';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
 const ADMIN_WHATS = '201067765483';   // مش مستخدم في إرسال الطلبات دلوقتي — سايبه لو احتجناه تاني
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2aVRVaUVubR3w4a3weiQTHGp03SvMozh83NY3OtBD14n1YugCjbcWdYEJUPJb-s3E/exec';
 
-const ROD_LEN = 2.15;   // طول العود بالمتر — الحلق والبرور بيتباعوا بالعود
+/* ============================================================
+   أطوال الأعواد الحقيقية (المصنع)
+   الحلق بيتقطّع مقاسين: قائم ٢٢٠ سم (جنبي الباب) وعتب ١١٠ سم (فوق الباب).
+   البرور عود واحد ٢٢٦ سم.
+   التسعير بيتحسب بالمتر الطولي × طول العود الفعلي — فكل مقاس له سعره.
+   ============================================================ */
+const FRAME_ROD_TYPES = [
+  { key:'jamb',   cm:220, label:'قائم', hint:'جنبي الباب' },
+  { key:'header', cm:110, label:'عتب',  hint:'أعلى الباب' }
+];
+const BROR_ROD_CM = 226;
+const ROD_LEN = 2.20;   // للتوافق مع الكود القديم — الطول الافتراضي للحلق بالمتر
+
+/* ============================================================
+   متطلبات التقطيع للباب الواحد (بيانات المصنع)
+   الباب بياخد: ٣ أعواد حلق — عودين ٢٢٠ سم (القوائم) + عود ١١٠ سم (العتب)
+                ٥ أعواد برور — كل عود ٢٢٦ سم
+   الأرقام دي بتتحسب أوتوماتيك لكل باب وبتظهر في مستند الطلب
+   عشان المصنع يعرف يقطّع على طول من غير حسابات بالإيد.
+   ============================================================ */
+const FRAME_PER_DOOR = [
+  { qty:2, cm:220, label:'قائم' },     // جنبي الباب
+  { qty:1, cm:110, label:'عتب'  }      // أعلى الباب
+];
+const BROR_PER_DOOR  = { qty:5, cm:BROR_ROD_CM };
+
+// إجمالي أعواد الحلق/البرور المطلوبة لعدد أبواب
+function frameRodsFor(doorQty){
+  const n = Number(doorQty)||0;
+  return FRAME_PER_DOOR.map(f=>({ ...f, total:f.qty*n }));
+}
+function brorRodsFor(doorQty){
+  const n = Number(doorQty)||0;
+  return { ...BROR_PER_DOOR, total:BROR_PER_DOOR.qty*n };
+}
+// نص مختصر يتعرض جنب الباب في المستندات
+function cutText_(it){
+  if(it.kind!=='door') return '';
+  const parts=[];
+  if(it.frame) parts.push(frameRodsFor(it.qty).map(f=>f.total+'×'+f.cm+' سم').join(' + ')+' حلق');
+  if(it.dbror) parts.push(brorRodsFor(it.qty).total+'×'+BROR_PER_DOOR.cm+' سم برور');
+  return parts.join(' · ');
+}
 
 // بيبني نص الحلق شامل الارتفاع الخاص لو الموزع/العميل حدده (اختياري)
 function frameText_(cm, height){
@@ -518,7 +569,7 @@ const state = {
   orders:  load(LS_ORDERS, []),
   pick:{code:'', size:null, custom:{w:'',h:''}, frame:null, dbror:null, frameHeight:'', qty:1},
   newSection: load(LS_SECTION, ''),   // '' (لسه محددش) | doors | acc | frame | bror
-  fr:{cm:10, code:'', rods:1},   // حلق إضافي بالعود — code = كود/لون الباب (إجباري)
+  fr:{cm:10, code:'', jamb:2, header:1},   // حلق منفصل: عدد قوائم ٢٢٠ سم + عدد عتب ١١٠ سم، والكود إجباري
   br:{size:'6×9', code:'', rods:1}, // برور إضافي بالعود — code = كود/لون الباب (إجباري زي الحلق)
   acc:{},
   touched:false,             // اتضغط إرسال؟ عشان نوضّح الحقول الناقصة
@@ -573,7 +624,7 @@ function showDoorPreview(code){
 }
 function millById(id){return MILLS.find(m=>m.id===id)||MILLS[1];}
 function priceForWidth(w){const n=Number(w)||0;for(const s of SIZES) if(n<=s.w) return s.price;return SIZES[SIZES.length-1].price;}
-function rodPrice(perMetre){return Math.round(perMetre*ROD_LEN*100)/100;}
+function rodPrice(perMetre, cm){return Math.round(perMetre*((Number(cm)||220)/100)*100)/100;}
 function linePrice(it){return (it.kind==='door'?it.unitPrice:it.price)*it.qty;}
 function cartTotal(){return state.cart.reduce((s,it)=>s+linePrice(it),0);}
 function cartCount(){return state.cart.length;}
@@ -643,8 +694,12 @@ function viewNew(){
   const dbrorCol=BRORS.map(b=>`<button class="colchip ${p.dbror===b.size?'on':''}" data-act="pick-dbror" data-size="${esc(b.size)}">${esc(b.size)}</button>`).join('')
     +`<button class="colchip ${p.dbror===''?'on':''}" data-act="pick-dbror" data-size="">بدون</button>`;
 
-  const frRods=Number(state.fr.rods)||0;
+  const frJamb=Math.max(0,Number(state.fr.jamb)||0);
+  const frHeader=Math.max(0,Number(state.fr.header)||0);
+  const frRods=frJamb+frHeader;
   const frSel=FRAMES.find(f=>f.cm===state.fr.cm)||FRAMES[0];
+  // سعر كل مقاس على حدة حسب طوله الفعلي
+  const frJambPrice=rodPrice(frSel.price,220), frHeaderPrice=rodPrice(frSel.price,110);
   const frChips=FRAMES.map(f=>`
     <button class="chip ${state.fr.cm===f.cm?'on':''}" data-act="fr-cm" data-cm="${f.cm}">${f.cm} سم</button>`).join('');
   // كود/لون الباب للحلق المنفصل — إجباري زي باقي الاختيارات
@@ -750,20 +805,34 @@ function viewNew(){
 
   const secFrame = `
   <section class="card">
-    <div class="step"><span class="n">${ico("frame","lg")}</span><h2>حلق فقط</h2><span class="hint">بالعود — ${ROD_LEN} م</span></div>
+    <div class="step"><span class="n">${ico("frame","lg")}</span><h2>حلق فقط</h2><span class="hint">قائم ٢٢٠ · عتب ١١٠ سم</span></div>
     <div class="sol-h" style="margin-bottom:6px">المقاس</div>
     <div class="chips">${frChips}</div>
     <div class="sol-h" style="margin:12px 0 6px">كود الباب (اللون) <b class="req">*</b></div>
     <div class="chips">${frCodeChips}</div>
-    <label class="fld" style="margin-top:12px"><span>عدد العيدان</span>
-      <input type="number" inputmode="numeric" min="0" step="1" value="${esc(state.fr.rods)}" placeholder="مثال 4" data-act="fr-rods"></label>
-    <button class="btn ghost sm" data-act="add-fr" ${frRods>0&&state.fr.code?'':'disabled'}>
-      ${!state.fr.code ? 'اختر كود الباب أولاً' : (frRods>0 ? `أضف ${frRods} عود حلق ${frSel.cm} سم — ${esc(state.fr.code)}` : 'اكتب عدد العيدان')}</button>
+    <div class="sol-h" style="margin:12px 0 6px">عدد الأعواد لكل مقاس</div>
+    <div class="rodrow">
+      <div class="rodbox">
+        <div class="rl">قائم <b>٢٢٠ سم</b><small>جنبي الباب</small></div>
+        <input type="number" inputmode="numeric" min="0" step="1" value="${esc(state.fr.jamb)}" data-act="fr-jamb">
+        ${pricesVisible()?`<div class="rp">${money(frJambPrice)} ج/عود</div>`:''}
+      </div>
+      <div class="rodbox">
+        <div class="rl">عتب <b>١١٠ سم</b><small>أعلى الباب</small></div>
+        <input type="number" inputmode="numeric" min="0" step="1" value="${esc(state.fr.header)}" data-act="fr-header">
+        ${pricesVisible()?`<div class="rp">${money(frHeaderPrice)} ج/عود</div>`:''}
+      </div>
+    </div>
+    <div class="note" style="margin-top:9px">الباب الواحد بياخد ٢ قائم + ١ عتب — اطلب اللي محتاجه بس.</div>
+    <button class="btn ghost sm" style="margin-top:9px" data-act="add-fr" ${frRods>0&&state.fr.code?'':'disabled'}>
+      ${!state.fr.code ? 'اختر كود الباب أولاً'
+        : (frRods>0 ? `أضف ${frJamb?frJamb+' قائم':''}${frJamb&&frHeader?' + ':''}${frHeader?frHeader+' عتب':''} — حلق ${frSel.cm} سم ${esc(state.fr.code)}`
+                    : 'اكتب عدد الأعواد')}</button>
   </section>`;
 
   const secBror = `
   <section class="card">
-    <div class="step"><span class="n">${ico("bror","lg")}</span><h2>برور فقط</h2><span class="hint">بالعود — ${ROD_LEN} م</span></div>
+    <div class="step"><span class="n">${ico("bror","lg")}</span><h2>برور فقط</h2><span class="hint">العود ${BROR_ROD_CM} سم</span></div>
     <div class="sol-h" style="margin-bottom:6px">المقاس</div>
     <div class="chips">${brChips}</div>
     <div class="sol-h" style="margin:12px 0 6px">كود الباب (اللون) <b class="req">*</b></div>
@@ -859,8 +928,10 @@ function viewCart(){
       spec=it.sizeTxt+(priced?' · '+money(it.unitPrice)+' ج':'')+' × '+it.qty;
       const inc=[]; if(it.frame) inc.push('حلق '+frameText_(it.frame,it.frameHeight)); if(it.dbror) inc.push('برور '+it.dbror);
       if(inc.length) spec+='<br>شامل: '+inc.join(' + ')+(priced?' — بدون سعر':'');
+      const cut = cutText_(it);
+      if(cut) spec+='<br><span style="color:#8A6512;font-size:11px">تقطيع: '+esc(cut)+'</span>';
     } else if(it.kind==='frame'||it.kind==='bror'){
-      spec=it.qty+' عود'+(priced?' × '+money(it.price)+' ج ('+ROD_LEN+' م/عود)':'');
+      spec=it.qty+' عود'+(it.rodCm?' × '+it.rodCm+' سم':'')+(priced?' — '+money(it.price)+' ج/عود':'');
     } else spec=(priced?money(it.price)+' ج × ':'× ')+it.qty;
 
     return `<div class="line">${th}<div class="info2"><b>${esc(it.title)}</b>
@@ -949,6 +1020,90 @@ function viewOrders(){
    الأيقونات — مجموعة SVG موحّدة (هوية بصرية ثابتة على كل الأجهزة)
    بديل الإيموجي اللي كان شكله بيختلف من موبايل للتاني.
    ============================================================ */
+/* ============================================================
+   تجهيز الصور والـ PDF — نسخة محسّنة ضد التهنيج
+   المشاكل اللي كانت بتهنّج التطبيق واتحلّت هنا:
+   ١) html2canvas بينسخ الصفحة كلها قبل ما يرسم، وصفحتنا فيها صور الأبواب
+      كلها base64 (حجم كبير) — فكنا بندفع التكلفة دي في كل تصدير.
+      الحل: نخفي شبكة الأبواب مؤقتًا وقت الرسم (onclone) فمابتتنسخش.
+   ٢) scale ثابت ٢ حتى للتقارير الطويلة — كان بيطلع كانفس بملايين البكسلات
+      فالمتصفح بيقع. الحل: scale بيتحسب حسب طول المستند مع سقف أقصى للبكسلات.
+   ٣) الـ PDF الطويل كان بيحط نسخة كاملة من الصورة في كل صفحة (تكرار ضخم).
+      الحل: بنقصّ كل صفحة لوحدها من الكانفس ونحطها بحجمها بس.
+   ٤) العمليات التقيلة كانت بتقفل الواجهة تمامًا. الحل: بنسيب المتصفح
+      يتنفّس بين الخطوات (yield_) فالشاشة تفضل تتحرك ومؤشر التحميل يبان.
+   ============================================================ */
+
+const MAX_CANVAS_PIXELS = 16e6;   // سقف آمن يشتغل على الموبايلات الضعيفة
+
+// بتسيب المتصفح يرسم قبل ما نكمل — بتمنع تجميد الواجهة
+function yield_(ms){
+  return new Promise(r=>requestAnimationFrame(()=>setTimeout(r, ms||0)));
+}
+
+// بترسم محتوى #paper وترجّع canvas — بتظبط الـ scale لوحدها حسب الطول
+async function renderPaper_(html, opts){
+  const paper = document.getElementById('paper');
+  paper.innerHTML = html;
+  await yield_(60);                       // تفتح مجال للصور/الخطوط تتحمّل
+  const el = paper.firstElementChild;
+  const w = el.offsetWidth || 794;
+  const h = el.offsetHeight || 1123;
+
+  // scale المطلوب مقابل السقف المسموح
+  let scale = (opts && opts.scale) || 2;
+  const maxScale = Math.sqrt(MAX_CANVAS_PIXELS / Math.max(w*h, 1));
+  if(scale > maxScale) scale = Math.max(1, maxScale);
+
+  await yield_(0);
+  const canvas = await html2canvas(el, {
+    scale,
+    backgroundColor:'#ffffff',
+    useCORS:true,
+    logging:false,
+    imageTimeout:15000,
+    removeContainer:true,
+    // أهم سطر: بنشيل صور الكتالوج من النسخة اللي html2canvas بيرسمها
+    onclone: doc => {
+      doc.querySelectorAll('.rail, .secnav, .tabs, #view').forEach(n=>{
+        if(!n.contains(doc.getElementById('paper'))) n.remove();
+      });
+    }
+  });
+  paper.innerHTML = '';
+  await yield_(0);
+  return canvas;
+}
+
+// بتحوّل canvas لـ PDF بتقطيع صفحات حقيقي (مش تكرار نفس الصورة)
+async function canvasToPdf_(canvas, filename){
+  const {jsPDF} = window.jspdf;
+  const pdf = new jsPDF('p','mm','a4');
+  const PW = 210, PH = 297;
+  const pxPerMm = canvas.width / PW;
+  const pageHpx  = Math.floor(PH * pxPerMm);      // ارتفاع الصفحة بالبكسل
+  const pages = Math.max(1, Math.ceil(canvas.height / pageHpx));
+
+  const slice = document.createElement('canvas');
+  const ctx = slice.getContext('2d');
+
+  for(let i=0; i<pages; i++){
+    const sy = i * pageHpx;
+    const sh = Math.min(pageHpx, canvas.height - sy);
+    slice.width = canvas.width;
+    slice.height = sh;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0,0,slice.width,slice.height);
+    ctx.drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, canvas.width, sh);
+
+    const img = slice.toDataURL('image/jpeg', 0.88);
+    if(i > 0) pdf.addPage();
+    pdf.addImage(img, 'JPEG', 0, 0, PW, sh / pxPerMm);
+    await yield_(0);                                // نفس السبب: منع التجميد
+  }
+  pdf.save(filename);
+}
+
 const ICONS = {
   door:    '<rect x="4" y="2.5" width="16" height="19" rx="1.6"/><circle cx="16.4" cy="12" r="1.05" fill="currentColor" stroke="none"/><path d="M7.2 6.2h6.2M7.2 9.4h6.2"/>',
   parts:   '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.6v3M12 18.4v3M2.6 12h3M18.4 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/>',
@@ -1200,11 +1355,7 @@ async function ensureAdminDocImage_(o){
   a.docImageBusy = o.id; render();
   try{
     const doc = buildAdminDocOrder_(o, its);
-    const paper = document.getElementById('paper');
-    paper.innerHTML = docHTML(doc,'order');
-    await new Promise(r=>setTimeout(r,320));
-    const canvas = await html2canvas(paper.firstElementChild,{scale:2,backgroundColor:'#ffffff',useCORS:true});
-    paper.innerHTML='';
+    const canvas = await renderPaper_(docHTML(doc,'order'));
     a.docImages[o.id] = canvas.toDataURL('image/jpeg',0.9);
   }catch(err){
     toast('تعذّر تجهيز المعاينة');
@@ -1242,8 +1393,8 @@ function arabicItemTitle_(it){
     const d = DOORS.find(x=>x.code===it.code);
     return d ? ('باب WPC '+d.code+' — '+d.name) : (it.title||'');
   }
-  if(it.type==='Frame') return 'حلق باب '+(it.size||'')+(it.code?' — '+it.code:'')+' — عود '+ROD_LEN+' م';
-  if(it.type==='Bror')  return 'برور '+(it.size||'')+' — عود '+ROD_LEN+' م';
+  if(it.type==='Frame') return 'حلق باب '+(it.size||'')+(it.code?' — '+it.code:'');
+  if(it.type==='Bror')  return 'برور '+(it.size||'');
   return ACC_EN_TO_AR_[it.title] || it.title || '';
 }
 
@@ -1338,11 +1489,7 @@ async function shareAdminOrderImage(o){
   }
   busy(true,'جارٍ تجهيز صورة الطلب…');
   try{
-    const paper=document.getElementById('paper');
-    paper.innerHTML=docHTML(doc,'order');
-    await new Promise(r=>setTimeout(r,320));
-    const canvas=await html2canvas(paper.firstElementChild,{scale:2,backgroundColor:'#ffffff',useCORS:true});
-    paper.innerHTML='';
+    const canvas = await renderPaper_(docHTML(doc,'order'));
     const blob=await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
     const file=new File([blob],'طلب_'+o.id+'.png',{type:'image/png'});
 
@@ -1594,22 +1741,8 @@ function reportHTML(orders){
 
 async function buildFullReportPdf_(orders){
   if(typeof html2canvas==='undefined' || !window.jspdf){ toast('محتاج نت أول مرة عشان يجهّز الـ PDF'); return; }
-  const paper=document.getElementById('paper');
-  paper.innerHTML=reportHTML(orders);
-  await new Promise(r=>setTimeout(r,320));
-  const canvas=await html2canvas(paper.firstElementChild,{scale:2,backgroundColor:'#ffffff',useCORS:true});
-  paper.innerHTML='';
-  const {jsPDF}=window.jspdf;
-  const pdf=new jsPDF('p','mm','a4');
-  const pw=210, ph=297;
-  const iw=pw, ih=canvas.height*pw/canvas.width;
-  const img=canvas.toDataURL('image/jpeg',0.92);
-  if(ih<=ph){ pdf.addImage(img,'JPEG',0,0,iw,ih); }
-  else{
-    let left=ih, pos=0;
-    while(left>0){ pdf.addImage(img,'JPEG',0,pos,iw,ih); left-=ph; pos-=ph; if(left>0) pdf.addPage(); }
-  }
-  pdf.save('تقرير_الأبواب_'+new Date().toISOString().slice(0,10)+'.pdf');
+  const canvas = await renderPaper_(reportHTML(orders));
+  await canvasToPdf_(canvas, 'تقرير_الأبواب_'+new Date().toISOString().slice(0,10)+'.pdf');
 }
 
 async function exportAdminFullReport(){
@@ -1695,6 +1828,11 @@ function pendingDoorsHTML(data){
       <div style="margin-top:10px;padding-top:8px;border-top:1px dashed #DCE4EC;display:flex;justify-content:space-between;font-weight:700;font-size:12px">
         <span>إجمالي ${esc(cust.name)}</span><span>${cust.total} باب</span>
       </div>
+      ${cust.total?`<div style="margin-top:7px;padding:7px 10px;background:#FBF1E7;border:1px solid #E8C9A8;border-radius:7px;font-size:11px;color:#8A6512">
+        <b>التقطيع المطلوب:</b>
+        ${frameRodsFor(cust.total).map(f=>f.total+' عود ×'+f.cm+' سم ('+f.label+')').join(' + ')}
+        · ${brorRodsFor(cust.total).total} عود برور ×${BROR_PER_DOOR.cm} سم
+      </div>`:''}
     </div>`;
   }).join('');
 
@@ -1719,22 +1857,8 @@ async function buildPendingDoorsPdf_(orders){
   const data = buildPendingDoorsData_(orders);
   if(!data.length){ toast('مفيش طلبات معلّقة'); return; }
   if(typeof html2canvas==='undefined' || !window.jspdf){ toast('محتاج نت أول مرة عشان يجهّز الـ PDF'); return; }
-  const paper=document.getElementById('paper');
-  paper.innerHTML=pendingDoorsHTML(data);
-  await new Promise(r=>setTimeout(r,320));
-  const canvas=await html2canvas(paper.firstElementChild,{scale:2,backgroundColor:'#ffffff',useCORS:true});
-  paper.innerHTML='';
-  const {jsPDF}=window.jspdf;
-  const pdf=new jsPDF('p','mm','a4');
-  const pw=210, ph=297;
-  const iw=pw, ih=canvas.height*pw/canvas.width;
-  const img=canvas.toDataURL('image/jpeg',0.92);
-  if(ih<=ph){ pdf.addImage(img,'JPEG',0,0,iw,ih); }
-  else{
-    let left=ih, pos=0;
-    while(left>0){ pdf.addImage(img,'JPEG',0,pos,iw,ih); left-=ph; pos-=ph; if(left>0) pdf.addPage(); }
-  }
-  pdf.save('تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.pdf');
+  const canvas = await renderPaper_(pendingDoorsHTML(data));
+  await canvasToPdf_(canvas, 'تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.pdf');
 }
 
 async function buildPendingDoorsExcel_(orders){
@@ -1801,6 +1925,11 @@ async function buildPendingDoorsExcel_(orders){
     });
 
     mergedRow('إجمالي '+cust.name+':  '+cust.total+' باب', LIGHT, NAVY, true, 12);
+    if(cust.total){
+      const cut = frameRodsFor(cust.total).map(f=>f.total+' عود ×'+f.cm+' سم ('+f.label+')').join('  +  ')
+                + '   |   ' + brorRodsFor(cust.total).total + ' عود برور ×' + BROR_PER_DOOR.cm + ' سم';
+      mergedRow('التقطيع المطلوب:  '+cut, 'FFFBF1E7', 'FF8A6512', true, 11);
+    }
     ws.addRow([]);
   });
 
@@ -2425,7 +2554,8 @@ document.addEventListener('input',e=>{
   if(a==='frame-height'){ state.pick.frameHeight=el.value; return; }
   if(a==='qty-set'){ state.pick.qty=Math.max(1,parseInt(el.value,10)||1); refreshSummary(); return; }
   if(a==='acc-set'){ state.acc[el.dataset.id]=Math.max(0,parseFloat(el.value)||0); refreshAccBtn(); return; }
-  if(a==='fr-rods'){ state.fr.rods=el.value; refreshRodBtn('add-fr'); return; }
+  if(a==='fr-jamb'){ state.fr.jamb=el.value; render(); return; }
+  if(a==='fr-header'){ state.fr.header=el.value; render(); return; }
   if(a==='br-rods'){ state.br.rods=el.value; refreshRodBtn('add-br'); return; }
   if(a==='price-set'){
     const pe=state.admin.priceEdit; if(!pe) return;
@@ -2447,17 +2577,13 @@ function refreshAccBtn(){
 function refreshSummary(){const n=document.getElementById('sumline'); if(n) n.textContent=currentSummary();}
 
 // بنحدّث زرار الإضافة من غير render عشان الكيبورد ما يقفلش وإحنا بنكتب
+// زرار البرور بس — الحلق بقى عدادين فبيترسم كامل مع render()
 function refreshRodBtn(act){
   const b=document.querySelector('[data-act="'+act+'"]'); if(!b) return;
-  if(act==='add-fr'){
-    const r=Number(state.fr.rods)||0, f=FRAMES.find(x=>x.cm===state.fr.cm)||FRAMES[0];
-    b.disabled=!(r>0);
-    b.textContent = r>0 ? `أضف ${r} عود حلق ${f.cm} سم` : 'اكتب عدد العيدان';
-  } else {
-    const r=Number(state.br.rods)||0, s=BRORS.find(x=>x.size===state.br.size)||BRORS[0];
-    b.disabled=!(r>0 && state.br.code);
-    b.textContent = !state.br.code ? 'اختر كود الباب أولاً' : (r>0 ? `أضف ${r} عود برور ${s.size} — ${state.br.code}` : 'اكتب عدد العيدان');
-  }
+  const r=Number(state.br.rods)||0, s=BRORS.find(x=>x.size===state.br.size)||BRORS[0];
+  b.disabled=!(r>0 && state.br.code);
+  b.textContent = !state.br.code ? 'اختر كود الباب أولاً'
+    : (r>0 ? `أضف ${r} عود برور ${s.size} — ${state.br.code}` : 'اكتب عدد العيدان');
 }
 
 /* ============================================================
@@ -2493,31 +2619,54 @@ function addDoor(){
 function addRod(kind){
   const isFrame = kind==='frame';
   const st = isFrame?state.fr:state.br;
-  const rods = Math.round(Number(st.rods)||0);
-  if(rods<=0){toast('اكتب عدد العيدان');return;}
   if(!st.code){toast('اختر كود الباب (اللون) الأول');return;}
+  const dName = (DOORS.find(x=>x.code===st.code)||{}).name || '';
 
-  const src = isFrame ? (FRAMES.find(f=>f.cm===st.cm)||FRAMES[0]) : (BRORS.find(b=>b.size===st.size)||BRORS[0]);
-  const code = st.code;
-  const key = isFrame ? ('حلق'+src.cm+'|'+code) : ('برور'+src.size+'|'+code);
-  const price = rodPrice(src.price);
-  const dName = (DOORS.find(x=>x.code===code)||{}).name || '';
+  // بيضيف/بيجمّع سطر عود واحد في السلة (كل مقاس سطر مستقل)
+  const push = (spec, cm, qty, perM, titleAr, titleEn) => {
+    const key = kind+'|'+spec+'|'+cm+'|'+st.code;
+    const ex = state.cart.find(it=>it.kind===kind && it.key===key);
+    if(ex){ ex.qty += qty; return; }
+    state.cart.push({
+      kind, key, qty, code:st.code, rodCm:cm, perM,
+      price: rodPrice(perM, cm),
+      spec:  spec+' — '+cm+' سم'+(st.code?' — '+st.code:''),
+      title: titleAr, titleEn
+    });
+  };
 
-  const ex=state.cart.find(it=>it.kind===kind && it.key===key);
-  if(ex) ex.qty+=rods;
-  else state.cart.push({
-    kind, key, price, qty:rods, code,
-    spec: (isFrame ? (src.cm+' سم') : src.size) + (code?' — '+code:''),
-    perM: src.price,
-    title:  isFrame ? ('حلق باب '+src.cm+' سم'+(code?' — '+code+(dName?' '+dName:''):'')+' — عود '+ROD_LEN+' م')
-                     : ('برور '+src.size+(code?' — '+code+(dName?' '+dName:''):'')+' — عود '+ROD_LEN+' م'),
-    titleEn:isFrame ? ('Door Frame '+src.cm+' cm'+(code?' - '+code:'')+' - '+ROD_LEN+'m rod')
-                     : ('Bror '+src.size+(code?' - '+code:'')+' - '+ROD_LEN+'m rod')
-  });
+  let added = 0;
+  if(isFrame){
+    const f = FRAMES.find(x=>x.cm===st.cm)||FRAMES[0];
+    const jamb = Math.max(0, Math.round(Number(st.jamb)||0));
+    const header = Math.max(0, Math.round(Number(st.header)||0));
+    if(jamb+header<=0){toast('اكتب عدد الأعواد');return;}
+    if(jamb){
+      push(f.cm+' سم', 220, jamb, f.price,
+        'حلق باب '+f.cm+' سم — قائم ٢٢٠ سم'+(st.code?' — '+st.code+(dName?' '+dName:''):''),
+        'Door Frame '+f.cm+' cm - jamb 220cm'+(st.code?' - '+st.code:''));
+      added += jamb;
+    }
+    if(header){
+      push(f.cm+' سم', 110, header, f.price,
+        'حلق باب '+f.cm+' سم — عتب ١١٠ سم'+(st.code?' — '+st.code+(dName?' '+dName:''):''),
+        'Door Frame '+f.cm+' cm - header 110cm'+(st.code?' - '+st.code:''));
+      added += header;
+    }
+    state.fr.jamb=2; state.fr.header=1;
+  } else {
+    const b = BRORS.find(x=>x.size===st.size)||BRORS[0];
+    const rods = Math.max(0, Math.round(Number(st.rods)||0));
+    if(rods<=0){toast('اكتب عدد العيدان');return;}
+    push(b.size, BROR_ROD_CM, rods, b.price,
+      'برور '+b.size+' — عود '+BROR_ROD_CM+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):''),
+      'Bror '+b.size+' - '+BROR_ROD_CM+'cm rod'+(st.code?' - '+st.code:''));
+    added = rods;
+    state.br.rods=1;
+  }
 
   save(LS_CART,state.cart);
-  if(isFrame) state.fr.rods=1; else state.br.rods=1;
-  toast('اتضاف '+rods+' عود');
+  toast('اتضاف '+added+' عود');
   render();
 }
 
@@ -2558,7 +2707,11 @@ function editCartLine(i){
     if(isFr){
       let cm = FRAMES[0].cm;
       const mm=/^(\d+)/.exec(it.spec||''); if(mm) cm=Number(mm[1]);
-      state.fr = {cm, code:it.code||'', rods:it.qty||1};
+      // بنرجّع العدد في خانة المقاس الصح حسب طول العود المحفوظ
+      const isHeader = Number(it.rodCm)===110;
+      state.fr = {cm, code:it.code||'',
+                  jamb:   isHeader ? 0 : (it.qty||1),
+                  header: isHeader ? (it.qty||1) : 0};
     } else {
       let size = BRORS[0].size;
       const mm=/^([\d×xX]+)/.exec(it.spec||''); if(mm) size=mm[1].replace(/x|X/,'×');
@@ -2683,11 +2836,7 @@ async function shareOrderImage(o){
 
   busy(true,'جارٍ تجهيز صورة الطلب…');
   try{
-    const paper=document.getElementById('paper');
-    paper.innerHTML=docHTML(o,'order');
-    await new Promise(r=>setTimeout(r,320));
-    const canvas=await html2canvas(paper.firstElementChild,{scale:2,backgroundColor:'#ffffff',useCORS:true});
-    paper.innerHTML='';
+    const canvas = await renderPaper_(docHTML(o,'order'));
     const blob=await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
     const file=new File([blob],'طلب_'+o.id+'.png',{type:'image/png'});
 
@@ -2759,7 +2908,7 @@ function docRowHTML_(it, idx, priced){
   if(it.kind==='door'){
     size=it.sizeTxt; frameTxt=it.frame?frameText_(it.frame,it.frameHeight):'—'; brorTxt=it.dbror?it.dbror:'—'; unit='باب';
   } else if(it.kind==='frame'||it.kind==='bror'){
-    size='عود '+ROD_LEN+' م · '+it.spec; unit='عود';
+    size=(it.rodCm?'عود '+it.rodCm+' سم · ':'')+it.spec; unit='عود';
   } else { size='—'; unit=it.unit||'قطعة'; }
   return `<tr>
     <td style="text-align:center">${idx}</td>
@@ -2817,11 +2966,34 @@ function docTotalsHTML(o){
   const lines=keys.map(k=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span>أبواب مقاس ${esc(k)}</span><b>${perSize[k]} باب</b></div>`).join('');
   const doorsTotal=keys.reduce((s,k)=>s+perSize[k],0);
   const overallTotal=items.reduce((s,it)=>s+(Number(it.qty)||0),0);
+  // ── متطلبات التقطيع: إجمالي أعواد الحلق والبرور المطلوبة للمصنع ──
+  const withFrame = doorItems.filter(it=>it.frame).reduce((n,it)=>n+(Number(it.qty)||0),0);
+  const withBror  = doorItems.filter(it=>it.dbror).reduce((n,it)=>n+(Number(it.qty)||0),0);
+  let cutBox = '';
+  if(withFrame || withBror){
+    const rows=[];
+    if(withFrame) frameRodsFor(withFrame).forEach(f=>rows.push(
+      `<tr><td style="padding:4px 6px;border:1px solid #E8C9A8">حلق — ${esc(f.label)}</td>
+       <td style="padding:4px 6px;border:1px solid #E8C9A8;text-align:center">${f.cm} سم</td>
+       <td style="padding:4px 6px;border:1px solid #E8C9A8;text-align:center"><b>${f.total}</b> عود</td></tr>`));
+    if(withBror){ const b=brorRodsFor(withBror); rows.push(
+      `<tr><td style="padding:4px 6px;border:1px solid #E8C9A8">برور</td>
+       <td style="padding:4px 6px;border:1px solid #E8C9A8;text-align:center">${b.cm} سم</td>
+       <td style="padding:4px 6px;border:1px solid #E8C9A8;text-align:center"><b>${b.total}</b> عود</td></tr>`); }
+    cutBox = `<div style="margin-top:12px;padding:10px 13px;background:#FBF1E7;border:1px solid #E8C9A8;border-radius:9px">
+      <div style="font-weight:700;font-size:12.5px;color:#8A6512;margin-bottom:6px">متطلبات التقطيع (للمصنع)</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11.5px">${rows.join('')}</table>
+      <div style="font-size:10.5px;color:#8A6512;margin-top:6px">
+        الباب الواحد: ٢ قائم ٢٢٠ سم + ١ عتب ١١٠ سم حلق · ٥ أعواد برور ٢٢٦ سم
+      </div>
+    </div>`;
+  }
+
   return `<div style="margin-top:14px;padding:10px 13px;background:#F3F6FA;border-radius:9px">
     ${lines}
     <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0 0;border-top:1px dashed #DCE4EC;margin-top:4px"><span><b>إجمالي الأبواب</b></span><b>${doorsTotal} باب</b></div>
     <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span><b>الإجمالي الكلي</b></span><b>${overallTotal} قطعة</b></div>
-  </div>`;
+  </div>${cutBox}`;
 }
 
 function docHTML(o,mode,priced){
@@ -2908,22 +3080,8 @@ async function makeDoc(o,mode,priced){
   if(typeof html2canvas==='undefined' || !window.jspdf){toast('محتاج نت أول مرة عشان يجهّز الـ PDF');return;}
   busy(true,'جارٍ تجهيز المستند…');
   try{
-    const paper=document.getElementById('paper');
-    paper.innerHTML=docHTML(o,mode,priced);
-    await new Promise(r=>setTimeout(r,320));           // نستنى الصور والخطوط
-    const canvas=await html2canvas(paper.firstElementChild,{scale:2,backgroundColor:'#ffffff',useCORS:true});
-    const {jsPDF}=window.jspdf;
-    const pdf=new jsPDF('p','mm','a4');
-    const pw=210, ph=297;
-    const iw=pw, ih=canvas.height*pw/canvas.width;
-    const img=canvas.toDataURL('image/jpeg',0.92);
-    if(ih<=ph){ pdf.addImage(img,'JPEG',0,0,iw,ih); }
-    else {
-      let left=ih, pos=0;
-      while(left>0){ pdf.addImage(img,'JPEG',0,pos,iw,ih); left-=ph; pos-=ph; if(left>0) pdf.addPage(); }
-    }
-    pdf.save((mode==='quote'?'عرض_سعر_':'طلب_')+o.id+(priced?'_بالسعر':'')+'.pdf');
-    paper.innerHTML='';
+    const canvas = await renderPaper_(docHTML(o,mode,priced));
+    await canvasToPdf_(canvas, (mode==='quote'?'عرض_سعر_':'طلب_')+o.id+(priced?'_بالسعر':'')+'.pdf');
   }catch(err){ toast('تعذّر تجهيز الـ PDF: '+(err&&err.message?err.message:err)); }
   busy(false);
 }
@@ -2955,7 +3113,7 @@ function exportExcel(orders,fname){
           isDoor?(it.frameHeight||''):'',
           isDoor?(it.dbror||''):'',
           isDoor?(it.millEn||''):'',
-          isDoor?'door':(isRod?('rod '+ROD_LEN+'m'):(it.unit||'pc')),
+          isDoor?'door':(isRod?('rod '+(it.rodCm||220)+'cm'):(it.unit||'pc')),
           Number(it.qty)||0,
           it.avail===false?'N':'Y'
         ];
