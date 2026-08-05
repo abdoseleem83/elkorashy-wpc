@@ -441,7 +441,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v58';
+const APP_BUILD   = 'v59';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1413,6 +1413,7 @@ function buildAdminDocOrder_(o, its){
   return {
     id:o.id, ts:o.date?new Date(o.date).getTime():Date.now(),
     name:o.dist, phone:o.phone, region:o.region, warehouse:'', total:o.total,
+    customer:o.customer||'', note:o.ordNote||'',
     items: its.map(it=>{
       const sz = it.type==='Door' ? arabicSizeText_(it.size) : (it.size||'');
       return {
@@ -1581,6 +1582,7 @@ function reportHTML(orders){
       <td style="${td};${bg}">${esc(o.id)}</td>
       <td style="${td};${bg}">${esc(dateStr2_(o.date))}</td>
       <td style="${td};${bg};text-align:right"><b>${esc(o.dist||'')}</b></td>
+      <td style="${td};${bg};text-align:right;color:#0B4A7A">${esc(o.customer||'—')}</td>
       <td style="${td};${bg}">${esc(String(o.phone||''))}</td>
       <td style="${td};${bg}">${esc(o.region||'')}</td>
       <td style="${td};${bg}">${esc(st.ar)}</td>
@@ -1596,13 +1598,13 @@ function reportHTML(orders){
     <table style="width:100%;border-collapse:collapse;margin-top:6px">
       <thead><tr>
         <th style="${th};width:78px">رقم الطلب</th><th style="${th};width:66px">التاريخ</th>
-        <th style="${th}">العميل (الموزّع)</th><th style="${th};width:78px">الهاتف</th>
+        <th style="${th}">صاحب الحساب</th><th style="${th}">صاحب الأوردر</th><th style="${th};width:78px">الهاتف</th>
         <th style="${th};width:64px">المنطقة</th><th style="${th};width:74px">الحالة</th>
         <th style="${th};width:56px">الكمية</th>
       </tr></thead>
       <tbody>${sumRows}</tbody>
       <tfoot><tr>
-        <td colspan="6" style="${td};background:${LIGHT};color:${NAVY};font-weight:700;text-align:left">الإجمالي الكلي</td>
+        <td colspan="7" style="${td};background:${LIGHT};color:${NAVY};font-weight:700;text-align:left">الإجمالي الكلي</td>
         <td style="${td};background:${LIGHT};color:${NAVY};font-weight:700">${grandQty}</td>
       </tr></tfoot>
     </table>
@@ -1631,7 +1633,7 @@ function reportHTML(orders){
       }).join('');
       return `<div style="margin-top:8px">
         <div style="background:${BRAND};color:#fff;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700">
-          طلب #${esc(o.id)} — ${esc(dateStr2_(o.date))} — ${esc(st.ar)}
+          طلب #${esc(o.id)} — ${esc(dateStr2_(o.date))} — ${esc(st.ar)}${o.customer?' — صاحب الأوردر: '+esc(o.customer):''}
         </div>
         <table style="width:100%;border-collapse:collapse;margin-top:4px">
           <thead><tr>
@@ -1656,7 +1658,7 @@ function reportHTML(orders){
       </tr>`).join('');
 
     return `<div style="margin-top:14px;border:1px solid ${BRD};border-radius:10px;padding:10px 12px;break-inside:avoid">
-      <div style="background:${NAVY};color:#fff;padding:6px 11px;border-radius:7px;font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px">${esc(cust.name)}</div>
+      <div style="background:${NAVY};color:#fff;padding:6px 11px;border-radius:7px;font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px">صاحب الحساب: ${esc(cust.name)}</div>
       ${ordBlocks}
       ${codeRows?`<div style="margin-top:9px">
         <div style="font-size:11px;font-weight:700;color:${NAVY};background:#F3F6FA;padding:4px 8px;border-radius:5px">إجمالي كل صنف (كود) — ${esc(cust.name)}</div>
@@ -1671,7 +1673,7 @@ function reportHTML(orders){
         </table>
       </div>`:''}
       <div style="margin-top:9px;background:${LIGHT};color:${NAVY};padding:6px 11px;border-radius:7px;font-weight:700;font-size:12px;display:flex;justify-content:space-between">
-        <span>إجمالي ${esc(cust.name)}</span><span>${cust.clientQty} قطعة</span>
+        <span>إجمالي صاحب الحساب ${esc(cust.name)}</span><span>${cust.clientQty} قطعة</span>
       </div>
     </div>`;
   }).join('');
@@ -1788,7 +1790,7 @@ function buildPendingDoorsData_(orders){
       const widths = Object.keys(groups).sort((a,b)=>{
         if(a==='خاص') return 1; if(b==='خاص') return -1; return Number(a)-Number(b);
       });
-      return { id:o.id, date:o.date, groups, widths };
+      return { id:o.id, date:o.date, customer:o.customer||'', groups, widths };
     });
     const total = ords.reduce((s,o)=>s+(o.items||[]).filter(it=>it.type==='Door').reduce((s2,it)=>s2+(Number(it.qty)||0),0),0);
     return { name, perOrder, total };
@@ -1818,12 +1820,12 @@ function pendingDoorsHTML(data){
         </div>`;
       }).join('');
       return `<div style="margin-top:10px;padding-inline-start:10px;border-inline-start:3px solid #DCE4EC">
-        <div style="font-size:11px;color:#6B7A8C">طلب #${esc(o.id)} — ${esc(o.date||'')}</div>
+        <div style="font-size:11px;color:#6B7A8C">طلب #${esc(o.id)} — ${esc(o.date||'')}${o.customer?` — <b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}</div>
         ${sizeBlocks || '<div style="font-size:11px;color:#8A97A6;padding:4px 0">مفيش أبواب في الطلب ده</div>'}
       </div>`;
     }).join('');
     return `<div style="margin-top:16px;border:1px solid #DCE4EC;border-radius:10px;padding:12px 14px;break-inside:avoid">
-      <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:14px;color:#002050">${esc(cust.name)}</div>
+      <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:14px;color:#002050">صاحب الحساب: ${esc(cust.name)}</div>
       ${orderBlocks}
       <div style="margin-top:10px;padding-top:8px;border-top:1px dashed #DCE4EC;display:flex;justify-content:space-between;font-weight:700;font-size:12px">
         <span>إجمالي ${esc(cust.name)}</span><span>${cust.total} باب</span>
@@ -1893,13 +1895,13 @@ async function buildPendingDoorsExcel_(orders){
   }
 
   data.forEach(cust=>{
-    mergedRow(cust.name, NAVY, WHITE, true, 13);
+    mergedRow('صاحب الحساب:  '+cust.name, NAVY, WHITE, true, 13);
 
     cust.perOrder.forEach(o=>{
       // ما تظهرش قايمة مقاس أصلًا لو مفيش أبواب بيه — o.widths أصلًا بتشمل المقاسات الموجودة بس
       o.widths.forEach(w=>{
         const sizeLabel = w==='خاص' ? 'أبواب مقاس خاص' : ('أبواب مقاس '+w+' سم');
-        mergedRow('🚪 '+sizeLabel+'  —  طلب #'+o.id+'  —  '+(o.date||''), BRAND, WHITE, true, 11);
+        mergedRow('🚪 '+sizeLabel+'  —  طلب #'+o.id+'  —  '+(o.date||'')+(o.customer?'  —  صاحب الأوردر: '+o.customer:''), BRAND, WHITE, true, 11);
 
         const hdr = ws.addRow(['التاريخ','كمية','نوع','حلق','برور']);
         hdr.eachCell(c=>{
@@ -1924,7 +1926,7 @@ async function buildPendingDoorsExcel_(orders){
       });
     });
 
-    mergedRow('إجمالي '+cust.name+':  '+cust.total+' باب', LIGHT, NAVY, true, 12);
+    mergedRow('إجمالي صاحب الحساب '+cust.name+':  '+cust.total+' باب', LIGHT, NAVY, true, 12);
     if(cust.total){
       const cut = frameRodsFor(cust.total).map(f=>f.total+' عود ×'+f.cm+' سم ('+f.label+')').join('  +  ')
                 + '   |   ' + brorRodsFor(cust.total).total + ' عود برور ×' + BROR_PER_DOOR.cm + ' سم';
@@ -2063,14 +2065,15 @@ async function buildAdminOrdersExcel_(orders){
   // ---------- ورقة 1: ملخص الطلبات ----------
   const wsSum = wb.addWorksheet('ملخص الطلبات', { views:[{ rightToLeft:true }] });
   wsSum.columns = [
-    {width:4},{key:'id',width:14},{key:'date',width:12},{key:'dist',width:24},
+    {width:4},{key:'id',width:14},{key:'date',width:12},{key:'dist',width:22},
+    {key:'customer',width:22},
     {key:'phone',width:14},{key:'region',width:13},{key:'wh',width:12},
     {key:'status',width:15},{key:'qty',width:10}
   ];
-  const sumLastCol = 9;
+  const sumLastCol = 10;
   addHeaderBand_(wsSum, sumLastCol, 'تقرير الأبواب', COMPANY_AR+' — '+new Date().toLocaleDateString('ar-EG')+' — إجمالي الطلبات: '+orders.length);
   wsSum.addRow([]);
-  const hdrSum = wsSum.addRow(['','رقم الطلب','التاريخ','العميل (الموزّع)','الهاتف','المنطقة','المخزن','الحالة','إجمالي الكمية']);
+  const hdrSum = wsSum.addRow(['','رقم الطلب','التاريخ','صاحب الحساب','صاحب الأوردر','الهاتف','المنطقة','المخزن','الحالة','إجمالي الكمية']);
   hdrSum.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVY}}; c.font={bold:true,color:{argb:WHITE},name:FONT,size:10.5}; c.alignment={horizontal:'center',vertical:'middle'}; c.border=border; });
   hdrSum.height = 22;
   wsSum.views = [{ rightToLeft:true, state:'frozen', ySplit:hdrSum.number }];
@@ -2080,11 +2083,11 @@ async function buildAdminOrdersExcel_(orders){
     const qty = (o.items||[]).reduce((s,it)=>s+(Number(it.qty)||0),0);
     grandQty += qty;
     const st = STATUS[o.status] || {ar:o.status||'—'};
-    const r = wsSum.addRow(['', o.id, dateStr2_(o.date), o.dist||'', String(o.phone||''), o.region||'', o.warehouse||'', st.ar, qty]);
+    const r = wsSum.addRow(['', o.id, dateStr2_(o.date), o.dist||'', o.customer||'—', String(o.phone||''), o.region||'', o.warehouse||'', st.ar, qty]);
     r.eachCell((c,i)=>{ if(i===1) return; c.border=border; c.font={name:FONT,size:10.5}; c.alignment={horizontal:'center',vertical:'middle'};
       if(idx%2===1) c.fill={type:'pattern',pattern:'solid',fgColor:{argb:ZEBRA}}; });
   });
-  const totRowSum = wsSum.addRow(['','','','','','','','الإجمالي الكلي', grandQty]);
+  const totRowSum = wsSum.addRow(['','','','','','','','','الإجمالي الكلي', grandQty]);
   totRowSum.eachCell((c,i)=>{ if(i===1) return; c.font={bold:true,name:FONT,size:11,color:{argb:NAVY}}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}}; c.border=border; c.alignment={horizontal:'center'}; });
   wsSum.autoFilter = { from:{row:hdrSum.number,column:2}, to:{row:hdrSum.number,column:sumLastCol} };
 
@@ -2097,14 +2100,14 @@ async function buildAdminOrdersExcel_(orders){
 
   const data = buildAdminOrdersDetail_(orders);
   data.forEach(cust=>{
-    const rName = wsDet.addRow(['', cust.name]);
+    const rName = wsDet.addRow(['', 'صاحب الحساب:  '+cust.name]);
     wsDet.mergeCells(rName.number,2,rName.number,detLastCol);
     rName.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVY}}; c.font={bold:true,color:{argb:WHITE},name:'Arial',size:13}; c.alignment={horizontal:'right',vertical:'middle'}; });
     rName.height = 22;
 
     cust.orders.forEach(o=>{
       const st = STATUS[o.status] || {ar:o.status||'—'};
-      const rOrd = wsDet.addRow(['', 'طلب #'+o.id+'  —  '+dateStr2_(o.date)+'  —  '+st.ar]);
+      const rOrd = wsDet.addRow(['', 'طلب #'+o.id+'  —  '+dateStr2_(o.date)+'  —  '+st.ar+(o.customer?'  —  صاحب الأوردر: '+o.customer:'')]);
       wsDet.mergeCells(rOrd.number,2,rOrd.number,detLastCol);
       rOrd.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:BRAND}}; c.font={bold:true,color:{argb:WHITE},name:FONT,size:10.5}; c.alignment={horizontal:'right',vertical:'middle'}; });
 
@@ -2123,7 +2126,7 @@ async function buildAdminOrdersExcel_(orders){
     });
 
     if(cust.codeTotals.length){
-      const rCodeHdr = wsDet.addRow(['','إجمالي كل صنف (كود) — '+cust.name]);
+      const rCodeHdr = wsDet.addRow(['','إجمالي كل صنف (كود) — صاحب الحساب '+cust.name]);
       wsDet.mergeCells(rCodeHdr.number,2,rCodeHdr.number,detLastCol);
       rCodeHdr.eachCell((c,i)=>{ if(i===1) return; c.font={bold:true,color:{argb:NAVY},name:FONT,size:10.5}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF3F6FA'}}; });
       cust.codeTotals.forEach(ct=>{
@@ -2132,7 +2135,7 @@ async function buildAdminOrdersExcel_(orders){
       });
     }
 
-    const rTot = wsDet.addRow(['', 'إجمالي '+cust.name+':  '+cust.clientQty+' قطعة']);
+    const rTot = wsDet.addRow(['', 'إجمالي صاحب الحساب '+cust.name+':  '+cust.clientQty+' قطعة']);
     wsDet.mergeCells(rTot.number,2,rTot.number,detLastCol);
     rTot.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}}; c.font={bold:true,color:{argb:NAVY},name:FONT,size:11.5}; c.alignment={horizontal:'right',vertical:'middle'}; });
     rTot.height = 20;
@@ -3020,7 +3023,7 @@ function docHTML(o,mode,priced){
 
       <table style="width:100%;margin-top:16px;font-size:12.5px;border-collapse:collapse">
         <tr>
-          <td style="padding:5px 0;color:#6B7A8C;width:78px">الاسم</td><td style="font-weight:700">${esc(o.name||'-')}</td>
+          <td style="padding:5px 0;color:#6B7A8C;width:78px">صاحب الحساب</td><td style="font-weight:700">${esc(o.name||'-')}</td>
           <td style="padding:5px 0;color:#6B7A8C;width:78px">الموبايل</td><td style="font-weight:700">${esc(o.phone||'-')}</td>
         </tr>
         <tr>
