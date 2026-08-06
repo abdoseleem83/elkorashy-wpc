@@ -460,7 +460,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v62';
+const APP_BUILD   = 'v63';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3394,7 +3394,11 @@ async function doUpdate(){
       await Promise.all(regs.map(r=>r.unregister()));
     }
   }catch(e){}
-  location.reload(true);
+  // بنضيف طابع وقت للرابط عشان نتخطى كاش المتصفح نفسه — location.reload لوحدها
+  // ممكن ترجّع نفس النسخة القديمة من الكاش.
+  const u = new URL(location.href);
+  u.searchParams.set('v', Date.now());
+  location.replace(u.toString());
 }
 
 let deferredPrompt=null;

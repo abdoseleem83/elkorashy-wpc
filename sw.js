@@ -1,6 +1,6 @@
 // ⚠️ مهم: غيّر رقم النسخة دي في كل مرة ترفع تحديث جديد.
 // ده اللي بيخلي المتصفح يرمي الكاش القديم ويجيب الملفات الجديدة.
-const CACHE_VERSION = 'v62';
+const CACHE_VERSION = 'v63';
 const CACHE_NAME = 'elkorashy-wpc-' + CACHE_VERSION;
 
 const PRECACHE = [
@@ -20,7 +20,11 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(PRECACHE).catch(() => {}))
+      .then(cache => Promise.all(
+        PRECACHE.map(u => fetch(u, { cache: 'no-store' })
+          .then(r => (r && r.ok) ? cache.put(u, r) : null)
+          .catch(() => null))
+      ))
   );
 });
 
@@ -73,7 +77,10 @@ self.addEventListener('fetch', (event) => {
     // (بدل ما الكاش يرجّع نسخة index.html قديمة).
     event.respondWith((async () => {
       try {
-        const fresh = await fetch(req);
+        // 🔑 cache:'no-store' ضروري: من غيرها الـ fetch دي بتعدي على كاش المتصفح
+        // العادي، و GitHub Pages بيبعت index.html بـ max-age، فكان بيرجّع نسخة
+        // قديمة حتى والسيرفر عليه الجديدة — ده سبب الوقوف على إصدار قديم.
+        const fresh = await fetch(req, { cache: 'no-store' });
         const cache = await caches.open(CACHE_NAME);
         cache.put(req, fresh.clone()).catch(() => {});
         return fresh;
