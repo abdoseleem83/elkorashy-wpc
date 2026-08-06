@@ -441,7 +441,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v59';
+const APP_BUILD   = 'v60';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1773,7 +1773,8 @@ function buildPendingDoorsData_(orders){
     // التقرير ده للأبواب بس — الطلبات اللي مفيهاش أبواب (إكسسوارات أو حلق/برور فقط)
     // بتتشال من الأساس عشان ما تظهرش كعناوين فاضية بإجمالي صفر
     if(!(o.items||[]).some(it=>it.type==='Door')) return;
-    const key = o.dist||'—';
+    // التجميع بقى على **صاحب الأوردر** — لو مفيش، بنرجع لصاحب الحساب
+    const key = (o.customer && o.customer.trim()) || o.dist || '—';
     if(!byCustomer[key]){ byCustomer[key]=[]; order.push(key); }
     byCustomer[key].push(o);
   });
@@ -1798,8 +1799,16 @@ function buildPendingDoorsData_(orders){
 }
 
 function pendingDoorsHTML(data){
+  // ألوان متبادلة لكل طلب عشان التمييز بينهم بسرعة
+  const ORD_TINT = [
+    {bg:'#F4F9FD', line:'#1080C0'},
+    {bg:'#FBF4EC', line:'#C08A3E'},
+    {bg:'#F3F8F5', line:'#3E9B72'},
+    {bg:'#F7F4FB', line:'#7C63C4'}
+  ];
   const custBlocks = data.map(cust=>{
-    const orderBlocks = cust.perOrder.map(o=>{
+    const orderBlocks = cust.perOrder.map((o,oi)=>{
+      const tint = ORD_TINT[oi % ORD_TINT.length];
       const sizeBlocks = o.widths.map(w=>{
         const items = o.groups[w];
         const rowsHtml = items.map(it=>`
@@ -1810,7 +1819,7 @@ function pendingDoorsHTML(data){
             <td style="text-align:center;padding:5px;border-bottom:1px solid #EDF0F3">${esc(it.dbror||'—')}</td>
           </tr>`).join('');
         return `<div style="margin-top:8px">
-          <div style="font-weight:700;color:#1080C0;font-size:11.5px">🚪 مقاس ${w==='خاص'?'خاص':esc(w)+' سم'}</div>
+          <div style="font-weight:700;color:${tint.line};font-size:11.5px">🚪 مقاس ${w==='خاص'?'خاص':esc(w)+' سم'}</div>
           <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:4px">
             <thead><tr style="background:#F3F6FA;color:#5B6B7D">
               <th style="padding:5px">عدد</th><th style="padding:5px">نوع</th><th style="padding:5px">حلق</th><th style="padding:5px">برور</th>
@@ -1819,13 +1828,13 @@ function pendingDoorsHTML(data){
           </table>
         </div>`;
       }).join('');
-      return `<div style="margin-top:10px;padding-inline-start:10px;border-inline-start:3px solid #DCE4EC">
-        <div style="font-size:11px;color:#6B7A8C">طلب #${esc(o.id)} — ${esc(o.date||'')}${o.customer?` — <b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}</div>
+      return `<div style="margin-top:10px;padding:8px 11px;border-inline-start:4px solid ${tint.line};background:${tint.bg};border-radius:8px">
+        <div style="font-size:11px;color:#6B7A8C;font-weight:700">طلب ${oi+1} — ${esc(o.date||'')}</div>
         ${sizeBlocks || '<div style="font-size:11px;color:#8A97A6;padding:4px 0">مفيش أبواب في الطلب ده</div>'}
       </div>`;
     }).join('');
     return `<div style="margin-top:16px;border:1px solid #DCE4EC;border-radius:10px;padding:12px 14px;break-inside:avoid">
-      <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:14px;color:#002050">صاحب الحساب: ${esc(cust.name)}</div>
+      <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:15px;font-weight:700;color:#002050;background:#EAF2FA;padding:7px 11px;border-radius:7px">${esc(cust.name)}</div>
       ${orderBlocks}
       <div style="margin-top:10px;padding-top:8px;border-top:1px dashed #DCE4EC;display:flex;justify-content:space-between;font-weight:700;font-size:12px">
         <span>إجمالي ${esc(cust.name)}</span><span>${cust.total} باب</span>
@@ -1894,14 +1903,20 @@ async function buildPendingDoorsExcel_(orders){
     return r;
   }
 
-  data.forEach(cust=>{
-    mergedRow('صاحب الحساب:  '+cust.name, NAVY, WHITE, true, 13);
+  // لون مختلف لكل طلب عشان التمييز
+  const ORD_FILL = ['FF1080C0','FFC08A3E','FF3E9B72','FF7C63C4'];
+  const ORD_TINT = ['FFF4F9FD','FFFBF4EC','FFF3F8F5','FFF7F4FB'];
 
-    cust.perOrder.forEach(o=>{
+  data.forEach(cust=>{
+    mergedRow(cust.name, NAVY, WHITE, true, 14);
+
+    cust.perOrder.forEach((o,oi)=>{
+      const fill = ORD_FILL[oi % ORD_FILL.length];
+      const tint = ORD_TINT[oi % ORD_TINT.length];
       // ما تظهرش قايمة مقاس أصلًا لو مفيش أبواب بيه — o.widths أصلًا بتشمل المقاسات الموجودة بس
       o.widths.forEach(w=>{
         const sizeLabel = w==='خاص' ? 'أبواب مقاس خاص' : ('أبواب مقاس '+w+' سم');
-        mergedRow('🚪 '+sizeLabel+'  —  طلب #'+o.id+'  —  '+(o.date||'')+(o.customer?'  —  صاحب الأوردر: '+o.customer:''), BRAND, WHITE, true, 11);
+        mergedRow('🚪 '+sizeLabel+'  —  طلب '+(oi+1)+'  —  '+(o.date||''), fill, WHITE, true, 11);
 
         const hdr = ws.addRow(['التاريخ','كمية','نوع','حلق','برور']);
         hdr.eachCell(c=>{
@@ -1921,12 +1936,13 @@ async function buildPendingDoorsExcel_(orders){
             c.alignment = {horizontal:'center'};
             c.border = border;
             c.font = {name:'Arial', size:10.5};
+            c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:tint}};
           });
         });
       });
     });
 
-    mergedRow('إجمالي صاحب الحساب '+cust.name+':  '+cust.total+' باب', LIGHT, NAVY, true, 12);
+    mergedRow('إجمالي '+cust.name+':  '+cust.total+' باب', LIGHT, NAVY, true, 12);
     if(cust.total){
       const cut = frameRodsFor(cust.total).map(f=>f.total+' عود ×'+f.cm+' سم ('+f.label+')').join('  +  ')
                 + '   |   ' + brorRodsFor(cust.total).total + ' عود برور ×' + BROR_PER_DOOR.cm + ' سم';
