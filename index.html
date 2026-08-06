@@ -230,8 +230,15 @@ input::placeholder{color:#A8B4C2}
   padding:7px 4px;text-align:center;font-size:14px;font-weight:700;color:var(--ink);background:#fff}
 .stkin:focus{border-color:var(--brand);outline:none}
 .stkin.dirty{border-color:#C08A3E;background:#FFF9F0}
-.colchip .stk{display:block;font-size:9px;font-weight:700;color:#1E7A54;margin-top:2px}
-.colchip.instock{border-color:#8FC7B0}
+/* المقاس المتوفر بالمخزن: خلفية خضرا وكلام بولد عشان يبان فورًا */
+.specol .colchip.instock{background:#DCF1E6;border-color:#4FA986;color:#14603F;font-weight:700}
+.specol .colchip.instock .sub{color:#2E7D5B;font-weight:700}
+.specol .colchip.instock .stk{display:block;font-size:9.5px;font-weight:700;color:#0F5237;margin-top:2px}
+/* لو مختار ومتوفر — يفضل الأخضر واضح مع تمييز الاختيار */
+.specol .colchip.instock.on{background:#1E7A54;border-color:#14603F;color:#fff}
+.specol .colchip.instock.on .sub,
+.specol .colchip.instock.on .stk{color:#CFEBDD}
+.colchip .stk{display:block;font-size:9.5px;font-weight:700;color:#1E7A54;margin-top:2px}
 .door .rdy{display:inline-flex;align-items:center;gap:3px;margin-top:3px;font-size:9.5px;
   font-weight:700;color:#1E7A54;background:#E7F3EE;border-radius:20px;padding:2px 7px}
 .door .rdy .i{width:11px;height:11px}
@@ -460,7 +467,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v63';
+const APP_BUILD   = 'v64';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
