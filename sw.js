@@ -1,6 +1,6 @@
 // ⚠️ مهم: غيّر رقم النسخة دي في كل مرة ترفع تحديث جديد.
 // ده اللي بيخلي المتصفح يرمي الكاش القديم ويجيب الملفات الجديدة.
-const CACHE_VERSION = 'v64';
+const CACHE_VERSION = 'v66';
 const CACHE_NAME = 'elkorashy-wpc-' + CACHE_VERSION;
 
 const PRECACHE = [
@@ -77,10 +77,20 @@ self.addEventListener('fetch', (event) => {
     // (بدل ما الكاش يرجّع نسخة index.html قديمة).
     event.respondWith((async () => {
       try {
-        // 🔑 cache:'no-store' ضروري: من غيرها الـ fetch دي بتعدي على كاش المتصفح
-        // العادي، و GitHub Pages بيبعت index.html بـ max-age، فكان بيرجّع نسخة
-        // قديمة حتى والسيرفر عليه الجديدة — ده سبب الوقوف على إصدار قديم.
-        const fresh = await fetch(req, { cache: 'no-store' });
+        // 🔑 طبقتين لازم نتخطاهم مع بعض عشان التحديث يوصل:
+        //  ١) كاش المتصفح المحلي  → بنتخطاه بـ cache:'no-store'
+        //  ٢) كاش CDN بتاع GitHub Pages (Fastly) → ده مابيتأثرش بـ no-store لأنه
+        //     بره الجهاز أصلًا، وبيفضل يرجّع النسخة القديمة لحد ما مدته تخلص.
+        //     الحل الوحيد المضمون: نضيف باراميتر فريد للرابط، فيبقى "رابط جديد"
+        //     مالوش نسخة مخزّنة عند الـ CDN فيجيبه من السيرفر مباشرة.
+        const bust = url.pathname + '?_v=' + Date.now();
+        let fresh;
+        try {
+          fresh = await fetch(bust, { cache: 'no-store' });
+          if (!fresh || !fresh.ok) throw new Error('bad');
+        } catch (e1) {
+          fresh = await fetch(req, { cache: 'no-store' });   // احتياطي
+        }
         const cache = await caches.open(CACHE_NAME);
         cache.put(req, fresh.clone()).catch(() => {});
         return fresh;
