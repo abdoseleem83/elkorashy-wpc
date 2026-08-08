@@ -467,7 +467,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v67';
+const APP_BUILD   = 'v68';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -601,7 +601,7 @@ const state = {
   br:{size:'6×9', code:'', rods:1}, // برور إضافي بالعود — code = كود/لون الباب (إجباري زي الحلق)
   acc:{},
   touched:false,             // اتضغط إرسال؟ عشان نوضّح الحقول الناقصة
-  customer:{same:true, name:''},   // صاحب الأوردر: نفس المستخدم ولا عميل تاني
+  customer:{name:'', phone:''},   // صاحب الأوردر (اختياري) — لو فاضي يبقى نفس صاحب الحساب
   orderNote:'',                    // ملاحظات الطلب (اختياري)
   editingId:null,            // لو مش null، معناها بيتعدّل طلب موجود بدل ما يتبعت طلب جديد
   editingMeta:null           // بيانات صاحب الطلب الأصلي لما المصنع هو اللي بيعدّل
@@ -967,30 +967,21 @@ function viewNew(){
   return `
   <section class="card">
     <div class="step"><span class="n">١</span><h2>بياناتك</h2><span class="hint">إجباري</span></div>
-    <label class="fld"><span>الاسم <b class="req">*</b></span>
-      <input type="text" class="${bad && !state.profile.name.trim()?'bad':''}" value="${esc(state.profile.name)}" placeholder="الاسم كما هو مسجّل" data-act="prof" data-k="name"></label>
+    <div class="row2">
+      <label class="fld"><span>الاسم <b class="req">*</b></span>
+        <input type="text" class="${bad && !state.profile.name.trim()?'bad':''}" value="${esc(state.profile.name)}" placeholder="الاسم كما هو مسجّل" data-act="prof" data-k="name"></label>
+      <label class="fld"><span>${ico("user")} صاحب الأوردر <span style="font-weight:400;color:var(--muted)">(لو مختلف)</span></span>
+        <input type="text" value="${esc(state.customer.name)}" placeholder="اسم العميل صاحب الطلب" data-act="cust-name"></label>
+    </div>
     <div class="row2">
       <label class="fld"><span>رقم الموبايل <b class="req">*</b></span>
         <input type="tel" inputmode="tel" class="${bad && !phoneOk(state.profile.phone)?'bad':''}" value="${esc(state.profile.phone)}" placeholder="01xxxxxxxxx" data-act="prof" data-k="phone"></label>
-      <label class="fld"><span>المنطقة</span>
-        <input type="text" value="${esc(state.profile.region)}" placeholder="طنطا مثلاً" data-act="prof" data-k="region"></label>
+      <label class="fld"><span>تليفون صاحب الأوردر <span style="font-weight:400;color:var(--muted)">(اختياري)</span></span>
+        <input type="tel" inputmode="tel" value="${esc(state.customer.phone)}" placeholder="01xxxxxxxxx" data-act="cust-phone"></label>
     </div>
+    <label class="fld"><span>المنطقة</span>
+      <input type="text" value="${esc(state.profile.region)}" placeholder="طنطا مثلاً" data-act="prof" data-k="region"></label>
     ${bad && !profileOk() ? `<div class="note" style="color:var(--danger)">الاسم ورقم الموبايل إجباريين — الرقم لازم يكون ١١ رقم يبدأ بـ 01.</div>` : ''}
-  </section>
-
-  <section class="card">
-    <div class="step"><span class="n">${ico("user","lg")}</span><h2>صاحب الأوردر</h2><span class="hint">مين الطلب ده ليه؟</span></div>
-    <div class="whoswitch">
-      <button class="who ${state.customer.same?'on':''}" data-act="cust-same" data-v="1">
-        ${ico("checkC")}<span>نفس المستخدم<small>${esc(state.profile.name||'—')}</small></span></button>
-      <button class="who ${state.customer.same?'':'on'}" data-act="cust-same" data-v="0">
-        ${ico("user")}<span>عميل تاني<small>اكتب اسمه</small></span></button>
-    </div>
-    ${state.customer.same?'':`
-    <label class="fld" style="margin-top:11px"><span>اسم صاحب الطلب <b class="req">*</b></span>
-      <input type="text" class="${bad && !state.customer.name.trim()?'bad':''}" value="${esc(state.customer.name)}"
-        placeholder="اسم العميل صاحب الأوردر" data-act="cust-name"></label>
-    ${bad && !state.customer.name.trim()?`<div class="note" style="color:var(--danger)">اكتب اسم صاحب الطلب.</div>`:''}`}
     <label class="fld" style="margin-top:11px"><span>ملاحظات <span style="font-weight:400;color:var(--muted)">(اختياري)</span></span>
       <textarea rows="2" placeholder="أي تفاصيل إضافية عن الطلب" data-act="ord-note">${esc(state.orderNote)}</textarea></label>
   </section>
@@ -1216,7 +1207,24 @@ async function footerStrip_(){
   return _footerImgCache;
 }
 
-async function canvasToPdf_(canvas, filename){
+// بيحاول يشارك الملف مباشرة (بيظهر واتساب في شاشة المشاركة لو متاحة)، ولو مش متاحة بينزّله عادي
+async function shareOrDownload_(blob, filename, title){
+  try{
+    const file = new File([blob], filename, {type: blob.type});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title: title||filename});
+      return true;
+    }
+  }catch(err){
+    if(err && err.name==='AbortError') return true;   // العميل قفل شاشة المشاركة، مش خطأ
+  }
+  downloadBlob(blob, filename);
+  toast('اتحمّل الملف — افتح واتساب وابعته من المرفقات');
+  return false;
+}
+
+async function canvasToPdf_(canvas, filename, opts){
+  opts = opts || {};
   const {jsPDF} = window.jspdf;
   const pdf = new jsPDF('p','mm','a4');
   const PW = 210, PH = 297;
@@ -1253,6 +1261,11 @@ async function canvasToPdf_(canvas, filename){
       pdf.text(String(i+1) + ' / ' + pages, PW/2, PH - 2.5, {align:'center'});
     }
     await yield_(0);                                // منع تجميد الواجهة
+  }
+  if(opts.share){
+    const blob = pdf.output('blob');
+    await shareOrDownload_(blob, filename, filename);
+    return;
   }
   pdf.save(filename);
 }
@@ -1933,6 +1946,7 @@ function pendingDoorsHTML(data){
     const orderBlocks = cust.perOrder.map((o,oi)=>{
       const sizeBlocks = o.widths.map(w=>{
         const items = o.groups[w];
+        const sizeTotal = items.reduce((s,it)=>s+(Number(it.qty)||0),0);
         const rowsHtml = items.map(it=>{
           const doorImg = (DOORS.find(d=>d.code===it.code)||{}).img;
           return `
@@ -1956,6 +1970,7 @@ function pendingDoorsHTML(data){
             </tr></thead>
             <tbody>${rowsHtml}</tbody>
           </table>
+          <div style="text-align:left;font-size:11px;font-weight:700;color:${tint.line};margin-top:3px">إجمالي مقاس ${w==='خاص'?'خاص':esc(w)}: ${sizeTotal} باب</div>
         </div>`;
       }).join('');
       const orderLabel = single ? '' : `<div style="font-size:11px;color:#6B7A8C;font-weight:700">طلب ${oi+1}</div>`;
@@ -2005,7 +2020,7 @@ async function buildPendingDoorsPdf_(orders){
   if(!data.length){ toast('مفيش طلبات معلّقة'); return; }
   if(typeof html2canvas==='undefined' || !window.jspdf){ toast('محتاج نت أول مرة عشان يجهّز الـ PDF'); return; }
   const canvas = await renderPaper_(pendingDoorsHTML(data));
-  await canvasToPdf_(canvas, 'تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.pdf');
+  await canvasToPdf_(canvas, 'تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.pdf', {share:true});
 }
 
 async function buildPendingDoorsExcel_(orders){
@@ -2092,6 +2107,9 @@ async function buildPendingDoorsExcel_(orders){
             c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:tint}};
           });
         });
+
+        const sizeTotal = o.groups[w].reduce((s,it)=>s+(Number(it.qty)||0),0);
+        mergedRow('إجمالي '+sizeLabel+':  '+sizeTotal+' باب', LIGHT, NAVY, true, 11);
       });
     });
 
@@ -2111,7 +2129,8 @@ async function buildPendingDoorsExcel_(orders){
 
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-  downloadBlob(blob, 'تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  const fname = 'تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.xlsx';
+  await shareOrDownload_(blob, fname, fname);
 }
 
 // بيجيب بيانات الطلبات المعلّقة بالتفصيل من السيرفر — مشتركة بين التلات أزرار التصدير
@@ -2156,7 +2175,8 @@ async function exportPendingDoorsImage_(){
     if(!data.length){ toast('مفيش طلبات معلّقة'); busy(false); return; }
     const canvas = await renderPaper_(pendingDoorsHTML(data));
     const blob = await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
-    downloadBlob(blob, 'تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.png');
+    const fname = 'تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.png';
+    await shareOrDownload_(blob, fname, fname);
   }catch(err){
     toast('تعذّر تجهيز الصورة: ' + (err.message || err));
   }
@@ -2689,9 +2709,6 @@ document.addEventListener('click',e=>{
   switch(a){
     case 'go-cart': state.tab='cart'; render(); window.scrollTo({top:0}); break;
     case 'pick-door': selectDoor(el.dataset.code); loadStock(); break;
-    case 'cust-same': state.customer.same = el.dataset.v==='1';
-                      if(state.customer.same) state.customer.name='';
-                      render(); break;
     case 'sec': state.newSection=el.dataset.s; save(LS_SECTION,state.newSection); render(); window.scrollTo({top:0,behavior:'smooth'}); break;
     case 'door-preview': showDoorPreview(el.dataset.code); break;
     case 'preview-select':
@@ -2814,6 +2831,7 @@ document.addEventListener('input',e=>{
   if(a==='prof'){ state.profile[el.dataset.k]=el.value; save(LS_PROFILE,state.profile); return; }
   if(a==='cust'){ state.pick.custom[el.dataset.k]=el.value; refreshSummary(); return; }
   if(a==='cust-name'){ state.customer.name=el.value; return; }
+  if(a==='cust-phone'){ state.customer.phone=el.value; return; }
   if(a==='stock-in'){
     state.admin.stockDraft[el.dataset.code+'|'+el.dataset.w] = el.value;
     el.classList.add('dirty');
@@ -3035,7 +3053,7 @@ async function adminEditOrder(o){
   save(LS_CART,state.cart);
 
   state.editingId = o.id;
-  state.editingMeta = { name:o.dist||'', phone:o.phone||'', region:o.region||'', customer:o.customer||'' };
+  state.editingMeta = { name:o.dist||'', phone:o.phone||'', region:o.region||'', customer:o.customer||'', customerPhone:o.customerPhone||'' };
   state.tab='cart'; render(); window.scrollTo({top:0,behavior:'smooth'});
   toast('بتعدّل الطلب #'+o.id+' — عدّل السلة واضغط «حفظ التعديل»');
 }
@@ -3049,9 +3067,9 @@ function draftOrder(){
     phone: m ? m.phone : state.profile.phone,
     region: m ? m.region : state.profile.region,
     warehouse:WAREHOUSE, items:JSON.parse(JSON.stringify(state.cart)), total:cartTotal(),
-    // صاحب الأوردر: لو مش نفس المستخدم بنسجّل اسمه، وده اللي بيتبعت للمصنع كـ Distributor
-    customer: m ? (m.customer||'') : (!state.customer.same && state.customer.name.trim())
-                ? state.customer.name.trim() : '',
+    // صاحب الأوردر: حقل اختياري — لو اتكتب بيتسجّل، لو فاضي يبقى نفس صاحب الحساب
+    customer: m ? (m.customer||'') : state.customer.name.trim(),
+    customerPhone: m ? (m.customerPhone||'') : state.customer.phone.trim(),
     note: state.orderNote.trim()
   };
 }
@@ -3064,6 +3082,7 @@ function buildMessage(o){
   m+='المنطقة: '+(o.region||'-')+'\n';
   m+='الموبايل: '+(o.phone||'-')+'\n';
   if(o.customer) m+='صاحب الأوردر: '+o.customer+'\n';
+  if(o.customerPhone) m+='تليفون صاحب الأوردر: '+o.customerPhone+'\n';
   m+='المخزن: '+WAREHOUSE+'\n';
   if(o.note) m+='ملاحظات: '+o.note+'\n';
   m+='——————\n';
@@ -3126,30 +3145,19 @@ async function shareOrderImage(o){
 function submitOrder(){
   if(!state.cart.length){toast('السلة فاضية');return;}
   if(!state.editingMeta){
-    // طلب جديد أو تعديل عادي من الموزع — لازم اسم الحساب وبيانات صحيحة
+    // طلب جديد أو تعديل عادي من الموزع — لازم اسم الحساب وبيانات صحيحة. صاحب الأوردر اختياري
     if(!profileOk()){
       state.touched=true; state.tab='new'; render();
       window.scrollTo({top:0,behavior:'smooth'});
       toast('اكتب الاسم ورقم موبايل صحيح — إجباري');
       return;
     }
-    if(!state.customer.same && !state.customer.name.trim()){
-      state.touched=true; state.tab='new'; render();
-      window.scrollTo({top:0,behavior:'smooth'});
-      toast('اكتب اسم صاحب الطلب — إجباري');
-      return;
-    }
   } else {
-    // تعديل من شاشة المصنع — اسم الحساب واسم صاحب الأوردر إجباريين هنا كمان، لو ناقصين بنسأل
+    // تعديل من شاشة المصنع — اسم الحساب إجباري هنا كمان، لو ناقص بنسأل. صاحب الأوردر اختياري
     if(!state.editingMeta.name || !state.editingMeta.name.trim()){
       const v = (prompt('اسم الحساب (صاحب الجهاز) مفقود من الطلب ده — اكتبه عشان تقدر تحفظ:') || '').trim();
       if(!v){ toast('لازم تكتب اسم الحساب عشان تكمّل الحفظ'); return; }
       state.editingMeta.name = v;
-    }
-    if(!state.editingMeta.customer || !state.editingMeta.customer.trim()){
-      const v2 = (prompt('اسم صاحب الأوردر مفقود من الطلب ده — اكتبه عشان تقدر تحفظ:') || '').trim();
-      if(!v2){ toast('لازم تكتب اسم صاحب الأوردر عشان تكمّل الحفظ'); return; }
-      state.editingMeta.customer = v2;
     }
   }
   const wasEditing = !!state.editingId;
@@ -3166,7 +3174,7 @@ function submitOrder(){
   const wasAdminEdit = !!state.editingMeta;
   state.cart=[]; save(LS_CART,state.cart); state.touched=false;
   state.editingId=null; state.editingMeta=null;
-  state.customer={same:true,name:''}; state.orderNote='';   // تصفير بيانات صاحب الأوردر للطلب الجاي
+  state.customer={name:'',phone:''}; state.orderNote='';   // تصفير بيانات صاحب الأوردر للطلب الجاي
 
   if(APPS_SCRIPT_URL){
     if(wasEditing && prevId){

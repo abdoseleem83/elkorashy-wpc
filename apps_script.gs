@@ -49,11 +49,12 @@ var HEAD_DIST = ['Phone', 'Name', 'Region', 'Status', 'Requested At', 'Decided A
 var HEAD_ORDERS = [
   'Order No', 'Date', 'Time', 'Distributor', 'Phone', 'Region',
   'Warehouse', 'Total Qty', 'Total Rods', 'Total Amount', 'Status', 'Note to Distributor', 'Pricing Terms', 'Message', 'Status Updated',
-  'Archived', 'Customer', 'Order Note'
+  'Archived', 'Customer', 'Order Note', 'Customer Phone'
 ];
 var COL_ARCHIVED = 16;
 var COL_CUSTOMER = 17;   // اسم صاحب الأوردر لو مختلف عن صاحب الجهاز
 var COL_ORDNOTE  = 18;   // ملاحظات العميل على الطلب   // Y/N — بيتحدّد أوتوماتيك لما الحالة تبقى Delivered، أو يدوي من زرار الأرشفة
+var COL_CUST_PHONE = 19; // رقم تليفون صاحب الأوردر لو مختلف عن صاحب الجهاز
 
 var HEAD_ITEMS = [
   'Order No', 'Date', 'Distributor', 'Type', 'Item', 'Colour Code',
@@ -240,6 +241,7 @@ function doGet(e) {
           status: rows[i][10],
           note:   rows[i][11],      // ملاحظة المصنع للموزع
           customer: rows[i][COL_CUSTOMER - 1] || '',
+          customerPhone: isAdmin ? String(rows[i][COL_CUST_PHONE - 1] || '').replace(/^'/, '') : '',
           ordNote:  rows[i][COL_ORDNOTE  - 1] || '',
           archived: isAdmin ? (String(rows[i][COL_ARCHIVED - 1] || '') === 'Y') : undefined
         });
@@ -311,7 +313,7 @@ function doGet(e) {
       }
     }
 
-    // إلغاء طلب (بيتنادى لوحده لما العميل أو المصنع يعدّل طلب — الطلب القديم يتلغي وطلب جديد يتعمل)
+    // إلغاء طلب (بيتنادى لوحده لما العميل أو المصنع يعدّل طلب — الطلب القديم يتحذف تلقائي وطلب جديد يتعمل)
     // من غير باسورد عشان الموزع العادي يقدر يعدّل طلبه هو من غير دخول شاشة المصنع
     if (action === 'cancelOrder') {
       var lockCO = LockService.getScriptLock();
@@ -320,8 +322,13 @@ function doGet(e) {
         var shCO = sheet_(SHEET_ORDERS, HEAD_ORDERS);
         var rCO = findRow_(shCO, e.parameter.id);
         if (rCO < 0) return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
-        shCO.getRange(rCO, COL_STATUS).setValue('Cancelled');
-        shCO.getRange(rCO, COL_UPDATED).setValue(new Date());
+        var stCO = String(shCO.getRange(rCO, COL_STATUS).getValue() || '');
+        if (stCO === 'In Progress' || stCO === 'Ready' || stCO === 'Delivered') {
+          return reply({ ok: false, error: 'الطلب دخل التنفيذ في المصنع، مينفعش يتلغي' }, cb);
+        }
+        shCO.deleteRow(rCO);
+        var shICO = sheet_(SHEET_ITEMS, HEAD_ITEMS);
+        clearItemRows_(shICO, e.parameter.id);
         return reply({ ok: true, id: e.parameter.id }, cb);
       } finally {
         try { lockCO.releaseLock(); } catch (eCO) {}
@@ -421,6 +428,7 @@ function doGet(e) {
           warehouse: rowsLW[jLW][6],
           status:    rowsLW[jLW][10],
           customer:  rowsLW[jLW][COL_CUSTOMER - 1] || '',
+          customerPhone: String(rowsLW[jLW][COL_CUST_PHONE - 1] || '').replace(/^'/, ''),
           ordNote:   rowsLW[jLW][COL_ORDNOTE  - 1] || '',
           items:     itemsByIdLW[idLW] || []
         });
@@ -531,7 +539,8 @@ function saveOrder_(o) {
     '',                  // Status Updated — بيتحط وقت تغيير الحالة
     '',                  // Archived
     o.customer || '',    // صاحب الأوردر لو مختلف عن صاحب الجهاز
-    o.note || ''         // ملاحظات العميل
+    o.note || '',        // ملاحظات العميل
+    o.customerPhone || ''  // تليفون صاحب الأوردر لو مختلف عن صاحب الجهاز
   ];
 
   if (existing > 0) {
