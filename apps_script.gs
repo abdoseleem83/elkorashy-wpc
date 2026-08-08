@@ -311,6 +311,23 @@ function doGet(e) {
       }
     }
 
+    // إلغاء طلب (بيتنادى لوحده لما العميل أو المصنع يعدّل طلب — الطلب القديم يتلغي وطلب جديد يتعمل)
+    // من غير باسورد عشان الموزع العادي يقدر يعدّل طلبه هو من غير دخول شاشة المصنع
+    if (action === 'cancelOrder') {
+      var lockCO = LockService.getScriptLock();
+      try {
+        lockCO.waitLock(15000);
+        var shCO = sheet_(SHEET_ORDERS, HEAD_ORDERS);
+        var rCO = findRow_(shCO, e.parameter.id);
+        if (rCO < 0) return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
+        shCO.getRange(rCO, COL_STATUS).setValue('Cancelled');
+        shCO.getRange(rCO, COL_UPDATED).setValue(new Date());
+        return reply({ ok: true, id: e.parameter.id }, cb);
+      } finally {
+        try { lockCO.releaseLock(); } catch (eCO) {}
+      }
+    }
+
     // حذف طلب بالكامل (السطر الملخّص + كل سطور أصنافه) — من شاشة المصنع
     if (action === 'deleteOrder') {
       if (String(e.parameter.pw || '') !== ADMIN_PW) {

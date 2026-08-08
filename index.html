@@ -467,7 +467,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v66';
+const APP_BUILD   = 'v67';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1056,8 +1056,11 @@ function viewCart(){
   <section class="card">
     <div class="step"><span class="n">✓</span><h2>مراجعة الطلب</h2></div>
     ${editing?`<div class="note" style="margin-top:0;background:#FFF6E5;color:#8A6512;border-radius:8px;padding:9px 12px">
-      ✏️ بتعدّل الطلب <b>#${esc(state.editingId)}</b>${state.editingMeta?' — العميل: <b>'+esc(state.editingMeta.name||'')+'</b>':''} — الحفظ هيحدّث نفس الطلب مش يعمل واحد جديد.
-      <button class="btn ghost sm" data-act="cancel-edit" style="margin-top:8px">إلغاء التعديل</button>
+      ✏️ بتعدّل الطلب <b>#${esc(state.editingId)}</b>${state.editingMeta?' — العميل: <b>'+esc(state.editingMeta.name||'')+'</b>':''} — الحفظ هيلغي الطلب القديم ده وهيعمل طلب جديد بالأصناف المعدّلة.
+      <div class="btnrow" style="margin-top:8px">
+        <button class="btn ghost sm" data-act="edit-add-items">${ico("box")} إضافة أصناف</button>
+        <button class="btn ghost sm" data-act="cancel-edit">إلغاء التعديل</button>
+      </div>
     </div>`:''}
     ${lines}
     ${priced?`<div class="total"><span class="lbl">الإجمالي التقديري</span><span class="val">${money(cartTotal())} <small>ج</small></span></div>
@@ -1098,6 +1101,9 @@ function viewOrders(){
     const editBtn = locked
       ? `<button class="btn ghost sm" disabled title="الطلب دخل التنفيذ ومينفعش يتعدّل">🔒 اتقفل التعديل</button>`
       : `<button class="btn ghost sm" data-act="ord-edit" data-id="${esc(o.id)}">✏️ تعديل</button>`;
+    const delBtn = locked
+      ? `<button class="btn ghost sm" disabled title="الطلب دخل التنفيذ ومينفعش يتحذف">🔒 اتقفل الحذف</button>`
+      : `<button class="btn ghost sm" data-act="ord-del" data-id="${esc(o.id)}">🗑 حذف</button>`;
     return `
     <div class="ord">
       <div class="oh"><span class="oid">#${esc(o.id)}</span>${live?statusPill(live.status):''}</div>
@@ -1111,7 +1117,7 @@ function viewOrders(){
         <button class="btn ghost sm" data-act="ord-pdf"   data-id="${esc(o.id)}">📄 PDF</button>
         <button class="btn ghost sm" data-act="ord-xls"   data-id="${esc(o.id)}">📊 إكسيل</button>
         <button class="btn ghost sm" data-act="resend"    data-id="${esc(o.id)}">↗ إرسال</button>
-        <button class="btn ghost sm" data-act="ord-del"   data-id="${esc(o.id)}">🗑 حذف</button>
+        ${delBtn}
       </div>
     </div>`;
   }).join('');
@@ -1412,53 +1418,6 @@ async function deleteOrder(id){
     toast('تعذّر الحذف: ' + (err.message || err));
   }
   state.admin.delBusy = null; render();
-}
-
-// أرشفة يدوية (📦 أرشفة) أو إرجاع من الأرشيف (↩️) — منفصلة عن الأرشفة التلقائية عند "تم التسليم"
-async function archiveOrder(id, archived){
-  state.admin.archBusy = id; render();
-  try{
-    const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=archiveOrder&pw=' + encodeURIComponent(state.admin.pw)
-      + '&id=' + encodeURIComponent(id) + '&archived=' + (archived?1:0));
-    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل التحديث');
-    if(archived){
-      const o = (state.admin.rows||[]).find(x=>String(x.id)===String(id));
-      state.admin.rows = (state.admin.rows||[]).filter(x=>String(x.id)!==String(id));
-      if(o && state.admin.archRows) state.admin.archRows.unshift(o);
-      else state.admin.archRows = null;
-      toast('اتأرشف الطلب #' + id);
-    } else {
-      const o = (state.admin.archRows||[]).find(x=>String(x.id)===String(id));
-      state.admin.archRows = (state.admin.archRows||[]).filter(x=>String(x.id)!==String(id));
-      if(o && state.admin.rows) state.admin.rows.unshift(o);
-      else state.admin.rows = null;
-      toast('اترجّع الطلب #' + id + ' من الأرشيف');
-    }
-  }catch(err){
-    toast('تعذّر التحديث: ' + (err.message || err));
-  }
-  state.admin.archBusy = null; render();
-}
-
-async function loadArchive(){
-  state.admin.archLoading = true; render();
-  try{
-    const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=list&pw=' + encodeURIComponent(state.admin.pw) + '&archived=1');
-    if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
-    state.admin.archRows = d.orders || [];
-  }catch(err){
-    toast('تعذّر تحميل الأرشيف: ' + (err.message || err));
-    state.admin.archRows = [];
-  }
-  state.admin.archLoading = false; render();
-}
-
-function toggleArchiveView(){
-  state.admin.viewArchive = !state.admin.viewArchive;
-  render();
-  if(state.admin.viewArchive && state.admin.archRows===null) loadArchive();
 }
 
 // مسح كل الطلبات اللي حالتها "تم التسليم" دفعة واحدة — تنظيف دوري، إجراء نهائي وجماعي فمحتاج تأكيد قوي
@@ -1945,6 +1904,15 @@ function buildPendingDoorsData_(orders){
   }).filter(c=>c.total>0);   // عميل مالوش ولا باب واحد مايظهرش خالص
 }
 
+// عدد الأيام من تاريخ الطلب لحد النهاردة — بيتحسب من تاريخ الطلب (yyyy-MM-dd)
+function daysSince_(dateStr){
+  if(!dateStr) return null;
+  const d = new Date(dateStr+'T00:00:00');
+  if(isNaN(d.getTime())) return null;
+  const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
+  return diff < 0 ? 0 : diff;
+}
+
 function pendingDoorsHTML(data){
   // ألوان مختلفة لكل عميل عشان يتفرقوا بسرعة (عميل ١ بلون، اللي بعده بلون تاني، وهكذا)
   const CUST_TINT = [
@@ -1955,8 +1923,13 @@ function pendingDoorsHTML(data){
     {bg:'#FDF3F3', line:'#C25454', head:'#FBE7E7'},
     {bg:'#F1F8FB', line:'#2C8FA3', head:'#E3F3F7'}
   ];
+  const orderMeta = o=>{
+    const days = daysSince_(o.date);
+    return 'تاريخ الطلب: '+esc(o.date||'—')+(days!=null?' — عدد أيام الانتظار: '+days+' يوم':'');
+  };
   const custBlocks = data.map((cust,ci)=>{
     const tint = CUST_TINT[ci % CUST_TINT.length];
+    const single = cust.perOrder.length===1;
     const orderBlocks = cust.perOrder.map((o,oi)=>{
       const sizeBlocks = o.widths.map(w=>{
         const items = o.groups[w];
@@ -1964,13 +1937,13 @@ function pendingDoorsHTML(data){
           const doorImg = (DOORS.find(d=>d.code===it.code)||{}).img;
           return `
           <tr>
-            <td style="text-align:center;padding:5px;border-bottom:1px solid #EDF0F3">${esc(it.qty||0)}</td>
             <td style="text-align:center;padding:5px;border-bottom:1px solid #EDF0F3">
               <div style="display:flex;align-items:center;justify-content:center;gap:6px">
                 ${doorImg?`<img src="${doorImg}" style="width:26px;height:26px;object-fit:cover;border-radius:5px;border:1px solid #DCE4EC">`:''}
                 <span style="font-weight:700">${esc(it.code||'')}</span>
               </div>
             </td>
+            <td style="text-align:center;padding:5px;border-bottom:1px solid #EDF0F3">${esc(it.qty||0)}</td>
             <td style="text-align:center;padding:5px;border-bottom:1px solid #EDF0F3">${esc(it.frame?frameText_(it.frame,it.frameHeight):'—')}</td>
             <td style="text-align:center;padding:5px;border-bottom:1px solid #EDF0F3">${esc(it.dbror||'—')}</td>
           </tr>`;
@@ -1979,22 +1952,29 @@ function pendingDoorsHTML(data){
           <div style="font-weight:700;color:${tint.line};font-size:11.5px">🚪 مقاس ${w==='خاص'?'خاص':esc(w)+' سم'}</div>
           <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:4px">
             <thead><tr style="background:#F3F6FA;color:#5B6B7D">
-              <th style="padding:5px">عدد</th><th style="padding:5px">نوع</th><th style="padding:5px">حلق</th><th style="padding:5px">برور</th>
+              <th style="padding:5px">نوع الباب</th><th style="padding:5px">العدد</th><th style="padding:5px">حلق</th><th style="padding:5px">برور</th>
             </tr></thead>
             <tbody>${rowsHtml}</tbody>
           </table>
         </div>`;
       }).join('');
+      const orderLabel = single ? '' : `<div style="font-size:11px;color:#6B7A8C;font-weight:700">طلب ${oi+1}</div>`;
+      const metaLine = single ? '' : `<div style="font-size:10.5px;color:#8A97A6;margin-top:2px">${orderMeta(o)}</div>`;
       return `<div style="margin-top:10px;padding:8px 11px;border-inline-start:4px solid ${tint.line};background:${tint.bg};border-radius:8px">
-        <div style="font-size:11px;color:#6B7A8C;font-weight:700">طلب ${oi+1} — ${esc(o.date||'')}</div>
+        ${orderLabel}${metaLine}
         ${sizeBlocks || '<div style="font-size:11px;color:#8A97A6;padding:4px 0">مفيش أبواب في الطلب ده</div>'}
       </div>`;
     }).join('');
+    // الهيدر: صاحب الطلب — ولو طلب واحد بس، تاريخه وعدد أيامه بيتحطوا في نفس الهيدر
+    const headerMeta = single ? orderMeta(cust.perOrder[0]) : '';
     return `<div style="margin-top:16px;border:1px solid #DCE4EC;border-radius:10px;padding:12px 14px;break-inside:avoid">
-      <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:15px;font-weight:700;color:${tint.line};background:${tint.head};padding:7px 11px;border-radius:7px">${esc(cust.name)}</div>
+      <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:15px;font-weight:700;color:${tint.line};background:${tint.head};padding:7px 11px;border-radius:7px">
+        صاحب الطلب: ${esc(cust.name)}${headerMeta?' — '+headerMeta:''}
+      </div>
       ${orderBlocks}
-      <div style="margin-top:10px;padding-top:8px;border-top:1px dashed #DCE4EC;display:flex;justify-content:space-between;font-weight:700;font-size:12px">
-        <span>إجمالي ${esc(cust.name)}</span><span>${cust.total} باب</span>
+      <div style="margin-top:10px;padding-top:8px;border-top:1px dashed #DCE4EC;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:700;font-size:13px">إجمالي ${esc(cust.name)}</span>
+        <span style="font-weight:700;font-size:20px;color:${tint.line}">${cust.total} باب</span>
       </div>
     </div>`;
   }).join('');
@@ -2036,20 +2016,20 @@ async function buildPendingDoorsExcel_(orders){
   const NAVY='FF002050', BRAND='FF1080C0', LIGHT='FFEAF2FA', WHITE='FFFFFFFF', BORDER_CLR='FFDCE4EC';
   const thin = {style:'thin', color:{argb:BORDER_CLR}};
   const border = {top:thin,left:thin,right:thin,bottom:thin};
+  const COLS = 4;
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('الأبواب المعلّقة', { views:[{ rightToLeft:true }] });
   ws.columns = [
-    { key:'date', width:14 },
-    { key:'qty',  width:9  },
-    { key:'code', width:12 },
-    { key:'frame',width:22 },
-    { key:'bror', width:12 }
+    { key:'code', width:14 },
+    { key:'qty',  width:10 },
+    { key:'frame',width:24 },
+    { key:'bror', width:14 }
   ];
 
   function mergedRow(text, fillArgb, fontArgb, bold, size){
-    const r = ws.addRow([text,'','','','']);
-    ws.mergeCells(r.number,1,r.number,5);
+    const r = ws.addRow([text,'','','']);
+    ws.mergeCells(r.number,1,r.number,COLS);
     r.eachCell(c=>{
       c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:fillArgb}};
       c.font = {bold: !!bold, color:{argb:fontArgb}, size: size||11, name:'Arial'};
@@ -2068,18 +2048,30 @@ async function buildPendingDoorsExcel_(orders){
   const CUST_FILL = ['FF1080C0','FFC08A3E','FF3E9B72','FF7C63C4','FFC25454','FF2C8FA3'];
   const CUST_TINT = ['FFF4F9FD','FFFBF4EC','FFF3F8F5','FFF7F4FB','FFFDF3F3','FFF1F8FB'];
 
+  const orderMetaTxt = o=>{
+    const days = daysSince_(o.date);
+    return 'تاريخ الطلب: '+(o.date||'—')+(days!=null?'  —  عدد أيام الانتظار: '+days+' يوم':'');
+  };
+
   data.forEach((cust,ci)=>{
     const fill = CUST_FILL[ci % CUST_FILL.length];
     const tint = CUST_TINT[ci % CUST_TINT.length];
-    mergedRow(cust.name, fill, WHITE, true, 14);
+    const single = cust.perOrder.length===1;
+
+    // الهيدر: صاحب الطلب — ولو طلب واحد بس، تاريخه وعدد أيامه بيتحطوا في نفس السطر
+    const headerTxt = 'صاحب الطلب: '+cust.name + (single ? '  —  '+orderMetaTxt(cust.perOrder[0]) : '');
+    mergedRow(headerTxt, fill, WHITE, true, 14);
 
     cust.perOrder.forEach((o,oi)=>{
+      if(!single){
+        mergedRow('طلب '+(oi+1)+'  —  '+orderMetaTxt(o), tint, NAVY, true, 11);
+      }
       // ما تظهرش قايمة مقاس أصلًا لو مفيش أبواب بيه — o.widths أصلًا بتشمل المقاسات الموجودة بس
       o.widths.forEach(w=>{
         const sizeLabel = w==='خاص' ? 'أبواب مقاس خاص' : ('أبواب مقاس '+w+' سم');
-        mergedRow('🚪 '+sizeLabel+'  —  طلب '+(oi+1)+'  —  '+(o.date||''), fill, WHITE, false, 11);
+        mergedRow('🚪 '+sizeLabel, fill, WHITE, false, 11);
 
-        const hdr = ws.addRow(['التاريخ','كمية','نوع','حلق','برور']);
+        const hdr = ws.addRow(['نوع الباب','العدد','حلق','برور']);
         hdr.eachCell(c=>{
           c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}};
           c.font = {bold:true, color:{argb:NAVY}, name:'Arial', size:10.5};
@@ -2089,7 +2081,7 @@ async function buildPendingDoorsExcel_(orders){
 
         o.groups[w].forEach(it=>{
           const row = ws.addRow([
-            o.date||'', Number(it.qty)||0, it.code||'',
+            it.code||'', Number(it.qty)||0,
             it.frame ? frameText_(it.frame, it.frameHeight) : '—',
             it.dbror || '—'
           ]);
@@ -2103,7 +2095,7 @@ async function buildPendingDoorsExcel_(orders){
       });
     });
 
-    mergedRow('إجمالي '+cust.name+':  '+cust.total+' باب', tint, NAVY, true, 12);
+    mergedRow('إجمالي '+cust.name+':  '+cust.total+' باب', tint, NAVY, true, 20);
     ws.addRow([]);
   });
 
@@ -2122,33 +2114,51 @@ async function buildPendingDoorsExcel_(orders){
   downloadBlob(blob, 'تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 
-async function exportPendingDoorsReport(){
-  if(!APPS_SCRIPT_URL || !state.admin.pw) return;
-  busy(true,'جارٍ تجهيز تقرير الأبواب المعلّقة…');
-  let orders;
-  try{
-    const d = await jsonp(APPS_SCRIPT_URL + '?action=listWithItems&pw=' + encodeURIComponent(state.admin.pw), 25000);
-    if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
-    orders = d.orders || [];
-    if(!orders.length){ toast('مفيش طلبات لسه'); busy(false); return; }
-  }catch(err){
-    toast('تعذّر تحميل بيانات التقرير: ' + (err.message || err));
-    busy(false);
-    return;
-  }
+// بيجيب بيانات الطلبات المعلّقة بالتفصيل من السيرفر — مشتركة بين التلات أزرار التصدير
+async function fetchPendingOrders_(){
+  if(!APPS_SCRIPT_URL || !state.admin.pw) return null;
+  const d = await jsonp(APPS_SCRIPT_URL + '?action=listWithItems&pw=' + encodeURIComponent(state.admin.pw), 25000);
+  if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
+  const orders = d.orders || [];
+  if(!orders.length){ toast('مفيش طلبات لسه'); return null; }
+  return orders;
+}
 
+async function exportPendingDoorsPdf_(){
+  busy(true,'جارٍ تجهيز تقرير الأبواب المعلّقة (PDF)…');
   try{
-    busy(true,'جارٍ تجهيز ملف الإكسيل…');
-    await buildPendingDoorsExcel_(orders);
+    const orders = await fetchPendingOrders_();
+    if(orders) await buildPendingDoorsPdf_(orders);
+  }catch(err){
+    toast('تعذّر تجهيز الـ PDF: ' + (err.message || err));
+  }
+  busy(false);
+}
+
+async function exportPendingDoorsExcel_(){
+  busy(true,'جارٍ تجهيز تقرير الأبواب المعلّقة (إكسيل)…');
+  try{
+    const orders = await fetchPendingOrders_();
+    if(orders) await buildPendingDoorsExcel_(orders);
   }catch(err){
     toast('تعذّر تجهيز الإكسيل: ' + (err.message || err));
   }
+  busy(false);
+}
 
+async function exportPendingDoorsImage_(){
+  if(typeof html2canvas==='undefined'){ toast('محتاج نت أول مرة عشان يجهّز الصورة'); return; }
+  busy(true,'جارٍ تجهيز صورة تقرير الأبواب المعلّقة…');
   try{
-    busy(true,'جارٍ تجهيز الـ PDF (ممكن ياخد شوية وقت لو الطلبات كتير)…');
-    await buildPendingDoorsPdf_(orders);
+    const orders = await fetchPendingOrders_();
+    if(!orders){ busy(false); return; }
+    const data = buildPendingDoorsData_(orders);
+    if(!data.length){ toast('مفيش طلبات معلّقة'); busy(false); return; }
+    const canvas = await renderPaper_(pendingDoorsHTML(data));
+    const blob = await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
+    downloadBlob(blob, 'تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.png');
   }catch(err){
-    toast('تعذّر تجهيز الـ PDF: ' + (err.message || err));
+    toast('تعذّر تجهيز الصورة: ' + (err.message || err));
   }
   busy(false);
 }
@@ -2513,22 +2523,17 @@ function viewAdmin(){
     </section>${verBar()}`;
   }
 
-  const viewingArchive = a.viewArchive;
-  const list = viewingArchive ? a.archRows : a.rows;
-
-  if(viewingArchive && a.archLoading){
-    return `<div class="empty"><span class="em">⏳</span><p>جارٍ تحميل الأرشيف…</p></div>`;
-  }
+  const viewingArchive = false;   // الأرشيف اتشال من الواجهة
+  const list = a.rows;
 
   const headerBtns = `<div class="toolgrid">
         <button class="btn act-tool sm" data-act="adm-reload">${ico("refresh")}تحديث</button>
-        <button class="btn act-report sm" data-act="adm-report">${ico("report")}تقرير شامل PDF</button>
-        <button class="btn act-report sm" data-act="adm-xls">${ico("sheet")}تصدير إكسيل</button>
-        <button class="btn act-report sm" data-act="adm-pending-report">${ico("ruler")}الأبواب المعلّقة</button>
+        <button class="btn act-report sm" data-act="adm-pending-img">${ico("box")}تصدير صور</button>
+        <button class="btn act-report sm" data-act="adm-pending-pdf">${ico("doc")}تصدير PDF</button>
+        <button class="btn act-report sm" data-act="adm-pending-xls">${ico("sheet")}تصدير إكسيل</button>
         <button class="btn ${a.viewStock?'brand':'act-edit'} sm" data-act="adm-toggle-stock">${ico("box")}${a.viewStock?'رجوع للطلبات':'أرصدة المخزن'}</button>
         <button class="btn act-money sm" data-act="adm-prices-open"><i>💲</i>الأسعار</button>
-        <button class="btn ${viewingArchive?'brand':'act-arch'} sm" data-act="adm-toggle-archive">${viewingArchive?ico("back"):ico("folder")}${viewingArchive?'رجوع للنشط':'الأرشيف'}</button>
-        ${viewingArchive?'':'<button class="btn act-del sm" data-act="adm-clear-delivered">${ico("trash")}مسح المسلّم</button>'}
+        <button class="btn act-del sm" data-act="adm-clear-delivered">${ico("trash")}مسح المسلّم</button>
         <button class="btn act-tool sm" data-act="adm-logout">${ico("lock")}خروج</button>
       </div>`;
 
@@ -2641,14 +2646,10 @@ function viewAdmin(){
       }
     }
 
-    const actionBtns = viewingArchive
-      ? `<button class="btn act-edit sm" data-act="adm-edit" data-id="${esc(o.id)}">${ico("edit")}تعديل</button>
-         <button class="btn act-arch sm" data-act="adm-unarchive" data-id="${esc(o.id)}" ${archBusy?'disabled':''}>${ico("undo")}${archBusy?'…':'رجّع'}</button>
-         <button class="btn act-del sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}>${ico("trash")}${delBusy?'جارٍ الحذف…':'حذف'}</button>`
-      : `<button class="btn act-edit sm" data-act="adm-edit" data-id="${esc(o.id)}">${ico("edit")}تعديل</button>
+    const actionBtns = `<button class="btn act-edit sm" data-act="adm-edit" data-id="${esc(o.id)}">${ico("edit")}تعديل</button>
          <button class="btn act-send sm" data-act="adm-share" data-id="${esc(o.id)}">${ico("send")}إرسال</button>
          <button class="btn act-money sm" data-act="adm-quote" data-id="${esc(o.id)}"><i>💰</i>عرض سعر</button>
-         <button class="btn act-arch sm" data-act="adm-archive" data-id="${esc(o.id)}" ${archBusy?'disabled':''}>${ico("box")}${archBusy?'…':'أرشفة'}</button>`;
+         <button class="btn act-del sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}>${ico("trash")}${delBusy?'جارٍ الحذف…':'حذف'}</button>`;
 
     return `<div class="ord">
       <div class="oh"><span class="oid">#${esc(o.id)}</span>${statusPill(o.status)}</div>
@@ -2734,6 +2735,8 @@ document.addEventListener('click',e=>{
     case 'ord-del': {
       const o = state.orders.find(x=>x.id===el.dataset.id);
       if(!o) break;
+      const live = (state.track.rows||[]).find(r=>String(r.id)===String(o.id));
+      if(isOrderLocked_(live)){ toast('الطلب دخل التنفيذ في المصنع، مينفعش يتحذف دلوقتي'); break; }
       if(!confirm('حذف الطلب #'+o.id+' من الجهاز ده؟ (ده مش هيلغي الطلب عند المصنع لو اتبعت خلاص، بس هيشيله من قايمتك هنا)')) break;
       state.orders = state.orders.filter(x=>x.id!==o.id);
       save(LS_ORDERS, state.orders);
@@ -2746,27 +2749,27 @@ document.addEventListener('click',e=>{
       state.tab = wasAdmin ? 'admin' : 'orders'; render(); window.scrollTo({top:0,behavior:'smooth'});
       toast('اتلغى التعديل');
     } break;
+    case 'edit-add-items': {
+      state.tab='new'; render(); window.scrollTo({top:0,behavior:'smooth'});
+      toast('اختار الصنف وزوّده على السلة، وارجع لتبويب السلة تكمّل الحفظ');
+    } break;
     case 'track-load': loadTrack(); break;
     case 'adm-login':  adminLoad(); break;
-    case 'adm-reload': state.admin.viewArchive ? loadArchive() : adminLoad(); break;
+    case 'adm-reload': adminLoad(); break;
     case 'adm-set':    setStatus(el.dataset.id, el.dataset.st); break;
     case 'adm-toggle-items': { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) toggleOrderItemsPreview(o); } break;
     case 'adm-pdf':     { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) exportAdminOrderPdf(o); } break;
     case 'adm-quote':   { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) exportAdminOrderQuote(o); } break;
     case 'adm-share':    { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) shareAdminOrderImage(o); } break;
-    case 'adm-edit':     { const list=(state.admin.viewArchive?state.admin.archRows:state.admin.rows)||[];
-                           const o=list.find(x=>String(x.id)===String(el.dataset.id)); if(o) adminEditOrder(o); } break;
-    case 'adm-report':   exportAdminFullReport(); break;
+    case 'adm-edit':     { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) adminEditOrder(o); } break;
     case 'adm-prices-open':   openAdminPrices(); break;
     case 'adm-prices-save':   saveAdminPrices(); break;
     case 'adm-prices-cancel': state.admin.pricesOpen=false; state.admin.priceEdit=null; render(); break;
-    case 'adm-pending-report': exportPendingDoorsReport(); break;
-    case 'adm-xls':      exportAdminExcel(); break;
+    case 'adm-pending-img':  exportPendingDoorsImage_(); break;
+    case 'adm-pending-pdf':  exportPendingDoorsPdf_(); break;
+    case 'adm-pending-xls':  exportPendingDoorsExcel_(); break;
     case 'adm-clear-delivered': clearDeliveredOrders(); break;
     case 'adm-del':     deleteOrder(el.dataset.id); break;
-    case 'adm-archive':   archiveOrder(el.dataset.id, true); break;
-    case 'adm-unarchive': archiveOrder(el.dataset.id, false); break;
-    case 'adm-toggle-archive': toggleArchiveView(); break;
     case 'adm-toggle-stock':
       state.admin.viewStock = !state.admin.viewStock;
       state.admin.stockDraft = {};
@@ -3032,7 +3035,7 @@ async function adminEditOrder(o){
   save(LS_CART,state.cart);
 
   state.editingId = o.id;
-  state.editingMeta = { name:o.dist||'', phone:o.phone||'', region:o.region||'' };
+  state.editingMeta = { name:o.dist||'', phone:o.phone||'', region:o.region||'', customer:o.customer||'' };
   state.tab='cart'; render(); window.scrollTo({top:0,behavior:'smooth'});
   toast('بتعدّل الطلب #'+o.id+' — عدّل السلة واضغط «حفظ التعديل»');
 }
@@ -3041,13 +3044,13 @@ function draftOrder(){
   // لو المصنع بيعدّل طلب عميل، بنحافظ على بيانات العميل الأصلي مش بيانات جهاز المصنع
   const m = state.editingMeta;
   return {
-    id:state.editingId || newOrderId(), ts:Date.now(),
+    id:newOrderId(), ts:Date.now(),
     name: m ? m.name : state.profile.name,
     phone: m ? m.phone : state.profile.phone,
     region: m ? m.region : state.profile.region,
     warehouse:WAREHOUSE, items:JSON.parse(JSON.stringify(state.cart)), total:cartTotal(),
     // صاحب الأوردر: لو مش نفس المستخدم بنسجّل اسمه، وده اللي بيتبعت للمصنع كـ Distributor
-    customer: (!m && !state.customer.same && state.customer.name.trim())
+    customer: m ? (m.customer||'') : (!state.customer.same && state.customer.name.trim())
                 ? state.customer.name.trim() : '',
     note: state.orderNote.trim()
   };
@@ -3122,28 +3125,43 @@ async function shareOrderImage(o){
 
 function submitOrder(){
   if(!state.cart.length){toast('السلة فاضية');return;}
-  // لو المصنع بيعدّل طلب عميل، بيانات العميل جاية من الطلب نفسه — مش لازم بروفايل الجهاز
-  if(!state.editingMeta && !profileOk()){
-    state.touched=true; state.tab='new'; render();
-    window.scrollTo({top:0,behavior:'smooth'});
-    toast('اكتب الاسم ورقم موبايل صحيح — إجباري');
-    return;
-  }
-  if(!state.editingMeta && !state.customer.same && !state.customer.name.trim()){
-    state.touched=true; state.tab='new'; render();
-    window.scrollTo({top:0,behavior:'smooth'});
-    toast('اكتب اسم صاحب الطلب — إجباري');
-    return;
+  if(!state.editingMeta){
+    // طلب جديد أو تعديل عادي من الموزع — لازم اسم الحساب وبيانات صحيحة
+    if(!profileOk()){
+      state.touched=true; state.tab='new'; render();
+      window.scrollTo({top:0,behavior:'smooth'});
+      toast('اكتب الاسم ورقم موبايل صحيح — إجباري');
+      return;
+    }
+    if(!state.customer.same && !state.customer.name.trim()){
+      state.touched=true; state.tab='new'; render();
+      window.scrollTo({top:0,behavior:'smooth'});
+      toast('اكتب اسم صاحب الطلب — إجباري');
+      return;
+    }
+  } else {
+    // تعديل من شاشة المصنع — اسم الحساب واسم صاحب الأوردر إجباريين هنا كمان، لو ناقصين بنسأل
+    if(!state.editingMeta.name || !state.editingMeta.name.trim()){
+      const v = (prompt('اسم الحساب (صاحب الجهاز) مفقود من الطلب ده — اكتبه عشان تقدر تحفظ:') || '').trim();
+      if(!v){ toast('لازم تكتب اسم الحساب عشان تكمّل الحفظ'); return; }
+      state.editingMeta.name = v;
+    }
+    if(!state.editingMeta.customer || !state.editingMeta.customer.trim()){
+      const v2 = (prompt('اسم صاحب الأوردر مفقود من الطلب ده — اكتبه عشان تقدر تحفظ:') || '').trim();
+      if(!v2){ toast('لازم تكتب اسم صاحب الأوردر عشان تكمّل الحفظ'); return; }
+      state.editingMeta.customer = v2;
+    }
   }
   const wasEditing = !!state.editingId;
+  const prevId = state.editingId;
   const o=draftOrder();
   o.msg=buildMessage(o);
+
   if(wasEditing){
-    const idx = state.orders.findIndex(x=>String(x.id)===String(o.id));
-    if(idx>=0) state.orders[idx]=o; else state.orders.unshift(o);
-  } else {
-    state.orders.unshift(o);
+    // التعديل بيلغي الطلب القديم بدل ما يحدّثه في مكانه — وبيعمل طلب جديد مستقل بالأصناف المعدّلة
+    state.orders = state.orders.filter(x=>String(x.id)!==String(prevId));
   }
+  state.orders.unshift(o);
   save(LS_ORDERS,state.orders.slice(0,80));
   const wasAdminEdit = !!state.editingMeta;
   state.cart=[]; save(LS_CART,state.cart); state.touched=false;
@@ -3151,6 +3169,10 @@ function submitOrder(){
   state.customer={same:true,name:''}; state.orderNote='';   // تصفير بيانات صاحب الأوردر للطلب الجاي
 
   if(APPS_SCRIPT_URL){
+    if(wasEditing && prevId){
+      // الطلب القديم يتلغي عند المصنع بدل ما يتحدّث في مكانه — بأفضل محاولة، من غير ما نعطّل الحفظ لو فشل
+      jsonp(APPS_SCRIPT_URL + '?action=cancelOrder&id=' + encodeURIComponent(prevId)).catch(()=>{});
+    }
     fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify({action:'newOrder',order:o})}).catch(()=>{});
@@ -3158,7 +3180,7 @@ function submitOrder(){
   if(wasAdminEdit){
     // المصنع رجع لشاشته، والقايمة بتتحدّث من السيرفر عشان تبان بالأصناف الجديدة
     state.tab='admin'; render();
-    toast('✅ اتحدّث الطلب #'+o.id);
+    toast(wasEditing?('✅ اتلغى الطلب القديم #'+prevId+' واتعمل طلب جديد #'+o.id):('✅ اتحدّث الطلب #'+o.id));
     adminLoad();
     return;
   }
