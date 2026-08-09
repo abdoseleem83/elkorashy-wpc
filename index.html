@@ -467,7 +467,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v69';
+const APP_BUILD   = 'v70';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -604,7 +604,8 @@ const state = {
   customer:{name:'', phone:''},   // صاحب الأوردر (اختياري) — لو فاضي يبقى نفس صاحب الحساب
   orderNote:'',                    // ملاحظات الطلب (اختياري)
   editingId:null,            // لو مش null، معناها بيتعدّل طلب موجود بدل ما يتبعت طلب جديد
-  editingMeta:null           // بيانات صاحب الطلب الأصلي لما المصنع هو اللي بيعدّل
+  editingMeta:null,          // بيانات صاحب الطلب الأصلي لما المصنع هو اللي بيعدّل
+  editingDate:null           // تاريخ الطلب وقت التعديل — افتراضيًا نفس تاريخ الطلب الأصلي، وقابل للتغيير يدويًا
 };
 
 function load(k,d){ try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;} }
@@ -1048,6 +1049,10 @@ function viewCart(){
     <div class="step"><span class="n">✓</span><h2>مراجعة الطلب</h2></div>
     ${editing?`<div class="note" style="margin-top:0;background:#FFF6E5;color:#8A6512;border-radius:8px;padding:9px 12px">
       ✏️ بتعدّل الطلب <b>#${esc(state.editingId)}</b>${state.editingMeta?' — العميل: <b>'+esc(state.editingMeta.name||'')+'</b>':''} — الحفظ هيلغي الطلب القديم ده وهيعمل طلب جديد بالأصناف المعدّلة.
+      <label class="fld" style="margin-top:9px;max-width:230px">
+        <span>تاريخ الطلب <span style="font-weight:400;color:var(--muted)">(نفس تاريخ الطلب الأصلي — تقدر تغيّره)</span></span>
+        <input type="date" value="${esc(state.editingDate||'')}" data-act="edit-date">
+      </label>
       <div class="btnrow" style="margin-top:8px">
         <button class="btn ghost sm" data-act="edit-add-items">${ico("box")} إضافة أصناف</button>
         <button class="btn ghost sm" data-act="cancel-edit">إلغاء التعديل</button>
@@ -2758,6 +2763,7 @@ document.addEventListener('click',e=>{
       state.cart = JSON.parse(JSON.stringify(o.items));
       save(LS_CART,state.cart);
       state.editingId = o.id;
+      state.editingDate = new Date(o.ts).toISOString().slice(0,10);
       state.tab='cart'; render(); window.scrollTo({top:0,behavior:'smooth'});
       toast('بتعدّل الطلب #'+o.id+' — عدّل السلة واضغط «حفظ التعديل»');
     }); break;
@@ -2774,7 +2780,7 @@ document.addEventListener('click',e=>{
     } break;
     case 'cancel-edit': {
       const wasAdmin = !!state.editingMeta;
-      state.editingId = null; state.editingMeta = null; state.cart = []; save(LS_CART,state.cart);
+      state.editingId = null; state.editingMeta = null; state.editingDate = null; state.cart = []; save(LS_CART,state.cart);
       state.tab = wasAdmin ? 'admin' : 'orders'; render(); window.scrollTo({top:0,behavior:'smooth'});
       toast('اتلغى التعديل');
     } break;
@@ -2844,6 +2850,7 @@ document.addEventListener('input',e=>{
   if(a==='cust'){ state.pick.custom[el.dataset.k]=el.value; refreshSummary(); return; }
   if(a==='cust-name'){ state.customer.name=el.value; return; }
   if(a==='cust-phone'){ state.customer.phone=el.value; return; }
+  if(a==='edit-date'){ state.editingDate=el.value; return; }
   if(a==='stock-in'){
     state.admin.stockDraft[el.dataset.code+'|'+el.dataset.w] = el.value;
     el.classList.add('dirty');
@@ -3066,6 +3073,7 @@ async function adminEditOrder(o){
 
   state.editingId = o.id;
   state.editingMeta = { name:o.dist||'', phone:o.phone||'', region:o.region||'', customer:o.customer||'', customerPhone:o.customerPhone||'' };
+  state.editingDate = o.date || new Date().toISOString().slice(0,10);
   state.tab='cart'; render(); window.scrollTo({top:0,behavior:'smooth'});
   toast('بتعدّل الطلب #'+o.id+' — عدّل السلة واضغط «حفظ التعديل»');
 }
@@ -3073,8 +3081,12 @@ async function adminEditOrder(o){
 function draftOrder(){
   // لو المصنع بيعدّل طلب عميل، بنحافظ على بيانات العميل الأصلي مش بيانات جهاز المصنع
   const m = state.editingMeta;
+  // لو بنعدّل طلب، بناخد نفس تاريخ الطلب الأصلي (أو التاريخ اللي اتغيّر يدويًا) بدل تاريخ النهاردة
+  const ts = (state.editingId && state.editingDate)
+    ? new Date(state.editingDate + 'T12:00:00').getTime()
+    : Date.now();
   return {
-    id:newOrderId(), ts:Date.now(),
+    id:newOrderId(), ts,
     name: m ? m.name : state.profile.name,
     phone: m ? m.phone : state.profile.phone,
     region: m ? m.region : state.profile.region,
@@ -3185,7 +3197,7 @@ function submitOrder(){
   save(LS_ORDERS,state.orders.slice(0,80));
   const wasAdminEdit = !!state.editingMeta;
   state.cart=[]; save(LS_CART,state.cart); state.touched=false;
-  state.editingId=null; state.editingMeta=null;
+  state.editingId=null; state.editingMeta=null; state.editingDate=null;
   state.customer={name:'',phone:''}; state.orderNote='';   // تصفير بيانات صاحب الأوردر للطلب الجاي
 
   if(APPS_SCRIPT_URL){
