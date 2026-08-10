@@ -468,7 +468,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v72';
+const APP_BUILD   = 'v73';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -567,6 +567,20 @@ const ACCESSORIES = [
 ];
 
 const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders', LS_TAB = 'wpc_tab', LS_SECTION = 'wpc_section', LS_PRICES = 'wpc_prices';
+
+// مستويات السعر: السعر الأساسي المتخزّن في الكتالوج هو "سعر موزع"، ومنه بتتحسب المستويات التانية بزيادة ثابتة.
+// الزيادة بتتطبّق وقت طباعة عرض السعر بس — من غير ما تغيّر الأسعار المتخزّنة نفسها.
+const PRICE_TIERS = {
+  dist:     { label:'سعر موزع', labelEn:'Distributor Price', doorAdd:0,   otherAdd:0   },
+  showroom: { label:'سعر معرض', labelEn:'Showroom Price',    doorAdd:300, otherAdd:0.5 },
+  customer: { label:'سعر عميل', labelEn:'Customer Price',    doorAdd:500, otherAdd:1   }
+};
+// بيرجّع السعر بعد إضافة فرق المستوى على السعر الأساسي (سعر الموزع) حسب نوع الصنف
+function tierPrice(basePrice, kind, tierKey){
+  const t = PRICE_TIERS[tierKey] || PRICE_TIERS.dist;
+  const add = kind==='door' ? t.doorAdd : t.otherAdd;
+  return (Number(basePrice)||0) + add;
+}
 
 // أسعار الكتالوج (الأبواب/الحلق/البرور/الإكسسوارات) متخزّنة كأرقام ثابتة فوق —
 // الدالتين دول بيسمحوا بتعديلها من شاشة المصنع وحفظ التعديل على نفس الجهاز.
@@ -1514,18 +1528,20 @@ function arabicSizeText_(sizeEn){
   return s;
 }
 
-function buildAdminDocOrder_(o, its){
+function buildAdminDocOrder_(o, its, tierKey){
   return {
     id:o.id, ts:o.date?new Date(o.date).getTime():Date.now(),
     name:o.dist, phone:o.phone, region:o.region, warehouse:'', total:o.total,
     customer:o.customer||'', note:o.ordNote||'',
+    priceTierLabel: tierKey ? (PRICE_TIERS[tierKey]||PRICE_TIERS.dist).label : '',
     items: its.map(it=>{
       const sz = it.type==='Door' ? arabicSizeText_(it.size) : (it.size||'');
+      const kind = it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':'acc'));
+      const price = tierKey ? tierPrice(it.unitPrice||0, kind, tierKey) : (it.unitPrice||0);
       return {
-        kind: it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':'acc')),
-        title: (it.avail===false?'⚠️ غير متاح — ':'') + arabicItemTitle_(it) + (it.type==='Door'&&it.code?' ('+it.code+')':''),
+        kind, title: (it.avail===false?'⚠️ غير متاح — ':'') + arabicItemTitle_(it) + (it.type==='Door'&&it.code?' ('+it.code+')':''),
         sizeTxt: sz, spec: sz, unit: it.unit||'', qty: it.qty||0,
-        unitPrice: it.unitPrice||0, price: it.unitPrice||0,
+        unitPrice: price, price: price,
         frame: it.frame||'', dbror: it.dbror||'', frameHeight: it.frameHeight||''
       };
     })
@@ -1565,13 +1581,37 @@ async function exportAdminOrderPdf(o){
   makeDoc(buildAdminDocOrder_(o, its),'order');
 }
 
-// عرض سعر بالمبالغ — نفس مستند الطلب بالظبط بس بالأسعار ظاهرة، من غير ما نأثّر على باقي التطبيق
-// (pricesVisible() فاضلة false زي ما هي — الأسعار هنا بتتبعت صراحة لـ makeDoc/docHTML)
-async function exportAdminOrderQuote(o){
+// عرض سعر بالمبالغ — نفس مستند الطلب بالظبط بس بالأسعار ظاهرة على مستوى السعر المختار،
+// من غير ما نأثّر على باقي التطبيق أو الأسعار المتخزّنة (pricesVisible() فاضلة false زي ما هي)
+async function exportAdminOrderQuote(o, tierKey){
   await toggleOrderItemsLoadOnly_(o.id);
   const its = state.admin.items[o.id] || [];
   if(!its.length){ toast('مفيش أصناف لهذا الطلب'); return; }
-  makeDoc(buildAdminDocOrder_(o, its),'quote',true);
+  makeDoc(buildAdminDocOrder_(o, its, tierKey||'dist'),'quote',true);
+}
+
+// بيفتح نافذة صغيرة تسأل: عرض السعر يكون بسعر مين — موزع / معرض / عميل
+function showQuoteTierPicker(o){
+  const old=document.getElementById('quoteTierOverlay'); if(old) old.remove();
+  const ov=document.createElement('div');
+  ov.id='quoteTierOverlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:300;background:rgba(0,10,30,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px';
+  const btn=(key)=>{
+    const t=PRICE_TIERS[key];
+    return `<button data-tier="${key}" style="width:100%;background:#fff;color:var(--navy);padding:14px;border-radius:12px;font-weight:700;font-size:15px;margin-bottom:10px;border:1.5px solid var(--line)">${esc(t.label)}</button>`;
+  };
+  ov.innerHTML=`
+    <div style="width:100%;max-width:320px;text-align:center">
+      <div style="color:#fff;margin-bottom:16px;font-family:Arial,'Helvetica Neue',sans-serif;font-size:16px;font-weight:700">عرض السعر ده يكون بسعر مين؟</div>
+      ${btn('dist')}${btn('showroom')}${btn('customer')}
+      <button id="closeQuoteTier" style="margin-top:6px;background:rgba(255,255,255,.15);color:#fff;padding:11px 20px;border-radius:12px;font-size:13.5px">إلغاء</button>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click', e=>{ if(e.target===ov) ov.remove(); });
+  document.getElementById('closeQuoteTier').onclick = () => ov.remove();
+  ov.querySelectorAll('[data-tier]').forEach(b=>{
+    b.onclick = () => { const tier=b.dataset.tier; ov.remove(); exportAdminOrderQuote(o, tier); };
+  });
 }
 
 // بيفتح واتساب من غير رقم محدد — عكس تدفق العميل بالظبط، هنا المصنع هو اللي بيختار
@@ -2488,19 +2528,22 @@ function viewAdminPrices(){
   <section class="card">
     <div class="step"><span class="n">${ico("money","lg")}</span><h2>تعديل الأسعار</h2></div>
     <div class="note" style="margin-top:0">التعديل بيتحفظ على الجهاز ده بس، وبيتطبّق فورًا على أي طلب جديد وأي مستند PDF بعد كده.</div>
+    <div class="note" style="background:#EAF2FA;color:#0B4A7A;border-radius:8px;padding:9px 12px">
+      <b>الأسعار دي كلها "سعر موزع"</b> — عند عمل عرض سعر تقدر تختار تطبّق عليه زيادة سعر معرض (+300 ج للباب، +0.5 ج للباقي) أو سعر عميل (+500 ج للباب، +1 ج للباقي) تلقائيًا.
+    </div>
 
-    <div class="grp">أسعار الأبواب (حسب المقاس)</div>
+    <div class="grp">أسعار الأبواب — سعر موزع (حسب المقاس)</div>
     ${rowsSizes}
     <div class="prow"><span>إضافة المقاس الخاص</span>
       <input type="number" inputmode="decimal" step="0.01" value="${esc(pe.customExtra)}" data-act="price-set" data-group="customExtra" data-key=""><span class="u">ج</span></div>
 
-    <div class="grp" style="margin-top:14px">أسعار الحلق (للمتر الطولي)</div>
+    <div class="grp" style="margin-top:14px">أسعار الحلق (للمتر الطولي) — سعر موزع</div>
     ${rowsFrames}
 
-    <div class="grp" style="margin-top:14px">أسعار البرور (للمتر الطولي)</div>
+    <div class="grp" style="margin-top:14px">أسعار البرور (للمتر الطولي) — سعر موزع</div>
     ${rowsBrors}
 
-    <div class="grp" style="margin-top:14px">أسعار الإكسسوارات</div>
+    <div class="grp" style="margin-top:14px">أسعار الإكسسوارات — سعر موزع</div>
     ${rowsAcc}
 
     <div class="btnrow" style="margin-top:14px">
@@ -2761,7 +2804,7 @@ document.addEventListener('click',e=>{
     case 'adm-set':    setStatus(el.dataset.id, el.dataset.st); break;
     case 'adm-toggle-items': { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) toggleOrderItemsPreview(o); } break;
     case 'adm-pdf':     { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) exportAdminOrderPdf(o); } break;
-    case 'adm-quote':   { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) exportAdminOrderQuote(o); } break;
+    case 'adm-quote':   { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) showQuoteTierPicker(o); } break;
     case 'adm-share':    { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) shareAdminOrderImage(o); } break;
     case 'adm-edit':     { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) adminEditOrder(o); } break;
     case 'adm-prices-open':   openAdminPrices(); break;
@@ -3278,7 +3321,7 @@ function docHTML(o,mode,priced){
         <img src="${ASSETS.logo}" style="height:56px;width:auto">
         <div style="flex:1">
           <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:22px;font-weight:700;color:#002050">
-            ${isQuote?'عرض سعر':'طلب أوردر'}
+            ${isQuote?'عرض سعر':'طلب أوردر'}${isQuote&&o.priceTierLabel?` <span style="font-size:12.5px;font-weight:700;color:#1080C0;background:#EAF2FA;border:1px solid #B9D4EA;border-radius:20px;padding:3px 12px;vertical-align:middle">${esc(o.priceTierLabel)}</span>`:''}
           </div>
           <div style="font-size:12px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} · ${esc(WAREHOUSE)}</div>
         </div>
