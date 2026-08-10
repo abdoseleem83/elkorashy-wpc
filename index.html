@@ -468,7 +468,7 @@ const ASSETS = {
   }
 };
 
-const APP_BUILD   = 'v71';
+const APP_BUILD   = 'v72';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2884,6 +2884,7 @@ function addDoor(){
     title:'باب WPC '+d.code+' — '+d.name,
     titleEn:'WPC Door '+d.code+' - '+d.en,
     code:d.code, img:d.img, sizeTxt, sizeEn, unitPrice, qty:p.qty,
+    w: p.size==='custom' ? '' : p.size,   // العرض بالسم كرقم خام — لخصم الرصيد بدقة، فاضي لو مقاس خاص (مش متتبّع في المخزون)
     frame:p.frame||0, dbror:p.dbror||'', frameHeight:p.frameHeight?Number(p.frameHeight):0
   });
   save(LS_CART,state.cart);
@@ -3028,7 +3029,7 @@ async function adminEditOrder(o){
       return { kind:'door', title:arabicItemTitle_(it), titleEn:it.title||'', code:it.code||'',
                img:(DOORS.find(d=>d.code===it.code)||{}).img || '',
                sizeTxt:arabicSizeText_(it.size), sizeEn:it.size||'', unitPrice:price, qty,
-               frame:Number(it.frame)||0, dbror:it.dbror||'', frameHeight:Number(it.frameHeight)||0 };
+               w:it.width||'', frame:Number(it.frame)||0, dbror:it.dbror||'', frameHeight:Number(it.frameHeight)||0 };
     }
     if(it.type==='Frame' || it.type==='Bror'){
       const isFr = it.type==='Frame';
