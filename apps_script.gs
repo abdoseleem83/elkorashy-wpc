@@ -57,8 +57,9 @@ var COL_SUPERSEDED = 20; // علامة "الطلب ده اتعدّل وعنده 
 var HEAD_ITEMS = [
   'Order No', 'Date', 'Distributor', 'Type', 'Item', 'Colour Code',
   'Size', 'Included with Door', 'Milling', 'Unit', 'Qty', 'Unit Price', 'Line Total', 'Available',
-  'Frame (cm)', 'Bror', 'Frame Height (cm)'
+  'Frame (cm)', 'Bror', 'Frame Height (cm)', 'Width (cm)'
 ];
+var COL_ITEM_WIDTH = 18;  // العرض بالسم كرقم خام (بس للأبواب) — بيتستخدم لخصم/رجوع رصيد المخزون بدقة
 var COL_ITEM_AVAIL = 14;   // عمود "متاح؟" في تبويب Order_Items — Y/N، بيتحدّث من شاشة المصنع
 // عمودين جداد (v28) بيخزّنوا قيمة الحلق/البرور خام (منفصلين عن نص "Included with Door" الإنجليزي)
 // عشان شاشة المصنع تقدر تعرضهم في عمودين منفصلين بالعربي بدل نص متلاصق واحد
@@ -192,13 +193,11 @@ function doGet(e) {
     if (action === 'list') {
       var isAdmin;
       if (e.parameter.phone) {
-        // مستخدم عادي بيجيب طلباته هو برقم موبايله — مفيش داعي لبوابة حماية هنا
+        // مستخدم عادي بيجيب طلباته هو برقم موبايله — مفيش داعي لأي تحقق باسورد أو تقييد محاولات
         isAdmin = String(e.parameter.pw || '') === ADMIN_PW;
       } else {
         // مفيش رقم موبايل = محاولة دخول شاشة المصنع؛ لازم تعدي بوابة الحماية من التخمين
-        if (!checkAdminPw_(e.parameter.pw)) {
-          return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
-        }
+        if (!checkAdminPw_(e.parameter.pw)) return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
         isAdmin = true;
       }
       var phone = isAdmin ? '' : String((e.parameter.phone || '')).replace(/\D/g, '');
@@ -271,7 +270,8 @@ function doGet(e) {
               avail:     valsOI[iOI][13] !== 'N',
               frame:     valsOI[iOI][14] || '',
               dbror:     valsOI[iOI][15] || '',
-              frameHeight: valsOI[iOI][16] || ''
+              frameHeight: valsOI[iOI][16] || '',
+              width:     valsOI[iOI][17] || ''
             });
           }
         }
@@ -329,20 +329,19 @@ function doGet(e) {
         }
 
         // المصنع (بكلمة السر) يقدر يمسح الطلب القديم مهما كانت حالته — هو اللي بيعدّل بنفسه.
-        // الموزع العادي (من غير كلمة سر) لسه ممنوع يلغي طلب دخل التنفيذ فعليًا — بس بدل ما نسيبه
+        // الموزع العادي (من غير كلمة سر) لسه ممنوع يلغي طلب دخل التنفيذ فعليًا — بدل ما نسيبه
         // كإنه طلب عادي، بنحط عليه علامة واضحة في العمود الأخير + نلوّن السطر عشان المصنع
         // ياخد باله وهو بيراجع الشيت إن ده طلب قديم اتعدّله موزع وعنده نسخة جديدة، ويحذفه بنفسه.
-        if (!isAdminCO) {
-          var stCO = String(shCO.getRange(rCO, COL_STATUS).getValue() || '');
-          if (stCO === 'In Progress' || stCO === 'Ready' || stCO === 'Delivered') {
-            var newIdCO = String(e.parameter.newId || '');
-            var markCO = '⚠️ الطلب ده اتعدّل — بدّله الطلب رقم #' + (newIdCO || '؟') + ' — من فضلك احذف السطر ده يدويًا';
-            shCO.getRange(rCO, COL_SUPERSEDED).setValue(markCO);
-            shCO.getRange(rCO, 1, 1, HEAD_ORDERS.length).setBackground('#FFF3CD');
-            return reply({ ok: false, error: 'الطلب دخل التنفيذ في المصنع، اتحطت عليه علامة "معدّل" عشان يتحذف يدويًا', marked: true }, cb);
-          }
+        var stCO = String(shCO.getRange(rCO, COL_STATUS).getValue() || '');
+        if (!isAdminCO && (stCO === 'In Progress' || stCO === 'Ready' || stCO === 'Delivered')) {
+          var newIdCO = String(e.parameter.newId || '');
+          var markCO = '⚠️ الطلب ده اتعدّل — بدّله الطلب رقم #' + (newIdCO || '؟') + ' — من فضلك احذف السطر ده يدويًا';
+          shCO.getRange(rCO, COL_SUPERSEDED).setValue(markCO);
+          shCO.getRange(rCO, 1, 1, HEAD_ORDERS.length).setBackground('#FFF3CD');
+          return reply({ ok: false, error: 'الطلب دخل التنفيذ في المصنع، اتحطت عليه علامة "معدّل" عشان يتحذف يدويًا', marked: true }, cb);
         }
         shCO.deleteRow(rCO);
+        if (stCO !== 'Delivered') restoreStockForOrderId_(e.parameter.id);   // المُسلَّم فعليًا ميترجّعش رصيده
         var shICO = sheet_(SHEET_ITEMS, HEAD_ITEMS);
         clearItemRows_(shICO, e.parameter.id);
         return reply({ ok: true, id: e.parameter.id }, cb);
@@ -362,7 +361,9 @@ function doGet(e) {
         var shDO = sheet_(SHEET_ORDERS, HEAD_ORDERS);
         var rDO = findRow_(shDO, e.parameter.id);
         if (rDO < 0) return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
+        var stDO = String(shDO.getRange(rDO, COL_STATUS).getValue() || '');
         shDO.deleteRow(rDO);
+        if (stDO !== 'Delivered') restoreStockForOrderId_(e.parameter.id);   // المُسلَّم فعليًا ميترجّعش رصيده
         var shIDO = sheet_(SHEET_ITEMS, HEAD_ITEMS);
         clearItemRows_(shIDO, e.parameter.id);
         return reply({ ok: true, id: e.parameter.id }, cb);
@@ -426,7 +427,8 @@ function doGet(e) {
             avail:    valsILW[iILW][13] !== 'N',
             frame:    valsILW[iILW][14] || '',
             dbror:    valsILW[iILW][15] || '',
-            frameHeight: valsILW[iILW][16] || ''
+            frameHeight: valsILW[iILW][16] || '',
+            width:    valsILW[iILW][17] || ''
           });
         }
       }
@@ -611,12 +613,66 @@ function saveOrder_(o) {
       'Y',
       isDoor ? (it.frame || '') : '',
       isDoor ? (it.dbror || '') : '',
-      isDoor ? (it.frameHeight || '') : ''
+      isDoor ? (it.frameHeight || '') : '',
+      isDoor ? (it.w || '') : ''
     ]);
   }
 
   if (lines.length) {
     shI.getRange(shI.getLastRow() + 1, 1, lines.length, HEAD_ITEMS.length).setValues(lines);
+  }
+
+  // ---- خصم الرصيد ----
+  // بيتخصم بس لما الطلب يتكتب أول مرة (مش لو ده إعادة إرسال لنفس رقم الطلب بالغلط،
+  // زي محاولة تانية بعد انقطاع نت — عشان الرصيد ما يتخصمش مرتين للطلب نفسه)
+  if (existing < 0) {
+    adjustStockForItems_(items, -1);
+  }
+}
+
+// بيرجّع رصيد أصناف طلب (قبل ما سطوره تتمسح) — بتتنادى من cancelOrder و deleteOrder
+function restoreStockForOrderId_(id){
+  var shRS = sheet_(SHEET_ITEMS, HEAD_ITEMS);
+  var lastRS = shRS.getLastRow();
+  if (lastRS < 2) return;
+  var valsRS = shRS.getRange(2, 1, lastRS - 1, HEAD_ITEMS.length).getValues();
+  var itemsRS = [];
+  for (var iRS = 0; iRS < valsRS.length; iRS++) {
+    if (String(valsRS[iRS][0]) !== String(id)) continue;
+    if (String(valsRS[iRS][3]) !== 'Door') continue;
+    itemsRS.push({
+      kind: 'door',
+      code: valsRS[iRS][5] || '',
+      w: valsRS[iRS][COL_ITEM_WIDTH - 1] || '',
+      qty: valsRS[iRS][10] || 0
+    });
+  }
+  adjustStockForItems_(itemsRS, +1);
+}
+
+// بيزوّد أو بيخصم من رصيد المخزون حسب أصناف الطلب (الأبواب اللي ليها مقاس قياسي بس — مقاس خاص مش متتبّع)
+// dir: -1 للخصم (طلب جديد) أو +1 للرجوع (إلغاء/حذف طلب)
+function adjustStockForItems_(items, dir){
+  if (!items || !items.length) return;
+  var shAS = sheet_(SHEET_STOCK, HEAD_STOCK);
+  var lastAS = shAS.getLastRow();
+  if (lastAS < 2) return;   // مفيش أرصدة متسجّلة أصلًا
+  var rowsAS = shAS.getRange(2, 1, lastAS - 1, 3).getValues();
+  for (var iAS = 0; iAS < items.length; iAS++) {
+    var itAS = items[iAS];
+    if (itAS.kind !== 'door') continue;
+    var codeAS = String(itAS.code || '').trim();
+    var wAS = String(itAS.w || '').trim();
+    var qtyAS = Number(itAS.qty) || 0;
+    if (!codeAS || !wAS || !qtyAS) continue;   // مقاس خاص أو بدون كود = مش متتبّع في المخزون
+    for (var jAS = 0; jAS < rowsAS.length; jAS++) {
+      if (String(rowsAS[jAS][0]).trim() === codeAS && String(rowsAS[jAS][1]).trim() === wAS) {
+        var newQty = (Number(rowsAS[jAS][2]) || 0) + (dir * qtyAS);
+        shAS.getRange(jAS + 2, 3).setValue(newQty);
+        shAS.getRange(jAS + 2, 4).setValue(new Date());
+        break;   // صف الرصيد ده متسجّل، اتحدّث — لو مش موجود أصلًا، متتبّعش (مش هننشئ صف جديد من غير ما يكون معروف)
+      }
+    }
   }
 }
 
