@@ -1,6 +1,6 @@
 // ⚠️ مهم: غيّر رقم النسخة دي في كل مرة ترفع تحديث جديد.
 // ده اللي بيخلي المتصفح يرمي الكاش القديم ويجيب الملفات الجديدة.
-const CACHE_VERSION = 'v73';
+const CACHE_VERSION = 'v74';
 const CACHE_NAME = 'elkorashy-wpc-' + CACHE_VERSION;
 
 const PRECACHE = [
@@ -8,10 +8,23 @@ const PRECACHE = [
   './index.html',
   './manifest.json',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './img/logo.png',
+  './img/mark.png',
+  './img/doors/A01.jpg',
+  './img/doors/A02.jpg',
+  './img/doors/A03.jpg',
+  './img/doors/A04.jpg',
+  './img/doors/A05.jpg',
+  './img/doors/A06.jpg',
+  './img/doors/A07.jpg',
+  './img/doors/A08.jpg',
+  './img/doors/A09.jpg',
+  './img/doors/A010.jpg',
+  './img/doors/A015.jpg'
 ];
-// ملحوظة: صور الأبواب واللوجو مدمجين جوه index.html نفسه (base64)،
-// فمفيش ملفات صور تانية محتاجة تتخزّن هنا غير أيقونات التثبيت.
+// v74: صور الأبواب واللوجو بقوا ملفات منفصلة جوه img/ بدل base64 داخل index.html —
+// بنحطهم هنا في الـ PRECACHE عشان يتخزّنوا في الكاش زي باقي أصول التثبيت.
 
 self.addEventListener('install', (event) => {
   // 🔑 دي أهم سطر في الملف: النسخة الجديدة بتفرض نفسها فورًا من غير ما تستنى
