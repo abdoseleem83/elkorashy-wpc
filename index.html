@@ -3187,8 +3187,16 @@ function submitOrder(){
 
   if(APPS_SCRIPT_URL){
     if(wasEditing && prevId){
-      // الطلب القديم يتلغي عند المصنع بدل ما يتحدّث في مكانه — بأفضل محاولة، من غير ما نعطّل الحفظ لو فشل
-      jsonp(APPS_SCRIPT_URL + '?action=cancelOrder&id=' + encodeURIComponent(prevId) + '&phone=' + encodeURIComponent(o.phone||'')).catch(()=>{});
+      // الطلب القديم لازم يتمسح نهائيًا من عند المصنع — لو المصنع هو اللي بيعدّل بنبعت كلمة سره
+      // عشان يقدر يمسحه حتى لو دخل التنفيذ فعليًا، وبنستنى الرد عشان نعرف لو فشل الحذف ونبلّغ بدل ما نسكت.
+      const cancelUrl = APPS_SCRIPT_URL + '?action=cancelOrder&id=' + encodeURIComponent(prevId)
+        + '&phone=' + encodeURIComponent(o.phone||'')
+        + (wasAdminEdit ? '&pw=' + encodeURIComponent(state.admin.pw||'') : '');
+      jsonp(cancelUrl).then(d=>{
+        if(!d || !d.ok) toast('⚠️ الطلب الجديد #'+o.id+' اتسجّل، بس القديم #'+prevId+' لسه موجود عند المصنع: '+((d&&d.error)||'خطأ غير معروف'), 5500);
+      }).catch(()=>{
+        toast('⚠️ الطلب الجديد #'+o.id+' اتسجّل، بس تعذّر حذف القديم #'+prevId+' من عند المصنع — النت اتقطع', 5500);
+      });
     }
     syncOrder_(o);
   }

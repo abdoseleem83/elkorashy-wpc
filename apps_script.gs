@@ -327,9 +327,13 @@ function doGet(e) {
           }
         }
 
-        var stCO = String(shCO.getRange(rCO, COL_STATUS).getValue() || '');
-        if (stCO === 'In Progress' || stCO === 'Ready' || stCO === 'Delivered') {
-          return reply({ ok: false, error: 'الطلب دخل التنفيذ في المصنع، مينفعش يتلغي' }, cb);
+        // المصنع (بكلمة السر) يقدر يمسح الطلب القديم مهما كانت حالته — هو اللي بيعدّل بنفسه.
+        // الموزع العادي (من غير كلمة سر) لسه ممنوع يلغي طلب دخل التنفيذ فعليًا.
+        if (!isAdminCO) {
+          var stCO = String(shCO.getRange(rCO, COL_STATUS).getValue() || '');
+          if (stCO === 'In Progress' || stCO === 'Ready' || stCO === 'Delivered') {
+            return reply({ ok: false, error: 'الطلب دخل التنفيذ في المصنع، مينفعش يتلغي' }, cb);
+          }
         }
         shCO.deleteRow(rCO);
         var shICO = sheet_(SHEET_ITEMS, HEAD_ITEMS);
