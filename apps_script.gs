@@ -29,7 +29,6 @@
 var SHEET_ORDERS = 'Orders';
 var SHEET_ITEMS  = 'Order_Items';
 var SHEET_ERRORS = 'Errors';
-var SHEET_DIST   = 'Distributors';
 var SHEET_STOCK  = 'Stock';        // أرصدة المخزن الجاهزة للتسليم خلال ٤٨ ساعة
 
 var HEAD_STOCK = ['Code', 'Size', 'Qty', 'Updated'];
@@ -43,8 +42,6 @@ var COL_STATUS   = 11;   // Status
 var COL_NOTE     = 12;   // Note to Distributor
 var COL_UPDATED  = 15;   // Status Updated   // كلمة سر شاشة المصنع — غيّرها من هنا لو حبيت
 var PRICE_NOTE   = 'الأسعار بعاليه حسب وقت التسعير وغير ملزمة إلا في حالة سداد المبلغ كامل أو نصفه.';
-
-var HEAD_DIST = ['Phone', 'Name', 'Region', 'Status', 'Requested At', 'Decided At'];
 
 var HEAD_ORDERS = [
   'Order No', 'Date', 'Time', 'Distributor', 'Phone', 'Region',
@@ -66,6 +63,33 @@ var COL_ITEM_AVAIL = 14;   // عمود "متاح؟" في تبويب Order_Items 
 // عشان شاشة المصنع تقدر تعرضهم في عمودين منفصلين بالعربي بدل نص متلاصق واحد
 
 /* ============================================================
+   حماية كلمة سر المصنع من محاولات التخمين (brute force)
+   بعد كل محاولة غلط بنستنى شوية قبل الرد (بتزيد كل مرة)، ولو المحاولات
+   الغلط عدّت حد معيّن في ١٠ دقايق بنقفل الدخول تمامًا ١٥ دقيقة.
+   ============================================================ */
+function checkAdminPw_(pw) {
+  var cache = CacheService.getScriptCache();
+  var failKey = 'adm_fail_count';
+  var lockKey = 'adm_locked_until';
+
+  var lockedUntil = Number(cache.get(lockKey) || 0);
+  if (lockedUntil && Date.now() < lockedUntil) return false;
+
+  if (String(pw || '') === ADMIN_PW) {
+    cache.remove(failKey);
+    return true;
+  }
+
+  var fails = Number(cache.get(failKey) || 0) + 1;
+  cache.put(failKey, String(fails), 600); // نافذة ١٠ دقايق
+  if (fails >= 15) {
+    cache.put(lockKey, String(Date.now() + 15 * 60000), 1200); // قفل ١٥ دقيقة
+  }
+  Utilities.sleep(Math.min(fails * 300, 4000)); // تأخير متزايد لحد ٤ ثواني
+  return false;
+}
+
+/* ============================================================
    استقبال الطلب من التطبيق
    ============================================================ */
 function doPost(e) {
@@ -75,11 +99,6 @@ function doPost(e) {
     lock.waitLock(20000);
 
     var body = JSON.parse(e.postData.contents);
-
-    if (body.action === 'distSignup' && body.dist) {
-      saveDistSignup_(body.dist);
-      return json({ ok: true });
-    }
 
     if (body.action !== 'newOrder' || !body.order) {
       return json({ ok: false, error: 'Unknown action' });
@@ -108,58 +127,27 @@ function doGet(e) {
       return reply({ ok: true, msg: 'WPC orders script is running' }, cb);
     }
 
-    // حالة تسجيل موزع — بيتقرا برقم موبايله من غير باسورد
-    if (action === 'distStatus') {
-      var phoneQ = String(e.parameter.phone || '').replace(/\D/g, '');
-      if (!phoneQ) return reply({ ok: false, error: 'مفيش رقم موبايل' }, cb);
-      var shD = sheet_(SHEET_DIST, HEAD_DIST);
-      var rD = findDistRow_(shD, phoneQ);
-      if (rD < 0) return reply({ ok: true, status: 'NotFound' }, cb);
-      var row = shD.getRange(rD, 1, 1, 6).getValues()[0];
-      return reply({ ok: true, status: row[3] || 'Pending', name: row[1], region: row[2] }, cb);
-    }
-
-    // قايمة كل طلبات تسجيل الموزعين — لشاشة المصنع بس
-    if (action === 'distList') {
-      if (String(e.parameter.pw || '') !== ADMIN_PW) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
-      }
-      var shDL = sheet_(SHEET_DIST, HEAD_DIST);
-      var rowsDL = shDL.getDataRange().getValues();
-      var outDL = [];
-      for (var iD = 1; iD < rowsDL.length; iD++) {
-        outDL.push({
-          phone:  String(rowsDL[iD][0] || '').replace(/^'/, ''),
-          name:   rowsDL[iD][1],
-          region: rowsDL[iD][2],
-          status: rowsDL[iD][3]
-        });
-      }
-      return reply({ ok: true, list: outDL }, cb);
-    }
-
-    // قبول/رفض تسجيل موزع — من شاشة المصنع
-    if (action === 'distDecide') {
-      if (String(e.parameter.pw || '') !== ADMIN_PW) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
-      }
-      var lockD = LockService.getScriptLock();
+    // إضافة طلب جديد عبر GET (JSONP) — بديل مضمون الرد لطلب POST العادي،
+    // عشان التطبيق يقدر يتأكد فعليًا إن الطلب وصل قبل ما يقول للموزع "تم الإرسال".
+    if (action === 'newOrder') {
+      var lockNO = LockService.getScriptLock();
       try {
-        lockD.waitLock(15000);
-        var shDD = sheet_(SHEET_DIST, HEAD_DIST);
-        var rDD = findDistRow_(shDD, String(e.parameter.phone || '').replace(/\D/g, ''));
-        if (rDD < 0) return reply({ ok: false, error: 'مفيش طلب بالرقم ده' }, cb);
-        shDD.getRange(rDD, 4).setValue(String(e.parameter.decision || 'Pending'));
-        shDD.getRange(rDD, 6).setValue(new Date());
-        return reply({ ok: true }, cb);
+        lockNO.waitLock(20000);
+        var orderNO = JSON.parse(String(e.parameter.payload || '{}'));
+        if (!orderNO || !orderNO.id) return reply({ ok: false, error: 'بيانات الطلب ناقصة' }, cb);
+        saveOrder_(orderNO);
+        return reply({ ok: true, id: orderNO.id }, cb);
+      } catch (errNO) {
+        logError_(errNO);
+        return reply({ ok: false, error: String(errNO) }, cb);
       } finally {
-        try { lockD.releaseLock(); } catch (e3) {}
+        try { lockNO.releaseLock(); } catch (eNO) {}
       }
     }
 
     // تحديث حالة الطلب — من شاشة المصنع
     if (action === 'setStatus') {
-      if (String(e.parameter.pw || '') !== ADMIN_PW) {
+      if (!checkAdminPw_(e.parameter.pw)) {
         return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
       }
       var lock = LockService.getScriptLock();
@@ -184,7 +172,7 @@ function doGet(e) {
 
     // أرشفة/إرجاع طلب يدويًا (📦 أرشفة أو ↩️ رجّع من الأرشيف)
     if (action === 'archiveOrder') {
-      if (String(e.parameter.pw || '') !== ADMIN_PW) {
+      if (!checkAdminPw_(e.parameter.pw)) {
         return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
       }
       var lockAR = LockService.getScriptLock();
@@ -201,10 +189,16 @@ function doGet(e) {
     }
 
     if (action === 'list') {
-      var isAdmin = String(e.parameter.pw || '') === ADMIN_PW;
-      // لو مفيش كلمة سر صح، لازم يبعت رقم موبايل — عشان موزع ما يشوفش طلبات غيره
-      if (!isAdmin && !e.parameter.phone) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      var isAdmin;
+      if (e.parameter.phone) {
+        // مستخدم عادي بيجيب طلباته هو برقم موبايله — مفيش داعي لبوابة حماية هنا
+        isAdmin = String(e.parameter.pw || '') === ADMIN_PW;
+      } else {
+        // مفيش رقم موبايل = محاولة دخول شاشة المصنع؛ لازم تعدي بوابة الحماية من التخمين
+        if (!checkAdminPw_(e.parameter.pw)) {
+          return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+        }
+        isAdmin = true;
       }
       var phone = isAdmin ? '' : String((e.parameter.phone || '')).replace(/\D/g, '');
       var sh = sheet_(SHEET_ORDERS, HEAD_ORDERS);
@@ -251,7 +245,7 @@ function doGet(e) {
 
     // قايمة أصناف طلب واحد بالتفصيل — لشاشة المصنع بس (لعرض/تعديل التوفر ولتصدير PDF)
     if (action === 'orderItems') {
-      if (String(e.parameter.pw || '') !== ADMIN_PW) {
+      if (!checkAdminPw_(e.parameter.pw)) {
         return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
       }
       var shOI = sheet_(SHEET_ITEMS, HEAD_ITEMS);
@@ -286,7 +280,7 @@ function doGet(e) {
 
     // تحديد صنف معيّن جوه طلب كـ"غير متاح" أو رجّعه "متاح" — بالـ idx (ترتيبه جوه الطلب، يبدأ من صفر)
     if (action === 'setItemAvail') {
-      if (String(e.parameter.pw || '') !== ADMIN_PW) {
+      if (!checkAdminPw_(e.parameter.pw)) {
         return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
       }
       var lockIA = LockService.getScriptLock();
@@ -314,7 +308,8 @@ function doGet(e) {
     }
 
     // إلغاء طلب (بيتنادى لوحده لما العميل أو المصنع يعدّل طلب — الطلب القديم يتحذف تلقائي وطلب جديد يتعمل)
-    // من غير باسورد عشان الموزع العادي يقدر يعدّل طلبه هو من غير دخول شاشة المصنع
+    // من غير كلمة سر المصنع عشان الموزع العادي يقدر يعدّل طلبه هو من غير دخول شاشة المصنع،
+    // لكن لازم يبعت نفس رقم موبايل صاحب الطلب — عشان حد تاني ميقدرش يلغي طلب مش بتاعه بمجرد ما يعرف رقمه
     if (action === 'cancelOrder') {
       var lockCO = LockService.getScriptLock();
       try {
@@ -322,6 +317,16 @@ function doGet(e) {
         var shCO = sheet_(SHEET_ORDERS, HEAD_ORDERS);
         var rCO = findRow_(shCO, e.parameter.id);
         if (rCO < 0) return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
+
+        var isAdminCO = String(e.parameter.pw || '') === ADMIN_PW;
+        if (!isAdminCO) {
+          var ownerPhoneCO = String(shCO.getRange(rCO, 5).getValue() || '').replace(/^'/, '').replace(/\D/g, '');
+          var reqPhoneCO = String(e.parameter.phone || '').replace(/\D/g, '');
+          if (!reqPhoneCO || reqPhoneCO.slice(-9) !== ownerPhoneCO.slice(-9)) {
+            return reply({ ok: false, error: 'مش مسموح تلغي الطلب ده' }, cb);
+          }
+        }
+
         var stCO = String(shCO.getRange(rCO, COL_STATUS).getValue() || '');
         if (stCO === 'In Progress' || stCO === 'Ready' || stCO === 'Delivered') {
           return reply({ ok: false, error: 'الطلب دخل التنفيذ في المصنع، مينفعش يتلغي' }, cb);
@@ -337,7 +342,7 @@ function doGet(e) {
 
     // حذف طلب بالكامل (السطر الملخّص + كل سطور أصنافه) — من شاشة المصنع
     if (action === 'deleteOrder') {
-      if (String(e.parameter.pw || '') !== ADMIN_PW) {
+      if (!checkAdminPw_(e.parameter.pw)) {
         return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
       }
       var lockDO = LockService.getScriptLock();
@@ -357,7 +362,7 @@ function doGet(e) {
 
     // مسح كل الطلبات اللي حالتها "تم التسليم" دفعة واحدة (تنظيف دوري) — من زرار "🗑️ مسح المسلّم"
     if (action === 'deleteDelivered') {
-      if (String(e.parameter.pw || '') !== ADMIN_PW) {
+      if (!checkAdminPw_(e.parameter.pw)) {
         return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
       }
       var lockDD = LockService.getScriptLock();
@@ -386,7 +391,7 @@ function doGet(e) {
 
     // كل الطلبات + أصنافها مرة واحدة — لتقرير الـ PDF الشامل في شاشة المصنع (بدل ما نجيب كل طلب لوحده)
     if (action === 'listWithItems') {
-      if (String(e.parameter.pw || '') !== ADMIN_PW) {
+      if (!checkAdminPw_(e.parameter.pw)) {
         return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
       }
       var shLW = sheet_(SHEET_ORDERS, HEAD_ORDERS);
@@ -458,7 +463,7 @@ function doGet(e) {
 
     // تحديث رصيد صنف واحد (كود + مقاس) — من شاشة المصنع بكلمة السر
     if (action === 'setStock') {
-      if (String(e.parameter.pw || '') !== ADMIN_PW) {
+      if (!checkAdminPw_(e.parameter.pw)) {
         return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
       }
       var lockSS = LockService.getScriptLock();
@@ -640,32 +645,6 @@ function sheet_(name, headers) {
       .setFontColor('#F3EDE4');
   }
   return sh;
-}
-
-// طلب تسجيل موزع جديد — لو موجود قبل كده وكان "مرفوض"، بيرجّعه Pending تاني
-function saveDistSignup_(d){
-  var sh = sheet_(SHEET_DIST, HEAD_DIST);
-  var phone = String(d.phone || '').replace(/\D/g, '');
-  var now = new Date();
-  var r = findDistRow_(sh, phone);
-  var row = [ "'" + phone, d.name || '', d.region || '', 'Pending', now, '' ];
-  if (r > 0) {
-    var cur = sh.getRange(r, 4).getValue();
-    if (cur !== 'Approved') sh.getRange(r, 1, 1, 6).setValues([row]);
-  } else {
-    sh.appendRow(row);
-  }
-}
-
-function findDistRow_(sh, phone) {
-  var last = sh.getLastRow();
-  if (last < 2 || !phone) return -1;
-  var vals = sh.getRange(2, 1, last - 1, 1).getValues();
-  for (var i = 0; i < vals.length; i++) {
-    var p = String(vals[i][0] || '').replace(/\D/g, '');
-    if (p && p.slice(-9) === phone.slice(-9)) return i + 2;
-  }
-  return -1;
 }
 
 function findRow_(sh, id) {
