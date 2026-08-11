@@ -3191,9 +3191,15 @@ function submitOrder(){
       // عشان يقدر يمسحه حتى لو دخل التنفيذ فعليًا، وبنستنى الرد عشان نعرف لو فشل الحذف ونبلّغ بدل ما نسكت.
       const cancelUrl = APPS_SCRIPT_URL + '?action=cancelOrder&id=' + encodeURIComponent(prevId)
         + '&phone=' + encodeURIComponent(o.phone||'')
+        + '&newId=' + encodeURIComponent(o.id)
         + (wasAdminEdit ? '&pw=' + encodeURIComponent(state.admin.pw||'') : '');
       jsonp(cancelUrl).then(d=>{
-        if(!d || !d.ok) toast('⚠️ الطلب الجديد #'+o.id+' اتسجّل، بس القديم #'+prevId+' لسه موجود عند المصنع: '+((d&&d.error)||'خطأ غير معروف'), 5500);
+        if(!d || !d.ok){
+          // لو السيرفر عرف يحط علامة "معدّل" على الطلب القديم (لأنه دخل التنفيذ ومنقدرش نمسحه)،
+          // ده كافي والمصنع هيشوفه في الشيت — نطمّن المستخدم بدل توتير من رسالة "خطأ"
+          if(d && d.marked) toast('✅ اتسجّل الطلب الجديد #'+o.id+' — والقديم #'+prevId+' اتحطت عليه علامة "معدّل" عشان المصنع يحذفه', 5500);
+          else toast('⚠️ الطلب الجديد #'+o.id+' اتسجّل، بس القديم #'+prevId+' لسه موجود عند المصنع: '+((d&&d.error)||'خطأ غير معروف'), 5500);
+        }
       }).catch(()=>{
         toast('⚠️ الطلب الجديد #'+o.id+' اتسجّل، بس تعذّر حذف القديم #'+prevId+' من عند المصنع — النت اتقطع', 5500);
       });

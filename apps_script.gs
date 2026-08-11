@@ -46,12 +46,13 @@ var PRICE_NOTE   = 'الأسعار بعاليه حسب وقت التسعير و�
 var HEAD_ORDERS = [
   'Order No', 'Date', 'Time', 'Distributor', 'Phone', 'Region',
   'Warehouse', 'Total Qty', 'Total Rods', 'Total Amount', 'Status', 'Note to Distributor', 'Pricing Terms', 'Message', 'Status Updated',
-  'Archived', 'Customer', 'Order Note', 'Customer Phone'
+  'Archived', 'Customer', 'Order Note', 'Customer Phone', 'Superseded'
 ];
 var COL_ARCHIVED = 16;
 var COL_CUSTOMER = 17;   // اسم صاحب الأوردر لو مختلف عن صاحب الجهاز
 var COL_ORDNOTE  = 18;   // ملاحظات العميل على الطلب   // Y/N — بيتحدّد أوتوماتيك لما الحالة تبقى Delivered، أو يدوي من زرار الأرشفة
 var COL_CUST_PHONE = 19; // رقم تليفون صاحب الأوردر لو مختلف عن صاحب الجهاز
+var COL_SUPERSEDED = 20; // علامة "الطلب ده اتعدّل وعنده نسخة جديدة" — بتتحط لما نقدرش نمسح الطلب القديم أوتوماتيك (لسه دخل التنفيذ)
 
 var HEAD_ITEMS = [
   'Order No', 'Date', 'Distributor', 'Type', 'Item', 'Colour Code',
@@ -328,11 +329,17 @@ function doGet(e) {
         }
 
         // المصنع (بكلمة السر) يقدر يمسح الطلب القديم مهما كانت حالته — هو اللي بيعدّل بنفسه.
-        // الموزع العادي (من غير كلمة سر) لسه ممنوع يلغي طلب دخل التنفيذ فعليًا.
+        // الموزع العادي (من غير كلمة سر) لسه ممنوع يلغي طلب دخل التنفيذ فعليًا — بس بدل ما نسيبه
+        // كإنه طلب عادي، بنحط عليه علامة واضحة في العمود الأخير + نلوّن السطر عشان المصنع
+        // ياخد باله وهو بيراجع الشيت إن ده طلب قديم اتعدّله موزع وعنده نسخة جديدة، ويحذفه بنفسه.
         if (!isAdminCO) {
           var stCO = String(shCO.getRange(rCO, COL_STATUS).getValue() || '');
           if (stCO === 'In Progress' || stCO === 'Ready' || stCO === 'Delivered') {
-            return reply({ ok: false, error: 'الطلب دخل التنفيذ في المصنع، مينفعش يتلغي' }, cb);
+            var newIdCO = String(e.parameter.newId || '');
+            var markCO = '⚠️ الطلب ده اتعدّل — بدّله الطلب رقم #' + (newIdCO || '؟') + ' — من فضلك احذف السطر ده يدويًا';
+            shCO.getRange(rCO, COL_SUPERSEDED).setValue(markCO);
+            shCO.getRange(rCO, 1, 1, HEAD_ORDERS.length).setBackground('#FFF3CD');
+            return reply({ ok: false, error: 'الطلب دخل التنفيذ في المصنع، اتحطت عليه علامة "معدّل" عشان يتحذف يدويًا', marked: true }, cb);
           }
         }
         shCO.deleteRow(rCO);
