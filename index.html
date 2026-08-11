@@ -1432,6 +1432,39 @@ async function setStatus(id, st){
   state.admin.busy = null; render();
 }
 
+async function loadArchive(force){
+  const a = state.admin;
+  if(!force && a.archRows) return;   // متحمّلناش تاني لو محمّل خلاص، إلا لو طلب تحديث صريح
+  a.archLoading = true; render();
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL + '?action=list&pw=' + encodeURIComponent(a.pw) + '&archived=1');
+    if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
+    a.archRows = d.orders || [];
+  }catch(err){
+    toast('تعذّر تحميل الأرشيف: ' + (err.message || err));
+    a.archRows = a.archRows || [];
+  }
+  a.archLoading = false; render();
+}
+
+async function unarchiveOrder(id){
+  const a = state.admin;
+  a.archBusy = id; render();
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL
+      + '?action=archiveOrder&pw=' + encodeURIComponent(a.pw)
+      + '&id=' + encodeURIComponent(id) + '&archived=0');
+    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل الإرجاع من الأرشيف');
+    const o = (a.archRows||[]).find(x=>String(x.id)===String(id));
+    a.archRows = (a.archRows||[]).filter(x=>String(x.id)!==String(id));
+    if(o){ a.rows = a.rows || []; a.rows.unshift(o); }
+    toast('اتحدّث الطلب #'+id+' ورجع للطلبات النشطة');
+  }catch(err){
+    toast('تعذّر الإرجاع: ' + (err.message || err));
+  }
+  a.archBusy = null; render();
+}
+
 async function deleteOrder(id){
   if(!confirm('تأكيد حذف الطلب #'+id+'؟ الإجراء ده نهائي ومش هيترجع.')) return;
   state.admin.delBusy = id; render();
@@ -2506,8 +2539,8 @@ function viewAdmin(){
     </section>${verBar()}`;
   }
 
-  const viewingArchive = false;   // الأرشيف اتشال من الواجهة
-  const list = a.rows;
+  const viewingArchive = !!a.viewArchive;
+  const list = viewingArchive ? a.archRows : a.rows;
 
   const headerBtns = `<div class="toolgrid">
         <button class="btn act-tool sm" data-act="adm-reload">${ico("refresh")}تحديث</button>
@@ -2515,9 +2548,18 @@ function viewAdmin(){
         <button class="btn act-report sm" data-act="adm-pending-pdf">${ico("doc")}تصدير PDF</button>
         <button class="btn act-report sm" data-act="adm-pending-xls">${ico("sheet")}تصدير إكسيل</button>
         <button class="btn ${a.viewStock?'brand':'act-edit'} sm" data-act="adm-toggle-stock">${ico("box")}${a.viewStock?'رجوع للطلبات':'أرصدة المخزن'}</button>
+        <button class="btn ${viewingArchive?'brand':'act-edit'} sm" data-act="adm-toggle-archive">${ico("folder")}${viewingArchive?'رجوع للطلبات':'الأرشيف'}</button>
         <button class="btn act-del sm" data-act="adm-clear-delivered">${ico("trash")}مسح المسلّم</button>
         <button class="btn act-tool sm" data-act="adm-logout">${ico("lock")}خروج</button>
       </div>`;
+
+  if(viewingArchive && a.archLoading){
+    return `<section class="card">
+      <div class="step"><span class="n">${ico("folder","lg")}</span><h2>الأرشيف</h2></div>
+      ${headerBtns}
+    </section>
+    <div class="empty"><span class="em">⏳</span><p>جارٍ تحميل الأرشيف…</p></div>${verBar()}`;
+  }
 
   // ---------- شاشة أرصدة المخزن ----------
   if(a.viewStock){
@@ -2629,6 +2671,7 @@ function viewAdmin(){
     const actionBtns = `<button class="btn act-edit sm" data-act="adm-edit" data-id="${esc(o.id)}">${ico("edit")}تعديل</button>
          <button class="btn act-send sm" data-act="adm-share" data-id="${esc(o.id)}">${ico("send")}إرسال</button>
          <button class="btn act-money sm" data-act="adm-quote" data-id="${esc(o.id)}"><i>💰</i>عرض سعر</button>
+         ${viewingArchive?`<button class="btn act-tool sm" data-act="adm-unarchive" data-id="${esc(o.id)}" ${archBusy?'disabled':''}>${ico("refresh")}${archBusy?'جارٍ الإرجاع…':'رجّع للنشط'}</button>`:''}
          <button class="btn act-del sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}>${ico("trash")}${delBusy?'جارٍ الحذف…':'حذف'}</button>`;
 
     return `<div class="ord">
@@ -2733,7 +2776,7 @@ document.addEventListener('click',e=>{
     } break;
     case 'track-load': loadTrack(); break;
     case 'adm-login':  adminLoad(); break;
-    case 'adm-reload': adminLoad(); break;
+    case 'adm-reload': state.admin.viewArchive ? loadArchive(true) : adminLoad(); break;
     case 'adm-set':    setStatus(el.dataset.id, el.dataset.st); break;
     case 'adm-toggle-items': { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) toggleOrderItemsPreview(o); } break;
     case 'adm-pdf':     { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) exportAdminOrderPdf(o); } break;
@@ -2745,8 +2788,19 @@ document.addEventListener('click',e=>{
     case 'adm-pending-xls':  exportPendingDoorsExcel_(); break;
     case 'adm-clear-delivered': clearDeliveredOrders(); break;
     case 'adm-del':     deleteOrder(el.dataset.id); break;
+    case 'adm-unarchive': unarchiveOrder(el.dataset.id); break;
+    case 'adm-toggle-archive':
+      state.admin.viewArchive = !state.admin.viewArchive;
+      if(state.admin.viewArchive){
+        state.admin.viewStock = false;
+        if(!state.admin.archRows) state.admin.archLoading = true;   // نمنع ومضة "مفيش طلبات" قبل ما التحميل يخلص
+      }
+      render();
+      if(state.admin.viewArchive) loadArchive();
+      break;
     case 'adm-toggle-stock':
       state.admin.viewStock = !state.admin.viewStock;
+      if(state.admin.viewStock) state.admin.viewArchive = false;
       state.admin.stockDraft = {};
       render();
       if(state.admin.viewStock) loadStock(true);
