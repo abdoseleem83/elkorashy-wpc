@@ -674,7 +674,8 @@ const state = {
     itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null, docImages:{}, docImageBusy:null,
     viewArchive:false, archRows:null, archLoading:false, archBusy:null,
     viewStock:false, stockBusy:null, stockDraft:{},
-    pricesOpen:false, priceEdit:null},
+    pricesOpen:false, priceEdit:null,
+    prodEdit:{}, prodBusy:null},
   profile: load(LS_PROFILE, {name:'', phone:'', region:''}),
   cart:    load(LS_CART, []),
   orders:  load(LS_ORDERS, []),
@@ -1603,6 +1604,26 @@ async function setItemAvail(id, idx, avail){
   }
 }
 
+// بيحدّث الكمية المنتجة فعليًا لصنف معيّن جوه طلب (تتبّع الإنتاج الجزئي — عميل طلب 5 مثلًا واتنتج 3 لسه)
+async function setItemProduced(id, idx, produced){
+  const key = id+':'+idx;
+  state.admin.prodBusy = key; render();
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL
+      + '?action=setItemProduced&pw=' + encodeURIComponent(state.admin.pw)
+      + '&id=' + encodeURIComponent(id) + '&idx=' + idx + '&produced=' + encodeURIComponent(produced));
+    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل التحديث');
+    const it = (state.admin.items[id]||[])[idx];
+    if(it) it.produced = d.produced;
+    delete state.admin.prodEdit[key];
+    delete state.admin.docImages[id];
+    toast('اتحدّثت الكمية الجاهزة');
+  }catch(err){
+    toast('تعذّر التحديث: ' + (err.message || err));
+  }
+  state.admin.prodBusy = null; render();
+}
+
 // بيبني order object موحّد من بيانات شاشة المصنع (list + orderItems) — مستخدم في تصدير الـ PDF وفي مشاركة الصورة
 // السيرفر بيخزّن اسم الصنف بالإنجليزي بس (Order_Items عمود Item). بنعيد بناء الاسم العربي
 // من نفس الكتالوجات اللي التطبيق أصلًا شغال بيها (DOORS/ACCESSORIES)، مش نص إنجليزي متسيّب.
@@ -2071,6 +2092,159 @@ function daysSince_(dateStr){
   const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
   return diff < 0 ? 0 : diff;
 }
+
+// ============================================================
+// تقرير حالة الإنتاج — نفس تجميع تقرير الأبواب المعلّقة (لكل عميل/طلب/مقاس)
+// بس مع إضافة كام باب خلص إنتاجه وكام لسه لكل صنف ولكل مقاس — ده اللي بيترفع للمصنع
+// ============================================================
+function buildProductionReportData_(orders){
+  const data = buildPendingDoorsData_(orders);
+  // buildPendingDoorsData_ بترجّع groups فيها الأصناف الأصلية (من d.items) واللي فيها فعلًا it.produced
+  // جاهزة من الـ backend (listWithItems)، فمش محتاجين نجيبها تاني — بس بنحسب الإجماليات هنا
+  data.forEach(cust=>{
+    cust.perOrder.forEach(o=>{
+      o.widths.forEach(w=>{
+        const items = o.groups[w];
+        items.forEach(it=>{ it.producedN = Math.max(0, Math.min(Number(it.qty)||0, Number(it.produced)||0)); });
+      });
+    });
+  });
+  return data;
+}
+
+function productionReportHTML(data){
+  const CUST_TINT = [
+    {line:'#1080C0', head:'#EAF2FA'},
+    {line:'#C08A3E', head:'#FBF0E1'},
+    {line:'#3E9B72', head:'#E7F5EE'},
+    {line:'#7C63C4', head:'#F0EAFB'},
+    {line:'#C25454', head:'#FBE7E7'},
+    {line:'#2C8FA3', head:'#E3F3F7'}
+  ];
+  const orderMeta = o=>{
+    const days = daysSince_(o.date);
+    return 'تاريخ الطلب: '+esc(o.date||'—')+(days!=null?' — عدد أيام الانتظار: '+days+' يوم':'');
+  };
+  let grandTotal=0, grandDone=0;
+  const custBlocks = data.map((cust,ci)=>{
+    const tint = CUST_TINT[ci % CUST_TINT.length];
+    const single = cust.perOrder.length===1;
+    let custDone=0;
+    const orderBlocks = cust.perOrder.map((o,oi)=>{
+      const sizeBlocks = o.widths.map(w=>{
+        const items = o.groups[w];
+        const sizeTotal = items.reduce((s,it)=>s+(Number(it.qty)||0),0);
+        const sizeDone = items.reduce((s,it)=>s+(it.producedN||0),0);
+        custDone += sizeDone; grandDone += sizeDone;
+        const pct = sizeTotal>0 ? Math.round(sizeDone/sizeTotal*100) : 0;
+        const rowsHtml = items.map((it,idx)=>{
+          const doorImg = (DOORS.find(d=>d.code===it.code)||{}).img;
+          const zebra = idx%2===1 ? 'background:#F6F8FA' : 'background:#FFFFFF';
+          const done = it.producedN||0, qty = Number(it.qty)||0, pend = qty-done;
+          const statusTxt = pend<=0 ? `<span style="color:#1E8E52;font-weight:700">✅ خلص</span>`
+                           : done>0 ? `<span style="color:#B8790A;font-weight:700">${done} من ${qty}</span>`
+                           : `<span style="color:#B3261E;font-weight:700">لسه هيبدأ</span>`;
+          return `
+          <tr style="${zebra}">
+            <td style="text-align:center;padding:7px 6px;border-bottom:1px solid #E7EBF0">
+              <div style="display:flex;align-items:center;justify-content:center;gap:6px">
+                ${doorImg?`<img src="${doorImg}" style="width:24px;height:24px;object-fit:cover;border-radius:5px;border:1px solid #DCE4EC">`:''}
+                <span style="font-weight:700;color:#233246">${esc(it.code||'')}</span>
+              </div>
+            </td>
+            <td style="text-align:center;padding:7px 6px;border-bottom:1px solid #E7EBF0;font-weight:700;color:#233246">${esc(qty)}</td>
+            <td style="text-align:center;padding:7px 6px;border-bottom:1px solid #E7EBF0;color:#4B5A6B">${esc(it.frame?frameText_(it.frame,it.frameHeight):'—')}</td>
+            <td style="text-align:center;padding:7px 6px;border-bottom:1px solid #E7EBF0;color:#4B5A6B">${esc(it.dbror||'—')}</td>
+            <td style="text-align:center;padding:7px 6px;border-bottom:1px solid #E7EBF0">${statusTxt}</td>
+          </tr>`;
+        }).join('');
+        return `<div style="margin-top:9px">
+          <div style="font-weight:700;color:${tint.line};font-size:11.5px;border-bottom:2px solid ${tint.line};padding-bottom:3px;display:inline-block">🚪 مقاس ${w==='خاص'?'خاص':esc(w)+' سم'}</div>
+          <div style="border:1px solid #E3E7EC;border-radius:6px;overflow:hidden;margin-top:5px">
+            <table style="width:100%;border-collapse:collapse;font-size:11px">
+              <thead><tr style="background:#12314F">
+                <th style="padding:7px 6px;color:#fff;font-weight:700">نوع الباب</th>
+                <th style="padding:7px 6px;color:#fff;font-weight:700">العدد</th>
+                <th style="padding:7px 6px;color:#fff;font-weight:700">حلق</th>
+                <th style="padding:7px 6px;color:#fff;font-weight:700">برور</th>
+                <th style="padding:7px 6px;color:#fff;font-weight:700">حالة الإنتاج</th>
+              </tr></thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          </div>
+          <div style="display:flex;border-radius:6px;overflow:hidden;margin-top:5px;height:22px">
+            ${sizeDone>0?`<div style="flex:${sizeDone};background:#E7F6EC;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:#1E8E52">${sizeDone} جاهز</div>`:''}
+            ${(sizeTotal-sizeDone)>0?`<div style="flex:${sizeTotal-sizeDone};background:#FFF4E0;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:#B8790A">${sizeTotal-sizeDone} لسه</div>`:''}
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;background:#F3F6FA;border-radius:5px;padding:5px 10px;margin-top:5px">
+            <span style="font-size:10.5px;color:#5B6B7D">إجمالي مقاس ${w==='خاص'?'خاص':esc(w)} — ${pct}% جاهز</span>
+            <span style="font-size:12.5px;font-weight:700;color:${tint.line}">${sizeTotal} باب</span>
+          </div>
+        </div>`;
+      }).join('');
+      const orderLabel = single ? '' : `<span style="display:inline-block;background:${tint.head};color:${tint.line};font-weight:700;font-size:11px;padding:3px 11px;border-radius:20px">طلب ${oi+1}</span>`;
+      const metaLine = single ? '' : `<div style="font-size:10.5px;color:#8A97A6;margin-top:4px">${orderMeta(o)}</div>`;
+      return `<div style="margin-top:11px;padding:10px 12px;background:#FBFCFD;border:1px solid #E3E7EC;border-radius:9px">
+        ${orderLabel}${metaLine}
+        ${sizeBlocks || '<div style="font-size:11px;color:#8A97A6;padding:4px 0">مفيش أبواب في الطلب ده</div>'}
+      </div>`;
+    }).join('');
+    const headerMeta = single ? orderMeta(cust.perOrder[0]) : '';
+    grandTotal += cust.total;
+    return `<div style="margin-top:16px;border:1px solid #DCE4EC;border-radius:11px;overflow:hidden;break-inside:avoid">
+      <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:15px;font-weight:700;color:#fff;background:${tint.line};padding:9px 14px">
+        صاحب الطلب: ${esc(cust.name)}${headerMeta?` <span style="font-weight:400;font-size:11.5px;opacity:.92">— ${headerMeta}</span>`:''}
+      </div>
+      <div style="padding:10px 12px 12px">
+        ${orderBlocks}
+        <div style="margin-top:11px;padding:8px 13px;background:${tint.head};border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:700;font-size:13px;color:#233246">إجمالي ${esc(cust.name)} — ${custDone} جاهز من ${cust.total}</span>
+          <span style="font-weight:700;font-size:20px;color:${tint.line}">${cust.total} باب</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ar-EG');
+  const timeStr = now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+  const grandPct = grandTotal>0 ? Math.round(grandDone/grandTotal*100) : 0;
+
+  return `
+  <div style="font-family:Arial,'Helvetica Neue',sans-serif;direction:rtl;background:#fff;padding:30px 26px;color:#14243A;">
+    <div style="display:flex;align-items:center;gap:14px;border-bottom:3px solid #1080C0;padding-bottom:12px">
+      <img src="${ASSETS.logo}" style="height:48px;width:auto">
+      <div style="flex:1">
+        <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:19px;font-weight:700;color:#002050">تقرير حالة الإنتاج</div>
+        <div style="font-size:11px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} — ${dateStr} — الساعة ${timeStr} — الأبواب المعلّقة وحالة تصنيعها</div>
+      </div>
+      <div style="text-align:left">
+        <div style="font-size:12px;color:#6B7A8C">عدد العملاء: ${data.length}</div>
+        <div style="font-size:13px;font-weight:700;color:#1E8E52;margin-top:2px">${grandDone} جاهز من ${grandTotal} (${grandPct}%)</div>
+      </div>
+    </div>
+    ${custBlocks}
+  </div>`;
+}
+
+async function exportProductionReportImage_(){
+  if(typeof html2canvas==='undefined'){ toast('محتاج نت أول مرة عشان يجهّز الصورة'); return; }
+  busy(true,'جارٍ تجهيز صورة تقرير حالة الإنتاج…');
+  try{
+    const orders = await fetchPendingOrders_();
+    if(!orders){ busy(false); return; }
+    const data = buildProductionReportData_(orders);
+    if(!data.length){ toast('مفيش طلبات معلّقة'); busy(false); return; }
+    const canvas = await renderPaper_(productionReportHTML(data));
+    const blob = await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
+    const fname = 'تقرير_حالة_الإنتاج_'+new Date().toISOString().slice(0,10)+'.png';
+    await shareOrDownload_(blob, fname, fname);
+  }catch(err){
+    toast('تعذّر تجهيز الصورة: ' + (err.message || err));
+  }
+  busy(false);
+}
+
 
 function pendingDoorsHTML(data){
   // ألوان مختلفة لكل عميل عشان يتفرقوا بسرعة (عميل ١ بلون، اللي بعده بلون تاني، وهكذا)
@@ -2683,7 +2857,52 @@ function viewAdminPrices(){
   </section>`;
 }
 
+// صف تتبّع الإنتاج لصنف واحد — عرض عادي: سطر مقسوم بصريًا (جاهز أخضر / لسه برتقالي) بنسبة الكميات.
+// لمسة عليه تفتح وضع تعديل: خانة رقم + حفظ/إلغاء، عشان تكتب الكمية الجاهزة فعليًا وتحفظها في الشيت.
+function prodRowHTML_(oid, idx, it, a){
+  const key = oid+':'+idx;
+  const qty = Number(it.qty)||0;
+  const produced = Math.max(0, Math.min(qty, Number(it.produced)||0));
+  const pending = qty - produced;
+  const full = qty>0 && produced>=qty;
+  const editing = a.prodEdit.hasOwnProperty(key);
+  const busy = a.prodBusy === key;
+  const title = esc(arabicItemTitle_(it)) + (it.type==='Door'&&it.code?' ('+esc(it.code)+')':'');
+
+  if(editing){
+    const draft = a.prodEdit[key];
+    return `<div style="border:1px solid var(--line);border-radius:10px;overflow:hidden">
+      <div style="padding:8px 11px;font-size:11.5px;font-weight:700;background:#F7F9FB">${title} <span style="color:#6B7A8C;font-weight:400">(إجمالي ${qty})</span></div>
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 11px">
+        <span style="font-size:11px;color:#6B7A8C">الكمية الجاهزة:</span>
+        <input type="number" inputmode="numeric" min="0" max="${qty}" value="${esc(draft)}"
+          data-act="prod-set" data-id="${esc(oid)}" data-idx="${idx}"
+          style="width:64px;text-align:center;border:1px solid var(--line);border-radius:8px;padding:6px 4px;font-size:13px;font-weight:700">
+        <span style="font-size:11px;color:#6B7A8C">من ${qty}</span>
+        <span style="flex:1"></span>
+        <button class="btn sm" data-act="adm-prod-save" data-id="${esc(oid)}" data-idx="${idx}" ${busy?'disabled':''} style="font-size:11px;padding:5px 10px">${busy?'…':'✅ حفظ'}</button>
+        <button class="btn ghost sm" data-act="adm-prod-cancel" data-id="${esc(oid)}" data-idx="${idx}" ${busy?'disabled':''} style="font-size:11px;padding:5px 10px">إلغاء</button>
+      </div>
+    </div>`;
+  }
+
+  const doneFlex = qty>0 ? produced : 1;
+  const pendFlex = qty>0 ? pending : 0;
+  const segs = [];
+  if(produced>0) segs.push(`<div style="flex:${doneFlex};padding:8px 10px;font-size:11px;background:#E7F6EC;color:#1E8E52;display:flex;flex-direction:column;gap:1px;min-width:0"><span>${full?'✅ جاهز بالكامل':'✅ جاهز'}</span><b style="font-size:14px">${produced}</b></div>`);
+  if(pending>0) segs.push(`<div style="flex:${pendFlex};padding:8px 10px;font-size:11px;background:#FFF4E0;color:#B8790A;display:flex;flex-direction:column;gap:1px;min-width:0"><span>⏳ لسه في التصنيع</span><b style="font-size:14px">${pending}</b></div>`);
+  if(!segs.length) segs.push(`<div style="flex:1;padding:8px 10px;font-size:11px;color:#6B7A8C">لا توجد كمية</div>`);
+
+  return `<div data-act="adm-prod-edit-open" data-id="${esc(oid)}" data-idx="${idx}" style="border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer">
+    <div style="padding:8px 11px;font-size:11.5px;font-weight:700;background:#F7F9FB">${title} <span style="color:#6B7A8C;font-weight:400">(إجمالي ${qty})</span></div>
+    <div style="display:flex">${segs.join('')}</div>
+  </div>`;
+}
+
+
 function viewAdmin(){
+
+
   const a = state.admin;
 
   if(a.loading) return `<div class="empty"><span class="em">⏳</span><p>جارٍ التحميل…</p></div>`;
@@ -2706,6 +2925,7 @@ function viewAdmin(){
   const headerBtns = `<div class="toolgrid">
         <button class="btn act-tool sm" data-act="adm-reload">${ico("refresh")}تحديث</button>
         <button class="btn act-report sm" data-act="adm-pending-img">${ico("box")}تصدير صور</button>
+        <button class="btn act-report sm" data-act="adm-prod-report-img">${ico("box")}تقرير الإنتاج</button>
         <button class="btn act-report sm" data-act="adm-pending-pdf">${ico("doc")}تصدير PDF</button>
         <button class="btn act-report sm" data-act="adm-pending-xls">${ico("sheet")}تصدير إكسيل</button>
         <button class="btn ${a.viewStock?'brand':'act-edit'} sm" data-act="adm-toggle-stock">${ico("box")}${a.viewStock?'رجوع للطلبات':'أرصدة المخزن'}</button>
@@ -2815,7 +3035,11 @@ function viewAdmin(){
         itemsHtml += `<div class="note" style="color:var(--danger)">تعذّر تجهيز المعاينة</div>`;
       }
       if(its && its.length){
-        itemsHtml += `<div style="margin-top:9px;display:flex;flex-direction:column;gap:5px">
+        itemsHtml += `<div style="margin-top:9px;display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:11px;color:#6B7A8C;font-weight:700">تتبّع الإنتاج (لمسة على أي صنف لتحديث الكمية الجاهزة):</div>
+          ${its.map((it,idx)=>prodRowHTML_(o.id, idx, it, a)).join('')}
+        </div>`;
+        itemsHtml += `<div style="margin-top:11px;display:flex;flex-direction:column;gap:5px">
           <div style="font-size:11px;color:#6B7A8C;font-weight:700">تحديد الأصناف الغير متاحة:</div>
           ${its.map((it,idx)=>{
             const ib = a.itemBusy === (o.id+':'+idx);
@@ -2951,6 +3175,7 @@ document.addEventListener('click',e=>{
     case 'adm-prices-save':   saveAdminPrices(); break;
     case 'adm-prices-cancel': state.admin.pricesOpen=false; state.admin.priceEdit=null; render(); break;
     case 'adm-pending-img':  exportPendingDoorsImage_(); break;
+    case 'adm-prod-report-img': exportProductionReportImage_(); break;
     case 'adm-pending-pdf':  exportPendingDoorsPdf_(); break;
     case 'adm-pending-xls':  exportPendingDoorsExcel_(); break;
     case 'adm-clear-delivered': clearDeliveredOrders(); break;
@@ -2975,6 +3200,26 @@ document.addEventListener('click',e=>{
     case 'stock-save':   saveStockDrafts(); break;
     case 'stock-reload': state.admin.stockDraft={}; loadStock(true); break;
     case 'adm-item-avail': setItemAvail(el.dataset.id, Number(el.dataset.idx), el.dataset.avail==='1'); break;
+    case 'adm-prod-edit-open': {
+      const key = el.dataset.id+':'+el.dataset.idx;
+      const its = state.admin.items[el.dataset.id]||[];
+      const it = its[Number(el.dataset.idx)];
+      state.admin.prodEdit[key] = String(Math.max(0, Math.min(Number(it&&it.qty)||0, Number(it&&it.produced)||0)));
+      render();
+      break;
+    }
+    case 'adm-prod-cancel': {
+      const key = el.dataset.id+':'+el.dataset.idx;
+      delete state.admin.prodEdit[key];
+      render();
+      break;
+    }
+    case 'adm-prod-save': {
+      const key = el.dataset.id+':'+el.dataset.idx;
+      const draft = state.admin.prodEdit[key];
+      setItemProduced(el.dataset.id, Number(el.dataset.idx), Math.max(0, parseInt(draft,10)||0));
+      break;
+    }
     case 'adm-logout':
       state.admin={open:false, pw:'', loading:false, rows:null, err:'', busy:null,
         itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null, docImages:{}, docImageBusy:null, pendingCount:0,
@@ -3032,6 +3277,11 @@ document.addEventListener('input',e=>{
     const pe=state.admin.priceEdit; if(!pe) return;
     const v=parseFloat(el.value)||0, g=el.dataset.group, k=el.dataset.key, tier=el.dataset.tier;
     if(g==='customExtra') pe.customExtra[tier]=v; else if(pe[g][k]) pe[g][k][tier]=v;
+    return;
+  }
+  if(a==='prod-set'){
+    const key = el.dataset.id+':'+el.dataset.idx;
+    state.admin.prodEdit[key] = el.value;
     return;
   }
 });

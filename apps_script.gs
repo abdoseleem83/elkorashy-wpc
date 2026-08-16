@@ -57,10 +57,11 @@ var COL_SUPERSEDED = 20; // علامة "الطلب ده اتعدّل وعنده 
 var HEAD_ITEMS = [
   'Order No', 'Date', 'Distributor', 'Type', 'Item', 'Colour Code',
   'Size', 'Included with Door', 'Milling', 'Unit', 'Qty', 'Unit Price', 'Line Total', 'Available',
-  'Frame (cm)', 'Bror', 'Frame Height (cm)', 'Width (cm)'
+  'Frame (cm)', 'Bror', 'Frame Height (cm)', 'Width (cm)', 'Produced Qty'
 ];
 var COL_ITEM_WIDTH = 18;  // العرض بالسم كرقم خام (بس للأبواب) — بيتستخدم لخصم/رجوع رصيد المخزون بدقة
 var COL_ITEM_AVAIL = 14;   // عمود "متاح؟" في تبويب Order_Items — Y/N، بيتحدّث من شاشة المصنع
+var COL_ITEM_PRODUCED = 19; // عمود "الكمية المنتجة" — رقم من صفر لحد الكمية المطلوبة، بيتحدّث من شاشة المصنع
 // عمودين جداد (v28) بيخزّنوا قيمة الحلق/البرور خام (منفصلين عن نص "Included with Door" الإنجليزي)
 // عشان شاشة المصنع تقدر تعرضهم في عمودين منفصلين بالعربي بدل نص متلاصق واحد
 
@@ -271,7 +272,8 @@ function doGet(e) {
               frame:     valsOI[iOI][14] || '',
               dbror:     valsOI[iOI][15] || '',
               frameHeight: valsOI[iOI][16] || '',
-              width:     valsOI[iOI][17] || ''
+              width:     valsOI[iOI][17] || '',
+              produced:  Number(valsOI[iOI][18]) || 0
             });
           }
         }
@@ -307,6 +309,38 @@ function doGet(e) {
         try { lockIA.releaseLock(); } catch (eIA) {}
       }
     }
+
+    // تحديث الكمية المنتجة فعليًا لصنف معيّن جوه طلب (تتبّع الإنتاج الجزئي) — نفس منطق setItemAvail بالظبط
+    if (action === 'setItemProduced') {
+      if (!checkAdminPw_(e.parameter.pw)) {
+        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      }
+      var lockIP = LockService.getScriptLock();
+      try {
+        lockIP.waitLock(15000);
+        var shIP = sheet_(SHEET_ITEMS, HEAD_ITEMS);
+        var idIP = String(e.parameter.id || '');
+        var idxIP = Number(e.parameter.idx || 0);
+        var lastIP = shIP.getLastRow();
+        if (lastIP < 2) return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
+        var idsIP = shIP.getRange(2, 1, lastIP - 1, 1).getValues();
+        var foundIP = -1, countIP = -1;
+        for (var iIP = 0; iIP < idsIP.length; iIP++) {
+          if (String(idsIP[iIP][0]) === idIP) {
+            countIP++;
+            if (countIP === idxIP) { foundIP = iIP + 2; break; }
+          }
+        }
+        if (foundIP < 0) return reply({ ok: false, error: 'الصنف مش موجود' }, cb);
+        var qtyIP = Number(shIP.getRange(foundIP, 11).getValue()) || 0;   // عمود Qty
+        var producedIP = Math.max(0, Math.min(qtyIP, Number(e.parameter.produced) || 0));  // من صفر لحد الكمية المطلوبة، مش أكتر ولا أقل
+        shIP.getRange(foundIP, COL_ITEM_PRODUCED).setValue(producedIP);
+        return reply({ ok: true, produced: producedIP }, cb);
+      } finally {
+        try { lockIP.releaseLock(); } catch (eIP) {}
+      }
+    }
+
 
     // إلغاء طلب (بيتنادى لوحده لما العميل أو المصنع يعدّل طلب — الطلب القديم يتحذف تلقائي وطلب جديد يتعمل)
     // من غير كلمة سر المصنع عشان الموزع العادي يقدر يعدّل طلبه هو من غير دخول شاشة المصنع،
@@ -428,7 +462,8 @@ function doGet(e) {
             frame:    valsILW[iILW][14] || '',
             dbror:    valsILW[iILW][15] || '',
             frameHeight: valsILW[iILW][16] || '',
-            width:    valsILW[iILW][17] || ''
+            width:    valsILW[iILW][17] || '',
+            produced: Number(valsILW[iILW][18]) || 0
           });
         }
       }
@@ -614,7 +649,8 @@ function saveOrder_(o) {
       isDoor ? (it.frame || '') : '',
       isDoor ? (it.dbror || '') : '',
       isDoor ? (it.frameHeight || '') : '',
-      isDoor ? (it.w || '') : ''
+      isDoor ? (it.w || '') : '',
+      0   // Produced Qty — يبدأ صفر لكل صنف جديد، وبيتحدّث بعدين من شاشة المصنع
     ]);
   }
 
