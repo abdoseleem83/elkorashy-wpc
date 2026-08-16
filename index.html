@@ -2227,20 +2227,18 @@ function productionReportHTML(data){
   </div>`;
 }
 
-async function exportProductionReportImage_(){
-  if(typeof html2canvas==='undefined'){ toast('محتاج نت أول مرة عشان يجهّز الصورة'); return; }
-  busy(true,'جارٍ تجهيز صورة تقرير حالة الإنتاج…');
+async function exportProductionReportPdf_(){
+  if(typeof html2canvas==='undefined' || !window.jspdf){ toast('محتاج نت أول مرة عشان يجهّز الـ PDF'); return; }
+  busy(true,'جارٍ تجهيز تقرير حالة الإنتاج (PDF)…');
   try{
     const orders = await fetchPendingOrders_();
     if(!orders){ busy(false); return; }
     const data = buildProductionReportData_(orders);
     if(!data.length){ toast('مفيش طلبات معلّقة'); busy(false); return; }
     const canvas = await renderPaper_(productionReportHTML(data));
-    const blob = await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
-    const fname = 'تقرير_حالة_الإنتاج_'+new Date().toISOString().slice(0,10)+'.png';
-    await shareOrDownload_(blob, fname, fname);
+    await canvasToPdf_(canvas, 'تقرير_حالة_الإنتاج_'+new Date().toISOString().slice(0,10)+'.pdf');
   }catch(err){
-    toast('تعذّر تجهيز الصورة: ' + (err.message || err));
+    toast('تعذّر تجهيز الـ PDF: ' + (err.message || err));
   }
   busy(false);
 }
@@ -2489,25 +2487,6 @@ async function exportPendingDoorsExcel_(){
   }
   busy(false);
 }
-
-async function exportPendingDoorsImage_(){
-  if(typeof html2canvas==='undefined'){ toast('محتاج نت أول مرة عشان يجهّز الصورة'); return; }
-  busy(true,'جارٍ تجهيز صورة تقرير الأبواب المعلّقة…');
-  try{
-    const orders = await fetchPendingOrders_();
-    if(!orders){ busy(false); return; }
-    const data = buildPendingDoorsData_(orders);
-    if(!data.length){ toast('مفيش طلبات معلّقة'); busy(false); return; }
-    const canvas = await renderPaper_(pendingDoorsHTML(data));
-    const blob = await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
-    const fname = 'تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.png';
-    await shareOrDownload_(blob, fname, fname);
-  }catch(err){
-    toast('تعذّر تجهيز الصورة: ' + (err.message || err));
-  }
-  busy(false);
-}
-
 
 // ============================================================
 // تصدير إكسيل — تقرير الطلبات (شاشة المصنع) — منظّم بالعربي، مجمّع لكل عميل
@@ -2924,8 +2903,7 @@ function viewAdmin(){
 
   const headerBtns = `<div class="toolgrid">
         <button class="btn act-tool sm" data-act="adm-reload">${ico("refresh")}تحديث</button>
-        <button class="btn act-report sm" data-act="adm-pending-img">${ico("box")}تصدير صور</button>
-        <button class="btn act-report sm" data-act="adm-prod-report-img">${ico("box")}تقرير الإنتاج</button>
+        <button class="btn act-report sm" data-act="adm-prod-report-pdf">${ico("doc")}تقرير الإنتاج (PDF)</button>
         <button class="btn act-report sm" data-act="adm-pending-pdf">${ico("doc")}تصدير PDF</button>
         <button class="btn act-report sm" data-act="adm-pending-xls">${ico("sheet")}تصدير إكسيل</button>
         <button class="btn ${a.viewStock?'brand':'act-edit'} sm" data-act="adm-toggle-stock">${ico("box")}${a.viewStock?'رجوع للطلبات':'أرصدة المخزن'}</button>
@@ -3021,7 +2999,7 @@ function viewAdmin(){
     }).join('');
 
     const itemsOpen = !!a.itemsOpen[o.id];
-    const itemsLoading = a.itemsLoading === o.id;
+    const itemsToggleBusy = a.itemsLoading === o.id;
     const its = a.items[o.id];
     const docImg = a.docImages[o.id];
     const imgBusy = a.docImageBusy === o.id;
@@ -3029,7 +3007,7 @@ function viewAdmin(){
     if(itemsOpen){
       if(docImg){
         itemsHtml += `<div style="margin-top:8px"><img src="${docImg}" style="width:100%;border-radius:10px;border:1px solid #E4EAF0;display:block"></div>`;
-      } else if(imgBusy || itemsLoading){
+      } else if(imgBusy || itemsToggleBusy){
         itemsHtml += `<div class="note">جارٍ تجهيز معاينة الطلب…</div>`;
       } else {
         itemsHtml += `<div class="note" style="color:var(--danger)">تعذّر تجهيز المعاينة</div>`;
@@ -3056,7 +3034,8 @@ function viewAdmin(){
       }
     }
 
-    const actionBtns = `<button class="btn act-edit sm" data-act="adm-edit" data-id="${esc(o.id)}">${ico("edit")}تعديل</button>
+    const actionBtns = `<button class="btn ${itemsOpen?'brand':'act-edit'} sm" data-act="adm-toggle-items" data-id="${esc(o.id)}">${ico("box")}${itemsOpen?'إخفاء الأصناف':'الأصناف والإنتاج'}</button>
+         <button class="btn act-edit sm" data-act="adm-edit" data-id="${esc(o.id)}">${ico("edit")}تعديل</button>
          <button class="btn act-send sm" data-act="adm-share" data-id="${esc(o.id)}">${ico("send")}إرسال</button>
          <button class="btn act-money sm" data-act="adm-quote" data-id="${esc(o.id)}"><i>💰</i>عرض سعر</button>
          ${viewingArchive?`<button class="btn act-tool sm" data-act="adm-unarchive" data-id="${esc(o.id)}" ${archBusy?'disabled':''}>${ico("refresh")}${archBusy?'جارٍ الإرجاع…':'رجّع للنشط'}</button>`:''}
@@ -3174,8 +3153,7 @@ document.addEventListener('click',e=>{
     case 'adm-prices-open':   openAdminPrices(); break;
     case 'adm-prices-save':   saveAdminPrices(); break;
     case 'adm-prices-cancel': state.admin.pricesOpen=false; state.admin.priceEdit=null; render(); break;
-    case 'adm-pending-img':  exportPendingDoorsImage_(); break;
-    case 'adm-prod-report-img': exportProductionReportImage_(); break;
+    case 'adm-prod-report-pdf': exportProductionReportPdf_(); break;
     case 'adm-pending-pdf':  exportPendingDoorsPdf_(); break;
     case 'adm-pending-xls':  exportPendingDoorsExcel_(); break;
     case 'adm-clear-delivered': clearDeliveredOrders(); break;
