@@ -157,6 +157,17 @@ button{cursor:pointer;border:0;background:none}
 .prow input{width:84px;flex:0 0 auto;text-align:center;border:1px solid var(--line);border-radius:8px;padding:6px 4px;font-size:13px}
 .prow input:focus{border-color:var(--wood);outline:none}
 .prow .u{flex:0 0 auto;width:auto;font-size:12px;color:var(--muted)}
+.prow3{display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.prow3:last-of-type{border-bottom:0}
+.prow3 .lbl{flex:1 1 100%;font-size:12.5px;color:var(--ink);margin-bottom:2px}
+.prow3 .lbl small{color:var(--muted)}
+.prow3 .tri{display:flex;gap:5px;flex:1 1 100%}
+.prow3 .tcell{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+.prow3 .tcell b{font-size:9.5px;color:var(--muted);font-weight:700}
+.prow3 input{width:100%;text-align:center;border:1px solid var(--line);border-radius:8px;padding:6px 2px;font-size:12.5px;min-width:0}
+.prow3 input:focus{border-color:var(--wood);outline:none}
+.ptri-head{display:flex;gap:5px;padding:4px 0 2px}
+.ptri-head b{flex:1;text-align:center;font-size:10.5px;color:#1080C0;font-weight:700}
 
 /* ============ التبويبات ============ */
 
@@ -597,15 +608,35 @@ const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders'
 // مستويات السعر: السعر الأساسي المتخزّن في الكتالوج هو "سعر موزع"، ومنه بتتحسب المستويات التانية بزيادة ثابتة.
 // الزيادة بتتطبّق وقت طباعة عرض السعر بس — من غير ما تغيّر الأسعار المتخزّنة نفسها.
 const PRICE_TIERS = {
-  dist:     { label:'سعر موزع', labelEn:'Distributor Price', doorAdd:0,   otherAdd:0   },
+  dist:     { label:'سعر جملة', labelEn:'Wholesale Price', doorAdd:0,   otherAdd:0   },
   showroom: { label:'سعر معرض', labelEn:'Showroom Price',    doorAdd:300, otherAdd:0.5 },
   customer: { label:'سعر عميل', labelEn:'Customer Price',    doorAdd:500, otherAdd:1   }
 };
-// بيرجّع السعر بعد إضافة فرق المستوى على السعر الأساسي (سعر الموزع) حسب نوع الصنف
-function tierPrice(basePrice, kind, tierKey){
+// كل مستوى سعر (جملة/معرض/عميل) بقى بيتخزّن كقيمة مستقلة لكل صنف — مش بيتحسب تلقائي من زيادة ثابتة.
+// الزيادات فوق (doorAdd/otherAdd) بتُستخدم بس كقيمة مبدئية أول مرة تفتح فيها شاشة تعديل الأسعار قبل ما تحفظ حاجة بنفسك.
+const TIER_OVERRIDES = { showroom:{sizes:{},customExtra:null,frames:{},brors:{},acc:{}}, customer:{sizes:{},customExtra:null,frames:{},brors:{},acc:{}} };
+const ACC_EN_TO_ID_ = {}; ACCESSORIES.forEach(a=>{ ACC_EN_TO_ID_[a.en] = a.id; });
+// بيرجّع سعر الصنف على مستوى معيّن (جملة/معرض/عميل). لو الصنف ده اتحفظله سعر مخصوص لنفس المستوى بيترجع هو،
+// وإلا بيترجع سعر الجملة + الزيادة الافتراضية للمستوى (fallback للأصناف اللي لسه محدّش عدّل سعرها بنفسه).
+function tierPrice(basePrice, kind, tierKey, key){
+  if(!tierKey || tierKey==='dist') return Number(basePrice)||0;
+  const group = kind==='door'?'sizes':kind==='frame'?'frames':kind==='bror'?'brors':'acc';
+  const ov = TIER_OVERRIDES[tierKey];
+  if(ov){
+    if(key==='customExtra'){ if(ov.customExtra!=null) return Number(ov.customExtra)||0; }
+    else if(key!=null && ov[group] && ov[group][key]!=null){ return Number(ov[group][key])||0; }
+  }
   const t = PRICE_TIERS[tierKey] || PRICE_TIERS.dist;
   const add = kind==='door' ? t.doorAdd : t.otherAdd;
   return (Number(basePrice)||0) + add;
+}
+// بيستخرج مفتاح الصنف (مقاس الباب/الحلق بالرقم، مقاس البرور، أو كود الإكسسوار) من صنف الطلب —
+// المفتاح ده هو اللي بيتربط بيه سعر كل مستوى في TIER_OVERRIDES.
+function tierKeyFor_(it, kind){
+  if(kind==='door' || kind==='frame'){ const m=/^(\d+)/.exec(String(it.size||'')); return m?Number(m[1]):null; }
+  if(kind==='bror') return it.size||null;
+  if(kind==='acc') return ACC_EN_TO_ID_[it.title] || null;
+  return null;
 }
 
 // أسعار الكتالوج (الأبواب/الحلق/البرور/الإكسسوارات) متخزّنة كأرقام ثابتة فوق —
@@ -613,11 +644,21 @@ function tierPrice(basePrice, kind, tierKey){
 function loadPriceOverrides_(){ try{ return JSON.parse(localStorage.getItem(LS_PRICES)||'{}'); }catch(e){ return {}; } }
 function applyPriceOverrides(){
   const ov = loadPriceOverrides_();
-  if(ov.sizes) SIZES.forEach(s=>{ if(ov.sizes[s.w]!=null) s.price=Number(ov.sizes[s.w])||0; });
-  if(ov.customExtra!=null) CUSTOM_EXTRA = Number(ov.customExtra)||0;
-  if(ov.frames) FRAMES.forEach(f=>{ if(ov.frames[f.cm]!=null) f.price=Number(ov.frames[f.cm])||0; });
-  if(ov.brors) BRORS.forEach(b=>{ if(ov.brors[b.size]!=null) b.price=Number(ov.brors[b.size])||0; });
-  if(ov.acc) ACCESSORIES.forEach(a=>{ if(ov.acc[a.id]!=null) a.price=Number(ov.acc[a.id])||0; });
+  // توافق مع الشكل القديم (كان فيه سعر جملة بس، من غير مستويات معرض/عميل مخصوصة)
+  const dist = ov.dist || ov;
+  if(dist.sizes) SIZES.forEach(s=>{ if(dist.sizes[s.w]!=null) s.price=Number(dist.sizes[s.w])||0; });
+  if(dist.customExtra!=null) CUSTOM_EXTRA = Number(dist.customExtra)||0;
+  if(dist.frames) FRAMES.forEach(f=>{ if(dist.frames[f.cm]!=null) f.price=Number(dist.frames[f.cm])||0; });
+  if(dist.brors) BRORS.forEach(b=>{ if(dist.brors[b.size]!=null) b.price=Number(dist.brors[b.size])||0; });
+  if(dist.acc) ACCESSORIES.forEach(a=>{ if(dist.acc[a.id]!=null) a.price=Number(dist.acc[a.id])||0; });
+  ['showroom','customer'].forEach(tk=>{
+    const t = ov[tk]; if(!t) return;
+    if(t.sizes) TIER_OVERRIDES[tk].sizes = {...t.sizes};
+    if(t.customExtra!=null) TIER_OVERRIDES[tk].customExtra = t.customExtra;
+    if(t.frames) TIER_OVERRIDES[tk].frames = {...t.frames};
+    if(t.brors) TIER_OVERRIDES[tk].brors = {...t.brors};
+    if(t.acc) TIER_OVERRIDES[tk].acc = {...t.acc};
+  });
 }
 applyPriceOverrides();
 
@@ -1596,7 +1637,7 @@ function buildAdminDocOrder_(o, its, tierKey){
     items: its.map(it=>{
       const sz = it.type==='Door' ? arabicSizeText_(it.size) : (it.size||'');
       const kind = it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':'acc'));
-      const price = tierKey ? tierPrice(it.unitPrice||0, kind, tierKey) : (it.unitPrice||0);
+      const price = tierKey ? tierPrice(it.unitPrice||0, kind, tierKey, tierKeyFor_(it, kind)) : (it.unitPrice||0);
       return {
         kind, title: (it.avail===false?'⚠️ غير متاح — ':'') + arabicItemTitle_(it) + (it.type==='Door'&&it.code?' ('+it.code+')':''),
         sizeTxt: sz, spec: sz, unit: it.unit||'', qty: it.qty||0,
@@ -1608,13 +1649,22 @@ function buildAdminDocOrder_(o, its, tierKey){
 }
 
 // بيبني مستند PDF للطلب من بيانات شاشة المصنع (بعد ما أصنافه تتحمّل)
+// بيبني صف تلات مستويات (جملة/معرض/عميل) لصنف معيّن — سعر الجملة هو الأساسي، والباقي بيتاخد من القيمة
+// المحفوظة له لو موجودة، وإلا بتتحسب مبدئيًا بالزيادة الافتراضية لحد ما تحفظ إنت قيمة تانية بنفسك.
+function triFor_(basePrice, kind, key){
+  return {
+    dist: basePrice,
+    showroom: tierPrice(basePrice, kind, 'showroom', key),
+    customer: tierPrice(basePrice, kind, 'customer', key)
+  };
+}
 function openAdminPrices(){
   state.admin.priceEdit = {
-    sizes: Object.fromEntries(SIZES.map(s=>[s.w, s.price])),
-    customExtra: CUSTOM_EXTRA,
-    frames: Object.fromEntries(FRAMES.map(f=>[f.cm, f.price])),
-    brors: Object.fromEntries(BRORS.map(b=>[b.size, b.price])),
-    acc: Object.fromEntries(ACCESSORIES.map(a=>[a.id, a.price]))
+    sizes: Object.fromEntries(SIZES.map(s=>[s.w, triFor_(s.price,'door',s.w)])),
+    customExtra: triFor_(CUSTOM_EXTRA,'door','customExtra'),
+    frames: Object.fromEntries(FRAMES.map(f=>[f.cm, triFor_(f.price,'frame',f.cm)])),
+    brors: Object.fromEntries(BRORS.map(b=>[b.size, triFor_(b.price,'bror',b.size)])),
+    acc: Object.fromEntries(ACCESSORIES.map(a=>[a.id, triFor_(a.price,'acc',a.id)]))
   };
   state.admin.pricesOpen = true;
   render(); window.scrollTo({top:0,behavior:'smooth'});
@@ -1622,12 +1672,26 @@ function openAdminPrices(){
 
 function saveAdminPrices(){
   const pe = state.admin.priceEdit; if(!pe) return;
-  SIZES.forEach(s=>{ if(pe.sizes[s.w]!=null) s.price=Number(pe.sizes[s.w])||0; });
-  CUSTOM_EXTRA = Number(pe.customExtra)||0;
-  FRAMES.forEach(f=>{ if(pe.frames[f.cm]!=null) f.price=Number(pe.frames[f.cm])||0; });
-  BRORS.forEach(b=>{ if(pe.brors[b.size]!=null) b.price=Number(pe.brors[b.size])||0; });
-  ACCESSORIES.forEach(a=>{ if(pe.acc[a.id]!=null) a.price=Number(pe.acc[a.id])||0; });
-  save(LS_PRICES, { sizes:pe.sizes, customExtra:pe.customExtra, frames:pe.frames, brors:pe.brors, acc:pe.acc });
+  SIZES.forEach(s=>{ if(pe.sizes[s.w]) s.price=Number(pe.sizes[s.w].dist)||0; });
+  CUSTOM_EXTRA = Number(pe.customExtra.dist)||0;
+  FRAMES.forEach(f=>{ if(pe.frames[f.cm]) f.price=Number(pe.frames[f.cm].dist)||0; });
+  BRORS.forEach(b=>{ if(pe.brors[b.size]) b.price=Number(pe.brors[b.size].dist)||0; });
+  ACCESSORIES.forEach(a=>{ if(pe.acc[a.id]) a.price=Number(pe.acc[a.id].dist)||0; });
+
+  const pickGroup = (g, tier) => Object.fromEntries(Object.entries(g).map(([k,v])=>[k, Number(v[tier])||0]));
+  const out = { dist:{}, showroom:{}, customer:{} };
+  ['dist','showroom','customer'].forEach(tier=>{
+    out[tier] = {
+      sizes: pickGroup(pe.sizes, tier),
+      customExtra: Number(pe.customExtra[tier])||0,
+      frames: pickGroup(pe.frames, tier),
+      brors: pickGroup(pe.brors, tier),
+      acc: pickGroup(pe.acc, tier)
+    };
+  });
+  save(LS_PRICES, out);
+  TIER_OVERRIDES.showroom = { sizes:{...out.showroom.sizes}, customExtra:out.showroom.customExtra, frames:{...out.showroom.frames}, brors:{...out.showroom.brors}, acc:{...out.showroom.acc} };
+  TIER_OVERRIDES.customer = { sizes:{...out.customer.sizes}, customExtra:out.customer.customExtra, frames:{...out.customer.frames}, brors:{...out.customer.brors}, acc:{...out.customer.acc} };
   state.admin.pricesOpen=false; state.admin.priceEdit=null;
   toast('اتحفظت الأسعار الجديدة');
   render();
@@ -2568,41 +2632,48 @@ async function adminPoll(){
 }
 
 
+function priTri_(label, group, key, tri, extra){
+  const cell = (tier)=>`<div class="tcell"><input type="number" inputmode="decimal" step="0.01" value="${esc(tri[tier])}" data-act="price-set" data-group="${group}" data-key="${esc(key)}" data-tier="${tier}"></div>`;
+  return `
+    <div class="prow3">
+      <div class="lbl">${label}${extra?` <small>${extra}</small>`:''}</div>
+      <div class="tri">${cell('dist')}${cell('showroom')}${cell('customer')}</div>
+    </div>`;
+}
+function priHead_(){
+  return `<div class="ptri-head"><b>${esc(PRICE_TIERS.dist.label)}</b><b>${esc(PRICE_TIERS.showroom.label)}</b><b>${esc(PRICE_TIERS.customer.label)}</b></div>`;
+}
 function viewAdminPrices(){
   const pe = state.admin.priceEdit;
-  const rowsSizes = SIZES.map(s=>`
-    <div class="prow"><span>باب ${s.w} سم</span>
-      <input type="number" inputmode="decimal" step="0.01" value="${esc(pe.sizes[s.w])}" data-act="price-set" data-group="sizes" data-key="${s.w}"><span class="u">ج</span></div>`).join('');
-  const rowsFrames = FRAMES.map(f=>`
-    <div class="prow"><span>حلق ${f.cm} سم <small>(للمتر)</small></span>
-      <input type="number" inputmode="decimal" step="0.01" value="${esc(pe.frames[f.cm])}" data-act="price-set" data-group="frames" data-key="${f.cm}"><span class="u">ج</span></div>`).join('');
-  const rowsBrors = BRORS.map(b=>`
-    <div class="prow"><span>برور ${esc(b.size)} <small>(للمتر)</small></span>
-      <input type="number" inputmode="decimal" step="0.01" value="${esc(pe.brors[b.size])}" data-act="price-set" data-group="brors" data-key="${esc(b.size)}"><span class="u">ج</span></div>`).join('');
-  const rowsAcc = ACCESSORIES.map(a=>`
-    <div class="prow"><span>${esc(a.name)} <small>(${esc(a.unit)})</small></span>
-      <input type="number" inputmode="decimal" step="0.01" value="${esc(pe.acc[a.id])}" data-act="price-set" data-group="acc" data-key="${a.id}"><span class="u">ج</span></div>`).join('');
+  const head = priHead_();
+  const rowsSizes = SIZES.map(s=>priTri_('باب '+s.w+' سم', 'sizes', s.w, pe.sizes[s.w])).join('');
+  const rowsFrames = FRAMES.map(f=>priTri_('حلق '+f.cm+' سم', 'frames', f.cm, pe.frames[f.cm], '(للمتر)')).join('');
+  const rowsBrors = BRORS.map(b=>priTri_('برور '+esc(b.size), 'brors', b.size, pe.brors[b.size], '(للمتر)')).join('');
+  const rowsAcc = ACCESSORIES.map(a=>priTri_(esc(a.name), 'acc', a.id, pe.acc[a.id], '('+esc(a.unit)+')')).join('');
 
   return `
   <section class="card">
     <div class="step"><span class="n">${ico("money","lg")}</span><h2>تعديل الأسعار</h2></div>
     <div class="note" style="margin-top:0">التعديل بيتحفظ على الجهاز ده بس، وبيتطبّق فورًا على أي طلب جديد وأي مستند PDF بعد كده.</div>
     <div class="note" style="background:#EAF2FA;color:#0B4A7A;border-radius:8px;padding:9px 12px">
-      <b>الأسعار دي كلها "سعر موزع"</b> — عند عمل عرض سعر تقدر تختار تطبّق عليه زيادة سعر معرض (+300 ج للباب، +0.5 ج للباقي) أو سعر عميل (+500 ج للباب، +1 ج للباقي) تلقائيًا.
+      عمود <b>${esc(PRICE_TIERS.dist.label)}</b> هو الأساسي وهو اللي بيتحسب بيه الأوردر الفعلي. عمودَي <b>${esc(PRICE_TIERS.showroom.label)}</b> و<b>${esc(PRICE_TIERS.customer.label)}</b> بتقدر تعدّلهم بحرية لكل صنف، وبيُستخدموا لما تعمل عرض سعر وتختار المستوى المناسب.
     </div>
 
-    <div class="grp">أسعار الأبواب — سعر موزع (حسب المقاس)</div>
+    <div class="grp">أسعار الأبواب (حسب المقاس)</div>
+    ${head}
     ${rowsSizes}
-    <div class="prow"><span>إضافة المقاس الخاص</span>
-      <input type="number" inputmode="decimal" step="0.01" value="${esc(pe.customExtra)}" data-act="price-set" data-group="customExtra" data-key=""><span class="u">ج</span></div>
+    ${priTri_('إضافة المقاس الخاص', 'customExtra', 'customExtra', pe.customExtra)}
 
-    <div class="grp" style="margin-top:14px">أسعار الحلق (للمتر الطولي) — سعر موزع</div>
+    <div class="grp" style="margin-top:14px">أسعار الحلق (للمتر الطولي)</div>
+    ${head}
     ${rowsFrames}
 
-    <div class="grp" style="margin-top:14px">أسعار البرور (للمتر الطولي) — سعر موزع</div>
+    <div class="grp" style="margin-top:14px">أسعار البرور (للمتر الطولي)</div>
+    ${head}
     ${rowsBrors}
 
-    <div class="grp" style="margin-top:14px">أسعار الإكسسوارات — سعر موزع</div>
+    <div class="grp" style="margin-top:14px">أسعار الإكسسوارات</div>
+    ${head}
     ${rowsAcc}
 
     <div class="btnrow" style="margin-top:14px">
@@ -2959,8 +3030,8 @@ document.addEventListener('input',e=>{
   if(a==='br-rods'){ state.br.rods=el.value; refreshRodBtn('add-br'); return; }
   if(a==='price-set'){
     const pe=state.admin.priceEdit; if(!pe) return;
-    const v=parseFloat(el.value)||0, g=el.dataset.group, k=el.dataset.key;
-    if(g==='customExtra') pe.customExtra=v; else pe[g][k]=v;
+    const v=parseFloat(el.value)||0, g=el.dataset.group, k=el.dataset.key, tier=el.dataset.tier;
+    if(g==='customExtra') pe.customExtra[tier]=v; else if(pe[g][k]) pe[g][k][tier]=v;
     return;
   }
 });
