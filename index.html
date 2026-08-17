@@ -506,7 +506,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v74';
+const APP_BUILD   = 'v75';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -674,7 +674,8 @@ const state = {
   admin:{open:false, pw:'', loading:false, rows:null, err:'', busy:null,
     itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null,
     viewArchive:false, archRows:null, archLoading:false, archBusy:null,
-    viewStock:false, stockBusy:null, stockDraft:{},
+    viewStock:false, stockBusy:null, stockDraft:{}, stockPdfBusy:false,
+    reserved:null, reservedAt:0, reservedLoading:false,
     pricesOpen:false, priceEdit:null,
     groupOpen:{}, groupPdfBusy:null,
     qtyEditOpen:{}, qtyEdit:{}, qtyBusy:null, itemDelBusy:null,
@@ -752,6 +753,117 @@ function phoneOk(p){return /^0?1[0-9]{9}$/.test(String(p).replace(/\s/g,''));}
 const READY_HOURS_TXT = 'التسليم خلال ٤٨ ساعة من المصنع';
 
 // بيرجّع الرصيد المتاح لكود + مقاس (المقاس بالسم كرقم، أو '' لأي مقاس)
+// المطلوب/المحجوز لعملاء: بيجمع كل الطلبات المعلّقة (اللي لسه ما اتسلّمتش) وبيحسب المتبقي
+// (الكمية - الجاهز) لكل كود+مقاس — عشان المصنع يعرف الرصيد فعلًا فاضي قد إيه بعد خصم المحجوز
+async function loadReserved(force){
+  const a = state.admin;
+  if(a.reservedLoading) return;
+  if(!force && a.reserved && Date.now()-a.reservedAt < 60000) return;   // كاش دقيقة
+  a.reservedLoading = true; render();
+  try{
+    const orders = await fetchPendingOrders_();
+    const map = {};
+    (orders||[]).forEach(o=>{
+      if(o.status==='Cancelled') return;
+      (o.items||[]).forEach(it=>{
+        if(it.type!=='Door') return;
+        const qty = Number(it.qty)||0;
+        const produced = Number(it.produced)||0;
+        const remain = Math.max(0, qty-produced);
+        if(remain<=0) return;
+        const key = String(it.code||'').trim()+'|'+String(it.size||'').trim();
+        map[key] = (map[key]||0) + remain;
+      });
+    });
+    a.reserved = map; a.reservedAt = Date.now();
+  }catch(err){ /* المحجوز إضافة مساعدة — لو فشل مايوقفش الشاشة */ }
+  a.reservedLoading = false; render();
+}
+function reservedFor(code, sizeW){
+  const map = state.admin.reserved;
+  if(!map) return null;
+  return map[String(code).trim()+'|'+String(sizeW).trim()] || 0;
+}
+
+// تصدير PDF لجدول أرصدة المخزن مع عمود "مطلوب لعملاء" (المحجوز من الطلبات المعلّقة)
+async function exportStockPdf_(){
+  if(typeof html2canvas==='undefined' || !window.jspdf){ toast('محتاج نت أول مرة عشان يجهّز الـ PDF'); return; }
+  state.admin.stockPdfBusy = true; render();
+  busy(true,'جارٍ تجهيز تقرير الأرصدة…');
+  try{
+    await loadStock(true);
+    await loadReserved(true);
+    const canvas = await renderPaper_(stockReportHTML_());
+    await canvasToPdf_(canvas, 'أرصدة_المخزن_'+new Date().toISOString().slice(0,10)+'.pdf', {share:true});
+  }catch(err){
+    toast('تعذّر تجهيز الـ PDF: ' + (err.message || err));
+  }
+  state.admin.stockPdfBusy = false; render();
+  busy(false);
+}
+
+function stockReportHTML_(){
+  const rows = DOORS.map(d=>{
+    const cells = SIZES.map(sz=>{
+      const cur = stockFor(d.code, sz.w) || 0;
+      const res = reservedFor(d.code, sz.w) || 0;
+      const free = Math.max(0, cur-res);
+      return {w:sz.w, cur, res, free};
+    });
+    const total = stockTotalFor(d.code)||0;
+    const resTotal = cells.reduce((s,c)=>s+c.res,0);
+    return {code:d.code, name:d.name, cells, total, resTotal};
+  });
+
+  const sizeHeaders = SIZES.map(sz=>`<th colspan="2" style="padding:6px;color:#fff;font-weight:700;border:1px solid #12314F">${sz.w} سم</th>`).join('');
+  const subHeaders = SIZES.map(()=>`
+      <th style="padding:5px 4px;color:#fff;font-weight:600;font-size:9.5px;border:1px solid #12314F">رصيد</th>
+      <th style="padding:5px 4px;color:#fff;font-weight:600;font-size:9.5px;border:1px solid #12314F">محجوز</th>`).join('');
+
+  const trs = rows.map((r,idx)=>{
+    const zebra = idx%2===1 ? 'background:#F6F8FA' : 'background:#FFFFFF';
+    const cells = r.cells.map(c=>`
+      <td style="text-align:center;padding:6px 4px;border:1px solid #DCE4EC;font-weight:700;color:#233246">${c.cur}</td>
+      <td style="text-align:center;padding:6px 4px;border:1px solid #DCE4EC;color:${c.res>0?'#B3261E':'#B7C0CA'}">${c.res>0?c.res:'—'}</td>`).join('');
+    return `<tr style="${zebra}">
+      <td style="text-align:right;padding:6px 8px;border:1px solid #DCE4EC;font-weight:700;color:#233246;white-space:nowrap">${esc(r.code)} <span style="font-weight:400;color:#8A97A6;font-size:9.5px">${esc(r.name)}</span></td>
+      ${cells}
+      <td style="text-align:center;padding:6px 6px;border:1px solid #DCE4EC;font-weight:700;color:#1080C0">${r.total}</td>
+      <td style="text-align:center;padding:6px 6px;border:1px solid #DCE4EC;font-weight:700;color:${r.resTotal>0?'#B3261E':'#B7C0CA'}">${r.resTotal||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ar-EG');
+  const timeStr = now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+
+  return `
+  <div style="font-family:Arial,'Helvetica Neue',sans-serif;direction:rtl;background:#fff;padding:30px 26px;color:#14243A;">
+    <div style="display:flex;align-items:center;gap:14px;border-bottom:3px solid #1080C0;padding-bottom:12px">
+      <img src="${ASSETS.logo}" style="height:48px;width:auto">
+      <div style="flex:1">
+        <div style="font-size:19px;font-weight:700;color:#002050">تقرير أرصدة المخزن</div>
+        <div style="font-size:11px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} — ${dateStr} — الساعة ${timeStr}</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;padding:8px 12px;background:#FBECEA;border-radius:8px;font-size:10.5px;color:#B3261E">
+      عمود «محجوز» = كمية من نفس الكود/المقاس لسه مطلوبة لطلبات عملاء معلّقة (لسه ما اتصنّعتش/ما اتسلّمتش).
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:14px">
+      <thead>
+        <tr style="background:#12314F">
+          <th rowspan="2" style="text-align:right;padding:6px 8px;color:#fff;font-weight:700;border:1px solid #12314F">الكود</th>
+          ${sizeHeaders}
+          <th rowspan="2" style="padding:6px;color:#fff;font-weight:700;border:1px solid #12314F">إجمالي الرصيد</th>
+          <th rowspan="2" style="padding:6px;color:#fff;font-weight:700;border:1px solid #12314F">إجمالي المحجوز</th>
+        </tr>
+        <tr style="background:#12314F">${subHeaders}</tr>
+      </thead>
+      <tbody>${trs}</tbody>
+    </table>
+  </div>`;
+}
+
 function stockFor(code, sizeW){
   const rows = state.stock.rows;
   if(!rows || !code) return null;
@@ -2184,38 +2296,54 @@ const CUST_TINTS_ = [
 ];
 
 // جدول عميل واحد: صنف/مقاس/كمية/حلق/برور — كل عميل بجدوله المستقل ولونه الخاص
+// حالة توفّر الصنف بالمخزن: أخضر = متاح بالكامل، أصفر = الكمية أكبر من المتاح جزئيًا، أحمر = مفيش خالص
+function stockStatus_(code, size, qty){
+  const stock = stockFor(code, size);
+  if(stock===null) return null;   // الأرصدة لسه ما اتحمّلتش
+  if(stock<=0) return {color:'#B3261E', bg:'#FBE7E7', label:'غير متاح'};
+  if(qty>stock) return {color:'#B8790A', bg:'#FFF4E0', label:'جزئي ('+stock+' متاح)'};
+  return {color:'#1E8E52', bg:'#E7F6EC', label:'متاح'};
+}
+
 function customerTableHTML_(cust, tint){
   const items = mergedCustomerItems_(cust);
   const total = items.reduce((s,it)=>s+it.qty,0);
   const trs = items.map((it,idx)=>{
-    const zebra = idx%2===1 ? 'background:#F6F8FA' : 'background:#FFFFFF';
+    const zebra = idx%2===1 ? 'background:#FAFBFC' : 'background:#FFFFFF';
+    const st = stockStatus_(it.code, it.size, it.qty);
+    const stCell = st
+      ? `<span style="display:inline-block;padding:2.5px 9px;border-radius:20px;font-size:9.5px;font-weight:700;background:${st.bg};color:${st.color};white-space:nowrap">${st.label}</span>`
+      : `<span style="color:#B7C0CA;font-size:10px">—</span>`;
     return `<tr style="${zebra}">
-      <td style="text-align:center;padding:7px 6px;border-bottom:1px solid #E7EBF0;color:#4B5A6B">${esc(it.size)}</td>
-      <td style="text-align:center;padding:7px 6px;border-bottom:1px solid #E7EBF0;font-weight:700;color:#233246">${esc(it.code)}</td>
-      <td style="text-align:center;padding:7px 6px;border-bottom:1px solid #E7EBF0;font-weight:700;color:${tint.line}">${it.qty}</td>
-      <td style="text-align:center;padding:7px 6px;border-bottom:1px solid #E7EBF0;color:#4B5A6B">${esc(it.frame)||'—'}</td>
-      <td style="text-align:center;padding:7px 6px;border-bottom:1px solid #E7EBF0;color:#4B5A6B">${esc(it.dbror)||'—'}</td>
+      <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;color:#4B5A6B">${esc(it.size)}</td>
+      <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;font-weight:700;color:#233246">${esc(it.code)}</td>
+      <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;font-weight:700;color:${tint.line}">${it.qty}</td>
+      <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4">${stCell}</td>
+      <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;color:#6B7A8C;font-size:10px">${esc(it.frame)||'—'}</td>
+      <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;color:#6B7A8C;font-size:10px">${esc(it.dbror)||'—'}</td>
     </tr>`;
   }).join('');
 
-  return `<div style="margin-top:16px;border:2px solid ${tint.line};border-radius:11px;overflow:hidden;break-inside:avoid">
-    <div style="font-size:14px;font-weight:700;color:#fff;background:${tint.line};padding:9px 14px">
-      صاحب الطلب: ${esc(cust.name)}
+  return `<div style="margin-top:18px;border:1px solid #E3E7EC;border-radius:13px;overflow:hidden;break-inside:avoid;box-shadow:0 1px 4px rgba(20,36,58,.06)">
+    <div style="font-size:14px;font-weight:700;color:#fff;background:linear-gradient(135deg, ${tint.line}, ${tint.line}CC);padding:11px 16px;display:flex;align-items:center;justify-content:space-between">
+      <span>👤 ${esc(cust.name)}</span>
+      <span style="font-size:10.5px;font-weight:400;opacity:.9">${items.length} صنف</span>
     </div>
-    <div style="padding:10px 12px 12px">
+    <div style="padding:12px 13px 13px">
       <table style="width:100%;border-collapse:collapse;font-size:11px">
         <thead><tr style="background:#12314F">
-          <th style="padding:7px 6px;color:#fff;font-weight:700">المقاس</th>
-          <th style="padding:7px 6px;color:#fff;font-weight:700">الكود</th>
-          <th style="padding:7px 6px;color:#fff;font-weight:700">الكمية</th>
-          <th style="padding:7px 6px;color:#fff;font-weight:700">الحلق</th>
-          <th style="padding:7px 6px;color:#fff;font-weight:700">البرور</th>
+          <th style="padding:8px 6px;color:#fff;font-weight:700;border-radius:6px 0 0 0">المقاس</th>
+          <th style="padding:8px 6px;color:#fff;font-weight:700">الكود</th>
+          <th style="padding:8px 6px;color:#fff;font-weight:700">الكمية</th>
+          <th style="padding:8px 6px;color:#fff;font-weight:700">حالة المخزن</th>
+          <th style="padding:8px 6px;color:#fff;font-weight:700">الحلق</th>
+          <th style="padding:8px 6px;color:#fff;font-weight:700;border-radius:0 6px 0 0">البرور</th>
         </tr></thead>
-        <tbody>${trs || `<tr><td colspan="5" style="text-align:center;padding:10px;color:#8A97A6">مفيش أبواب معلّقة</td></tr>`}</tbody>
+        <tbody>${trs || `<tr><td colspan="6" style="text-align:center;padding:12px;color:#8A97A6">مفيش أبواب معلّقة</td></tr>`}</tbody>
       </table>
-      <div style="display:flex;justify-content:space-between;align-items:center;background:${tint.head};border-radius:8px;padding:8px 13px;margin-top:9px">
+      <div style="display:flex;justify-content:space-between;align-items:center;background:${tint.head};border-radius:9px;padding:9px 14px;margin-top:10px">
         <span style="font-weight:700;font-size:12.5px;color:#233246">إجمالي عدد الأبواب</span>
-        <span style="font-weight:700;font-size:18px;color:${tint.line}">${total}</span>
+        <span style="font-weight:700;font-size:19px;color:${tint.line}">${total}</span>
       </div>
     </div>
   </div>`;
@@ -2226,21 +2354,31 @@ function pendingDoorsHTML(data){
   const dateStr = now.toLocaleDateString('ar-EG');
   const timeStr = now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
   const codesTxt = DOORS.map(d=>d.code).join('، ');
+  const grandTotal = data.reduce((s,c)=>s+c.total,0);
   const cards = data.map((cust,ci)=>customerTableHTML_(cust, CUST_TINTS_[ci % CUST_TINTS_.length])).join('');
 
   return `
-  <div style="font-family:Arial,'Helvetica Neue',sans-serif;direction:rtl;background:#fff;padding:30px 26px;color:#14243A;">
-    <div style="display:flex;align-items:center;gap:14px;border-bottom:3px solid #1080C0;padding-bottom:12px">
-      <img src="${ASSETS.logo}" style="height:48px;width:auto">
+  <div style="font-family:Arial,'Helvetica Neue',sans-serif;direction:rtl;background:#fff;padding:32px 28px;color:#14243A;">
+    <div style="display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#002050,#0B3A75);border-radius:14px;padding:16px 20px">
+      <img src="${ASSETS.logo}" style="height:46px;width:auto;background:#fff;border-radius:8px;padding:3px">
       <div style="flex:1">
-        <div style="font-size:19px;font-weight:700;color:#002050">تقرير الأبواب المعلّقة</div>
-        <div style="font-size:11px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} — ${dateStr} — الساعة ${timeStr} — الطلبات اللي لسه ما اتسلّمتش</div>
+        <div style="font-size:19px;font-weight:700;color:#fff">تقرير الأبواب المعلّقة</div>
+        <div style="font-size:10.5px;color:#B9CCE3;margin-top:3px">${esc(COMPANY_AR)}  •  ${dateStr} — الساعة ${timeStr}  •  الطلبات اللي لسه ما اتسلّمتش</div>
       </div>
-      <div style="font-size:12px;color:#6B7A8C">عدد العملاء: ${data.length}</div>
+      <div style="text-align:left;border-right:1px solid rgba(255,255,255,.25);padding-right:16px">
+        <div style="font-size:10px;color:#B9CCE3">إجمالي الأبواب</div>
+        <div style="font-size:22px;font-weight:700;color:#fff">${grandTotal}</div>
+        <div style="font-size:9.5px;color:#B9CCE3;margin-top:1px">${data.length} عميل</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:14px;margin-top:10px;font-size:9.5px;color:#4B5A6B">
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#1E8E52;margin-left:4px"></span>متاح بالمخزن</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#B8790A;margin-left:4px"></span>الكمية أكبر من المتاح</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#B3261E;margin-left:4px"></span>غير متاح بالمخزن</span>
     </div>
     ${cards}
-    <div style="margin-top:16px;padding:9px 13px;background:#F7F9FB;border-radius:8px;font-size:10px;color:#6B7A8C">
-      الأكواد المتاحة: ${esc(codesTxt)} | المقاسات المتاحة (سم): 60، 70، 80، 90، 100
+    <div style="margin-top:18px;padding:10px 14px;background:#F7F9FB;border-radius:9px;font-size:10px;color:#6B7A8C;border:1px solid #EEF1F4">
+      الأكواد المتاحة: ${esc(codesTxt)}  |  المقاسات المتاحة (سم): 60، 70، 80، 90، 100
     </div>
   </div>`;
 }
@@ -2261,7 +2399,7 @@ async function buildPendingDoorsExcel_(orders){
   const NAVY='FF002050', WHITE='FFFFFFFF', ZEBRA='FFF6F8FA', BORDER_CLR='FFDCE4EC';
   const thin = {style:'thin', color:{argb:BORDER_CLR}};
   const border = {top:thin,left:thin,right:thin,bottom:thin};
-  const COLS = 5;
+  const COLS = 6;
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('الأبواب المعلّقة', { views:[{ rightToLeft:true }] });
@@ -2269,12 +2407,13 @@ async function buildPendingDoorsExcel_(orders){
     { key:'size', width:12 },
     { key:'code', width:13 },
     { key:'qty',  width:9  },
+    { key:'stat', width:14 },
     { key:'frame',width:22 },
     { key:'bror', width:14 }
   ];
 
   function mergedRow(text, fillArgb, fontArgb, bold, size){
-    const r = ws.addRow([text,'','','','']);
+    const r = ws.addRow([text,'','','','','']);
     ws.mergeCells(r.number,1,r.number,COLS);
     r.eachCell(c=>{
       c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:fillArgb}};
@@ -2292,13 +2431,15 @@ async function buildPendingDoorsExcel_(orders){
 
   const CUST_FILL = ['FF1080C0','FFC08A3E','FF3E9B72','FF7C63C4','FFC25454','FF2C8FA3'];
   const CUST_TINT = ['FFEAF2FA','FFFBF0E1','FFE7F5EE','FFF0EAFB','FFFBE7E7','FFE3F3F7'];
+  const STAT_GREEN='FFE7F6EC', STAT_YELLOW='FFFFF4E0', STAT_RED='FFFBE7E7';
+  const STAT_GREEN_TXT='FF1E8E52', STAT_YELLOW_TXT='FFB8790A', STAT_RED_TXT='FFB3261E';
 
   data.forEach((cust,ci)=>{
     const fill = CUST_FILL[ci % CUST_FILL.length];
     const tint = CUST_TINT[ci % CUST_TINT.length];
     mergedRow('صاحب الطلب: '+cust.name, fill, WHITE, true, 13);
 
-    const hdr = ws.addRow(['المقاس','الكود','الكمية','الحلق','البرور']);
+    const hdr = ws.addRow(['المقاس','الكود','الكمية','حالة المخزن','الحلق','البرور']);
     hdr.eachCell(c=>{
       c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:fill}};
       c.font = {bold:true, color:{argb:WHITE}, name:'Arial', size:10.5};
@@ -2310,16 +2451,18 @@ async function buildPendingDoorsExcel_(orders){
     let total = 0;
     items.forEach((it,idx)=>{
       total += it.qty;
-      const row = ws.addRow([it.size, it.code, it.qty, it.frame||'—', it.dbror||'—']);
+      const st = stockStatus_(it.code, it.size, it.qty);
+      const statTxt = st ? st.label : '—';
+      const row = ws.addRow([it.size, it.code, it.qty, statTxt, it.frame||'—', it.dbror||'—']);
       row.eachCell((c,colNo)=>{
         c.alignment = {horizontal:'center'};
         c.border = border;
-        c.font = {name:'Arial', size:10.5, bold: colNo===3, color: colNo===3?{argb:fill}:undefined};
-        c.fill = {type:'pattern',pattern:'solid',fgColor:{argb: idx%2===1 ? ZEBRA : WHITE}};
+        c.font = {name:'Arial', size:10.5, bold: colNo===3||colNo===4, color: colNo===3?{argb:fill}:(colNo===4&&st?{argb: st.color==='#1E8E52'?STAT_GREEN_TXT:(st.color==='#B8790A'?STAT_YELLOW_TXT:STAT_RED_TXT)}:undefined)};
+        c.fill = {type:'pattern',pattern:'solid',fgColor:{argb: colNo===4&&st ? (st.color==='#1E8E52'?STAT_GREEN:(st.color==='#B8790A'?STAT_YELLOW:STAT_RED)) : (idx%2===1 ? ZEBRA : WHITE)}};
       });
     });
     if(!items.length){
-      const row = ws.addRow(['مفيش أبواب معلّقة','','','','']);
+      const row = ws.addRow(['مفيش أبواب معلّقة','','','','','']);
       ws.mergeCells(row.number,1,row.number,COLS);
       row.eachCell(c=>{ c.border=border; c.alignment={horizontal:'center'}; c.font={name:'Arial', size:10.5, color:{argb:'FF8A97A6'}}; });
     }
@@ -2358,6 +2501,7 @@ async function exportCustomerPdf_(name){
   state.admin.groupPdfBusy = name; render();
   busy(true,'جارٍ تجهيز PDF لـ '+name+'…');
   try{
+    await loadStock(true);
     const all = await fetchPendingOrders_();
     if(all){
       const mine = all.filter(o=>((o.customer||'').trim() || 'بدون اسم') === name);
@@ -2374,6 +2518,7 @@ async function exportCustomerPdf_(name){
 async function exportPendingDoorsPdf_(){
   busy(true,'جارٍ تجهيز تقرير الأبواب المعلّقة (PDF)…');
   try{
+    await loadStock(true);
     const orders = await fetchPendingOrders_();
     if(orders) await buildPendingDoorsPdf_(orders);
   }catch(err){
@@ -2385,6 +2530,7 @@ async function exportPendingDoorsPdf_(){
 async function exportPendingDoorsExcel_(){
   busy(true,'جارٍ تجهيز تقرير الأبواب المعلّقة (إكسيل)…');
   try{
+    await loadStock(true);
     const orders = await fetchPendingOrders_();
     if(orders) await buildPendingDoorsExcel_(orders);
   }catch(err){
@@ -2872,18 +3018,22 @@ function viewAdmin(){
         const val = draft!==undefined ? draft : cur;
         const busy = a.stockBusy===key;
         const dirty = draft!==undefined && Number(draft)!==Number(cur);
+        const res = reservedFor(d.code, sz.w);
         return `<td style="padding:4px">
           <input type="number" inputmode="numeric" min="0" value="${esc(val)}"
             data-act="stock-in" data-code="${esc(d.code)}" data-w="${sz.w}"
             class="stkin ${dirty?'dirty':''}" ${busy?'disabled':''}>
+          ${res>0?`<div style="text-align:center;font-size:9.5px;color:#B3261E;margin-top:2px">محجوز ${res}</div>`:''}
         </td>`;
       }).join('');
       const total = stockTotalFor(d.code)||0;
+      const resTotal = SIZES.reduce((s,sz)=>s+(reservedFor(d.code, sz.w)||0),0);
       return `<tr>
         <td style="padding:5px 7px;white-space:nowrap"><b>${esc(d.code)}</b>
           <span style="color:var(--muted);font-size:11px"> ${esc(d.name)}</span></td>
         ${cells}
         <td style="padding:5px 7px;text-align:center;color:var(--muted);font-size:11.5px">${total}</td>
+        <td style="padding:5px 7px;text-align:center;font-size:11.5px;color:${resTotal>0?'#B3261E':'var(--muted)'}">${resTotal}</td>
       </tr>`;
     }).join('');
 
@@ -2896,7 +3046,8 @@ function viewAdmin(){
       <div class="step"><span class="n">${ico("box","lg")}</span><h2>أرصدة المخزن</h2>
         <span class="hint">الجاهز للتسليم</span></div>
       <div class="note" style="margin-top:0">اكتب الكمية المتاحة لكل كود ومقاس. العميل هيشوف
-        «${esc(READY_HOURS_TXT)}» للأصناف اللي ليها رصيد.</div>
+        «${esc(READY_HOURS_TXT)}» للأصناف اللي ليها رصيد. عمود «مطلوب لعملاء» بيوريك كام باب من نفس الكود/المقاس
+        لسه محجوز لطلبات عملاء معلّقة، عشان تعرف الرصيد الفاضي فعليًا.</div>
       ${headerBtns}
       <div style="overflow-x:auto;margin-top:12px">
         <table class="stktbl">
@@ -2904,6 +3055,7 @@ function viewAdmin(){
             <th style="text-align:right">الكود</th>
             ${SIZES.map(sz=>`<th>${sz.w} سم</th>`).join('')}
             <th>الإجمالي</th>
+            <th>مطلوب لعملاء</th>
           </tr></thead>
           <tbody>${rowsHtml}</tbody>
         </table>
@@ -2912,6 +3064,7 @@ function viewAdmin(){
         <button class="btn brand" data-act="stock-save" ${dirtyCount?'':'disabled'}>
           ${dirtyCount?`حفظ ${dirtyCount} تعديل`:'مفيش تعديلات'}</button>
         <button class="btn ghost sm" data-act="stock-reload">${ico("refresh")}تحديث</button>
+        <button class="btn act-report sm" data-act="stock-pdf" ${a.stockPdfBusy?'disabled':''}>${ico("doc")}${a.stockPdfBusy?'…':'تصدير PDF'}</button>
       </div>
     </section>${verBar()}`;
   }
@@ -3146,10 +3299,11 @@ document.addEventListener('click',e=>{
       if(state.admin.viewStock) state.admin.viewArchive = false;
       state.admin.stockDraft = {};
       render();
-      if(state.admin.viewStock) loadStock(true);
+      if(state.admin.viewStock){ loadStock(true); loadReserved(true); }
       break;
     case 'stock-save':   saveStockDrafts(); break;
-    case 'stock-reload': state.admin.stockDraft={}; loadStock(true); break;
+    case 'stock-reload': state.admin.stockDraft={}; loadStock(true); loadReserved(true); break;
+    case 'stock-pdf': exportStockPdf_(); break;
     case 'adm-item-avail': setItemAvail(el.dataset.id, Number(el.dataset.idx), el.dataset.avail==='1'); break;
     case 'adm-prod-edit-open': {
       const key = el.dataset.id+':'+el.dataset.idx;
