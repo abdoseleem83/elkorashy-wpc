@@ -332,8 +332,8 @@ input::placeholder{color:#A8B4C2}
 /* شبكة أزرار مضغوطة لشاشة المصنع — أصغر وأكتر تنظيمًا من .btnrow العادية */
 .toolgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:5px;margin-top:10px}
 .toolgrid .btn{padding:7px 4px;font-size:10px;border-radius:9px;line-height:1.25}
-.cardacts{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:5px;margin-top:9px}
-.cardacts .btn{padding:7px 4px;font-size:10px;border-radius:9px}
+.cardacts{display:flex;flex-wrap:nowrap;gap:4px;margin-top:9px;overflow-x:auto;padding-bottom:2px}
+.cardacts .btn{padding:6px 4px;font-size:9.5px;border-radius:8px;flex:1 1 0;min-width:0}
 
 /* ألوان موحّدة حسب وظيفة الزرار — عشان العين تفرّق بينهم بسرعة من غير ما تقرا */
 .toolgrid .btn,.cardacts .btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
@@ -672,7 +672,7 @@ const state = {
   track:{loading:false, rows:null, err:'', at:0},
   stock:{rows:null, at:0, loading:false},   // أرصدة المخزن — الجاهز للتسليم خلال ٤٨ ساعة
   admin:{open:false, pw:'', loading:false, rows:null, err:'', busy:null,
-    itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null, docImages:{}, docImageBusy:null,
+    itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null,
     viewArchive:false, archRows:null, archLoading:false, archBusy:null,
     viewStock:false, stockBusy:null, stockDraft:{},
     pricesOpen:false, priceEdit:null,
@@ -1562,27 +1562,7 @@ function toggleOrderItemsPreview(o){
   const a = state.admin;
   if(a.itemsOpen[o.id]){ a.itemsOpen[o.id]=false; render(); return; }
   a.itemsOpen[o.id] = true; render();
-  ensureAdminDocImage_(o);
-}
-
-// بيجهّز صورة معاينة الطلب (زي مستند الـ PDF بالظبط) وبيكاشها — تتعرض جوه شاشة المصنع
-// بدل ما المصنع يحتاج يدوس PDF كل مرة عشان يشوف شكل الطلب
-async function ensureAdminDocImage_(o){
-  const a = state.admin;
-  if(a.docImages[o.id] || a.docImageBusy===o.id) return;
-  await toggleOrderItemsLoadOnly_(o.id);
-  const its = a.items[o.id] || [];
-  if(!its.length) return;
-  if(typeof html2canvas==='undefined'){ toast('محتاج نت أول مرة عشان يجهّز المعاينة'); return; }
-  a.docImageBusy = o.id; render();
-  try{
-    const doc = buildAdminDocOrder_(o, its);
-    const canvas = await renderPaper_(docHTML(doc,'order'));
-    a.docImages[o.id] = canvas.toDataURL('image/jpeg',0.9);
-  }catch(err){
-    toast('تعذّر تجهيز المعاينة');
-  }
-  a.docImageBusy = null; render();
+  if(!a.items[o.id]) toggleOrderItemsLoadOnly_(o.id).then(()=>render());
 }
 
 async function setItemAvail(id, idx, avail){
@@ -1594,16 +1574,11 @@ async function setItemAvail(id, idx, avail){
     if(!d || !d.ok) throw new Error((d && d.error) || 'فشل التحديث');
     const it = (state.admin.items[id]||[])[idx];
     if(it) it.avail = avail;
-    delete state.admin.docImages[id];   // المعاينة المتخزّنة بقت قديمة
     toast(avail?'اتعلّم الصنف متاح':'اتعلّم الصنف غير متاح');
   }catch(err){
     toast('تعذّر التحديث: ' + (err.message || err));
   }
   state.admin.itemBusy = null; render();
-  if(state.admin.itemsOpen[id]){
-    const o = (state.admin.rows||[]).find(x=>String(x.id)===String(id));
-    if(o) ensureAdminDocImage_(o);
-  }
 }
 
 // بيحدّث الكمية المنتجة فعليًا لصنف معيّن جوه طلب (تتبّع الإنتاج الجزئي — عميل طلب 5 مثلًا واتنتج 3 لسه)
@@ -1618,7 +1593,6 @@ async function setItemProduced(id, idx, produced){
     const it = (state.admin.items[id]||[])[idx];
     if(it) it.produced = d.produced;
     delete state.admin.prodEdit[key];
-    delete state.admin.docImages[id];
     toast('اتحدّثت الكمية الجاهزة');
   }catch(err){
     toast('تعذّر التحديث: ' + (err.message || err));
@@ -2856,6 +2830,58 @@ function viewAdminPrices(){
   </section>`;
 }
 
+// جدول تتبّع الإنتاج لكل أصناف الطلب: الصنف / المقاس / المطلوب / الجاهز / المتبقي
+// لمسة على أي صف تفتح خانة تعديل الكمية الجاهزة وتحفظها في الشيت
+function sizeText_(it){
+  if(it.type==='Door') return arabicSizeText_(it.size||'');
+  if(it.type==='Frame') return (it.size||'')+(it.frameHeight?' (ارتفاع '+it.frameHeight+' سم)':'');
+  return it.size||'—';
+}
+function prodTableHTML_(oid, its, a){
+  const rows = its.map((it,idx)=>{
+    const key = oid+':'+idx;
+    const qty = Number(it.qty)||0;
+    const produced = Math.max(0, Math.min(qty, Number(it.produced)||0));
+    const pending = qty - produced;
+    const full = qty>0 && produced>=qty;
+    const editing = a.prodEdit.hasOwnProperty(key);
+    const busy = a.prodBusy === key;
+    const title = esc(arabicItemTitle_(it)) + (it.type==='Door'&&it.code?' ('+esc(it.code)+')':'');
+
+    const readyCell = editing
+      ? `<div style="display:flex;align-items:center;justify-content:center;gap:4px">
+          <input type="number" inputmode="numeric" min="0" max="${qty}" value="${esc(a.prodEdit[key])}"
+            data-act="prod-set" data-id="${esc(oid)}" data-idx="${idx}"
+            style="width:44px;text-align:center;border:1px solid var(--line);border-radius:6px;padding:4px 2px;font-size:12px;font-weight:700">
+        </div>`
+      : `<b style="color:${full?'#1E8E52':(produced>0?'#B8790A':'#6B7A8C')}">${produced}</b>`;
+
+    const lastCell = editing
+      ? `<div style="display:flex;gap:4px;justify-content:center">
+          <button class="btn sm" data-act="adm-prod-save" data-id="${esc(oid)}" data-idx="${idx}" ${busy?'disabled':''} style="font-size:10px;padding:4px 6px">${busy?'…':'✅'}</button>
+          <button class="btn ghost sm" data-act="adm-prod-cancel" data-id="${esc(oid)}" data-idx="${idx}" ${busy?'disabled':''} style="font-size:10px;padding:4px 6px">✕</button>
+        </div>`
+      : `<b style="color:${pending>0?'#B3261E':'#6B7A8C'}">${pending}</b>`;
+
+    return `<tr data-act="${editing?'':'adm-prod-edit-open'}" data-id="${esc(oid)}" data-idx="${idx}" style="cursor:${editing?'default':'pointer'}">
+      <td style="padding:6px 7px;text-align:right;font-size:11px">${title}</td>
+      <td style="padding:6px 5px;text-align:center;font-size:11px;color:#4B5A6B;white-space:nowrap">${esc(sizeText_(it))}</td>
+      <td style="padding:6px 5px;text-align:center;font-size:11.5px">${qty}</td>
+      <td style="padding:6px 5px;text-align:center;font-size:11.5px">${readyCell}</td>
+      <td style="padding:6px 5px;text-align:center;font-size:11.5px">${lastCell}</td>
+    </tr>`;
+  }).join('');
+
+  return `<div style="overflow-x:auto;margin-top:6px">
+    <table class="stktbl" style="min-width:0">
+      <thead><tr>
+        <th style="text-align:right">الصنف</th><th>المقاس</th><th>مطلوب</th><th>جاهز</th><th>متبقي</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
 // صف تتبّع الإنتاج لصنف واحد — عرض عادي: سطر مقسوم بصريًا (جاهز أخضر / لسه برتقالي) بنسبة الكميات.
 // لمسة عليه تفتح وضع تعديل: خانة رقم + حفظ/إلغاء، عشان تكتب الكمية الجاهزة فعليًا وتحفظها في الشيت.
 function prodRowHTML_(oid, idx, it, a){
@@ -3019,23 +3045,13 @@ function viewAdmin(){
     }).join('');
 
     const itemsOpen = !!a.itemsOpen[o.id];
-    const itemsToggleBusy = a.itemsLoading === o.id;
     const its = a.items[o.id];
-    const docImg = a.docImages[o.id];
-    const imgBusy = a.docImageBusy === o.id;
     let itemsHtml = '';
     if(itemsOpen){
-      if(docImg){
-        itemsHtml += `<div style="margin-top:8px"><img src="${docImg}" style="width:100%;border-radius:10px;border:1px solid #E4EAF0;display:block"></div>`;
-      } else if(imgBusy || itemsToggleBusy){
-        itemsHtml += `<div class="note">جارٍ تجهيز معاينة الطلب…</div>`;
-      } else {
-        itemsHtml += `<div class="note" style="color:var(--danger)">تعذّر تجهيز المعاينة</div>`;
-      }
       if(its && its.length){
-        itemsHtml += `<div style="margin-top:9px;display:flex;flex-direction:column;gap:6px">
-          <div style="font-size:11px;color:#6B7A8C;font-weight:700">تتبّع الإنتاج (لمسة على أي صنف لتحديث الكمية الجاهزة):</div>
-          ${its.map((it,idx)=>prodRowHTML_(o.id, idx, it, a)).join('')}
+        itemsHtml += `<div style="margin-top:8px">
+          <div style="font-size:11px;color:#6B7A8C;font-weight:700;margin-bottom:4px">تتبّع الإنتاج (لمسة على أي صف لتحديث الكمية الجاهزة):</div>
+          ${prodTableHTML_(o.id, its, a)}
         </div>`;
         itemsHtml += `<div style="margin-top:11px;display:flex;flex-direction:column;gap:5px">
           <div style="font-size:11px;color:#6B7A8C;font-weight:700">تحديد الأصناف الغير متاحة:</div>
@@ -3051,15 +3067,17 @@ function viewAdmin(){
             </div>`;
           }).join('')}
         </div>`;
+      } else {
+        itemsHtml += `<div class="note">جارٍ تحميل الأصناف…</div>`;
       }
     }
 
-    const actionBtns = `<button class="btn ${itemsOpen?'brand':'act-edit'} sm" data-act="adm-toggle-items" data-id="${esc(o.id)}">${ico("box")}${itemsOpen?'إخفاء الأصناف':'الأصناف والإنتاج'}</button>
+    const actionBtns = `<button class="btn ${itemsOpen?'brand':'act-edit'} sm" data-act="adm-toggle-items" data-id="${esc(o.id)}">${ico("box")}${itemsOpen?'إخفاء':'الأصناف'}</button>
          <button class="btn act-edit sm" data-act="adm-edit" data-id="${esc(o.id)}">${ico("edit")}تعديل</button>
          <button class="btn act-send sm" data-act="adm-share" data-id="${esc(o.id)}">${ico("send")}إرسال</button>
-         <button class="btn act-money sm" data-act="adm-quote" data-id="${esc(o.id)}"><i>💰</i>عرض سعر</button>
-         ${viewingArchive?`<button class="btn act-tool sm" data-act="adm-unarchive" data-id="${esc(o.id)}" ${archBusy?'disabled':''}>${ico("refresh")}${archBusy?'جارٍ الإرجاع…':'رجّع للنشط'}</button>`:''}
-         <button class="btn act-del sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}>${ico("trash")}${delBusy?'جارٍ الحذف…':'حذف'}</button>`;
+         <button class="btn act-money sm" data-act="adm-quote" data-id="${esc(o.id)}"><i>💰</i>سعر</button>
+         ${viewingArchive?`<button class="btn act-tool sm" data-act="adm-unarchive" data-id="${esc(o.id)}" ${archBusy?'disabled':''}>${ico("refresh")}${archBusy?'…':'رجّع'}</button>`:''}
+         <button class="btn act-del sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}>${ico("trash")}${delBusy?'…':'حذف'}</button>`;
 
     return `<div class="ord">
       <div class="oh"><span class="oid">#${esc(o.id)}</span>${statusPill(o.status)}</div>
@@ -3253,7 +3271,7 @@ document.addEventListener('click',e=>{
     }
     case 'adm-logout':
       state.admin={open:false, pw:'', loading:false, rows:null, err:'', busy:null,
-        itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null, docImages:{}, docImageBusy:null, pendingCount:0,
+        itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null, pendingCount:0,
         viewArchive:false, archRows:null, archLoading:false, archBusy:null,
         viewStock:false, stockBusy:null, stockDraft:{}};
       sessionStorage.removeItem('wpc_adm');
