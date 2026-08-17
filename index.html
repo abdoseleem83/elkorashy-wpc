@@ -2169,33 +2169,32 @@ function buildProductionReportData_(orders){
 
 // تقرير إنتاج مبسّط: جدول واحد مسطّح، كل سطر صنف (مقاس/كود/كمية/حلق/برور)، واسم العميل بعمود واحد
 // مدمج (rowspan) لكل أصنافه — نفس الشكل اللي المصنع متعوّد عليه في ورقة القص
-function productionReportHTML(data){
+// بيبني قايمة صفوف مسطّحة لتقرير الإنتاج: صف لكل (كود+مقاس+حلق+برور) لكل عميل — ودايمًا بيجمع
+// كل أصناف العميل المتكررة (سواء في نفس الطلب أو في أكتر من طلب) في صف واحد بالكمية الإجمالية
+function buildProductionRows_(data){
   const rows = [];
   data.forEach(cust=>{
-    let firstOfCust = true;
-    let custSpan = 0;
-    cust.perOrder.forEach(o=>{
-      o.widths.forEach(w=>{
-        o.groups[w].forEach(it=>{ custSpan++; });
-      });
-    });
+    const merged = {}, order = [];
     cust.perOrder.forEach(o=>{
       o.widths.forEach(w=>{
         o.groups[w].forEach(it=>{
-          rows.push({
-            customer: cust.name,
-            firstOfCust, custSpan,
-            code: it.code||'',
-            size: it.size || (w==='خاص'?'خاص':w+' سم'),
-            qty: Number(it.qty)||0,
-            frame: it.frame ? frameText_(it.frame, it.frameHeight) : '',
-            dbror: it.dbror || ''
-          });
-          firstOfCust = false;
+          const frame = it.frame ? frameText_(it.frame, it.frameHeight) : '';
+          const size = it.size || (w==='خاص'?'خاص':w+' سم');
+          const key = [it.code||'', size, frame, it.dbror||''].join('|');
+          if(!merged[key]){ merged[key] = {code:it.code||'', size, qty:0, frame, dbror: it.dbror||''}; order.push(key); }
+          merged[key].qty += Number(it.qty)||0;
         });
       });
     });
+    order.forEach((key,i)=>{
+      rows.push({ customer: cust.name, firstOfCust: i===0, custSpan: order.length, ...merged[key] });
+    });
   });
+  return rows;
+}
+
+function productionReportHTML(data){
+  const rows = buildProductionRows_(data);
 
   const grandTotal = rows.reduce((s,r)=>s+r.qty,0);
 
@@ -2264,6 +2263,98 @@ async function exportProductionReportPdf_(){
     toast('تعذّر تجهيز الـ PDF: ' + (err.message || err));
   }
   busy(false);
+}
+
+async function exportProductionReportExcel_(){
+  if(typeof ExcelJS==='undefined'){ toast('محتاج نت أول مرة عشان يجهّز الإكسيل'); return; }
+  busy(true,'جارٍ تجهيز تقرير حالة الإنتاج (إكسيل)…');
+  try{
+    const orders = await fetchPendingOrders_();
+    if(!orders){ busy(false); return; }
+    const data = buildProductionReportData_(orders);
+    if(!data.length){ toast('مفيش طلبات معلّقة'); busy(false); return; }
+    await buildProductionReportExcel_(data);
+  }catch(err){
+    toast('تعذّر تجهيز الإكسيل: ' + (err.message || err));
+  }
+  busy(false);
+}
+
+async function buildProductionReportExcel_(data){
+  const rows = buildProductionRows_(data);
+  const NAVY='FF002050', TABLE_HDR='FF12314F', LIGHT='FFEAF2FA', WHITE='FFFFFFFF', ZEBRA='FFF6F8FA', BORDER_CLR='FFDCE4EC';
+  const thin = {style:'thin', color:{argb:BORDER_CLR}};
+  const border = {top:thin,left:thin,right:thin,bottom:thin};
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('حالة الإنتاج', { views:[{ rightToLeft:true }] });
+  ws.columns = [
+    { key:'size', width:12 },
+    { key:'code', width:12 },
+    { key:'qty',  width:9  },
+    { key:'frame',width:22 },
+    { key:'bror', width:14 },
+    { key:'cust', width:22 }
+  ];
+
+  function mergedRow(text, fillArgb, fontArgb, bold, size){
+    const r = ws.addRow([text,'','','','','']);
+    ws.mergeCells(r.number,1,r.number,6);
+    r.eachCell(c=>{
+      c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:fillArgb}};
+      c.font = {bold: !!bold, color:{argb:fontArgb}, size: size||11, name:'Arial'};
+      c.alignment = {horizontal:'right', vertical:'middle'};
+    });
+    r.height = 20;
+    return r;
+  }
+
+  const now = new Date();
+  const dateTimeStr = now.toLocaleDateString('ar-EG') + ' — الساعة ' + now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+  mergedRow('تقرير حالة الإنتاج  —  '+dateTimeStr, NAVY, WHITE, true, 13);
+  ws.addRow([]);
+
+  const hdr = ws.addRow(['المقاس','الكود','الكمية','الحلق','البرور','اسم العميل']);
+  hdr.eachCell(c=>{
+    c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:TABLE_HDR}};
+    c.font = {bold:true, color:{argb:WHITE}, name:'Arial', size:10.5};
+    c.alignment = {horizontal:'center'};
+    c.border = border;
+  });
+
+  let grandTotal = 0;
+  let mergeStart = null, remaining = 0;
+  rows.forEach((r,idx)=>{
+    grandTotal += r.qty;
+    const row = ws.addRow([r.size, r.code, r.qty, r.frame||'—', r.dbror||'—', r.customer]);
+    row.eachCell((c,colNo)=>{
+      c.alignment = {horizontal:'center', vertical:'middle'};
+      c.border = border;
+      c.font = {name:'Arial', size:10.5, bold: colNo===3};
+      c.fill = {type:'pattern',pattern:'solid',fgColor:{argb: idx%2===1 ? ZEBRA : WHITE}};
+    });
+    if(r.firstOfCust){ mergeStart = row.number; remaining = r.custSpan; }
+    remaining--;
+    if(remaining===0 && r.custSpan>1) ws.mergeCells(mergeStart, 6, row.number, 6);
+  });
+
+  const totalRow = ws.addRow(['','',grandTotal,'','','']);
+  totalRow.eachCell((c,colNo)=>{
+    c.border = border;
+    c.alignment = {horizontal:'center'};
+    c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}};
+    c.font = colNo===3 ? {bold:true, size:13, color:{argb:NAVY}, name:'Arial'} : {name:'Arial'};
+  });
+
+  wb.worksheets.forEach(w=>{
+    w.headerFooter = w.headerFooter || {};
+    w.headerFooter.oddFooter = '&L&9Page &P of &N';
+  });
+
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const fname = 'تقرير_حالة_الإنتاج_'+new Date().toISOString().slice(0,10)+'.xlsx';
+  await shareOrDownload_(blob, fname, fname);
 }
 
 
@@ -2992,6 +3083,7 @@ function viewAdmin(){
   const headerBtns = `<div class="toolgrid">
         <button class="btn act-tool sm" data-act="adm-reload">${ico("refresh")}تحديث</button>
         <button class="btn act-report sm" data-act="adm-prod-report-pdf">${ico("doc")}تقرير الإنتاج (PDF)</button>
+        <button class="btn act-report sm" data-act="adm-prod-report-xls">${ico("sheet")}تقرير الإنتاج (إكسيل)</button>
         <button class="btn act-report sm" data-act="adm-pending-pdf">${ico("doc")}تصدير PDF</button>
         <button class="btn act-report sm" data-act="adm-pending-xls">${ico("sheet")}تصدير إكسيل</button>
         <button class="btn ${a.viewStock?'brand':'act-edit'} sm" data-act="adm-toggle-stock">${ico("box")}${a.viewStock?'رجوع للطلبات':'أرصدة المخزن'}</button>
@@ -3277,6 +3369,7 @@ document.addEventListener('click',e=>{
     case 'adm-prices-save':   saveAdminPrices(); break;
     case 'adm-prices-cancel': state.admin.pricesOpen=false; state.admin.priceEdit=null; render(); break;
     case 'adm-prod-report-pdf': exportProductionReportPdf_(); break;
+    case 'adm-prod-report-xls': exportProductionReportExcel_(); break;
     case 'adm-pending-pdf':  exportPendingDoorsPdf_(); break;
     case 'adm-pending-xls':  exportPendingDoorsExcel_(); break;
     case 'adm-clear-delivered': clearDeliveredOrders(); break;
