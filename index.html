@@ -2148,216 +2148,6 @@ function daysSince_(dateStr){
   return diff < 0 ? 0 : diff;
 }
 
-// ============================================================
-// تقرير حالة الإنتاج — نفس تجميع تقرير الأبواب المعلّقة (لكل عميل/طلب/مقاس)
-// بس مع إضافة كام باب خلص إنتاجه وكام لسه لكل صنف ولكل مقاس — ده اللي بيترفع للمصنع
-// ============================================================
-function buildProductionReportData_(orders){
-  const data = buildPendingDoorsData_(orders);
-  // buildPendingDoorsData_ بترجّع groups فيها الأصناف الأصلية (من d.items) واللي فيها فعلًا it.produced
-  // جاهزة من الـ backend (listWithItems)، فمش محتاجين نجيبها تاني — بس بنحسب الإجماليات هنا
-  data.forEach(cust=>{
-    cust.perOrder.forEach(o=>{
-      o.widths.forEach(w=>{
-        const items = o.groups[w];
-        items.forEach(it=>{ it.producedN = Math.max(0, Math.min(Number(it.qty)||0, Number(it.produced)||0)); });
-      });
-    });
-  });
-  return data;
-}
-
-// تقرير إنتاج مبسّط: جدول واحد مسطّح، كل سطر صنف (مقاس/كود/كمية/حلق/برور)، واسم العميل بعمود واحد
-// مدمج (rowspan) لكل أصنافه — نفس الشكل اللي المصنع متعوّد عليه في ورقة القص
-// بيبني قايمة صفوف مسطّحة لتقرير الإنتاج: صف لكل (كود+مقاس+حلق+برور) لكل عميل — ودايمًا بيجمع
-// كل أصناف العميل المتكررة (سواء في نفس الطلب أو في أكتر من طلب) في صف واحد بالكمية الإجمالية
-function buildProductionRows_(data){
-  const rows = [];
-  data.forEach(cust=>{
-    const merged = {}, order = [];
-    cust.perOrder.forEach(o=>{
-      o.widths.forEach(w=>{
-        o.groups[w].forEach(it=>{
-          const frame = it.frame ? frameText_(it.frame, it.frameHeight) : '';
-          const size = it.size || (w==='خاص'?'خاص':w+' سم');
-          const key = [it.code||'', size, frame, it.dbror||''].join('|');
-          if(!merged[key]){ merged[key] = {code:it.code||'', size, qty:0, frame, dbror: it.dbror||''}; order.push(key); }
-          merged[key].qty += Number(it.qty)||0;
-        });
-      });
-    });
-    order.forEach((key,i)=>{
-      rows.push({ customer: cust.name, firstOfCust: i===0, custSpan: order.length, ...merged[key] });
-    });
-  });
-  return rows;
-}
-
-function productionReportHTML(data){
-  const rows = buildProductionRows_(data);
-
-  const grandTotal = rows.reduce((s,r)=>s+r.qty,0);
-
-  const trs = rows.map((r,idx)=>{
-    const zebra = idx%2===1 ? 'background:#F6F8FA' : 'background:#FFFFFF';
-    const custCell = r.firstOfCust
-      ? `<td rowspan="${r.custSpan}" style="text-align:center;padding:8px 10px;border:1px solid #DCE4EC;font-weight:700;color:#233246;background:#F7F9FB;vertical-align:middle">${esc(r.customer)}</td>`
-      : '';
-    return `<tr style="${zebra}">
-      <td style="text-align:center;padding:7px 6px;border:1px solid #DCE4EC;color:#233246">${esc(r.size)}</td>
-      <td style="text-align:center;padding:7px 6px;border:1px solid #DCE4EC;font-weight:700;color:#233246">${esc(r.code)}</td>
-      <td style="text-align:center;padding:7px 6px;border:1px solid #DCE4EC;font-weight:700;color:#1080C0">${r.qty}</td>
-      <td style="text-align:center;padding:7px 6px;border:1px solid #DCE4EC;color:#4B5A6B">${esc(r.frame)||'—'}</td>
-      <td style="text-align:center;padding:7px 6px;border:1px solid #DCE4EC;color:#4B5A6B">${esc(r.dbror)||'—'}</td>
-      ${custCell}
-    </tr>`;
-  }).join('');
-
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('ar-EG');
-  const timeStr = now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
-
-  return `
-  <div style="font-family:Arial,'Helvetica Neue',sans-serif;direction:rtl;background:#fff;padding:30px 26px;color:#14243A;">
-    <div style="display:flex;align-items:center;gap:14px;border-bottom:3px solid #1080C0;padding-bottom:12px">
-      <img src="${ASSETS.logo}" style="height:48px;width:auto">
-      <div style="flex:1">
-        <div style="font-size:19px;font-weight:700;color:#002050">تقرير حالة الإنتاج</div>
-        <div style="font-size:11px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} — ${dateStr} — الساعة ${timeStr} — ورقة قص للأبواب المعلّقة</div>
-      </div>
-      <div style="font-size:12px;color:#6B7A8C">عدد العملاء: ${data.length}</div>
-    </div>
-    <table style="width:100%;border-collapse:collapse;font-size:11.5px;margin-top:14px">
-      <thead><tr style="background:#12314F">
-        <th style="padding:8px 6px;color:#fff;font-weight:700;border:1px solid #12314F">المقاس</th>
-        <th style="padding:8px 6px;color:#fff;font-weight:700;border:1px solid #12314F">الكود</th>
-        <th style="padding:8px 6px;color:#fff;font-weight:700;border:1px solid #12314F">الكمية</th>
-        <th style="padding:8px 6px;color:#fff;font-weight:700;border:1px solid #12314F">الحلق</th>
-        <th style="padding:8px 6px;color:#fff;font-weight:700;border:1px solid #12314F">البرور</th>
-        <th style="padding:8px 6px;color:#fff;font-weight:700;border:1px solid #12314F">اسم العميل</th>
-      </tr></thead>
-      <tbody>${trs || `<tr><td colspan="6" style="text-align:center;padding:14px;color:#8A97A6;border:1px solid #DCE4EC">مفيش طلبات معلّقة</td></tr>`}</tbody>
-      <tfoot><tr>
-        <td style="border:1px solid #DCE4EC"></td>
-        <td style="border:1px solid #DCE4EC"></td>
-        <td style="text-align:center;padding:8px 6px;border:1px solid #DCE4EC;font-weight:700;font-size:14px;color:#002050;background:#EAF2FA">${grandTotal}</td>
-        <td style="border:1px solid #DCE4EC;background:#EAF2FA"></td>
-        <td style="border:1px solid #DCE4EC;background:#EAF2FA"></td>
-        <td style="border:1px solid #DCE4EC;background:#EAF2FA"></td>
-      </tr></tfoot>
-    </table>
-  </div>`;
-}
-
-async function exportProductionReportPdf_(){
-  if(typeof html2canvas==='undefined' || !window.jspdf){ toast('محتاج نت أول مرة عشان يجهّز الـ PDF'); return; }
-  busy(true,'جارٍ تجهيز تقرير حالة الإنتاج (PDF)…');
-  try{
-    const orders = await fetchPendingOrders_();
-    if(!orders){ busy(false); return; }
-    const data = buildProductionReportData_(orders);
-    if(!data.length){ toast('مفيش طلبات معلّقة'); busy(false); return; }
-    const canvas = await renderPaper_(productionReportHTML(data));
-    await canvasToPdf_(canvas, 'تقرير_حالة_الإنتاج_'+new Date().toISOString().slice(0,10)+'.pdf');
-  }catch(err){
-    toast('تعذّر تجهيز الـ PDF: ' + (err.message || err));
-  }
-  busy(false);
-}
-
-async function exportProductionReportExcel_(){
-  if(typeof ExcelJS==='undefined'){ toast('محتاج نت أول مرة عشان يجهّز الإكسيل'); return; }
-  busy(true,'جارٍ تجهيز تقرير حالة الإنتاج (إكسيل)…');
-  try{
-    const orders = await fetchPendingOrders_();
-    if(!orders){ busy(false); return; }
-    const data = buildProductionReportData_(orders);
-    if(!data.length){ toast('مفيش طلبات معلّقة'); busy(false); return; }
-    await buildProductionReportExcel_(data);
-  }catch(err){
-    toast('تعذّر تجهيز الإكسيل: ' + (err.message || err));
-  }
-  busy(false);
-}
-
-async function buildProductionReportExcel_(data){
-  const rows = buildProductionRows_(data);
-  const NAVY='FF002050', TABLE_HDR='FF12314F', LIGHT='FFEAF2FA', WHITE='FFFFFFFF', ZEBRA='FFF6F8FA', BORDER_CLR='FFDCE4EC';
-  const thin = {style:'thin', color:{argb:BORDER_CLR}};
-  const border = {top:thin,left:thin,right:thin,bottom:thin};
-
-  const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet('حالة الإنتاج', { views:[{ rightToLeft:true }] });
-  ws.columns = [
-    { key:'size', width:12 },
-    { key:'code', width:12 },
-    { key:'qty',  width:9  },
-    { key:'frame',width:22 },
-    { key:'bror', width:14 },
-    { key:'cust', width:22 }
-  ];
-
-  function mergedRow(text, fillArgb, fontArgb, bold, size){
-    const r = ws.addRow([text,'','','','','']);
-    ws.mergeCells(r.number,1,r.number,6);
-    r.eachCell(c=>{
-      c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:fillArgb}};
-      c.font = {bold: !!bold, color:{argb:fontArgb}, size: size||11, name:'Arial'};
-      c.alignment = {horizontal:'right', vertical:'middle'};
-    });
-    r.height = 20;
-    return r;
-  }
-
-  const now = new Date();
-  const dateTimeStr = now.toLocaleDateString('ar-EG') + ' — الساعة ' + now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
-  mergedRow('تقرير حالة الإنتاج  —  '+dateTimeStr, NAVY, WHITE, true, 13);
-  ws.addRow([]);
-
-  const hdr = ws.addRow(['المقاس','الكود','الكمية','الحلق','البرور','اسم العميل']);
-  hdr.eachCell(c=>{
-    c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:TABLE_HDR}};
-    c.font = {bold:true, color:{argb:WHITE}, name:'Arial', size:10.5};
-    c.alignment = {horizontal:'center'};
-    c.border = border;
-  });
-
-  let grandTotal = 0;
-  let mergeStart = null, remaining = 0;
-  rows.forEach((r,idx)=>{
-    grandTotal += r.qty;
-    const row = ws.addRow([r.size, r.code, r.qty, r.frame||'—', r.dbror||'—', r.customer]);
-    row.eachCell((c,colNo)=>{
-      c.alignment = {horizontal:'center', vertical:'middle'};
-      c.border = border;
-      c.font = {name:'Arial', size:10.5, bold: colNo===3};
-      c.fill = {type:'pattern',pattern:'solid',fgColor:{argb: idx%2===1 ? ZEBRA : WHITE}};
-    });
-    if(r.firstOfCust){ mergeStart = row.number; remaining = r.custSpan; }
-    remaining--;
-    if(remaining===0 && r.custSpan>1) ws.mergeCells(mergeStart, 6, row.number, 6);
-  });
-
-  const totalRow = ws.addRow(['','',grandTotal,'','','']);
-  totalRow.eachCell((c,colNo)=>{
-    c.border = border;
-    c.alignment = {horizontal:'center'};
-    c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}};
-    c.font = colNo===3 ? {bold:true, size:13, color:{argb:NAVY}, name:'Arial'} : {name:'Arial'};
-  });
-
-  wb.worksheets.forEach(w=>{
-    w.headerFooter = w.headerFooter || {};
-    w.headerFooter.oddFooter = '&L&9Page &P of &N';
-  });
-
-  const buf = await wb.xlsx.writeBuffer();
-  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-  const fname = 'تقرير_حالة_الإنتاج_'+new Date().toISOString().slice(0,10)+'.xlsx';
-  await shareOrDownload_(blob, fname, fname);
-}
-
-
 // نوتة صنف واحد: بتجمع معلومات الحلق الإضافي/البرور في سطر ملاحظات واحد — زي النموذج المطلوب بالظبط
 function itemNote_(it){
   const parts=[];
@@ -2365,62 +2155,63 @@ function itemNote_(it){
   if(it.dbror) parts.push('بار'+it.dbror);
   return parts.join(' — ') || '';
 }
-function itemStatus_(it){
-  const qty = Number(it.qty)||0;
-  const produced = Number(it.produced)||0;
-  if(qty>0 && produced>=qty) return {txt:'مكتمل ✔', color:'#1E8E52'};
-  if(produced>0) return {txt:'جزئي ('+produced+'/'+qty+')', color:'#B8790A'};
-  return {txt:'قيد التصنيع', color:'#B3261E'};
+
+// بيرجّع أصناف العميل مجمّعة (لو نفس الصنف اتكرر في أكتر من طلب، بيتجمعوا في سطر واحد بالكمية الإجمالية)
+function mergedCustomerItems_(cust){
+  const merged = {}, order = [];
+  cust.perOrder.forEach(o=>{
+    o.widths.forEach(w=>{
+      o.groups[w].forEach(it=>{
+        const frame = it.frame ? frameText_(it.frame, it.frameHeight) : '';
+        const size = it.size || (w==='خاص'?'خاص':w+' سم');
+        const key = [it.code||'', size, frame, it.dbror||''].join('|');
+        if(!merged[key]){ merged[key] = {code:it.code||'', size, qty:0, frame, dbror: it.dbror||''}; order.push(key); }
+        merged[key].qty += Number(it.qty)||0;
+      });
+    });
+  });
+  return order.map(k=>merged[k]);
 }
 
-// بيبني "طلبية" واحدة بنفس شكل نموذج الأوردر بتاع المصنع: بيانات العميل فوق، وجدول أرقام مسلسل
-// (م / كود الباب / المقاس / الكمية / الحالة / ملاحظات) — ده الشكل اللي هيتصدّر PDF و Excel
-function orderFormCardHTML_(o, tint){
-  tint = tint || {line:'#1080C0', head:'#EAF2FA', headerBg:'#002050'};
-  const rows = [];
-  o.widths.forEach(w=>{
-    o.groups[w].forEach(it=>{ rows.push(it); });
-  });
-  const total = rows.reduce((s,it)=>s+(Number(it.qty)||0),0);
-  const trs = rows.map((it,idx)=>{
-    const st = itemStatus_(it);
+// ألوان مختلفة لكل عميل عشان جدوله يتفرّق بسرعة عن اللي قبله وبعده
+const CUST_TINTS_ = [
+  {line:'#1080C0', head:'#EAF2FA'},
+  {line:'#C08A3E', head:'#FBF0E1'},
+  {line:'#3E9B72', head:'#E7F5EE'},
+  {line:'#7C63C4', head:'#F0EAFB'},
+  {line:'#C25454', head:'#FBE7E7'},
+  {line:'#2C8FA3', head:'#E3F3F7'}
+];
+
+// جدول عميل واحد: صنف/مقاس/كمية/حلق/برور — كل عميل بجدوله المستقل ولونه الخاص
+function customerTableHTML_(cust, tint){
+  const items = mergedCustomerItems_(cust);
+  const total = items.reduce((s,it)=>s+it.qty,0);
+  const trs = items.map((it,idx)=>{
     const zebra = idx%2===1 ? 'background:#F6F8FA' : 'background:#FFFFFF';
     return `<tr style="${zebra}">
-      <td style="text-align:center;padding:7px 5px;border-bottom:1px solid #E7EBF0;color:#6B7A8C">${idx+1}</td>
-      <td style="text-align:center;padding:7px 5px;border-bottom:1px solid #E7EBF0;font-weight:700;color:#233246">${esc(it.code||'')}</td>
-      <td style="text-align:center;padding:7px 5px;border-bottom:1px solid #E7EBF0;color:#4B5A6B">${esc(it.size||'')}</td>
-      <td style="text-align:center;padding:7px 5px;border-bottom:1px solid #E7EBF0;font-weight:700;color:#233246">${Number(it.qty)||0}</td>
-      <td style="text-align:center;padding:7px 5px;border-bottom:1px solid #E7EBF0;font-weight:700;color:${st.color};white-space:nowrap">${st.txt}</td>
-      <td style="text-align:center;padding:7px 5px;border-bottom:1px solid #E7EBF0;color:#4B5A6B;font-size:10.5px">${esc(itemNote_(it))||'—'}</td>
+      <td style="text-align:center;padding:7px 6px;border-bottom:1px solid #E7EBF0;color:#4B5A6B">${esc(it.size)}</td>
+      <td style="text-align:center;padding:7px 6px;border-bottom:1px solid #E7EBF0;font-weight:700;color:#233246">${esc(it.code)}</td>
+      <td style="text-align:center;padding:7px 6px;border-bottom:1px solid #E7EBF0;font-weight:700;color:${tint.line}">${it.qty}</td>
+      <td style="text-align:center;padding:7px 6px;border-bottom:1px solid #E7EBF0;color:#4B5A6B">${esc(it.frame)||'—'}</td>
+      <td style="text-align:center;padding:7px 6px;border-bottom:1px solid #E7EBF0;color:#4B5A6B">${esc(it.dbror)||'—'}</td>
     </tr>`;
   }).join('');
 
   return `<div style="margin-top:16px;border:2px solid ${tint.line};border-radius:11px;overflow:hidden;break-inside:avoid">
-    <div style="display:flex;align-items:center;gap:12px;background:${tint.line};padding:10px 14px">
-      <img src="${ASSETS.logo}" style="height:34px;width:auto;background:#fff;border-radius:6px;padding:2px">
-      <div style="flex:1">
-        <div style="font-size:14px;font-weight:700;color:#fff">${esc(COMPANY_AR)}</div>
-        <div style="font-size:10px;color:#fff;opacity:.85">WPC Doors Order Form — نموذج طلب أوردر</div>
-      </div>
-      <div style="font-size:10.5px;color:#fff;opacity:.9">${esc(o.id||'')}</div>
-    </div>
-    <div style="padding:10px 14px 4px;display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;font-size:11.5px;background:${tint.head};border-bottom:1px solid #E3E7EC">
-      <div><span style="color:#6B7A8C">اسم العميل: </span><b style="color:#233246">${esc(o.customer||'—')}</b></div>
-      <div><span style="color:#6B7A8C">رقم الهاتف: </span><b style="color:#233246">${esc(o.phone||'—')}</b></div>
-      <div><span style="color:#6B7A8C">تاريخ الطلب: </span><b style="color:#233246">${esc(o.date||'—')}</b></div>
-      <div><span style="color:#6B7A8C">موعد التسليم المطلوب: </span><b style="color:#233246">—</b></div>
+    <div style="font-size:14px;font-weight:700;color:#fff;background:${tint.line};padding:9px 14px">
+      صاحب الطلب: ${esc(cust.name)}
     </div>
     <div style="padding:10px 12px 12px">
       <table style="width:100%;border-collapse:collapse;font-size:11px">
         <thead><tr style="background:#12314F">
-          <th style="padding:7px 5px;color:#fff;font-weight:700">م</th>
-          <th style="padding:7px 5px;color:#fff;font-weight:700">كود الباب</th>
-          <th style="padding:7px 5px;color:#fff;font-weight:700">المقاس (سم)</th>
-          <th style="padding:7px 5px;color:#fff;font-weight:700">الكمية</th>
-          <th style="padding:7px 5px;color:#fff;font-weight:700">الحالة</th>
-          <th style="padding:7px 5px;color:#fff;font-weight:700">ملاحظات</th>
+          <th style="padding:7px 6px;color:#fff;font-weight:700">المقاس</th>
+          <th style="padding:7px 6px;color:#fff;font-weight:700">الكود</th>
+          <th style="padding:7px 6px;color:#fff;font-weight:700">الكمية</th>
+          <th style="padding:7px 6px;color:#fff;font-weight:700">الحلق</th>
+          <th style="padding:7px 6px;color:#fff;font-weight:700">البرور</th>
         </tr></thead>
-        <tbody>${trs || `<tr><td colspan="6" style="text-align:center;padding:10px;color:#8A97A6">مفيش أبواب في الطلب ده</td></tr>`}</tbody>
+        <tbody>${trs || `<tr><td colspan="5" style="text-align:center;padding:10px;color:#8A97A6">مفيش أبواب معلّقة</td></tr>`}</tbody>
       </table>
       <div style="display:flex;justify-content:space-between;align-items:center;background:${tint.head};border-radius:8px;padding:8px 13px;margin-top:9px">
         <span style="font-weight:700;font-size:12.5px;color:#233246">إجمالي عدد الأبواب</span>
@@ -2430,24 +2221,12 @@ function orderFormCardHTML_(o, tint){
   </div>`;
 }
 
-// ألوان بتتلوّن بيها كل "طلبية" — كل طلب بلون مختلف عن اللي قبله على طول التقرير
-// (مش لون ثابت للعميل — لو العميل له طلبين، الاتنين بيظهروا تحت بعض بس بلونين مختلفين)
-const ORDER_TINTS_ = [
-  {line:'#1080C0', head:'#EAF2FA'},
-  {line:'#C08A3E', head:'#FBF0E1'},
-  {line:'#3E9B72', head:'#E7F5EE'},
-  {line:'#7C63C4', head:'#F0EAFB'},
-  {line:'#C25454', head:'#FBE7E7'},
-  {line:'#2C8FA3', head:'#E3F3F7'}
-];
-
 function pendingDoorsHTML(data){
   const now = new Date();
   const dateStr = now.toLocaleDateString('ar-EG');
   const timeStr = now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
   const codesTxt = DOORS.map(d=>d.code).join('، ');
-  let n = 0;
-  const cards = data.map(cust=>cust.perOrder.map(o=>orderFormCardHTML_(o, ORDER_TINTS_[(n++) % ORDER_TINTS_.length])).join('')).join('');
+  const cards = data.map((cust,ci)=>customerTableHTML_(cust, CUST_TINTS_[ci % CUST_TINTS_.length])).join('');
 
   return `
   <div style="font-family:Arial,'Helvetica Neue',sans-serif;direction:rtl;background:#fff;padding:30px 26px;color:#14243A;">
@@ -2479,24 +2258,23 @@ async function buildPendingDoorsExcel_(orders){
   if(!data.length){ toast('مفيش طلبات معلّقة'); return; }
   if(typeof ExcelJS==='undefined'){ toast('محتاج نت أول مرة عشان يجهّز الإكسيل'); return; }
 
-  const NAVY='FF002050', TABLE_HDR='FF12314F', LIGHT='FFEAF2FA', WHITE='FFFFFFFF', ZEBRA='FFF6F8FA', BORDER_CLR='FFDCE4EC';
+  const NAVY='FF002050', WHITE='FFFFFFFF', ZEBRA='FFF6F8FA', BORDER_CLR='FFDCE4EC';
   const thin = {style:'thin', color:{argb:BORDER_CLR}};
   const border = {top:thin,left:thin,right:thin,bottom:thin};
-  const COLS = 6;
+  const COLS = 5;
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('الأبواب المعلّقة', { views:[{ rightToLeft:true }] });
   ws.columns = [
-    { key:'no',    width:5  },
-    { key:'code',  width:13 },
-    { key:'size',  width:12 },
-    { key:'qty',   width:9  },
-    { key:'status',width:15 },
-    { key:'note',  width:32 }
+    { key:'size', width:12 },
+    { key:'code', width:13 },
+    { key:'qty',  width:9  },
+    { key:'frame',width:22 },
+    { key:'bror', width:14 }
   ];
 
   function mergedRow(text, fillArgb, fontArgb, bold, size){
-    const r = ws.addRow([text,'','','','','']);
+    const r = ws.addRow([text,'','','','']);
     ws.mergeCells(r.number,1,r.number,COLS);
     r.eachCell(c=>{
       c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:fillArgb}};
@@ -2506,12 +2284,6 @@ async function buildPendingDoorsExcel_(orders){
     r.height = 20;
     return r;
   }
-  function infoRow(label, value){
-    const r = ws.addRow([label+': '+(value||'—'),'','','','','']);
-    ws.mergeCells(r.number,1,r.number,COLS);
-    r.eachCell(c=>{ c.font={name:'Arial', size:10.5, color:{argb:'FF233246'}}; c.alignment={horizontal:'right'}; });
-    return r;
-  }
 
   const now = new Date();
   const dateTimeStr = now.toLocaleDateString('ar-EG') + ' — الساعة ' + now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
@@ -2519,52 +2291,41 @@ async function buildPendingDoorsExcel_(orders){
   ws.addRow([]);
 
   const CUST_FILL = ['FF1080C0','FFC08A3E','FF3E9B72','FF7C63C4','FFC25454','FF2C8FA3'];
-  const CUST_TINT = ['FFF4F9FD','FFFBF4EC','FFF3F8F5','FFF7F4FB','FFFDF3F3','FFF1F8FB'];
+  const CUST_TINT = ['FFEAF2FA','FFFBF0E1','FFE7F5EE','FFF0EAFB','FFFBE7E7','FFE3F3F7'];
 
-  let n = 0;
-  data.forEach(cust=>{
-    cust.perOrder.forEach(o=>{
-      const fill = CUST_FILL[n % CUST_FILL.length];
-      const tint = CUST_TINT[n % CUST_TINT.length];
-      n++;
-      mergedRow(COMPANY_AR+' — WPC Doors Order Form', fill, WHITE, true, 12);
-      infoRow('اسم العميل', o.customer);
-      infoRow('رقم الهاتف', o.phone);
-      infoRow('تاريخ الطلب', o.date);
-      infoRow('موعد التسليم المطلوب', '—');
+  data.forEach((cust,ci)=>{
+    const fill = CUST_FILL[ci % CUST_FILL.length];
+    const tint = CUST_TINT[ci % CUST_TINT.length];
+    mergedRow('صاحب الطلب: '+cust.name, fill, WHITE, true, 13);
 
-      const hdr = ws.addRow(['م','كود الباب','المقاس (سم)','الكمية','الحالة','ملاحظات']);
-      hdr.eachCell(c=>{
-        c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:TABLE_HDR}};
-        c.font = {bold:true, color:{argb:WHITE}, name:'Arial', size:10.5};
+    const hdr = ws.addRow(['المقاس','الكود','الكمية','الحلق','البرور']);
+    hdr.eachCell(c=>{
+      c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:fill}};
+      c.font = {bold:true, color:{argb:WHITE}, name:'Arial', size:10.5};
+      c.alignment = {horizontal:'center'};
+      c.border = border;
+    });
+
+    const items = mergedCustomerItems_(cust);
+    let total = 0;
+    items.forEach((it,idx)=>{
+      total += it.qty;
+      const row = ws.addRow([it.size, it.code, it.qty, it.frame||'—', it.dbror||'—']);
+      row.eachCell((c,colNo)=>{
         c.alignment = {horizontal:'center'};
         c.border = border;
+        c.font = {name:'Arial', size:10.5, bold: colNo===3, color: colNo===3?{argb:fill}:undefined};
+        c.fill = {type:'pattern',pattern:'solid',fgColor:{argb: idx%2===1 ? ZEBRA : WHITE}};
       });
-
-      const rows = [];
-      o.widths.forEach(w=> o.groups[w].forEach(it=> rows.push(it)));
-      let total = 0;
-      rows.forEach((it,idx)=>{
-        const qty = Number(it.qty)||0, produced = Number(it.produced)||0;
-        total += qty;
-        const status = (qty>0 && produced>=qty) ? 'مكتمل ✔' : (produced>0 ? 'جزئي ('+produced+'/'+qty+')' : 'قيد التصنيع');
-        const row = ws.addRow([idx+1, it.code||'', it.size||'', qty, status, itemNote_(it)||'—']);
-        row.eachCell(c=>{
-          c.alignment = {horizontal:'center'};
-          c.border = border;
-          c.font = {name:'Arial', size:10.5};
-          c.fill = {type:'pattern',pattern:'solid',fgColor:{argb: idx%2===1 ? ZEBRA : WHITE}};
-        });
-      });
-      if(!rows.length){
-        const row = ws.addRow(['—','مفيش أبواب في الطلب ده','','','','']);
-        ws.mergeCells(row.number,2,row.number,6);
-        row.eachCell(c=>{ c.border=border; c.alignment={horizontal:'center'}; c.font={name:'Arial', size:10.5, color:{argb:'FF8A97A6'}}; });
-      }
-
-      mergedRow('إجمالي عدد الأبواب:  '+total, tint, NAVY, true, 12);
-      ws.addRow([]);
     });
+    if(!items.length){
+      const row = ws.addRow(['مفيش أبواب معلّقة','','','','']);
+      ws.mergeCells(row.number,1,row.number,COLS);
+      row.eachCell(c=>{ c.border=border; c.alignment={horizontal:'center'}; c.font={name:'Arial', size:10.5, color:{argb:'FF8A97A6'}}; });
+    }
+
+    mergedRow('إجمالي عدد الأبواب:  '+total, tint, NAVY, true, 12);
+    ws.addRow([]);
   });
 
   const codesTxt = DOORS.map(d=>d.code).join('، ');
@@ -3082,8 +2843,6 @@ function viewAdmin(){
 
   const headerBtns = `<div class="toolgrid">
         <button class="btn act-tool sm" data-act="adm-reload">${ico("refresh")}تحديث</button>
-        <button class="btn act-report sm" data-act="adm-prod-report-pdf">${ico("doc")}تقرير الإنتاج (PDF)</button>
-        <button class="btn act-report sm" data-act="adm-prod-report-xls">${ico("sheet")}تقرير الإنتاج (إكسيل)</button>
         <button class="btn act-report sm" data-act="adm-pending-pdf">${ico("doc")}تصدير PDF</button>
         <button class="btn act-report sm" data-act="adm-pending-xls">${ico("sheet")}تصدير إكسيل</button>
         <button class="btn ${a.viewStock?'brand':'act-edit'} sm" data-act="adm-toggle-stock">${ico("box")}${a.viewStock?'رجوع للطلبات':'أرصدة المخزن'}</button>
@@ -3368,8 +3127,6 @@ document.addEventListener('click',e=>{
     case 'adm-prices-open':   openAdminPrices(); break;
     case 'adm-prices-save':   saveAdminPrices(); break;
     case 'adm-prices-cancel': state.admin.pricesOpen=false; state.admin.priceEdit=null; render(); break;
-    case 'adm-prod-report-pdf': exportProductionReportPdf_(); break;
-    case 'adm-prod-report-xls': exportProductionReportExcel_(); break;
     case 'adm-pending-pdf':  exportPendingDoorsPdf_(); break;
     case 'adm-pending-xls':  exportPendingDoorsExcel_(); break;
     case 'adm-clear-delivered': clearDeliveredOrders(); break;
