@@ -506,7 +506,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v78';
+const APP_BUILD   = 'v79';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1837,7 +1837,8 @@ function buildAdminDocOrder_(o, its, tierKey){
         kind, title: (it.avail===false?'⚠️ غير متاح — ':'') + arabicItemTitle_(it) + (it.type==='Door'&&it.code?' ('+it.code+')':''),
         sizeTxt: sz, spec: sz, unit: it.unit||'', qty: it.qty||0,
         unitPrice: price, price: price,
-        frame: it.frame||'', dbror: it.dbror||'', frameHeight: it.frameHeight||''
+        frame: it.frame||'', dbror: it.dbror||'', frameHeight: it.frameHeight||'',
+        produced: it.produced
       };
     })
   };
@@ -2037,8 +2038,12 @@ function reportHTML(orders){
   orders.forEach(o=>{ grandQty += (o.items||[]).reduce((s,it)=>s+(Number(it.qty)||0),0); });
 
   // ---------- ١) ملخص الطلبات ----------
+  let grandProduced1 = 0;
   const sumRows = orders.map((o,idx)=>{
     const qty = (o.items||[]).reduce((s,it)=>s+(Number(it.qty)||0),0);
+    const produced = (o.items||[]).reduce((s,it)=>s+itemProdPending_(it).produced,0);
+    grandProduced1 += produced;
+    const pending = qty-produced;
     const st = STATUS[o.status] || {ar:o.status||'—'};
     const bg = idx%2 ? `background:${ZEBRA};` : '';
     return `<tr>
@@ -2050,8 +2055,11 @@ function reportHTML(orders){
       <td style="${td};${bg}">${esc(o.region||'')}</td>
       <td style="${td};${bg}">${esc(st.ar)}</td>
       <td style="${td};${bg}"><b>${qty}</b></td>
+      <td style="${td};${bg};color:#1E8E52">${produced}</td>
+      <td style="${td};${bg}${pending>0?';color:#B3261E;font-weight:700':''}">${pending}</td>
     </tr>`;
   }).join('');
+  const grandPending1 = grandQty-grandProduced1;
 
   const sheet1 = `
   <div style="margin-top:16px">
@@ -2064,11 +2072,14 @@ function reportHTML(orders){
         <th style="${th}">صاحب الحساب</th><th style="${th}">صاحب الأوردر</th><th style="${th};width:78px">الهاتف</th>
         <th style="${th};width:64px">المنطقة</th><th style="${th};width:74px">الحالة</th>
         <th style="${th};width:56px">الكمية</th>
+        <th style="${th};width:50px">جاهز</th><th style="${th};width:54px">متبقي</th>
       </tr></thead>
       <tbody>${sumRows}</tbody>
       <tfoot><tr>
         <td colspan="7" style="${td};background:${LIGHT};color:${NAVY};font-weight:700;text-align:left">الإجمالي الكلي</td>
         <td style="${td};background:${LIGHT};color:${NAVY};font-weight:700">${grandQty}</td>
+        <td style="${td};background:${LIGHT};color:#1E8E52;font-weight:700">${grandProduced1}</td>
+        <td style="${td};background:${LIGHT};color:#B3261E;font-weight:700">${grandPending1}</td>
       </tr></tfoot>
     </table>
   </div>`;
@@ -2084,6 +2095,7 @@ function reportHTML(orders){
         if(it.frame) bits.push(frameText_(it.frame,it.frameHeight));
         if(it.dbror) bits.push('برور '+it.dbror);
         const unavail = it.avail===false;
+        const pp = itemProdPending_(it);
         return `<tr>
           <td style="${td}">${esc(itemTypeAr_(it.type))}</td>
           <td style="${td}">${esc(it.code||'—')}</td>
@@ -2091,6 +2103,8 @@ function reportHTML(orders){
           <td style="${td};font-size:10px;color:#5B6B7D">${esc(bits.join(' / ')||'—')}</td>
           <td style="${td}">${esc(itemUnitAr_(it.unit))}</td>
           <td style="${td}"><b>${Number(it.qty)||0}</b></td>
+          <td style="${td};color:#1E8E52">${pp.produced}</td>
+          <td style="${td};${pp.pending>0?'color:#B3261E;font-weight:700':''}">${pp.pending}</td>
           <td style="${td};${unavail?'color:#B3261E;font-weight:700':''}">${unavail?'غير متاح':'متاح'}</td>
         </tr>`;
       }).join('');
@@ -2106,6 +2120,8 @@ function reportHTML(orders){
             <th style="${th};background:${LIGHT};color:${NAVY}">المقاس / الحلق / البرور</th>
             <th style="${th};background:${LIGHT};color:${NAVY};width:56px">الوحدة</th>
             <th style="${th};background:${LIGHT};color:${NAVY};width:48px">الكمية</th>
+            <th style="${th};background:${LIGHT};color:${NAVY};width:46px">جاهز</th>
+            <th style="${th};background:${LIGHT};color:${NAVY};width:50px">متبقي</th>
             <th style="${th};background:${LIGHT};color:${NAVY};width:60px">متاح؟</th>
           </tr></thead>
           <tbody>${itemRows}</tbody>
@@ -2118,6 +2134,8 @@ function reportHTML(orders){
         <td style="${td}">${esc(ct.code||'—')}</td>
         <td style="${td};text-align:right">${esc(ct.name)}</td>
         <td style="${td}"><b>${ct.qty}</b></td>
+        <td style="${td};color:#1E8E52">${ct.produced}</td>
+        <td style="${td};${(ct.qty-ct.produced)>0?'color:#B3261E;font-weight:700':''}">${ct.qty-ct.produced}</td>
       </tr>`).join('');
 
     return `<div style="margin-top:14px;border:1px solid ${BRD};border-radius:10px;padding:10px 12px;break-inside:avoid">
@@ -2131,12 +2149,14 @@ function reportHTML(orders){
             <th style="${th};background:${LIGHT};color:${NAVY};width:52px">الكود</th>
             <th style="${th};background:${LIGHT};color:${NAVY}">الصنف</th>
             <th style="${th};background:${LIGHT};color:${NAVY};width:56px">الكمية</th>
+            <th style="${th};background:${LIGHT};color:${NAVY};width:50px">جاهز</th>
+            <th style="${th};background:${LIGHT};color:${NAVY};width:54px">متبقي</th>
           </tr></thead>
           <tbody>${codeRows}</tbody>
         </table>
       </div>`:''}
       <div style="margin-top:9px;background:${LIGHT};color:${NAVY};padding:6px 11px;border-radius:7px;font-weight:700;font-size:12px;display:flex;justify-content:space-between">
-        <span>إجمالي صاحب الحساب ${esc(cust.name)}</span><span>${cust.clientQty} قطعة</span>
+        <span>إجمالي صاحب الحساب ${esc(cust.name)}</span><span>${cust.clientQty} قطعة (جاهز ${cust.clientProduced} · متبقي ${cust.clientPending})</span>
       </div>
     </div>`;
   }).join('');
@@ -2153,11 +2173,15 @@ function reportHTML(orders){
   const grand = {};
   orders.forEach(o=>(o.items||[]).forEach(it=>{
     const key = it.type+'|'+(it.code||it.title||'');
-    if(!grand[key]) grand[key] = { type:it.type, code:it.code||'', name:itemNameAr_(it), qty:0, orderIds:new Set() };
+    if(!grand[key]) grand[key] = { type:it.type, code:it.code||'', name:itemNameAr_(it), qty:0, produced:0, orderIds:new Set() };
     grand[key].qty += Number(it.qty)||0;
+    grand[key].produced += itemProdPending_(it).produced;
     grand[key].orderIds.add(o.id);
   }));
+  let grandProduced = 0;
   const grandRows = Object.values(grand).sort((a,b)=>b.qty-a.qty).map((g,idx)=>{
+    grandProduced += g.produced;
+    const pending = g.qty-g.produced;
     const bg = idx%2 ? `background:${ZEBRA};` : '';
     return `<tr>
       <td style="${td};${bg}">${esc(itemTypeAr_(g.type))}</td>
@@ -2165,8 +2189,11 @@ function reportHTML(orders){
       <td style="${td};${bg};text-align:right">${esc(g.name)}</td>
       <td style="${td};${bg}">${g.orderIds.size}</td>
       <td style="${td};${bg}"><b>${g.qty}</b></td>
+      <td style="${td};${bg};color:#1E8E52">${g.produced}</td>
+      <td style="${td};${bg}${pending>0?';color:#B3261E;font-weight:700':''}">${pending}</td>
     </tr>`;
   }).join('');
+  const grandPending = grandQty-grandProduced;
 
   const sheet3 = `
   <div style="margin-top:20px">
@@ -2178,11 +2205,14 @@ function reportHTML(orders){
         <th style="${th};width:56px">النوع</th><th style="${th};width:56px">الكود</th>
         <th style="${th}">الصنف</th><th style="${th};width:74px">عدد الطلبات</th>
         <th style="${th};width:64px">إجمالي الكمية</th>
+        <th style="${th};width:50px">جاهز</th><th style="${th};width:54px">متبقي</th>
       </tr></thead>
       <tbody>${grandRows}</tbody>
       <tfoot><tr>
         <td colspan="4" style="${td};background:${LIGHT};color:${NAVY};font-weight:700;text-align:left">الإجمالي الكلي</td>
         <td style="${td};background:${LIGHT};color:${NAVY};font-weight:700">${grandQty}</td>
+        <td style="${td};background:${LIGHT};color:#1E8E52;font-weight:700">${grandProduced}</td>
+        <td style="${td};background:${LIGHT};color:#B3261E;font-weight:700">${grandPending}</td>
       </tr></tfoot>
     </table>
   </div>`;
@@ -2284,8 +2314,9 @@ function mergedCustomerItems_(cust){
         const frame = it.frame ? frameText_(it.frame, it.frameHeight) : '';
         const size = it.size || (w==='خاص'?'خاص':w+' سم');
         const key = [it.code||'', size, frame, it.dbror||''].join('|');
-        if(!merged[key]){ merged[key] = {code:it.code||'', size, qty:0, frame, dbror: it.dbror||''}; order.push(key); }
+        if(!merged[key]){ merged[key] = {code:it.code||'', size, qty:0, produced:0, frame, dbror: it.dbror||''}; order.push(key); }
         merged[key].qty += Number(it.qty)||0;
+        merged[key].produced += itemProdPending_(it).produced;
       });
     });
   });
@@ -2322,10 +2353,13 @@ function customerTableHTML_(cust, tint){
     const stCell = st
       ? `<span style="display:inline-block;padding:2.5px 9px;border-radius:20px;font-size:9.5px;font-weight:700;background:${st.bg};color:${st.color};white-space:nowrap">${st.label}</span>`
       : `<span style="color:#B7C0CA;font-size:10px">—</span>`;
+    const pending = it.qty-it.produced;
     return `<tr style="${zebra}">
       <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;color:#4B5A6B">${esc(it.size)}</td>
       <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;font-weight:700;color:#233246">${esc(it.code)}</td>
       <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;font-weight:700;color:${tint.line}">${it.qty}</td>
+      <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;color:#1E8E52">${it.produced}</td>
+      <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;${pending>0?'color:#B3261E;font-weight:700':'color:#6B7A8C'}">${pending}</td>
       <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4">${stCell}</td>
       <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;color:#6B7A8C;font-size:10px">${esc(it.frame)||'—'}</td>
       <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;color:#6B7A8C;font-size:10px">${esc(it.dbror)||'—'}</td>
@@ -2343,15 +2377,21 @@ function customerTableHTML_(cust, tint){
           <th style="padding:8px 6px;color:#fff;font-weight:700;border-radius:6px 0 0 0">المقاس</th>
           <th style="padding:8px 6px;color:#fff;font-weight:700">الكود</th>
           <th style="padding:8px 6px;color:#fff;font-weight:700">الكمية</th>
+          <th style="padding:8px 6px;color:#fff;font-weight:700">جاهز</th>
+          <th style="padding:8px 6px;color:#fff;font-weight:700">متبقي</th>
           <th style="padding:8px 6px;color:#fff;font-weight:700">حالة المخزن</th>
           <th style="padding:8px 6px;color:#fff;font-weight:700">الحلق</th>
           <th style="padding:8px 6px;color:#fff;font-weight:700;border-radius:0 6px 0 0">البرور</th>
         </tr></thead>
-        <tbody>${trs || `<tr><td colspan="6" style="text-align:center;padding:12px;color:#8A97A6">مفيش أبواب معلّقة</td></tr>`}</tbody>
+        <tbody>${trs || `<tr><td colspan="8" style="text-align:center;padding:12px;color:#8A97A6">مفيش أبواب معلّقة</td></tr>`}</tbody>
       </table>
       <div style="display:flex;justify-content:space-between;align-items:center;background:${tint.head};border-radius:9px;padding:9px 14px;margin-top:10px">
         <span style="font-weight:700;font-size:12.5px;color:#233246">إجمالي عدد الأبواب</span>
         <span style="font-weight:700;font-size:19px;color:${tint.line}">${total}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10.5px;color:#4B5A6B;padding:4px 2px 0">
+        <span>جاهز: <b style="color:#1E8E52">${items.reduce((s,it)=>s+it.produced,0)}</b></span>
+        <span>متبقي: <b style="color:#B3261E">${items.reduce((s,it)=>s+(it.qty-it.produced),0)}</b></span>
       </div>
     </div>
   </div>`;
@@ -2407,7 +2447,8 @@ async function buildPendingDoorsExcel_(orders){
   const NAVY='FF002050', WHITE='FFFFFFFF', ZEBRA='FFF6F8FA', BORDER_CLR='FFDCE4EC';
   const thin = {style:'thin', color:{argb:BORDER_CLR}};
   const border = {top:thin,left:thin,right:thin,bottom:thin};
-  const COLS = 6;
+  const COLS = 8;
+  const PROD_GREEN='FF1E8E52', PEND_RED='FFB3261E';
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('الأبواب المعلّقة', { views:[{ rightToLeft:true }] });
@@ -2415,6 +2456,8 @@ async function buildPendingDoorsExcel_(orders){
     { key:'size', width:12 },
     { key:'code', width:13 },
     { key:'qty',  width:9  },
+    { key:'produced', width:9 },
+    { key:'pending', width:9 },
     { key:'stat', width:14 },
     { key:'frame',width:22 },
     { key:'bror', width:14 }
@@ -2447,7 +2490,7 @@ async function buildPendingDoorsExcel_(orders){
     const tint = CUST_TINT[ci % CUST_TINT.length];
     mergedRow('صاحب الطلب: '+cust.name, fill, WHITE, true, 13);
 
-    const hdr = ws.addRow(['المقاس','الكود','الكمية','حالة المخزن','الحلق','البرور']);
+    const hdr = ws.addRow(['المقاس','الكود','الكمية','جاهز','متبقي','حالة المخزن','الحلق','البرور']);
     hdr.eachCell(c=>{
       c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:fill}};
       c.font = {bold:true, color:{argb:WHITE}, name:'Arial', size:10.5};
@@ -2456,26 +2499,27 @@ async function buildPendingDoorsExcel_(orders){
     });
 
     const items = mergedCustomerItems_(cust);
-    let total = 0;
+    let total = 0, totalProduced = 0;
     items.forEach((it,idx)=>{
-      total += it.qty;
+      total += it.qty; totalProduced += it.produced;
+      const pending = it.qty-it.produced;
       const st = stockStatus_(it.code, it.size, it.qty);
       const statTxt = st ? st.label : '—';
-      const row = ws.addRow([it.size, it.code, it.qty, statTxt, it.frame||'—', it.dbror||'—']);
+      const row = ws.addRow([it.size, it.code, it.qty, it.produced, pending, statTxt, it.frame||'—', it.dbror||'—']);
       row.eachCell((c,colNo)=>{
         c.alignment = {horizontal:'center'};
         c.border = border;
-        c.font = {name:'Arial', size:10.5, bold: colNo===3||colNo===4, color: colNo===3?{argb:fill}:(colNo===4&&st?{argb: st.color==='#1E8E52'?STAT_GREEN_TXT:(st.color==='#B8790A'?STAT_YELLOW_TXT:STAT_RED_TXT)}:undefined)};
-        c.fill = {type:'pattern',pattern:'solid',fgColor:{argb: colNo===4&&st ? (st.color==='#1E8E52'?STAT_GREEN:(st.color==='#B8790A'?STAT_YELLOW:STAT_RED)) : (idx%2===1 ? ZEBRA : WHITE)}};
+        c.font = {name:'Arial', size:10.5, bold: colNo===3||colNo===4||colNo===5||colNo===6, color: colNo===3?{argb:fill}:colNo===4?{argb:PROD_GREEN}:colNo===5?{argb: pending>0?PEND_RED:undefined}:(colNo===6&&st?{argb: st.color==='#1E8E52'?STAT_GREEN_TXT:(st.color==='#B8790A'?STAT_YELLOW_TXT:STAT_RED_TXT)}:undefined)};
+        c.fill = {type:'pattern',pattern:'solid',fgColor:{argb: colNo===6&&st ? (st.color==='#1E8E52'?STAT_GREEN:(st.color==='#B8790A'?STAT_YELLOW:STAT_RED)) : (idx%2===1 ? ZEBRA : WHITE)}};
       });
     });
     if(!items.length){
-      const row = ws.addRow(['مفيش أبواب معلّقة','','','','','']);
+      const row = ws.addRow(['مفيش أبواب معلّقة','','','','','','','']);
       ws.mergeCells(row.number,1,row.number,COLS);
       row.eachCell(c=>{ c.border=border; c.alignment={horizontal:'center'}; c.font={name:'Arial', size:10.5, color:{argb:'FF8A97A6'}}; });
     }
 
-    mergedRow('إجمالي عدد الأبواب:  '+total, tint, NAVY, true, 12);
+    mergedRow('إجمالي عدد الأبواب:  '+total+'   (جاهز '+totalProduced+' · متبقي '+(total-totalProduced)+')', tint, NAVY, true, 12);
     ws.addRow([]);
   });
 
@@ -2579,15 +2623,17 @@ function buildAdminOrdersDetail_(orders){
   return order.map(name=>{
     const ords = byCustomer[name];
     const codeTotals = {}; // key: type+code -> {label, qty}
-    let clientQty = 0;
+    let clientQty = 0, clientProduced = 0;
     ords.forEach(o=>(o.items||[]).forEach(it=>{
       const qty = Number(it.qty)||0;
-      clientQty += qty;
+      const pp = itemProdPending_(it);
+      clientQty += qty; clientProduced += pp.produced;
       const key = it.type+'|'+(it.code||it.title||'');
-      if(!codeTotals[key]) codeTotals[key] = { type:it.type, code:it.code||'', name:itemNameAr_(it), qty:0 };
+      if(!codeTotals[key]) codeTotals[key] = { type:it.type, code:it.code||'', name:itemNameAr_(it), qty:0, produced:0 };
       codeTotals[key].qty += qty;
+      codeTotals[key].produced += pp.produced;
     }));
-    return { name, orders:ords, clientQty, codeTotals: Object.values(codeTotals).sort((a,b)=>b.qty-a.qty) };
+    return { name, orders:ords, clientQty, clientProduced, clientPending: clientQty-clientProduced, codeTotals: Object.values(codeTotals).sort((a,b)=>b.qty-a.qty) };
   });
 }
 
@@ -2643,33 +2689,35 @@ async function buildAdminOrdersExcel_(orders){
     {width:4},{key:'id',width:14},{key:'date',width:12},{key:'dist',width:22},
     {key:'customer',width:22},
     {key:'phone',width:14},{key:'region',width:13},{key:'wh',width:12},
-    {key:'status',width:15},{key:'qty',width:10}
+    {key:'status',width:15},{key:'qty',width:10},{key:'produced',width:9},{key:'pending',width:9}
   ];
-  const sumLastCol = 10;
+  const sumLastCol = 12;
   addHeaderBand_(wsSum, sumLastCol, 'تقرير الأبواب', COMPANY_AR+' — '+new Date().toLocaleDateString('ar-EG')+' — إجمالي الطلبات: '+orders.length);
   wsSum.addRow([]);
-  const hdrSum = wsSum.addRow(['','رقم الطلب','التاريخ','صاحب الحساب','صاحب الأوردر','الهاتف','المنطقة','المخزن','الحالة','إجمالي الكمية']);
+  const hdrSum = wsSum.addRow(['','رقم الطلب','التاريخ','صاحب الحساب','صاحب الأوردر','الهاتف','المنطقة','المخزن','الحالة','إجمالي الكمية','جاهز','متبقي']);
   hdrSum.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVY}}; c.font={bold:true,color:{argb:WHITE},name:FONT,size:10.5}; c.alignment={horizontal:'center',vertical:'middle'}; c.border=border; });
   hdrSum.height = 22;
   wsSum.views = [{ rightToLeft:true, state:'frozen', ySplit:hdrSum.number }];
 
-  let grandQty = 0;
+  let grandQty = 0, grandProducedSum = 0;
   orders.forEach((o,idx)=>{
     const qty = (o.items||[]).reduce((s,it)=>s+(Number(it.qty)||0),0);
-    grandQty += qty;
+    const produced = (o.items||[]).reduce((s,it)=>s+itemProdPending_(it).produced,0);
+    grandQty += qty; grandProducedSum += produced;
+    const pending = qty-produced;
     const st = STATUS[o.status] || {ar:o.status||'—'};
-    const r = wsSum.addRow(['', o.id, dateStr2_(o.date), o.dist||'', o.customer||'—', String(o.phone||''), o.region||'', o.warehouse||'', st.ar, qty]);
-    r.eachCell((c,i)=>{ if(i===1) return; c.border=border; c.font={name:FONT,size:10.5}; c.alignment={horizontal:'center',vertical:'middle'};
+    const r = wsSum.addRow(['', o.id, dateStr2_(o.date), o.dist||'', o.customer||'—', String(o.phone||''), o.region||'', o.warehouse||'', st.ar, qty, produced, pending]);
+    r.eachCell((c,i)=>{ if(i===1) return; c.border=border; c.font={name:FONT,size:10.5, color: i===11?{argb:'FF1E8E52'}:(i===12&&pending>0?{argb:'FFB3261E'}:undefined)}; c.alignment={horizontal:'center',vertical:'middle'};
       if(idx%2===1) c.fill={type:'pattern',pattern:'solid',fgColor:{argb:ZEBRA}}; });
   });
-  const totRowSum = wsSum.addRow(['','','','','','','','','الإجمالي الكلي', grandQty]);
+  const totRowSum = wsSum.addRow(['','','','','','','','','الإجمالي الكلي', grandQty, grandProducedSum, grandQty-grandProducedSum]);
   totRowSum.eachCell((c,i)=>{ if(i===1) return; c.font={bold:true,name:FONT,size:11,color:{argb:NAVY}}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}}; c.border=border; c.alignment={horizontal:'center'}; });
   wsSum.autoFilter = { from:{row:hdrSum.number,column:2}, to:{row:hdrSum.number,column:sumLastCol} };
 
   // ---------- ورقة 2: تفاصيل حسب العميل ----------
   const wsDet = wb.addWorksheet('تفاصيل حسب العميل', { views:[{ rightToLeft:true }] });
-  wsDet.columns = [ {width:4},{width:12},{width:12},{width:24},{width:12},{width:14},{width:10},{width:9} ];
-  const detLastCol = 8;
+  wsDet.columns = [ {width:4},{width:12},{width:12},{width:24},{width:12},{width:14},{width:10},{width:9},{width:9},{width:9} ];
+  const detLastCol = 10;
   addHeaderBand_(wsDet, detLastCol, 'تفاصيل الطلبات حسب العميل', COMPANY_AR+' — '+new Date().toLocaleDateString('ar-EG'));
   wsDet.addRow([]);
 
@@ -2686,7 +2734,7 @@ async function buildAdminOrdersExcel_(orders){
       wsDet.mergeCells(rOrd.number,2,rOrd.number,detLastCol);
       rOrd.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:BRAND}}; c.font={bold:true,color:{argb:WHITE},name:FONT,size:10.5}; c.alignment={horizontal:'right',vertical:'middle'}; });
 
-      const hdr = wsDet.addRow(['','النوع','الكود','الصنف','المقاس / الحلق / البرور','الوحدة','الكمية','متاح؟']);
+      const hdr = wsDet.addRow(['','النوع','الكود','الصنف','المقاس / الحلق / البرور','الوحدة','الكمية','جاهز','متبقي','متاح؟']);
       hdr.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}}; c.font={bold:true,color:{argb:NAVY},name:FONT,size:10}; c.alignment={horizontal:'center'}; c.border=border; });
 
       (o.items||[]).forEach(it=>{
@@ -2694,9 +2742,12 @@ async function buildAdminOrdersExcel_(orders){
         if(it.size) sizeBits.push(it.size);
         if(it.frame) sizeBits.push(frameText_(it.frame, it.frameHeight));
         if(it.dbror) sizeBits.push('برور '+it.dbror);
-        const row = wsDet.addRow(['', itemTypeAr_(it.type), it.code||'—', itemNameAr_(it), sizeBits.join(' / ')||'—', itemUnitAr_(it.unit), Number(it.qty)||0, it.avail===false?'غير متاح':'متاح']);
+        const pp = itemProdPending_(it);
+        const row = wsDet.addRow(['', itemTypeAr_(it.type), it.code||'—', itemNameAr_(it), sizeBits.join(' / ')||'—', itemUnitAr_(it.unit), Number(it.qty)||0, pp.produced, pp.pending, it.avail===false?'غير متاح':'متاح']);
         row.eachCell((c,i)=>{ if(i===1) return; c.border=border; c.font={name:FONT,size:10}; c.alignment={horizontal:'center'};
-          if(i===8 && it.avail===false) c.font={name:FONT,size:10,color:{argb:'FFB3261E'},bold:true}; });
+          if(i===8) c.font={name:FONT,size:10,color:{argb:'FF1E8E52'}};
+          if(i===9 && pp.pending>0) c.font={name:FONT,size:10,color:{argb:'FFB3261E'},bold:true};
+          if(i===10 && it.avail===false) c.font={name:FONT,size:10,color:{argb:'FFB3261E'},bold:true}; });
       });
     });
 
@@ -2705,12 +2756,12 @@ async function buildAdminOrdersExcel_(orders){
       wsDet.mergeCells(rCodeHdr.number,2,rCodeHdr.number,detLastCol);
       rCodeHdr.eachCell((c,i)=>{ if(i===1) return; c.font={bold:true,color:{argb:NAVY},name:FONT,size:10.5}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF3F6FA'}}; });
       cust.codeTotals.forEach(ct=>{
-        const r = wsDet.addRow(['', itemTypeAr_(ct.type), ct.code||'—', ct.name, '', '', ct.qty, '']);
-        r.eachCell((c,i)=>{ if(i===1) return; c.font={name:FONT,size:10}; if((i>=2&&i<=4)||i===7) c.border=border; c.alignment={horizontal:'center'}; });
+        const r = wsDet.addRow(['', itemTypeAr_(ct.type), ct.code||'—', ct.name, '', '', ct.qty, ct.produced, ct.qty-ct.produced, '']);
+        r.eachCell((c,i)=>{ if(i===1) return; c.font={name:FONT,size:10, color: i===8?{argb:'FF1E8E52'}:(i===9&&(ct.qty-ct.produced)>0?{argb:'FFB3261E'}:undefined)}; if((i>=2&&i<=4)||i===7||i===8||i===9) c.border=border; c.alignment={horizontal:'center'}; });
       });
     }
 
-    const rTot = wsDet.addRow(['', 'إجمالي صاحب الحساب '+cust.name+':  '+cust.clientQty+' قطعة']);
+    const rTot = wsDet.addRow(['', 'إجمالي صاحب الحساب '+cust.name+':  '+cust.clientQty+' قطعة  (جاهز '+cust.clientProduced+' · متبقي '+cust.clientPending+')']);
     wsDet.mergeCells(rTot.number,2,rTot.number,detLastCol);
     rTot.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}}; c.font={bold:true,color:{argb:NAVY},name:FONT,size:11.5}; c.alignment={horizontal:'right',vertical:'middle'}; });
     rTot.height = 20;
@@ -2719,11 +2770,11 @@ async function buildAdminOrdersExcel_(orders){
 
   // ---------- ورقة 3: إجمالي الأصناف (كل الأكواد، كل العملاء) ----------
   const wsCodes = wb.addWorksheet('إجمالي الأصناف', { views:[{ rightToLeft:true }] });
-  wsCodes.columns = [ {width:4},{width:10},{width:12},{width:26},{width:14},{width:10} ];
-  const codesLastCol = 6;
+  wsCodes.columns = [ {width:4},{width:10},{width:12},{width:26},{width:14},{width:10},{width:10},{width:10} ];
+  const codesLastCol = 8;
   addHeaderBand_(wsCodes, codesLastCol, 'إجمالي الأصناف — كل العملاء', COMPANY_AR+' — '+new Date().toLocaleDateString('ar-EG'));
   wsCodes.addRow([]);
-  const hdrCodes = wsCodes.addRow(['','النوع','الكود','الصنف','عدد الطلبات','إجمالي الكمية']);
+  const hdrCodes = wsCodes.addRow(['','النوع','الكود','الصنف','عدد الطلبات','إجمالي الكمية','جاهز','متبقي']);
   hdrCodes.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVY}}; c.font={bold:true,color:{argb:WHITE},name:FONT,size:10.5}; c.alignment={horizontal:'center'}; c.border=border; });
   hdrCodes.height=22;
   wsCodes.views = [{ rightToLeft:true, state:'frozen', ySplit:hdrCodes.number }];
@@ -2731,17 +2782,21 @@ async function buildAdminOrdersExcel_(orders){
   const grand = {};
   orders.forEach(o=>(o.items||[]).forEach(it=>{
     const key = it.type+'|'+(it.code||it.title||'');
-    if(!grand[key]) grand[key] = { type:it.type, code:it.code||'', name:itemNameAr_(it), qty:0, orderIds:new Set() };
+    if(!grand[key]) grand[key] = { type:it.type, code:it.code||'', name:itemNameAr_(it), qty:0, produced:0, orderIds:new Set() };
     grand[key].qty += Number(it.qty)||0;
+    grand[key].produced += itemProdPending_(it).produced;
     grand[key].orderIds.add(o.id);
   }));
   const grandList = Object.values(grand).sort((a,b)=>b.qty-a.qty);
+  let grandProducedX = 0;
   grandList.forEach((g,idx)=>{
-    const r = wsCodes.addRow(['', itemTypeAr_(g.type), g.code||'—', g.name, g.orderIds.size, g.qty]);
-    r.eachCell((c,i)=>{ if(i===1) return; c.border=border; c.font={name:FONT,size:10.5}; c.alignment={horizontal:'center'};
+    grandProducedX += g.produced;
+    const pending = g.qty-g.produced;
+    const r = wsCodes.addRow(['', itemTypeAr_(g.type), g.code||'—', g.name, g.orderIds.size, g.qty, g.produced, pending]);
+    r.eachCell((c,i)=>{ if(i===1) return; c.border=border; c.font={name:FONT,size:10.5, color: i===7?{argb:'FF1E8E52'}:(i===8&&pending>0?{argb:'FFB3261E'}:undefined)}; c.alignment={horizontal:'center'};
       if(idx%2===1) c.fill={type:'pattern',pattern:'solid',fgColor:{argb:ZEBRA}}; });
   });
-  const rGrandTot = wsCodes.addRow(['','','','','الإجمالي الكلي', grandQty]);
+  const rGrandTot = wsCodes.addRow(['','','','','الإجمالي الكلي', grandQty, grandProducedX, grandQty-grandProducedX]);
   rGrandTot.eachCell((c,i)=>{ if(i===1) return; c.font={bold:true,color:{argb:NAVY},name:FONT,size:11}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}}; c.border=border; c.alignment={horizontal:'center'}; });
   wsCodes.autoFilter = { from:{row:hdrCodes.number,column:2}, to:{row:hdrCodes.number,column:codesLastCol} };
 
@@ -3241,10 +3296,10 @@ document.addEventListener('click',e=>{
     case 'clear': if(confirm('تفريغ السلة بالكامل؟')){state.cart=[];save(LS_CART,state.cart);render();} break;
     case 'submit': submitOrder(); break;
     case 'quote-cart': makeDoc(draftOrder(), 'order'); break;
-    case 'ord-pdf':   withOrder(el,o=>makeDoc(o,'order')); break;
-    case 'ord-xls':   withOrder(el,o=>exportExcel([o],'طلب_'+o.id)); break;
-    case 'all-xls':   exportExcel(state.orders,'كل_الطلبات'); break;
-    case 'resend':    withOrder(el,o=>shareOrderImage(o)); break;
+    case 'ord-pdf':   withOrder(el,o=>makeDoc(mergeProducedFromTrack_(o),'order')); break;
+    case 'ord-xls':   withOrder(el,o=>exportExcel([mergeProducedFromTrack_(o)],'طلب_'+o.id)); break;
+    case 'all-xls':   exportExcel(state.orders.map(mergeProducedFromTrack_),'كل_الطلبات'); break;
+    case 'resend':    withOrder(el,o=>shareOrderImage(mergeProducedFromTrack_(o))); break;
     case 'ord-edit':   withOrder(el,o=>{
       const live = (state.track.rows||[]).find(r=>String(r.id)===String(o.id));
       if(isOrderLocked_(live)){ toast('الطلب دخل التنفيذ في المصنع، مينفعش يتعدّل دلوقتي'); return; }
@@ -3378,6 +3433,19 @@ document.addEventListener('click',e=>{
 });
 
 function withOrder(el,fn){const o=state.orders.find(x=>x.id===el.dataset.id); if(o) fn(o); }
+
+// لو رد "تابع طلبك" (list بالـphone) بيرجّع أصناف الطلب مع حقل produced، بنحطه على نسخة الطلب المحلية
+// عشان مستند/صورة العميل يوري جاهز/متبقي محدّث. لو السيرفر لسه مابيرجعش الحقل ده، محصلش تغيير (0 آمن افتراضيًا).
+function mergeProducedFromTrack_(o){
+  const live = (state.track.rows||[]).find(r=>String(r.id)===String(o.id));
+  if(live && Array.isArray(live.items)){
+    (o.items||[]).forEach((it,idx)=>{
+      const li = live.items[idx];
+      if(li && li.produced!==undefined) it.produced = li.produced;
+    });
+  }
+  return o;
+}
 
 // إنتر في خانة كلمة سر متابعة المصنع يعمل دخول على طول
 document.addEventListener('keydown', e=>{
@@ -3866,6 +3934,12 @@ function submitOrder(){
 /* ============================================================
    المستندات — عرض سعر / طلب (PDF)
    ============================================================ */
+// بيحسب الجاهز/المتبقي لأي صنف (لو مفيش بيانات إنتاج للصنف ده بيرجع جاهز=0 ومتبقي=الكمية كاملة)
+function itemProdPending_(it){
+  const qty = Number(it.qty)||0;
+  const produced = Math.max(0, Math.min(qty, Number(it.produced)||0));
+  return { produced, pending: qty-produced };
+}
 function docRowHTML_(it, idx, priced){
   let size='', frameTxt='—', brorTxt='—', qty=it.qty, unit;
   if(it.kind==='door'){
@@ -3873,6 +3947,7 @@ function docRowHTML_(it, idx, priced){
   } else if(it.kind==='frame'||it.kind==='bror'){
     size=(it.rodCm?'عود '+it.rodCm+' سم · ':'')+it.spec; unit='عود';
   } else { size='—'; unit=it.unit||'قطعة'; }
+  const pp = itemProdPending_(it);
   return `<tr>
     <td style="text-align:center">${idx}</td>
     <td><b>${esc(it.title)}</b></td>
@@ -3880,6 +3955,8 @@ function docRowHTML_(it, idx, priced){
     <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(frameTxt)}</td>
     <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(brorTxt)}</td>
     <td style="text-align:center">${qty} ${esc(unit)}</td>
+    <td style="text-align:center;font-size:11px;color:${pp.produced>=qty&&qty>0?'#1E8E52':(pp.produced>0?'#B8790A':'#6B7A8C')}">${pp.produced}</td>
+    <td style="text-align:center;font-size:11px;font-weight:700;color:${pp.pending>0?'#B3261E':'#6B7A8C'}">${pp.pending}</td>
     ${priced?`<td style="text-align:center">${money(it.kind==='door'?it.unitPrice:it.price)}</td>
     <td style="text-align:center;font-weight:700">${money(linePrice(it))}</td>`:''}
   </tr>`;
@@ -3900,7 +3977,7 @@ function docRows(o, priced){
   const items=o.items||[];
   const doorItems=items.filter(it=>it.kind==='door');
   const otherItems=items.filter(it=>it.kind!=='door');
-  const colspan=priced?8:6;
+  const colspan=priced?10:8;
 
   const groups={};
   doorItems.forEach(it=>{ const k=it.sizeTxt||''; (groups[k]=groups[k]||[]).push(it); });
@@ -3929,11 +4006,15 @@ function docTotalsHTML(o){
   const lines=keys.map(k=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span>أبواب مقاس ${esc(k)}</span><b>${perSize[k]} باب</b></div>`).join('');
   const doorsTotal=keys.reduce((s,k)=>s+perSize[k],0);
   const overallTotal=items.reduce((s,it)=>s+(Number(it.qty)||0),0);
+  const overallProduced=items.reduce((s,it)=>s+itemProdPending_(it).produced,0);
+  const overallPending=overallTotal-overallProduced;
 
   return `<div style="margin-top:14px;padding:10px 13px;background:#F3F6FA;border-radius:9px">
     ${lines}
     <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0 0;border-top:1px dashed #DCE4EC;margin-top:4px"><span><b>إجمالي الأبواب</b></span><b>${doorsTotal} باب</b></div>
     <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span><b>الإجمالي الكلي</b></span><b>${overallTotal} قطعة</b></div>
+    <div style="display:flex;justify-content:space-between;font-size:11.5px;padding:2px 0;color:#1E8E52"><span>جاهز</span><b>${overallProduced} قطعة</b></div>
+    <div style="display:flex;justify-content:space-between;font-size:11.5px;padding:2px 0;color:#B3261E"><span>متبقي</span><b>${overallPending} قطعة</b></div>
   </div>`;
 }
 
@@ -3985,6 +4066,8 @@ function docHTML(o,mode,priced){
             <th style="padding:9px 5px;width:54px">الحلق</th>
             <th style="padding:9px 5px;width:54px">البرور</th>
             <th style="padding:9px 5px;width:60px">الكمية</th>
+            <th style="padding:9px 5px;width:50px">جاهز</th>
+            <th style="padding:9px 5px;width:54px">متبقي</th>
             ${priced?`<th style="padding:9px 5px;width:64px">السعر</th>
             <th style="padding:9px 5px;width:74px">الإجمالي</th>`:''}
           </tr>
@@ -4033,7 +4116,7 @@ function exportExcel(orders,fname){
   busy(true,'جارٍ تجهيز الإكسيل…');
   try{
     const sum=[['Order No','Date','Distributor','Phone','Region','Warehouse','Status','Lines'].concat(priced?['Total']:[])];
-    const det=[['Order No','Date','Distributor','Phone','Region','Status','Type','Item','Colour','Size','Frame (cm)','Frame Height (cm)','Bror','Milling','Unit','Qty','Available'].concat(priced?['Unit Price','Line Total']:[])];
+    const det=[['Order No','Date','Distributor','Phone','Region','Status','Type','Item','Colour','Size','Frame (cm)','Frame Height (cm)','Bror','Milling','Unit','Qty','Produced','Remaining','Available'].concat(priced?['Unit Price','Line Total']:[])];
 
     orders.forEach(o=>{
       const sumRow=[o.id, dateStr(o.ts), o.name||'', String(o.phone||''), o.region||'', o.warehouse||WAREHOUSE, o.status||'', o.items.length];
@@ -4052,6 +4135,8 @@ function exportExcel(orders,fname){
           isDoor?(it.millEn||''):'',
           isDoor?'door':(isRod?('rod '+(it.rodCm||220)+'cm'):(it.unit||'pc')),
           Number(it.qty)||0,
+          itemProdPending_(it).produced,
+          itemProdPending_(it).pending,
           it.avail===false?'N':'Y'
         ];
         if(priced) row.push(Number(isDoor?it.unitPrice:it.price)||0, Number(linePrice(it))||0);
