@@ -506,7 +506,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v75';
+const APP_BUILD   = 'v76';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -771,7 +771,7 @@ async function loadReserved(force){
         const produced = Number(it.produced)||0;
         const remain = Math.max(0, qty-produced);
         if(remain<=0) return;
-        const key = String(it.code||'').trim()+'|'+String(it.size||'').trim();
+        const key = String(it.code||'').trim()+'|'+String(doorWidthGroup_(it.size) ?? it.size ?? '').trim();
         map[key] = (map[key]||0) + remain;
       });
     });
@@ -2298,7 +2298,8 @@ const CUST_TINTS_ = [
 // جدول عميل واحد: صنف/مقاس/كمية/حلق/برور — كل عميل بجدوله المستقل ولونه الخاص
 // حالة توفّر الصنف بالمخزن: أخضر = متاح بالكامل، أصفر = الكمية أكبر من المتاح جزئيًا، أحمر = مفيش خالص
 function stockStatus_(code, size, qty){
-  const stock = stockFor(code, size);
+  const w = doorWidthGroup_(size);
+  const stock = stockFor(code, w!=null ? w : size);
   if(stock===null) return null;   // الأرصدة لسه ما اتحمّلتش
   if(stock<=0) return {color:'#B3261E', bg:'#FBE7E7', label:'غير متاح'};
   if(qty>stock) return {color:'#B8790A', bg:'#FFF4E0', label:'جزئي ('+stock+' متاح)'};
