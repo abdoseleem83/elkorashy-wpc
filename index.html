@@ -506,7 +506,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v76';
+const APP_BUILD   = 'v77';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -812,24 +812,28 @@ function stockReportHTML_(){
     });
     const total = stockTotalFor(d.code)||0;
     const resTotal = cells.reduce((s,c)=>s+c.res,0);
-    return {code:d.code, name:d.name, cells, total, resTotal};
+    const freeTotal = cells.reduce((s,c)=>s+c.free,0);
+    return {code:d.code, name:d.name, cells, total, resTotal, freeTotal};
   });
 
-  const sizeHeaders = SIZES.map(sz=>`<th colspan="2" style="padding:6px;color:#fff;font-weight:700;border:1px solid #12314F">${sz.w} سم</th>`).join('');
+  const sizeHeaders = SIZES.map(sz=>`<th colspan="3" style="padding:6px;color:#fff;font-weight:700;border:1px solid #12314F">${sz.w} سم</th>`).join('');
   const subHeaders = SIZES.map(()=>`
-      <th style="padding:5px 4px;color:#fff;font-weight:600;font-size:9.5px;border:1px solid #12314F">رصيد</th>
-      <th style="padding:5px 4px;color:#fff;font-weight:600;font-size:9.5px;border:1px solid #12314F">محجوز</th>`).join('');
+      <th style="padding:5px 3px;color:#fff;font-weight:600;font-size:9px;border:1px solid #12314F">الرصيد</th>
+      <th style="padding:5px 3px;color:#fff;font-weight:600;font-size:9px;border:1px solid #12314F">محجوز</th>
+      <th style="padding:5px 3px;color:#fff;font-weight:600;font-size:9px;border:1px solid #12314F">متبقي</th>`).join('');
 
   const trs = rows.map((r,idx)=>{
     const zebra = idx%2===1 ? 'background:#F6F8FA' : 'background:#FFFFFF';
     const cells = r.cells.map(c=>`
       <td style="text-align:center;padding:6px 4px;border:1px solid #DCE4EC;font-weight:700;color:#233246">${c.cur}</td>
-      <td style="text-align:center;padding:6px 4px;border:1px solid #DCE4EC;color:${c.res>0?'#B3261E':'#B7C0CA'}">${c.res>0?c.res:'—'}</td>`).join('');
+      <td style="text-align:center;padding:6px 4px;border:1px solid #DCE4EC;color:${c.res>0?'#B3261E':'#B7C0CA'}">${c.res>0?c.res:'—'}</td>
+      <td style="text-align:center;padding:6px 4px;border:1px solid #DCE4EC;font-weight:700;background:${c.free>0?'#E7F6EC':'#FBE7E7'};color:${c.free>0?'#1E8E52':'#B3261E'}">${c.free}</td>`).join('');
     return `<tr style="${zebra}">
       <td style="text-align:right;padding:6px 8px;border:1px solid #DCE4EC;font-weight:700;color:#233246;white-space:nowrap">${esc(r.code)} <span style="font-weight:400;color:#8A97A6;font-size:9.5px">${esc(r.name)}</span></td>
       ${cells}
       <td style="text-align:center;padding:6px 6px;border:1px solid #DCE4EC;font-weight:700;color:#1080C0">${r.total}</td>
       <td style="text-align:center;padding:6px 6px;border:1px solid #DCE4EC;font-weight:700;color:${r.resTotal>0?'#B3261E':'#B7C0CA'}">${r.resTotal||'—'}</td>
+      <td style="text-align:center;padding:6px 6px;border:1px solid #DCE4EC;font-weight:700;background:${r.freeTotal>0?'#E7F6EC':'#FBE7E7'};color:${r.freeTotal>0?'#1E8E52':'#B3261E'}">${r.freeTotal}</td>
     </tr>`;
   }).join('');
 
@@ -846,8 +850,10 @@ function stockReportHTML_(){
         <div style="font-size:11px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} — ${dateStr} — الساعة ${timeStr}</div>
       </div>
     </div>
-    <div style="margin-top:12px;padding:8px 12px;background:#FBECEA;border-radius:8px;font-size:10.5px;color:#B3261E">
-      عمود «محجوز» = كمية من نفس الكود/المقاس لسه مطلوبة لطلبات عملاء معلّقة (لسه ما اتصنّعتش/ما اتسلّمتش).
+    <div style="margin-top:12px;padding:8px 12px;background:#F7F9FB;border-radius:8px;font-size:10.5px;color:#4B5A6B;line-height:1.7">
+      <b style="color:#233246">الرصيد</b> = الكمية الجاهزة فعليًا بالمخزن (قبل خصم أي حجز).
+      <b style="color:#B3261E">محجوز</b> = منها مطلوب لطلبات عملاء معلّقة (لسه ما اتصنّعتش/ما اتسلّمتش).
+      <b style="color:#1E8E52">متبقي</b> = الرصيد الفاضي فعليًا بعد خصم المحجوز (اللي تقدر تبيعه لعميل جديد دلوقتي).
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:14px">
       <thead>
@@ -856,6 +862,7 @@ function stockReportHTML_(){
           ${sizeHeaders}
           <th rowspan="2" style="padding:6px;color:#fff;font-weight:700;border:1px solid #12314F">إجمالي الرصيد</th>
           <th rowspan="2" style="padding:6px;color:#fff;font-weight:700;border:1px solid #12314F">إجمالي المحجوز</th>
+          <th rowspan="2" style="padding:6px;color:#fff;font-weight:700;border:1px solid #12314F">إجمالي المتبقي</th>
         </tr>
         <tr style="background:#12314F">${subHeaders}</tr>
       </thead>
@@ -3020,21 +3027,24 @@ function viewAdmin(){
         const busy = a.stockBusy===key;
         const dirty = draft!==undefined && Number(draft)!==Number(cur);
         const res = reservedFor(d.code, sz.w);
+        const free = Math.max(0, cur-(res||0));
         return `<td style="padding:4px">
           <input type="number" inputmode="numeric" min="0" value="${esc(val)}"
             data-act="stock-in" data-code="${esc(d.code)}" data-w="${sz.w}"
             class="stkin ${dirty?'dirty':''}" ${busy?'disabled':''}>
-          ${res>0?`<div style="text-align:center;font-size:9.5px;color:#B3261E;margin-top:2px">محجوز ${res}</div>`:''}
+          ${res>0?`<div style="text-align:center;font-size:9.5px;margin-top:2px"><span style="color:#B3261E">محجوز ${res}</span> · <span style="color:#1E8E52;font-weight:700">متبقي ${free}</span></div>`:''}
         </td>`;
       }).join('');
       const total = stockTotalFor(d.code)||0;
       const resTotal = SIZES.reduce((s,sz)=>s+(reservedFor(d.code, sz.w)||0),0);
+      const freeTotal = Math.max(0, total-resTotal);
       return `<tr>
         <td style="padding:5px 7px;white-space:nowrap"><b>${esc(d.code)}</b>
           <span style="color:var(--muted);font-size:11px"> ${esc(d.name)}</span></td>
         ${cells}
         <td style="padding:5px 7px;text-align:center;color:var(--muted);font-size:11.5px">${total}</td>
-        <td style="padding:5px 7px;text-align:center;font-size:11.5px;color:${resTotal>0?'#B3261E':'var(--muted)'}">${resTotal}</td>
+        <td style="padding:5px 7px;text-align:center;font-size:11.5px;color:${resTotal>0?'#B3261E':'var(--muted)'}">${resTotal||'—'}</td>
+        <td style="padding:5px 7px;text-align:center;font-size:11.5px;font-weight:700;color:${freeTotal>0?'#1E8E52':'#B3261E'}">${freeTotal}</td>
       </tr>`;
     }).join('');
 
@@ -3057,6 +3067,7 @@ function viewAdmin(){
             ${SIZES.map(sz=>`<th>${sz.w} سم</th>`).join('')}
             <th>الإجمالي</th>
             <th>مطلوب لعملاء</th>
+            <th>متبقي فعليًا</th>
           </tr></thead>
           <tbody>${rowsHtml}</tbody>
         </table>
