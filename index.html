@@ -506,7 +506,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v77';
+const APP_BUILD   = 'v78';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -807,7 +807,7 @@ function stockReportHTML_(){
     const cells = SIZES.map(sz=>{
       const cur = stockFor(d.code, sz.w) || 0;
       const res = reservedFor(d.code, sz.w) || 0;
-      const free = Math.max(0, cur-res);
+      const free = cur-res;
       return {w:sz.w, cur, res, free};
     });
     const total = stockTotalFor(d.code)||0;
@@ -819,7 +819,7 @@ function stockReportHTML_(){
   const sizeHeaders = SIZES.map(sz=>`<th colspan="3" style="padding:6px;color:#fff;font-weight:700;border:1px solid #12314F">${sz.w} سم</th>`).join('');
   const subHeaders = SIZES.map(()=>`
       <th style="padding:5px 3px;color:#fff;font-weight:600;font-size:9px;border:1px solid #12314F">الرصيد</th>
-      <th style="padding:5px 3px;color:#fff;font-weight:600;font-size:9px;border:1px solid #12314F">محجوز</th>
+      <th style="padding:5px 3px;color:#fff;font-weight:600;font-size:9px;border:1px solid #12314F">مطلوب</th>
       <th style="padding:5px 3px;color:#fff;font-weight:600;font-size:9px;border:1px solid #12314F">متبقي</th>`).join('');
 
   const trs = rows.map((r,idx)=>{
@@ -852,8 +852,8 @@ function stockReportHTML_(){
     </div>
     <div style="margin-top:12px;padding:8px 12px;background:#F7F9FB;border-radius:8px;font-size:10.5px;color:#4B5A6B;line-height:1.7">
       <b style="color:#233246">الرصيد</b> = الكمية الجاهزة فعليًا بالمخزن (قبل خصم أي حجز).
-      <b style="color:#B3261E">محجوز</b> = منها مطلوب لطلبات عملاء معلّقة (لسه ما اتصنّعتش/ما اتسلّمتش).
-      <b style="color:#1E8E52">متبقي</b> = الرصيد الفاضي فعليًا بعد خصم المحجوز (اللي تقدر تبيعه لعميل جديد دلوقتي).
+      <b style="color:#B3261E">مطلوب</b> = منها مطلوب لطلبات عملاء معلّقة (لسه ما اتصنّعتش/ما اتسلّمتش).
+      <b style="color:#1E8E52">متبقي</b> = الرصيد الفاضي فعليًا بعد خصم المطلوب (اللي تقدر تبيعه لعميل جديد دلوقتي). لو رقم بالسالب معناه المطلوب أكتر من الرصيد الموجود.
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:14px">
       <thead>
@@ -861,7 +861,7 @@ function stockReportHTML_(){
           <th rowspan="2" style="text-align:right;padding:6px 8px;color:#fff;font-weight:700;border:1px solid #12314F">الكود</th>
           ${sizeHeaders}
           <th rowspan="2" style="padding:6px;color:#fff;font-weight:700;border:1px solid #12314F">إجمالي الرصيد</th>
-          <th rowspan="2" style="padding:6px;color:#fff;font-weight:700;border:1px solid #12314F">إجمالي المحجوز</th>
+          <th rowspan="2" style="padding:6px;color:#fff;font-weight:700;border:1px solid #12314F">إجمالي المطلوب</th>
           <th rowspan="2" style="padding:6px;color:#fff;font-weight:700;border:1px solid #12314F">إجمالي المتبقي</th>
         </tr>
         <tr style="background:#12314F">${subHeaders}</tr>
@@ -3027,17 +3027,17 @@ function viewAdmin(){
         const busy = a.stockBusy===key;
         const dirty = draft!==undefined && Number(draft)!==Number(cur);
         const res = reservedFor(d.code, sz.w);
-        const free = Math.max(0, cur-(res||0));
+        const free = cur-(res||0);
         return `<td style="padding:4px">
           <input type="number" inputmode="numeric" min="0" value="${esc(val)}"
             data-act="stock-in" data-code="${esc(d.code)}" data-w="${sz.w}"
             class="stkin ${dirty?'dirty':''}" ${busy?'disabled':''}>
-          ${res>0?`<div style="text-align:center;font-size:9.5px;margin-top:2px"><span style="color:#B3261E">محجوز ${res}</span> · <span style="color:#1E8E52;font-weight:700">متبقي ${free}</span></div>`:''}
+          ${res>0?`<div style="text-align:center;font-size:9.5px;margin-top:2px"><span style="color:#B3261E">مطلوب ${res}</span> · <span style="color:${free<0?'#B3261E':'#1E8E52'};font-weight:700">متبقي ${free}</span></div>`:''}
         </td>`;
       }).join('');
       const total = stockTotalFor(d.code)||0;
       const resTotal = SIZES.reduce((s,sz)=>s+(reservedFor(d.code, sz.w)||0),0);
-      const freeTotal = Math.max(0, total-resTotal);
+      const freeTotal = total-resTotal;
       return `<tr>
         <td style="padding:5px 7px;white-space:nowrap"><b>${esc(d.code)}</b>
           <span style="color:var(--muted);font-size:11px"> ${esc(d.name)}</span></td>
