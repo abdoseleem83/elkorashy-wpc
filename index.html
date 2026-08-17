@@ -330,14 +330,15 @@ input::placeholder{color:#A8B4C2}
 .btn.sm{padding:10px;font-size:12.5px}
 .btnrow{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 /* شبكة أزرار مضغوطة لشاشة المصنع — أصغر وأكتر تنظيمًا من .btnrow العادية */
-.toolgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:7px;margin-top:10px}
-.toolgrid .btn{padding:9px 6px;font-size:11.5px;border-radius:10px;line-height:1.35}
-.cardacts{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:6px;margin-top:9px}
-.cardacts .btn{padding:8px 5px;font-size:11px;border-radius:9px}
+.toolgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:5px;margin-top:10px}
+.toolgrid .btn{padding:7px 4px;font-size:10px;border-radius:9px;line-height:1.25}
+.cardacts{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:5px;margin-top:9px}
+.cardacts .btn{padding:7px 4px;font-size:10px;border-radius:9px}
 
 /* ألوان موحّدة حسب وظيفة الزرار — عشان العين تفرّق بينهم بسرعة من غير ما تقرا */
-.toolgrid .btn,.cardacts .btn{display:flex;align-items:center;justify-content:center;gap:5px}
-.toolgrid .btn i,.cardacts .btn i{font-style:normal;font-size:14px;line-height:1;font-variant-emoji:text}
+.toolgrid .btn,.cardacts .btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.toolgrid .btn i,.cardacts .btn i{font-style:normal;font-size:15px;line-height:1;font-variant-emoji:text}
+.toolgrid .btn svg,.cardacts .btn svg{width:15px;height:15px}
 .btn.act-edit  {background:#EAF2FA;border:1.5px solid #9CC6E4;color:#0B4A7A}
 .btn.act-send  {background:#E7F3EE;border:1.5px solid #8FC7B0;color:#14603F}
 .btn.act-arch  {background:#FFF6E5;border:1.5px solid var(--warn-line);color:#8A6512}
@@ -675,6 +676,7 @@ const state = {
     viewArchive:false, archRows:null, archLoading:false, archBusy:null,
     viewStock:false, stockBusy:null, stockDraft:{},
     pricesOpen:false, priceEdit:null,
+    groupOpen:{}, groupPdfBusy:null,
     prodEdit:{}, prodBusy:null},
   profile: load(LS_PROFILE, {name:'', phone:'', region:''}),
   cart:    load(LS_CART, []),
@@ -2466,6 +2468,24 @@ async function fetchPendingOrders_(){
   return orders;
 }
 
+async function exportCustomerPdf_(name){
+  if(!name) return;
+  state.admin.groupPdfBusy = name; render();
+  busy(true,'جارٍ تجهيز PDF لـ '+name+'…');
+  try{
+    const all = await fetchPendingOrders_();
+    if(all){
+      const mine = all.filter(o=>((o.customer||'').trim() || 'بدون اسم') === name);
+      if(!mine.length){ toast('مفيش طلبات معلّقة للعميل ده (يمكن كلها اتسلّمت)'); }
+      else await buildPendingDoorsPdf_(mine);
+    }
+  }catch(err){
+    toast('تعذّر تجهيز الـ PDF: ' + (err.message || err));
+  }
+  state.admin.groupPdfBusy = null; render();
+  busy(false);
+}
+
 async function exportPendingDoorsPdf_(){
   busy(true,'جارٍ تجهيز تقرير الأبواب المعلّقة (PDF)…');
   try{
@@ -2986,7 +3006,7 @@ function viewAdmin(){
     <div class="empty"><span class="em">📋</span><p>${viewingArchive?'مفيش طلبات مؤرشفة.':'مفيش طلبات نشطة لسه.'}</p></div>${verBar()}`;
   }
 
-  const rows = list.map(o=>{
+  const orderCardHTML_ = o=>{
     const busy = a.busy === o.id;
     const delBusy = a.delBusy === o.id;
     const archBusy = a.archBusy === o.id;
@@ -3052,11 +3072,42 @@ function viewAdmin(){
       <div class="cardacts">${actionBtns}</div>
       ${itemsHtml}
     </div>`;
+  };
+
+  // ---------- تجميع طلبات كل عميل في قايمة منسدلة ----------
+  const groups = {};
+  const order = [];
+  list.forEach(o=>{
+    const key = (o.customer||'').trim() || 'بدون اسم';
+    if(!groups[key]){ groups[key]=[]; order.push(key); }
+    groups[key].push(o);
+  });
+
+  const rows = order.map(name=>{
+    const orders = groups[name];
+    const open = !!a.groupOpen[name];
+    const totalQty = orders.reduce((s,o)=>s+(Number(o.qty)||0),0);
+    const totalMoney = orders.reduce((s,o)=>s+(Number(o.total)||0),0);
+    const pdfBusy = a.groupPdfBusy === name;
+    return `<div class="ord" style="padding:0;overflow:hidden">
+      <div data-act="adm-toggle-group" data-name="${esc(name)}" style="display:flex;align-items:center;gap:8px;padding:13px 14px;cursor:pointer">
+        <span style="flex:1;min-width:0">
+          <b style="font-size:13.5px;color:#0B2A4A">${esc(name)}</b>
+          <div style="font-size:11px;color:#6B7A8C;margin-top:2px">${orders.length} طلب · ${totalQty} قطعة · ${money(totalMoney)} ج</div>
+        </span>
+        <button class="btn act-report sm" data-act="adm-group-pdf" data-name="${esc(name)}" ${pdfBusy?'disabled':''} style="width:auto;padding:7px 10px">
+          ${ico("doc")}${pdfBusy?'…':'PDF'}</button>
+        <span style="font-size:18px;color:#8A97A6;transform:rotate(${open?90:0}deg);transition:.15s">‹</span>
+      </div>
+      ${open?`<div style="padding:0 10px 10px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line)">
+        <div style="height:1px"></div>${orders.map(orderCardHTML_).join('')}
+      </div>`:''}
+    </div>`;
   }).join('');
 
   return `<section class="card">
-      <div class="step"><span class="n">${viewingArchive?ico("folder","lg"):ico("factory","lg")}</span><h2>${viewingArchive?'الأرشيف':'متابعة المصنع'}</h2><span class="hint">${list.length} طلب</span></div>
-      <div class="note" style="margin-top:0">${viewingArchive?'الطلبات المؤرشفة (اتسلمت أو اتأرشفت يدوي) — مش بتظهر في التقارير.':'اضغط المرحلة اللي وصلها الطلب — بتتسجّل في الشيت وصاحب الطلب يشوفها فورًا. تسليم الطلب بيأرشفه أوتوماتيك.'}</div>
+      <div class="step"><span class="n">${viewingArchive?ico("folder","lg"):ico("factory","lg")}</span><h2>${viewingArchive?'الأرشيف':'متابعة المصنع'}</h2><span class="hint">${list.length} طلب · ${order.length} عميل</span></div>
+      <div class="note" style="margin-top:0">${viewingArchive?'الطلبات المؤرشفة (اتسلمت أو اتأرشفت يدوي) — مش بتظهر في التقارير.':'اضغط اسم العميل عشان تشوف طلباته، وبعدين «الأصناف والإنتاج» جوه كل طلب عشان تسجّل الإنتاج وتشوف المتبقي. تسليم الطلب بيأرشفه أوتوماتيك.'}</div>
       ${headerBtns}
     </section>
     ${rows}${verBar()}`;
@@ -3146,6 +3197,8 @@ document.addEventListener('click',e=>{
     case 'adm-reload': state.admin.viewArchive ? loadArchive(true) : adminLoad(); break;
     case 'adm-set':    setStatus(el.dataset.id, el.dataset.st); break;
     case 'adm-toggle-items': { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) toggleOrderItemsPreview(o); } break;
+    case 'adm-toggle-group': { const n=el.dataset.name; state.admin.groupOpen[n]=!state.admin.groupOpen[n]; render(); } break;
+    case 'adm-group-pdf': exportCustomerPdf_(el.dataset.name); break;
     case 'adm-pdf':     { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) exportAdminOrderPdf(o); } break;
     case 'adm-quote':   { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) showQuoteTierPicker(o); } break;
     case 'adm-share':    { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) shareAdminOrderImage(o); } break;
