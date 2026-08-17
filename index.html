@@ -677,6 +677,8 @@ const state = {
     viewStock:false, stockBusy:null, stockDraft:{},
     pricesOpen:false, priceEdit:null,
     groupOpen:{}, groupPdfBusy:null,
+    qtyEditOpen:{}, qtyEdit:{}, qtyBusy:null, itemDelBusy:null,
+    metaEdit:{}, metaBusy:null,
     prodEdit:{}, prodBusy:null},
   profile: load(LS_PROFILE, {name:'', phone:'', region:''}),
   cart:    load(LS_CART, []),
@@ -1565,6 +1567,14 @@ function toggleOrderItemsPreview(o){
   if(!a.items[o.id]) toggleOrderItemsLoadOnly_(o.id).then(()=>render());
 }
 
+function toggleQtyEditMode_(o){
+  const a = state.admin;
+  const opening = !a.qtyEditOpen[o.id];
+  a.qtyEditOpen[o.id] = opening;
+  if(opening){ a.itemsOpen[o.id] = true; if(!a.items[o.id]) toggleOrderItemsLoadOnly_(o.id).then(()=>render()); }
+  render();
+}
+
 async function setItemAvail(id, idx, avail){
   state.admin.itemBusy = id+':'+idx; render();
   try{
@@ -1579,6 +1589,75 @@ async function setItemAvail(id, idx, avail){
     toast('تعذّر التحديث: ' + (err.message || err));
   }
   state.admin.itemBusy = null; render();
+}
+
+// بيحدّث اسم صاحب الأوردر و/أو تاريخ الطلب يدويًا من شاشة المصنع
+async function saveOrderMeta_(id, customer, date){
+  state.admin.metaBusy = id; render();
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL
+      + '?action=setOrderMeta&pw=' + encodeURIComponent(state.admin.pw)
+      + '&id=' + encodeURIComponent(id)
+      + '&customer=' + encodeURIComponent(customer||'')
+      + (date ? '&date=' + encodeURIComponent(date) : ''));
+    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل التحديث');
+    [state.admin.rows, state.admin.archRows].forEach(list=>{
+      const o = (list||[]).find(x=>String(x.id)===String(id));
+      if(o){ o.customer = d.customer||''; if(d.date) o.date = d.date; }
+    });
+    delete state.admin.metaEdit[id];
+    toast('اتحدّثت بيانات الطلب');
+  }catch(err){
+    toast('تعذّر التحديث: ' + (err.message || err));
+  }
+  state.admin.metaBusy = null; render();
+}
+
+// بيحدّث الكمية المطلوبة لصنف معيّن جوه طلب (تعديل يدوي من شاشة المصنع) وبيحدّث إجماليات الطلب في القايمة
+async function setItemQty_(id, idx, qty){
+  const key = id+':'+idx;
+  state.admin.qtyBusy = key; render();
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL
+      + '?action=setItemQty&pw=' + encodeURIComponent(state.admin.pw)
+      + '&id=' + encodeURIComponent(id) + '&idx=' + idx + '&qty=' + encodeURIComponent(qty));
+    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل التحديث');
+    const it = (state.admin.items[id]||[])[idx];
+    if(it){ it.qty = d.qty; it.produced = d.produced; }
+    applyOrderTotals_(id, d.totals);
+    delete state.admin.qtyEdit[key];
+    toast('اتحدّثت الكمية');
+  }catch(err){
+    toast('تعذّر التحديث: ' + (err.message || err));
+  }
+  state.admin.qtyBusy = null; render();
+}
+
+// بيحذف صنف واحد من طلب وبيحدّث إجماليات الطلب في القايمة
+async function deleteOrderItem_(id, idx){
+  const key = id+':'+idx;
+  state.admin.itemDelBusy = key; render();
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL
+      + '?action=deleteOrderItem&pw=' + encodeURIComponent(state.admin.pw)
+      + '&id=' + encodeURIComponent(id) + '&idx=' + idx);
+    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل الحذف');
+    if(state.admin.items[id]) state.admin.items[id].splice(idx,1);
+    applyOrderTotals_(id, d.totals);
+    toast('اتحذف الصنف');
+  }catch(err){
+    toast('تعذّر الحذف: ' + (err.message || err));
+  }
+  state.admin.itemDelBusy = null; render();
+}
+
+// بيحدّث qty/rods/total لسطر الطلب في state.admin.rows/archRows بعد أي تعديل يدوي على أصنافه
+function applyOrderTotals_(id, totals){
+  if(!totals) return;
+  [state.admin.rows, state.admin.archRows].forEach(list=>{
+    const o = (list||[]).find(x=>String(x.id)===String(id));
+    if(o){ o.qty = totals.qty; o.rods = totals.rods; o.total = totals.total; }
+  });
 }
 
 // بيحدّث الكمية المنتجة فعليًا لصنف معيّن جوه طلب (تتبّع الإنتاج الجزئي — عميل طلب 5 مثلًا واتنتج 3 لسه)
@@ -2053,7 +2132,7 @@ function buildPendingDoorsData_(orders){
       const widths = Object.keys(groups).sort((a,b)=>{
         if(a==='خاص') return 1; if(b==='خاص') return -1; return Number(a)-Number(b);
       });
-      return { id:o.id, date:o.date, customer:o.customer||'', groups, widths };
+      return { id:o.id, date:o.date, customer:o.customer||'', phone:o.customerPhone||o.phone||'', groups, widths };
     });
     const total = ords.reduce((s,o)=>s+(o.items||[]).filter(it=>it.type==='Door').reduce((s2,it)=>s2+(Number(it.qty)||0),0),0);
     return { name, perOrder, total };
@@ -2220,101 +2299,98 @@ async function exportProductionReportPdf_(){
 }
 
 
-function pendingDoorsHTML(data){
-  // ألوان مختلفة لكل عميل عشان يتفرقوا بسرعة (عميل ١ بلون، اللي بعده بلون تاني، وهكذا)
-  // الألوان دي بتتحط بس على الهيدر والتجميعات (اسم العميل، طلب N، مقاس X، الإجماليات) — مش على الجدول نفسه
-  const CUST_TINT = [
-    {line:'#1080C0', head:'#EAF2FA'},
-    {line:'#C08A3E', head:'#FBF0E1'},
-    {line:'#3E9B72', head:'#E7F5EE'},
-    {line:'#7C63C4', head:'#F0EAFB'},
-    {line:'#C25454', head:'#FBE7E7'},
-    {line:'#2C8FA3', head:'#E3F3F7'}
-  ];
-  const orderMeta = o=>{
-    const days = daysSince_(o.date);
-    return 'تاريخ الطلب: '+esc(o.date||'—')+(days!=null?' — عدد أيام الانتظار: '+days+' يوم':'');
-  };
-  const custBlocks = data.map((cust,ci)=>{
-    const tint = CUST_TINT[ci % CUST_TINT.length];
-    const single = cust.perOrder.length===1;
-    const orderBlocks = cust.perOrder.map((o,oi)=>{
-      const sizeBlocks = o.widths.map(w=>{
-        const items = o.groups[w];
-        const sizeTotal = items.reduce((s,it)=>s+(Number(it.qty)||0),0);
-        const rowsHtml = items.map((it,idx)=>{
-          const doorImg = (DOORS.find(d=>d.code===it.code)||{}).img;
-          const zebra = idx%2===1 ? 'background:#F6F8FA' : 'background:#FFFFFF';
-          return `
-          <tr style="${zebra}">
-            <td style="text-align:center;padding:7px 6px;border-bottom:1px solid #E7EBF0">
-              <div style="display:flex;align-items:center;justify-content:center;gap:6px">
-                ${doorImg?`<img src="${doorImg}" style="width:24px;height:24px;object-fit:cover;border-radius:5px;border:1px solid #DCE4EC">`:''}
-                <span style="font-weight:700;color:#233246">${esc(it.code||'')}</span>
-              </div>
-            </td>
-            <td style="text-align:center;padding:7px 6px;border-bottom:1px solid #E7EBF0;font-weight:700;color:#233246">${esc(it.qty||0)}</td>
-            <td style="text-align:center;padding:7px 6px;border-bottom:1px solid #E7EBF0;color:#4B5A6B">${esc(it.frame?frameText_(it.frame,it.frameHeight):'—')}</td>
-            <td style="text-align:center;padding:7px 6px;border-bottom:1px solid #E7EBF0;color:#4B5A6B">${esc(it.dbror||'—')}</td>
-          </tr>`;
-        }).join('');
-        return `<div style="margin-top:9px">
-          <div style="font-weight:700;color:${tint.line};font-size:11.5px;border-bottom:2px solid ${tint.line};padding-bottom:3px;display:inline-block">🚪 مقاس ${w==='خاص'?'خاص':esc(w)+' سم'}</div>
-          <div style="border:1px solid #E3E7EC;border-radius:6px;overflow:hidden;margin-top:5px">
-            <table style="width:100%;border-collapse:collapse;font-size:11px">
-              <thead><tr style="background:#12314F">
-                <th style="padding:7px 6px;color:#fff;font-weight:700">نوع الباب</th>
-                <th style="padding:7px 6px;color:#fff;font-weight:700">العدد</th>
-                <th style="padding:7px 6px;color:#fff;font-weight:700">حلق</th>
-                <th style="padding:7px 6px;color:#fff;font-weight:700">برور</th>
-              </tr></thead>
-              <tbody>${rowsHtml}</tbody>
-            </table>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;background:#F3F6FA;border-radius:5px;padding:5px 10px;margin-top:5px">
-            <span style="font-size:10.5px;color:#5B6B7D">إجمالي مقاس ${w==='خاص'?'خاص':esc(w)}</span>
-            <span style="font-size:12.5px;font-weight:700;color:${tint.line}">${sizeTotal} باب</span>
-          </div>
-        </div>`;
-      }).join('');
-      const orderLabel = single ? '' : `<span style="display:inline-block;background:${tint.head};color:${tint.line};font-weight:700;font-size:11px;padding:3px 11px;border-radius:20px">طلب ${oi+1}</span>`;
-      const metaLine = single ? '' : `<div style="font-size:10.5px;color:#8A97A6;margin-top:4px">${orderMeta(o)}</div>`;
-      return `<div style="margin-top:11px;padding:10px 12px;background:#FBFCFD;border:1px solid #E3E7EC;border-radius:9px">
-        ${orderLabel}${metaLine}
-        ${sizeBlocks || '<div style="font-size:11px;color:#8A97A6;padding:4px 0">مفيش أبواب في الطلب ده</div>'}
-      </div>`;
-    }).join('');
-    // الهيدر: صاحب الطلب — ولو طلب واحد بس، تاريخه وعدد أيامه بيتحطوا في نفس الهيدر
-    const headerMeta = single ? orderMeta(cust.perOrder[0]) : '';
-    return `<div style="margin-top:16px;border:1px solid #DCE4EC;border-radius:11px;overflow:hidden;break-inside:avoid">
-      <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:15px;font-weight:700;color:#fff;background:${tint.line};padding:9px 14px">
-        صاحب الطلب: ${esc(cust.name)}${headerMeta?` <span style="font-weight:400;font-size:11.5px;opacity:.92">— ${headerMeta}</span>`:''}
-      </div>
-      <div style="padding:10px 12px 12px">
-        ${orderBlocks}
-        <div style="margin-top:11px;padding:8px 13px;background:${tint.head};border-radius:8px;display:flex;justify-content:space-between;align-items:center">
-          <span style="font-weight:700;font-size:13px;color:#233246">إجمالي ${esc(cust.name)}</span>
-          <span style="font-weight:700;font-size:20px;color:${tint.line}">${cust.total} باب</span>
-        </div>
-      </div>
-    </div>`;
+// نوتة صنف واحد: بتجمع معلومات الحلق الإضافي/البرور في سطر ملاحظات واحد — زي النموذج المطلوب بالظبط
+function itemNote_(it){
+  const parts=[];
+  if(it.frame) parts.push('مع حلق اضافي '+it.frame+' سم'+(it.frameHeight?' (ارتفاع '+it.frameHeight+' سم)':''));
+  if(it.dbror) parts.push('بار'+it.dbror);
+  return parts.join(' — ') || '';
+}
+function itemStatus_(it){
+  const qty = Number(it.qty)||0;
+  const produced = Number(it.produced)||0;
+  if(qty>0 && produced>=qty) return {txt:'مكتمل ✔', color:'#1E8E52'};
+  if(produced>0) return {txt:'جزئي ('+produced+'/'+qty+')', color:'#B8790A'};
+  return {txt:'قيد التصنيع', color:'#B3261E'};
+}
+
+// بيبني "طلبية" واحدة بنفس شكل نموذج الأوردر بتاع المصنع: بيانات العميل فوق، وجدول أرقام مسلسل
+// (م / كود الباب / المقاس / الكمية / الحالة / ملاحظات) — ده الشكل اللي هيتصدّر PDF و Excel
+function orderFormCardHTML_(o){
+  const rows = [];
+  o.widths.forEach(w=>{
+    o.groups[w].forEach(it=>{ rows.push(it); });
+  });
+  const total = rows.reduce((s,it)=>s+(Number(it.qty)||0),0);
+  const trs = rows.map((it,idx)=>{
+    const st = itemStatus_(it);
+    const zebra = idx%2===1 ? 'background:#F6F8FA' : 'background:#FFFFFF';
+    return `<tr style="${zebra}">
+      <td style="text-align:center;padding:7px 5px;border-bottom:1px solid #E7EBF0;color:#6B7A8C">${idx+1}</td>
+      <td style="text-align:center;padding:7px 5px;border-bottom:1px solid #E7EBF0;font-weight:700;color:#233246">${esc(it.code||'')}</td>
+      <td style="text-align:center;padding:7px 5px;border-bottom:1px solid #E7EBF0;color:#4B5A6B">${esc(it.size||'')}</td>
+      <td style="text-align:center;padding:7px 5px;border-bottom:1px solid #E7EBF0;font-weight:700;color:#233246">${Number(it.qty)||0}</td>
+      <td style="text-align:center;padding:7px 5px;border-bottom:1px solid #E7EBF0;font-weight:700;color:${st.color};white-space:nowrap">${st.txt}</td>
+      <td style="text-align:center;padding:7px 5px;border-bottom:1px solid #E7EBF0;color:#4B5A6B;font-size:10.5px">${esc(itemNote_(it))||'—'}</td>
+    </tr>`;
   }).join('');
 
+  return `<div style="margin-top:16px;border:1px solid #DCE4EC;border-radius:11px;overflow:hidden;break-inside:avoid">
+    <div style="display:flex;align-items:center;gap:12px;background:#002050;padding:10px 14px">
+      <img src="${ASSETS.logo}" style="height:34px;width:auto">
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:700;color:#fff">${esc(COMPANY_AR)}</div>
+        <div style="font-size:10px;color:#AFC6E0">WPC Doors Order Form — نموذج طلب أوردر</div>
+      </div>
+      <div style="font-size:10.5px;color:#AFC6E0">${esc(o.id||'')}</div>
+    </div>
+    <div style="padding:10px 14px 4px;display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;font-size:11.5px;background:#FBFCFD;border-bottom:1px solid #E3E7EC">
+      <div><span style="color:#8A97A6">اسم العميل: </span><b style="color:#233246">${esc(o.customer||'—')}</b></div>
+      <div><span style="color:#8A97A6">رقم الهاتف: </span><b style="color:#233246">${esc(o.phone||'—')}</b></div>
+      <div><span style="color:#8A97A6">تاريخ الطلب: </span><b style="color:#233246">${esc(o.date||'—')}</b></div>
+      <div><span style="color:#8A97A6">موعد التسليم المطلوب: </span><b style="color:#233246">—</b></div>
+    </div>
+    <div style="padding:10px 12px 12px">
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead><tr style="background:#12314F">
+          <th style="padding:7px 5px;color:#fff;font-weight:700">م</th>
+          <th style="padding:7px 5px;color:#fff;font-weight:700">كود الباب</th>
+          <th style="padding:7px 5px;color:#fff;font-weight:700">المقاس (سم)</th>
+          <th style="padding:7px 5px;color:#fff;font-weight:700">الكمية</th>
+          <th style="padding:7px 5px;color:#fff;font-weight:700">الحالة</th>
+          <th style="padding:7px 5px;color:#fff;font-weight:700">ملاحظات</th>
+        </tr></thead>
+        <tbody>${trs || `<tr><td colspan="6" style="text-align:center;padding:10px;color:#8A97A6">مفيش أبواب في الطلب ده</td></tr>`}</tbody>
+      </table>
+      <div style="display:flex;justify-content:space-between;align-items:center;background:#EAF2FA;border-radius:8px;padding:8px 13px;margin-top:9px">
+        <span style="font-weight:700;font-size:12.5px;color:#233246">إجمالي عدد الأبواب</span>
+        <span style="font-weight:700;font-size:18px;color:#1080C0">${total}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function pendingDoorsHTML(data){
   const now = new Date();
   const dateStr = now.toLocaleDateString('ar-EG');
   const timeStr = now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+  const codesTxt = DOORS.map(d=>d.code).join('، ');
+  const cards = data.map(cust=>cust.perOrder.map(o=>orderFormCardHTML_(o)).join('')).join('');
 
   return `
   <div style="font-family:Arial,'Helvetica Neue',sans-serif;direction:rtl;background:#fff;padding:30px 26px;color:#14243A;">
     <div style="display:flex;align-items:center;gap:14px;border-bottom:3px solid #1080C0;padding-bottom:12px">
       <img src="${ASSETS.logo}" style="height:48px;width:auto">
       <div style="flex:1">
-        <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:19px;font-weight:700;color:#002050">تقرير الأبواب المعلّقة</div>
+        <div style="font-size:19px;font-weight:700;color:#002050">تقرير الأبواب المعلّقة</div>
         <div style="font-size:11px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} — ${dateStr} — الساعة ${timeStr} — الطلبات اللي لسه ما اتسلّمتش</div>
       </div>
       <div style="font-size:12px;color:#6B7A8C">عدد العملاء: ${data.length}</div>
     </div>
-    ${custBlocks}
+    ${cards}
+    <div style="margin-top:16px;padding:9px 13px;background:#F7F9FB;border-radius:8px;font-size:10px;color:#6B7A8C">
+      الأكواد المتاحة: ${esc(codesTxt)} | المقاسات المتاحة (سم): 60، 70، 80، 90، 100
+    </div>
   </div>`;
 }
 
@@ -2334,19 +2410,21 @@ async function buildPendingDoorsExcel_(orders){
   const NAVY='FF002050', TABLE_HDR='FF12314F', LIGHT='FFEAF2FA', WHITE='FFFFFFFF', ZEBRA='FFF6F8FA', BORDER_CLR='FFDCE4EC';
   const thin = {style:'thin', color:{argb:BORDER_CLR}};
   const border = {top:thin,left:thin,right:thin,bottom:thin};
-  const COLS = 4;
+  const COLS = 6;
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('الأبواب المعلّقة', { views:[{ rightToLeft:true }] });
   ws.columns = [
-    { key:'code', width:14 },
-    { key:'qty',  width:10 },
-    { key:'frame',width:24 },
-    { key:'bror', width:14 }
+    { key:'no',    width:5  },
+    { key:'code',  width:13 },
+    { key:'size',  width:12 },
+    { key:'qty',   width:9  },
+    { key:'status',width:15 },
+    { key:'note',  width:32 }
   ];
 
   function mergedRow(text, fillArgb, fontArgb, bold, size){
-    const r = ws.addRow([text,'','','']);
+    const r = ws.addRow([text,'','','','','']);
     ws.mergeCells(r.number,1,r.number,COLS);
     r.eachCell(c=>{
       c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:fillArgb}};
@@ -2356,69 +2434,62 @@ async function buildPendingDoorsExcel_(orders){
     r.height = 20;
     return r;
   }
+  function infoRow(label, value){
+    const r = ws.addRow([label+': '+(value||'—'),'','','','','']);
+    ws.mergeCells(r.number,1,r.number,COLS);
+    r.eachCell(c=>{ c.font={name:'Arial', size:10.5, color:{argb:'FF233246'}}; c.alignment={horizontal:'right'}; });
+    return r;
+  }
 
   const now = new Date();
   const dateTimeStr = now.toLocaleDateString('ar-EG') + ' — الساعة ' + now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
   mergedRow('تقرير الأبواب المعلّقة  —  '+dateTimeStr, NAVY, WHITE, true, 13);
   ws.addRow([]);
 
-  // لون مختلف لكل عميل عشان يتفرقوا بسرعة — بيتحط بس على هيدر العميل والتجميعات والإجماليات
-  const CUST_FILL = ['FF1080C0','FFC08A3E','FF3E9B72','FF7C63C4','FFC25454','FF2C8FA3'];
-  const CUST_TINT = ['FFF4F9FD','FFFBF4EC','FFF3F8F5','FFF7F4FB','FFFDF3F3','FFF1F8FB'];
+  data.forEach(cust=>{
+    cust.perOrder.forEach(o=>{
+      mergedRow(COMPANY_AR+' — WPC Doors Order Form', TABLE_HDR, WHITE, true, 12);
+      infoRow('اسم العميل', o.customer);
+      infoRow('رقم الهاتف', o.phone);
+      infoRow('تاريخ الطلب', o.date);
+      infoRow('موعد التسليم المطلوب', '—');
 
-  const orderMetaTxt = o=>{
-    const days = daysSince_(o.date);
-    return 'تاريخ الطلب: '+(o.date||'—')+(days!=null?'  —  عدد أيام الانتظار: '+days+' يوم':'');
-  };
+      const hdr = ws.addRow(['م','كود الباب','المقاس (سم)','الكمية','الحالة','ملاحظات']);
+      hdr.eachCell(c=>{
+        c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:TABLE_HDR}};
+        c.font = {bold:true, color:{argb:WHITE}, name:'Arial', size:10.5};
+        c.alignment = {horizontal:'center'};
+        c.border = border;
+      });
 
-  data.forEach((cust,ci)=>{
-    const fill = CUST_FILL[ci % CUST_FILL.length];
-    const tint = CUST_TINT[ci % CUST_TINT.length];
-    const single = cust.perOrder.length===1;
-
-    // الهيدر: صاحب الطلب — ولو طلب واحد بس، تاريخه وعدد أيامه بيتحطوا في نفس السطر
-    const headerTxt = 'صاحب الطلب: '+cust.name + (single ? '  —  '+orderMetaTxt(cust.perOrder[0]) : '');
-    mergedRow(headerTxt, fill, WHITE, true, 14);
-
-    cust.perOrder.forEach((o,oi)=>{
-      if(!single){
-        mergedRow('طلب '+(oi+1)+'  —  '+orderMetaTxt(o), tint, NAVY, true, 11);
-      }
-      // ما تظهرش قايمة مقاس أصلًا لو مفيش أبواب بيه — o.widths أصلًا بتشمل المقاسات الموجودة بس
-      o.widths.forEach(w=>{
-        const sizeLabel = w==='خاص' ? 'أبواب مقاس خاص' : ('أبواب مقاس '+w+' سم');
-        mergedRow('🚪 '+sizeLabel, fill, WHITE, false, 11);
-
-        const hdr = ws.addRow(['نوع الباب','العدد','حلق','برور']);
-        hdr.eachCell(c=>{
-          c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:TABLE_HDR}};
-          c.font = {bold:true, color:{argb:WHITE}, name:'Arial', size:10.5};
+      const rows = [];
+      o.widths.forEach(w=> o.groups[w].forEach(it=> rows.push(it)));
+      let total = 0;
+      rows.forEach((it,idx)=>{
+        const qty = Number(it.qty)||0, produced = Number(it.produced)||0;
+        total += qty;
+        const status = (qty>0 && produced>=qty) ? 'مكتمل ✔' : (produced>0 ? 'جزئي ('+produced+'/'+qty+')' : 'قيد التصنيع');
+        const row = ws.addRow([idx+1, it.code||'', it.size||'', qty, status, itemNote_(it)||'—']);
+        row.eachCell(c=>{
           c.alignment = {horizontal:'center'};
           c.border = border;
+          c.font = {name:'Arial', size:10.5};
+          c.fill = {type:'pattern',pattern:'solid',fgColor:{argb: idx%2===1 ? ZEBRA : WHITE}};
         });
-
-        o.groups[w].forEach((it,idx)=>{
-          const row = ws.addRow([
-            it.code||'', Number(it.qty)||0,
-            it.frame ? frameText_(it.frame, it.frameHeight) : '—',
-            it.dbror || '—'
-          ]);
-          row.eachCell(c=>{
-            c.alignment = {horizontal:'center'};
-            c.border = border;
-            c.font = {name:'Arial', size:10.5};
-            c.fill = {type:'pattern',pattern:'solid',fgColor:{argb: idx%2===1 ? ZEBRA : WHITE}};
-          });
-        });
-
-        const sizeTotal = o.groups[w].reduce((s,it)=>s+(Number(it.qty)||0),0);
-        mergedRow('إجمالي '+sizeLabel+':  '+sizeTotal+' باب', LIGHT, NAVY, true, 11);
       });
-    });
+      if(!rows.length){
+        const row = ws.addRow(['—','مفيش أبواب في الطلب ده','','','','']);
+        ws.mergeCells(row.number,2,row.number,6);
+        row.eachCell(c=>{ c.border=border; c.alignment={horizontal:'center'}; c.font={name:'Arial', size:10.5, color:{argb:'FF8A97A6'}}; });
+      }
 
-    mergedRow('إجمالي '+cust.name+':  '+cust.total+' باب', tint, NAVY, true, 20);
-    ws.addRow([]);
+      mergedRow('إجمالي عدد الأبواب:  '+total, LIGHT, NAVY, true, 12);
+      ws.addRow([]);
+    });
   });
+
+  const codesTxt = DOORS.map(d=>d.code).join('، ');
+  mergedRow('الأكواد المتاحة: '+codesTxt+'  |  المقاسات المتاحة (سم): 60، 70، 80، 90، 100', 'FFF7F9FB', 'FF6B7A8C', false, 9.5);
 
   // هامش الطباعة: رقم الصفحة بس (من غير سطر إعداد)
   wb.worksheets.forEach(w=>{
@@ -2832,21 +2903,45 @@ function viewAdminPrices(){
 
 // جدول تتبّع الإنتاج لكل أصناف الطلب: الصنف / المقاس / المطلوب / الجاهز / المتبقي
 // لمسة على أي صف تفتح خانة تعديل الكمية الجاهزة وتحفظها في الشيت
+// لو qtyMode=true: بيتحول الجدول لوضع تعديل الكمية المطلوبة نفسها + حذف الصنف (بدل تسجيل الجاهز)
 function sizeText_(it){
   if(it.type==='Door') return arabicSizeText_(it.size||'');
   if(it.type==='Frame') return (it.size||'')+(it.frameHeight?' (ارتفاع '+it.frameHeight+' سم)':'');
   return it.size||'—';
 }
-function prodTableHTML_(oid, its, a){
+function prodTableHTML_(oid, its, a, qtyMode){
   const rows = its.map((it,idx)=>{
     const key = oid+':'+idx;
     const qty = Number(it.qty)||0;
     const produced = Math.max(0, Math.min(qty, Number(it.produced)||0));
     const pending = qty - produced;
     const full = qty>0 && produced>=qty;
+    const title = esc(arabicItemTitle_(it)) + (it.type==='Door'&&it.code?' ('+esc(it.code)+')':'');
+
+    if(qtyMode){
+      const qKey = oid+':'+idx;
+      const qBusy = a.qtyBusy === qKey;
+      const dBusy = a.itemDelBusy === qKey;
+      const draft = a.qtyEdit.hasOwnProperty(qKey) ? a.qtyEdit[qKey] : qty;
+      return `<tr>
+        <td style="padding:6px 7px;text-align:right;font-size:11px">${title}</td>
+        <td style="padding:6px 5px;text-align:center;font-size:11px;color:#4B5A6B;white-space:nowrap">${esc(sizeText_(it))}</td>
+        <td style="padding:6px 5px;text-align:center" colspan="2">
+          <div style="display:flex;align-items:center;justify-content:center;gap:4px">
+            <input type="number" inputmode="numeric" min="1" value="${esc(draft)}"
+              data-act="item-qty-set" data-id="${esc(oid)}" data-idx="${idx}"
+              style="width:48px;text-align:center;border:1px solid var(--line);border-radius:6px;padding:4px 2px;font-size:12px;font-weight:700">
+            <button class="btn sm" data-act="adm-qty-save" data-id="${esc(oid)}" data-idx="${idx}" ${qBusy?'disabled':''} style="font-size:10px;padding:4px 6px">${qBusy?'…':'✅'}</button>
+          </div>
+        </td>
+        <td style="padding:6px 5px;text-align:center">
+          <button class="btn act-del sm" data-act="adm-item-del" data-id="${esc(oid)}" data-idx="${idx}" ${dBusy?'disabled':''} style="font-size:10px;padding:4px 6px">${dBusy?'…':ico('trash')}</button>
+        </td>
+      </tr>`;
+    }
+
     const editing = a.prodEdit.hasOwnProperty(key);
     const busy = a.prodBusy === key;
-    const title = esc(arabicItemTitle_(it)) + (it.type==='Door'&&it.code?' ('+esc(it.code)+')':'');
 
     const readyCell = editing
       ? `<div style="display:flex;align-items:center;justify-content:center;gap:4px">
@@ -2875,55 +2970,14 @@ function prodTableHTML_(oid, its, a){
   return `<div style="overflow-x:auto;margin-top:6px">
     <table class="stktbl" style="min-width:0">
       <thead><tr>
-        <th style="text-align:right">الصنف</th><th>المقاس</th><th>مطلوب</th><th>جاهز</th><th>متبقي</th>
+        ${qtyMode
+          ? `<th style="text-align:right">الصنف</th><th>المقاس</th><th colspan="2">الكمية</th><th>حذف</th>`
+          : `<th style="text-align:right">الصنف</th><th>المقاس</th><th>مطلوب</th><th>جاهز</th><th>متبقي</th>`}
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
   </div>`;
 }
-
-// صف تتبّع الإنتاج لصنف واحد — عرض عادي: سطر مقسوم بصريًا (جاهز أخضر / لسه برتقالي) بنسبة الكميات.
-// لمسة عليه تفتح وضع تعديل: خانة رقم + حفظ/إلغاء، عشان تكتب الكمية الجاهزة فعليًا وتحفظها في الشيت.
-function prodRowHTML_(oid, idx, it, a){
-  const key = oid+':'+idx;
-  const qty = Number(it.qty)||0;
-  const produced = Math.max(0, Math.min(qty, Number(it.produced)||0));
-  const pending = qty - produced;
-  const full = qty>0 && produced>=qty;
-  const editing = a.prodEdit.hasOwnProperty(key);
-  const busy = a.prodBusy === key;
-  const title = esc(arabicItemTitle_(it)) + (it.type==='Door'&&it.code?' ('+esc(it.code)+')':'');
-
-  if(editing){
-    const draft = a.prodEdit[key];
-    return `<div style="border:1px solid var(--line);border-radius:10px;overflow:hidden">
-      <div style="padding:8px 11px;font-size:11.5px;font-weight:700;background:#F7F9FB">${title} <span style="color:#6B7A8C;font-weight:400">(إجمالي ${qty})</span></div>
-      <div style="display:flex;align-items:center;gap:8px;padding:8px 11px">
-        <span style="font-size:11px;color:#6B7A8C">الكمية الجاهزة:</span>
-        <input type="number" inputmode="numeric" min="0" max="${qty}" value="${esc(draft)}"
-          data-act="prod-set" data-id="${esc(oid)}" data-idx="${idx}"
-          style="width:64px;text-align:center;border:1px solid var(--line);border-radius:8px;padding:6px 4px;font-size:13px;font-weight:700">
-        <span style="font-size:11px;color:#6B7A8C">من ${qty}</span>
-        <span style="flex:1"></span>
-        <button class="btn sm" data-act="adm-prod-save" data-id="${esc(oid)}" data-idx="${idx}" ${busy?'disabled':''} style="font-size:11px;padding:5px 10px">${busy?'…':'✅ حفظ'}</button>
-        <button class="btn ghost sm" data-act="adm-prod-cancel" data-id="${esc(oid)}" data-idx="${idx}" ${busy?'disabled':''} style="font-size:11px;padding:5px 10px">إلغاء</button>
-      </div>
-    </div>`;
-  }
-
-  const doneFlex = qty>0 ? produced : 1;
-  const pendFlex = qty>0 ? pending : 0;
-  const segs = [];
-  if(produced>0) segs.push(`<div style="flex:${doneFlex};padding:8px 10px;font-size:11px;background:#E7F6EC;color:#1E8E52;display:flex;flex-direction:column;gap:1px;min-width:0"><span>${full?'✅ جاهز بالكامل':'✅ جاهز'}</span><b style="font-size:14px">${produced}</b></div>`);
-  if(pending>0) segs.push(`<div style="flex:${pendFlex};padding:8px 10px;font-size:11px;background:#FFF4E0;color:#B8790A;display:flex;flex-direction:column;gap:1px;min-width:0"><span>⏳ لسه في التصنيع</span><b style="font-size:14px">${pending}</b></div>`);
-  if(!segs.length) segs.push(`<div style="flex:1;padding:8px 10px;font-size:11px;color:#6B7A8C">لا توجد كمية</div>`);
-
-  return `<div data-act="adm-prod-edit-open" data-id="${esc(oid)}" data-idx="${idx}" style="border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer">
-    <div style="padding:8px 11px;font-size:11.5px;font-weight:700;background:#F7F9FB">${title} <span style="color:#6B7A8C;font-weight:400">(إجمالي ${qty})</span></div>
-    <div style="display:flex">${segs.join('')}</div>
-  </div>`;
-}
-
 
 function viewAdmin(){
 
@@ -3045,27 +3099,34 @@ function viewAdmin(){
     }).join('');
 
     const itemsOpen = !!a.itemsOpen[o.id];
+    const qtyMode = !!a.qtyEditOpen[o.id];
     const its = a.items[o.id];
     let itemsHtml = '';
     if(itemsOpen){
+      if(qtyMode){
+        const meta = a.metaEdit[o.id] || {customer:o.customer||'', date:o.date||''};
+        const metaBusy = a.metaBusy === o.id;
+        itemsHtml += `<div style="margin-top:8px;padding:9px 10px;background:#F7F9FB;border:1px solid var(--line);border-radius:10px">
+          <div style="font-size:11px;color:#6B7A8C;font-weight:700;margin-bottom:6px">بيانات الطلب:</div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <label style="flex:1;min-width:140px;display:flex;flex-direction:column;gap:3px">
+              <span style="font-size:10.5px;color:#6B7A8C">صاحب الأوردر</span>
+              <input type="text" value="${esc(meta.customer)}" data-act="meta-customer" data-id="${esc(o.id)}"
+                style="border:1px solid var(--line);border-radius:8px;padding:7px 8px;font-size:12px">
+            </label>
+            <label style="flex:1;min-width:120px;display:flex;flex-direction:column;gap:3px">
+              <span style="font-size:10.5px;color:#6B7A8C">تاريخ الطلب</span>
+              <input type="date" value="${esc(meta.date)}" data-act="meta-date" data-id="${esc(o.id)}"
+                style="border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px">
+            </label>
+          </div>
+          <button class="btn sm" data-act="adm-meta-save" data-id="${esc(o.id)}" ${metaBusy?'disabled':''} style="margin-top:7px;font-size:11px;padding:6px 12px">${metaBusy?'…':'💾 حفظ بيانات الطلب'}</button>
+        </div>`;
+      }
       if(its && its.length){
         itemsHtml += `<div style="margin-top:8px">
-          <div style="font-size:11px;color:#6B7A8C;font-weight:700;margin-bottom:4px">تتبّع الإنتاج (لمسة على أي صف لتحديث الكمية الجاهزة):</div>
-          ${prodTableHTML_(o.id, its, a)}
-        </div>`;
-        itemsHtml += `<div style="margin-top:11px;display:flex;flex-direction:column;gap:5px">
-          <div style="font-size:11px;color:#6B7A8C;font-weight:700">تحديد الأصناف الغير متاحة:</div>
-          ${its.map((it,idx)=>{
-            const ib = a.itemBusy === (o.id+':'+idx);
-            const unavail = it.avail===false;
-            return `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:8px;background:${unavail?'#FDECEA':'#F7F9FB'}">
-              <span style="flex:1;font-size:11px;${unavail?'color:#B3261E':''}">${esc(arabicItemTitle_(it))}</span>
-              <button class="btn ${unavail?'ghost':'sm'}" data-act="adm-item-avail" data-id="${esc(o.id)}" data-idx="${idx}" data-avail="${unavail?1:0}"
-                ${ib?'disabled':''} style="font-size:10px;padding:4px 7px;white-space:nowrap;${unavail?'border-color:#B3261E;color:#B3261E':''}">
-                ${ib?'…':(unavail?'❌ غير متاح':'✅ متاح')}
-              </button>
-            </div>`;
-          }).join('')}
+          <div style="font-size:11px;color:#6B7A8C;font-weight:700;margin-bottom:4px">${qtyMode?'تعديل الكمية المطلوبة أو حذف صنف من الطلب:':'تتبّع الإنتاج (لمسة على أي صف لتحديث الكمية الجاهزة):'}</div>
+          ${prodTableHTML_(o.id, its, a, qtyMode)}
         </div>`;
       } else {
         itemsHtml += `<div class="note">جارٍ تحميل الأصناف…</div>`;
@@ -3073,7 +3134,8 @@ function viewAdmin(){
     }
 
     const actionBtns = `<button class="btn ${itemsOpen?'brand':'act-edit'} sm" data-act="adm-toggle-items" data-id="${esc(o.id)}">${ico("box")}${itemsOpen?'إخفاء':'الأصناف'}</button>
-         <button class="btn act-edit sm" data-act="adm-edit" data-id="${esc(o.id)}">${ico("edit")}تعديل</button>
+         <button class="btn ${qtyMode?'brand':'act-edit'} sm" data-act="adm-toggle-qtymode" data-id="${esc(o.id)}">${ico("edit")}تعديل</button>
+         <button class="btn act-edit sm" data-act="adm-add-items" data-id="${esc(o.id)}"><i>➕</i>إضافة</button>
          <button class="btn act-send sm" data-act="adm-share" data-id="${esc(o.id)}">${ico("send")}إرسال</button>
          <button class="btn act-money sm" data-act="adm-quote" data-id="${esc(o.id)}"><i>💰</i>سعر</button>
          ${viewingArchive?`<button class="btn act-tool sm" data-act="adm-unarchive" data-id="${esc(o.id)}" ${archBusy?'disabled':''}>${ico("refresh")}${archBusy?'…':'رجّع'}</button>`:''}
@@ -3215,6 +3277,8 @@ document.addEventListener('click',e=>{
     case 'adm-reload': state.admin.viewArchive ? loadArchive(true) : adminLoad(); break;
     case 'adm-set':    setStatus(el.dataset.id, el.dataset.st); break;
     case 'adm-toggle-items': { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) toggleOrderItemsPreview(o); } break;
+    case 'adm-toggle-qtymode': { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) toggleQtyEditMode_(o); } break;
+    case 'adm-add-items': { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) adminEditOrder(o); } break;
     case 'adm-toggle-group': { const n=el.dataset.name; state.admin.groupOpen[n]=!state.admin.groupOpen[n]; render(); } break;
     case 'adm-group-pdf': exportCustomerPdf_(el.dataset.name); break;
     case 'adm-pdf':     { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) exportAdminOrderPdf(o); } break;
@@ -3269,11 +3333,35 @@ document.addEventListener('click',e=>{
       setItemProduced(el.dataset.id, Number(el.dataset.idx), Math.max(0, parseInt(draft,10)||0));
       break;
     }
+    case 'adm-qty-save': {
+      const key = el.dataset.id+':'+el.dataset.idx;
+      const draft = state.admin.qtyEdit[key];
+      const q = Math.max(1, parseInt(draft,10)||0);
+      if(!q){ toast('اكتب كمية أكبر من صفر'); break; }
+      setItemQty_(el.dataset.id, Number(el.dataset.idx), q);
+      break;
+    }
+    case 'adm-item-del': {
+      if(!confirm('حذف الصنف ده من الطلب؟')) break;
+      deleteOrderItem_(el.dataset.id, Number(el.dataset.idx));
+      break;
+    }
+    case 'adm-meta-save': {
+      const id = el.dataset.id;
+      const o=((state.admin.rows||[]).concat(state.admin.archRows||[])).find(x=>String(x.id)===String(id));
+      const meta = state.admin.metaEdit[id] || {customer:(o&&o.customer)||'', date:(o&&o.date)||''};
+      saveOrderMeta_(id, meta.customer, meta.date);
+      break;
+    }
     case 'adm-logout':
       state.admin={open:false, pw:'', loading:false, rows:null, err:'', busy:null,
         itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null, pendingCount:0,
         viewArchive:false, archRows:null, archLoading:false, archBusy:null,
-        viewStock:false, stockBusy:null, stockDraft:{}};
+        viewStock:false, stockBusy:null, stockDraft:{},
+        pricesOpen:false, priceEdit:null,
+        groupOpen:{}, groupPdfBusy:null,
+        qtyEditOpen:{}, qtyEdit:{}, qtyBusy:null, itemDelBusy:null,
+        prodEdit:{}, prodBusy:null};
       sessionStorage.removeItem('wpc_adm');
       if(adminPollTimer){ clearInterval(adminPollTimer); adminPollTimer=null; }
       updateAdmBadge(); render(); break;
@@ -3331,6 +3419,29 @@ document.addEventListener('input',e=>{
   if(a==='prod-set'){
     const key = el.dataset.id+':'+el.dataset.idx;
     state.admin.prodEdit[key] = el.value;
+    return;
+  }
+  if(a==='item-qty-set'){
+    const key = el.dataset.id+':'+el.dataset.idx;
+    state.admin.qtyEdit[key] = el.value;
+    return;
+  }
+  if(a==='meta-customer'){
+    const id = el.dataset.id;
+    if(!state.admin.metaEdit[id]){
+      const o=((state.admin.rows||[]).concat(state.admin.archRows||[])).find(x=>String(x.id)===String(id));
+      state.admin.metaEdit[id] = {customer:(o&&o.customer)||'', date:(o&&o.date)||''};
+    }
+    state.admin.metaEdit[id].customer = el.value;
+    return;
+  }
+  if(a==='meta-date'){
+    const id = el.dataset.id;
+    if(!state.admin.metaEdit[id]){
+      const o=((state.admin.rows||[]).concat(state.admin.archRows||[])).find(x=>String(x.id)===String(id));
+      state.admin.metaEdit[id] = {customer:(o&&o.customer)||'', date:(o&&o.date)||''};
+    }
+    state.admin.metaEdit[id].date = el.value;
     return;
   }
 });

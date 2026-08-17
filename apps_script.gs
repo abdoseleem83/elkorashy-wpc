@@ -311,6 +311,100 @@ function doGet(e) {
     }
 
     // تحديث الكمية المنتجة فعليًا لصنف معيّن جوه طلب (تتبّع الإنتاج الجزئي) — نفس منطق setItemAvail بالظبط
+    // تعديل الكمية المطلوبة لصنف معيّن جوه طلب (يدوي من شاشة المصنع، من غير ما يفتح "طلب جديد")
+    // بيحدّث سطر الصنف (الكمية + الإجمالي) وبعدين بيعيد حساب إجماليات الطلب كله (كمية/عيدان/مبلغ)
+    // تعديل بيانات الطلب الأساسية (اسم صاحب الأوردر / التاريخ) — يدوي من شاشة المصنع، من غير ما تفتح "طلب جديد"
+    if (action === 'setOrderMeta') {
+      if (!checkAdminPw_(e.parameter.pw)) {
+        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      }
+      var lockOM = LockService.getScriptLock();
+      try {
+        lockOM.waitLock(15000);
+        var shOM = sheet_(SHEET_ORDERS, HEAD_ORDERS);
+        var rOM = findRow_(shOM, e.parameter.id);
+        if (rOM < 0) return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
+        if (e.parameter.customer !== undefined) {
+          shOM.getRange(rOM, COL_CUSTOMER).setValue(String(e.parameter.customer || ''));
+        }
+        if (e.parameter.date) {
+          var dOM = new Date(String(e.parameter.date) + 'T00:00:00');
+          if (!isNaN(dOM.getTime())) shOM.getRange(rOM, 2).setValue(Utilities.formatDate(dOM, TZ, 'yyyy-MM-dd'));
+        }
+        return reply({ ok: true, id: e.parameter.id,
+          customer: shOM.getRange(rOM, COL_CUSTOMER).getValue(),
+          date: Utilities.formatDate(new Date(shOM.getRange(rOM, 2).getValue()), TZ, 'yyyy-MM-dd') }, cb);
+      } finally {
+        try { lockOM.releaseLock(); } catch (eOM) {}
+      }
+    }
+
+    if (action === 'setItemQty') {
+      if (!checkAdminPw_(e.parameter.pw)) {
+        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      }
+      var lockIQ = LockService.getScriptLock();
+      try {
+        lockIQ.waitLock(15000);
+        var shIQ = sheet_(SHEET_ITEMS, HEAD_ITEMS);
+        var idIQ = String(e.parameter.id || '');
+        var idxIQ = Number(e.parameter.idx || 0);
+        var newQtyIQ = Number(e.parameter.qty);
+        if (!newQtyIQ || newQtyIQ < 1) return reply({ ok: false, error: 'الكمية لازم تكون رقم أكبر من صفر' }, cb);
+        var lastIQ = shIQ.getLastRow();
+        if (lastIQ < 2) return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
+        var idsIQ = shIQ.getRange(2, 1, lastIQ - 1, 1).getValues();
+        var foundIQ = -1, countIQ = -1;
+        for (var iIQ = 0; iIQ < idsIQ.length; iIQ++) {
+          if (String(idsIQ[iIQ][0]) === idIQ) {
+            countIQ++;
+            if (countIQ === idxIQ) { foundIQ = iIQ + 2; break; }
+          }
+        }
+        if (foundIQ < 0) return reply({ ok: false, error: 'الصنف مش موجود' }, cb);
+        var unitPriceIQ = Number(shIQ.getRange(foundIQ, 12).getValue()) || 0;   // عمود Unit Price
+        var producedIQ = Number(shIQ.getRange(foundIQ, COL_ITEM_PRODUCED).getValue()) || 0;
+        if (producedIQ > newQtyIQ) producedIQ = newQtyIQ;   // ميفضلش "جاهز" أكبر من "مطلوب" بعد التعديل
+        shIQ.getRange(foundIQ, 11).setValue(newQtyIQ);                    // Qty
+        shIQ.getRange(foundIQ, 13).setValue(unitPriceIQ * newQtyIQ);      // Line Total
+        shIQ.getRange(foundIQ, COL_ITEM_PRODUCED).setValue(producedIQ);
+        var totalsIQ = recomputeOrderTotals_(idIQ);
+        return reply({ ok: true, qty: newQtyIQ, produced: producedIQ, totals: totalsIQ }, cb);
+      } finally {
+        try { lockIQ.releaseLock(); } catch (eIQ) {}
+      }
+    }
+
+    // حذف صنف واحد بس من طلب (يدوي من شاشة المصنع) وإعادة حساب إجماليات الطلب
+    if (action === 'deleteOrderItem') {
+      if (!checkAdminPw_(e.parameter.pw)) {
+        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      }
+      var lockDI = LockService.getScriptLock();
+      try {
+        lockDI.waitLock(15000);
+        var shDI = sheet_(SHEET_ITEMS, HEAD_ITEMS);
+        var idDI = String(e.parameter.id || '');
+        var idxDI = Number(e.parameter.idx || 0);
+        var lastDI = shDI.getLastRow();
+        if (lastDI < 2) return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
+        var idsDI = shDI.getRange(2, 1, lastDI - 1, 1).getValues();
+        var foundDI = -1, countDI = -1;
+        for (var iDI = 0; iDI < idsDI.length; iDI++) {
+          if (String(idsDI[iDI][0]) === idDI) {
+            countDI++;
+            if (countDI === idxDI) { foundDI = iDI + 2; break; }
+          }
+        }
+        if (foundDI < 0) return reply({ ok: false, error: 'الصنف مش موجود' }, cb);
+        shDI.deleteRow(foundDI);
+        var totalsDI = recomputeOrderTotals_(idDI);
+        return reply({ ok: true, totals: totalsDI }, cb);
+      } finally {
+        try { lockDI.releaseLock(); } catch (eDI) {}
+      }
+    }
+
     if (action === 'setItemProduced') {
       if (!checkAdminPw_(e.parameter.pw)) {
         return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
@@ -667,6 +761,32 @@ function saveOrder_(o) {
 }
 
 // بيرجّع رصيد أصناف طلب (قبل ما سطوره تتمسح) — بتتنادى من cancelOrder و deleteOrder
+// بيعيد حساب إجماليات طلب (الكمية / عدد العيدان / المبلغ الكلي) من سطور Order_Items بتاعته
+// ويحدّثهم في سطر الطلب بتبويب Orders — بتتنادى بعد أي تعديل يدوي على كمية/حذف صنف من شاشة المصنع
+function recomputeOrderTotals_(id) {
+  var shI = sheet_(SHEET_ITEMS, HEAD_ITEMS);
+  var lastI = shI.getLastRow();
+  var qty = 0, rods = 0, total = 0;
+  if (lastI >= 2) {
+    var valsI = shI.getRange(2, 1, lastI - 1, HEAD_ITEMS.length).getValues();
+    for (var i = 0; i < valsI.length; i++) {
+      if (String(valsI[i][0]) !== String(id)) continue;
+      var type = String(valsI[i][3] || '');
+      var q = Number(valsI[i][10]) || 0;
+      if (type === 'Frame' || type === 'Bror') rods += q; else qty += q;
+      total += Number(valsI[i][12]) || 0;
+    }
+  }
+  var shO = sheet_(SHEET_ORDERS, HEAD_ORDERS);
+  var r = findRow_(shO, id);
+  if (r > 0) {
+    shO.getRange(r, 8).setValue(qty);
+    shO.getRange(r, 9).setValue(rods);
+    shO.getRange(r, 10).setValue(total);
+  }
+  return { qty: qty, rods: rods, total: total };
+}
+
 function restoreStockForOrderId_(id){
   var shRS = sheet_(SHEET_ITEMS, HEAD_ITEMS);
   var lastRS = shRS.getLastRow();
