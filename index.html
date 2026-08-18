@@ -506,7 +506,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v79';
+const APP_BUILD   = 'v80';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2347,24 +2347,46 @@ function stockStatus_(code, size, qty){
 function customerTableHTML_(cust, tint){
   const items = mergedCustomerItems_(cust);
   const total = items.reduce((s,it)=>s+it.qty,0);
-  const trs = items.map((it,idx)=>{
+  const totalProduced = items.reduce((s,it)=>s+it.produced,0);
+  const totalPending = total-totalProduced;
+
+  const rowHTML_ = (it, idx, qtyVal, qtyColor) => {
     const zebra = idx%2===1 ? 'background:#FAFBFC' : 'background:#FFFFFF';
     const st = stockStatus_(it.code, it.size, it.qty);
     const stCell = st
       ? `<span style="display:inline-block;padding:2.5px 9px;border-radius:20px;font-size:9.5px;font-weight:700;background:${st.bg};color:${st.color};white-space:nowrap">${st.label}</span>`
       : `<span style="color:#B7C0CA;font-size:10px">—</span>`;
-    const pending = it.qty-it.produced;
     return `<tr style="${zebra}">
       <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;color:#4B5A6B">${esc(it.size)}</td>
       <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;font-weight:700;color:#233246">${esc(it.code)}</td>
-      <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;font-weight:700;color:${tint.line}">${it.qty}</td>
-      <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;color:#1E8E52">${it.produced}</td>
-      <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;${pending>0?'color:#B3261E;font-weight:700':'color:#6B7A8C'}">${pending}</td>
+      <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;font-weight:700;color:${qtyColor}">${qtyVal}</td>
       <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4">${stCell}</td>
       <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;color:#6B7A8C;font-size:10px">${esc(it.frame)||'—'}</td>
       <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;color:#6B7A8C;font-size:10px">${esc(it.dbror)||'—'}</td>
     </tr>`;
-  }).join('');
+  };
+
+  const readyItems = items.filter(it=>it.produced>0);
+  const pendingItems = items.filter(it=>(it.qty-it.produced)>0);
+
+  const subTable_ = (rows, headBg, headTxt, title, emptyTxt) => `
+    <div style="margin-top:${title==='جاهز للتسليم'?'0':'12px'}">
+      <div style="font-size:11.5px;font-weight:700;color:${headTxt};background:${headBg};padding:5px 10px;border-radius:6px 6px 0 0">${title}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead><tr style="background:#12314F">
+          <th style="padding:7px 6px;color:#fff;font-weight:700">المقاس</th>
+          <th style="padding:7px 6px;color:#fff;font-weight:700">الكود</th>
+          <th style="padding:7px 6px;color:#fff;font-weight:700">الكمية</th>
+          <th style="padding:7px 6px;color:#fff;font-weight:700">حالة المخزن</th>
+          <th style="padding:7px 6px;color:#fff;font-weight:700">الحلق</th>
+          <th style="padding:7px 6px;color:#fff;font-weight:700">البرور</th>
+        </tr></thead>
+        <tbody>${rows || `<tr><td colspan="6" style="text-align:center;padding:10px;color:#8A97A6;font-size:10.5px">${emptyTxt}</td></tr>`}</tbody>
+      </table>
+    </div>`;
+
+  const readyRows = readyItems.map((it,idx)=>rowHTML_(it, idx, it.produced, '#1E8E52')).join('');
+  const pendingRows = pendingItems.map((it,idx)=>rowHTML_(it, idx, it.qty-it.produced, '#B3261E')).join('');
 
   return `<div style="margin-top:18px;border:1px solid #E3E7EC;border-radius:13px;overflow:hidden;break-inside:avoid;box-shadow:0 1px 4px rgba(20,36,58,.06)">
     <div style="font-size:14px;font-weight:700;color:#fff;background:linear-gradient(135deg, ${tint.line}, ${tint.line}CC);padding:11px 16px;display:flex;align-items:center;justify-content:space-between">
@@ -2372,26 +2394,15 @@ function customerTableHTML_(cust, tint){
       <span style="font-size:10.5px;font-weight:400;opacity:.9">${items.length} صنف</span>
     </div>
     <div style="padding:12px 13px 13px">
-      <table style="width:100%;border-collapse:collapse;font-size:11px">
-        <thead><tr style="background:#12314F">
-          <th style="padding:8px 6px;color:#fff;font-weight:700;border-radius:6px 0 0 0">المقاس</th>
-          <th style="padding:8px 6px;color:#fff;font-weight:700">الكود</th>
-          <th style="padding:8px 6px;color:#fff;font-weight:700">الكمية</th>
-          <th style="padding:8px 6px;color:#fff;font-weight:700">جاهز</th>
-          <th style="padding:8px 6px;color:#fff;font-weight:700">متبقي</th>
-          <th style="padding:8px 6px;color:#fff;font-weight:700">حالة المخزن</th>
-          <th style="padding:8px 6px;color:#fff;font-weight:700">الحلق</th>
-          <th style="padding:8px 6px;color:#fff;font-weight:700;border-radius:0 6px 0 0">البرور</th>
-        </tr></thead>
-        <tbody>${trs || `<tr><td colspan="8" style="text-align:center;padding:12px;color:#8A97A6">مفيش أبواب معلّقة</td></tr>`}</tbody>
-      </table>
+      ${subTable_(readyRows, '#E6F4EA', '#1E8E52', '✅ جاهز للتسليم', 'مفيش حاجة جاهزة لسه')}
+      ${subTable_(pendingRows, '#FDECEA', '#B3261E', '⏳ لسه متبقي / تحت التنفيذ', 'مفيش حاجة متبقية 🎉')}
       <div style="display:flex;justify-content:space-between;align-items:center;background:${tint.head};border-radius:9px;padding:9px 14px;margin-top:10px">
         <span style="font-weight:700;font-size:12.5px;color:#233246">إجمالي عدد الأبواب</span>
         <span style="font-weight:700;font-size:19px;color:${tint.line}">${total}</span>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:10.5px;color:#4B5A6B;padding:4px 2px 0">
-        <span>جاهز: <b style="color:#1E8E52">${items.reduce((s,it)=>s+it.produced,0)}</b></span>
-        <span>متبقي: <b style="color:#B3261E">${items.reduce((s,it)=>s+(it.qty-it.produced),0)}</b></span>
+        <span>جاهز: <b style="color:#1E8E52">${totalProduced}</b></span>
+        <span>متبقي: <b style="color:#B3261E">${totalPending}</b></span>
       </div>
     </div>
   </div>`;
@@ -2447,8 +2458,9 @@ async function buildPendingDoorsExcel_(orders){
   const NAVY='FF002050', WHITE='FFFFFFFF', ZEBRA='FFF6F8FA', BORDER_CLR='FFDCE4EC';
   const thin = {style:'thin', color:{argb:BORDER_CLR}};
   const border = {top:thin,left:thin,right:thin,bottom:thin};
-  const COLS = 8;
+  const COLS = 6;
   const PROD_GREEN='FF1E8E52', PEND_RED='FFB3261E';
+  const READY_FILL='FFE6F4EA', READY_TXT='FF1E8E52', PEND_FILL='FFFDECEA', PEND_TXT='FFB3261E';
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('الأبواب المعلّقة', { views:[{ rightToLeft:true }] });
@@ -2456,8 +2468,6 @@ async function buildPendingDoorsExcel_(orders){
     { key:'size', width:12 },
     { key:'code', width:13 },
     { key:'qty',  width:9  },
-    { key:'produced', width:9 },
-    { key:'pending', width:9 },
     { key:'stat', width:14 },
     { key:'frame',width:22 },
     { key:'bror', width:14 }
@@ -2490,34 +2500,53 @@ async function buildPendingDoorsExcel_(orders){
     const tint = CUST_TINT[ci % CUST_TINT.length];
     mergedRow('صاحب الطلب: '+cust.name, fill, WHITE, true, 13);
 
-    const hdr = ws.addRow(['المقاس','الكود','الكمية','جاهز','متبقي','حالة المخزن','الحلق','البرور']);
-    hdr.eachCell(c=>{
-      c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:fill}};
-      c.font = {bold:true, color:{argb:WHITE}, name:'Arial', size:10.5};
-      c.alignment = {horizontal:'center'};
-      c.border = border;
-    });
-
-    const items = mergedCustomerItems_(cust);
-    let total = 0, totalProduced = 0;
-    items.forEach((it,idx)=>{
-      total += it.qty; totalProduced += it.produced;
-      const pending = it.qty-it.produced;
+    function subHeader_(bg, txt, title){
+      const r = mergedRow(title, bg, txt, true, 11);
+      r.height = 18;
+      return r;
+    }
+    function colHeader_(){
+      const hdr = ws.addRow(['المقاس','الكود','الكمية','حالة المخزن','الحلق','البرور']);
+      hdr.eachCell(c=>{
+        c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:fill}};
+        c.font = {bold:true, color:{argb:WHITE}, name:'Arial', size:10.5};
+        c.alignment = {horizontal:'center'};
+        c.border = border;
+      });
+    }
+    function itemRow_(it, idx, qtyVal, qtyColor){
       const st = stockStatus_(it.code, it.size, it.qty);
       const statTxt = st ? st.label : '—';
-      const row = ws.addRow([it.size, it.code, it.qty, it.produced, pending, statTxt, it.frame||'—', it.dbror||'—']);
+      const row = ws.addRow([it.size, it.code, qtyVal, statTxt, it.frame||'—', it.dbror||'—']);
       row.eachCell((c,colNo)=>{
         c.alignment = {horizontal:'center'};
         c.border = border;
-        c.font = {name:'Arial', size:10.5, bold: colNo===3||colNo===4||colNo===5||colNo===6, color: colNo===3?{argb:fill}:colNo===4?{argb:PROD_GREEN}:colNo===5?{argb: pending>0?PEND_RED:undefined}:(colNo===6&&st?{argb: st.color==='#1E8E52'?STAT_GREEN_TXT:(st.color==='#B8790A'?STAT_YELLOW_TXT:STAT_RED_TXT)}:undefined)};
-        c.fill = {type:'pattern',pattern:'solid',fgColor:{argb: colNo===6&&st ? (st.color==='#1E8E52'?STAT_GREEN:(st.color==='#B8790A'?STAT_YELLOW:STAT_RED)) : (idx%2===1 ? ZEBRA : WHITE)}};
+        c.font = {name:'Arial', size:10.5, bold: colNo===3||colNo===4, color: colNo===3?{argb:qtyColor}:(colNo===4&&st?{argb: st.color==='#1E8E52'?STAT_GREEN_TXT:(st.color==='#B8790A'?STAT_YELLOW_TXT:STAT_RED_TXT)}:undefined)};
+        c.fill = {type:'pattern',pattern:'solid',fgColor:{argb: colNo===4&&st ? (st.color==='#1E8E52'?STAT_GREEN:(st.color==='#B8790A'?STAT_YELLOW:STAT_RED)) : (idx%2===1 ? ZEBRA : WHITE)}};
       });
-    });
-    if(!items.length){
-      const row = ws.addRow(['مفيش أبواب معلّقة','','','','','','','']);
+    }
+    function emptyRow_(text){
+      const row = ws.addRow([text,'','','','','']);
       ws.mergeCells(row.number,1,row.number,COLS);
       row.eachCell(c=>{ c.border=border; c.alignment={horizontal:'center'}; c.font={name:'Arial', size:10.5, color:{argb:'FF8A97A6'}}; });
     }
+
+    const items = mergedCustomerItems_(cust);
+    let total = 0, totalProduced = 0;
+    items.forEach(it=>{ total += it.qty; totalProduced += it.produced; });
+    const readyItems = items.filter(it=>it.produced>0);
+    const pendingItems = items.filter(it=>(it.qty-it.produced)>0);
+
+    subHeader_(READY_FILL, READY_TXT, '✅ جاهز للتسليم');
+    colHeader_();
+    if(readyItems.length) readyItems.forEach((it,idx)=>itemRow_(it, idx, it.produced, PROD_GREEN));
+    else emptyRow_('مفيش حاجة جاهزة لسه');
+
+    ws.addRow([]);
+    subHeader_(PEND_FILL, PEND_TXT, '⏳ لسه متبقي / تحت التنفيذ');
+    colHeader_();
+    if(pendingItems.length) pendingItems.forEach((it,idx)=>itemRow_(it, idx, it.qty-it.produced, PEND_RED));
+    else emptyRow_('مفيش حاجة متبقية 🎉');
 
     mergedRow('إجمالي عدد الأبواب:  '+total+'   (جاهز '+totalProduced+' · متبقي '+(total-totalProduced)+')', tint, NAVY, true, 12);
     ws.addRow([]);
