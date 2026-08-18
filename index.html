@@ -506,7 +506,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v81';
+const APP_BUILD   = 'v82';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2415,7 +2415,7 @@ function customerTableHTML_(cust, tint){
   const readyRows = readyItems.map((it,idx)=>rowHTML_(it, idx, it.produced, '#1E8E52')).join('');
   const pendingRows = pendingItems.map((it,idx)=>rowHTML_(it, idx, it.qty-it.produced, '#B3261E')).join('');
 
-  return `<div style="margin-top:18px;border:1px solid #E3E7EC;border-radius:13px;overflow:hidden;break-inside:avoid;box-shadow:0 1px 4px rgba(20,36,58,.06)">
+  return `<div class="rpt-cust-block" style="margin-top:18px;border:1px solid #E3E7EC;border-radius:13px;overflow:hidden;break-inside:avoid;box-shadow:0 1px 4px rgba(20,36,58,.06)">
     <div style="font-size:14px;font-weight:700;color:#fff;background:linear-gradient(135deg, ${tint.line}, ${tint.line}CC);padding:11px 16px;display:flex;align-items:center;justify-content:space-between">
       <span>👤 ${esc(cust.name)}</span>
       <span style="font-size:10.5px;font-weight:400;opacity:.9">${items.length} صنف</span>
@@ -2473,8 +2473,8 @@ async function buildPendingDoorsPdf_(orders){
   const data = buildPendingDoorsData_(orders);
   if(!data.length){ toast('مفيش طلبات معلّقة'); return; }
   if(typeof html2canvas==='undefined' || !window.jspdf){ toast('محتاج نت أول مرة عشان يجهّز الـ PDF'); return; }
-  const {canvas} = await renderPaper_(pendingDoorsHTML(data));
-  await canvasToPdf_(canvas, 'تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.pdf', {share:true});
+  const {canvas, breaksPx} = await renderPaper_(pendingDoorsHTML(data), { breakSelector: '.rpt-cust-block' });
+  await canvasToPdf_(canvas, 'تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.pdf', {share:true, hardBreaksPx: breaksPx});
 }
 
 async function buildPendingDoorsExcel_(orders){
