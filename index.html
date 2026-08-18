@@ -506,7 +506,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v80';
+const APP_BUILD   = 'v81';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -793,7 +793,7 @@ async function exportStockPdf_(){
   try{
     await loadStock(true);
     await loadReserved(true);
-    const canvas = await renderPaper_(stockReportHTML_());
+    const {canvas} = await renderPaper_(stockReportHTML_());
     await canvasToPdf_(canvas, 'أرصدة_المخزن_'+new Date().toISOString().slice(0,10)+'.pdf', {share:true});
   }catch(err){
     toast('تعذّر تجهيز الـ PDF: ' + (err.message || err));
@@ -1382,6 +1382,16 @@ async function renderPaper_(html, opts){
   const maxScale = Math.sqrt(MAX_CANVAS_PIXELS / Math.max(w*h, 1));
   if(scale > maxScale) scale = Math.max(1, maxScale);
 
+  // لو مطلوب إن كل عنصر بيطابق selector معيّن يبدأ صفحة جديدة إجباريًا (مثلاً كل طلب في تقرير)،
+  // بنسجّل مكانه بالبكسل (بمقياس canvas) قبل ما نمسح محتوى الورقة
+  let breaksPx = null;
+  if(opts && opts.breakSelector){
+    const elTop = el.getBoundingClientRect().top;
+    breaksPx = Array.from(el.querySelectorAll(opts.breakSelector))
+      .map(n => Math.round((n.getBoundingClientRect().top - elTop) * scale))
+      .filter(y => y > 0);
+  }
+
   await yield_(0);
   const canvas = await html2canvas(el, {
     scale,
@@ -1399,7 +1409,7 @@ async function renderPaper_(html, opts){
   });
   paper.innerHTML = '';
   await yield_(0);
-  return canvas;
+  return { canvas, breaksPx };
 }
 
 // بتحوّل canvas لـ PDF بتقطيع صفحات حقيقي (مش تكرار نفس الصورة)
@@ -1420,6 +1430,8 @@ async function shareOrDownload_(blob, filename, title){
   return false;
 }
 
+// بتقطّع الـ canvas لصفحات A4. لو opts.hardBreaksPx موجودة، كل نقطة فيها بتبدأ صفحة جديدة إجباريًا
+// (مثلاً بداية كل طلب في تقرير) — والمقطع اللي أطول من صفحة واحدة بيتقسّم تلقائي زي العادي جواه.
 async function canvasToPdf_(canvas, filename, opts){
   opts = opts || {};
   const {jsPDF} = window.jspdf;
@@ -1429,29 +1441,43 @@ async function canvasToPdf_(canvas, filename, opts){
   const usableH = PH - FOOT_H;
   const pxPerMm = canvas.width / PW;
   const pageHpx  = Math.floor(usableH * pxPerMm); // المحتوى بيتقص على الارتفاع المتاح بس
-  const pages = Math.max(1, Math.ceil(canvas.height / pageHpx));
+
+  const hardBreaks = (opts.hardBreaksPx||[]).filter(y=>y>0 && y<canvas.height).sort((a,b)=>a-b);
+  const segBounds = [0, ...hardBreaks, canvas.height];
+  const segments = [];
+  for(let i=0;i<segBounds.length-1;i++){
+    if(segBounds[i+1] > segBounds[i]) segments.push([segBounds[i], segBounds[i+1]]);
+  }
 
   const slice = document.createElement('canvas');
   const ctx = slice.getContext('2d');
 
-  for(let i=0; i<pages; i++){
-    const sy = i * pageHpx;
-    const sh = Math.min(pageHpx, canvas.height - sy);
-    slice.width = canvas.width;
-    slice.height = sh;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0,0,slice.width,slice.height);
-    ctx.drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, canvas.width, sh);
+  let totalPages = 0;
+  segments.forEach(([s,e])=>{ totalPages += Math.max(1, Math.ceil((e-s)/pageHpx)); });
 
-    if(i > 0) pdf.addPage();
-    pdf.addImage(slice.toDataURL('image/jpeg',0.88), 'JPEG', 0, 0, PW, sh / pxPerMm);
+  let pageIdx = 0;
+  for(const [segStart, segEnd] of segments){
+    const subPages = Math.max(1, Math.ceil((segEnd-segStart)/pageHpx));
+    for(let j=0;j<subPages;j++){
+      const sy = segStart + j*pageHpx;
+      const sh = Math.min(pageHpx, segEnd - sy);
+      slice.width = canvas.width;
+      slice.height = sh;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0,0,slice.width,slice.height);
+      ctx.drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, canvas.width, sh);
 
-    if(pages > 1){
-      pdf.setFontSize(8);
-      pdf.setTextColor(120,130,145);
-      pdf.text(String(i+1) + ' / ' + pages, PW/2, PH - 2.5, {align:'center'});
+      if(pageIdx > 0) pdf.addPage();
+      pdf.addImage(slice.toDataURL('image/jpeg',0.88), 'JPEG', 0, 0, PW, sh / pxPerMm);
+
+      if(totalPages > 1){
+        pdf.setFontSize(8);
+        pdf.setTextColor(120,130,145);
+        pdf.text(String(pageIdx+1) + ' / ' + totalPages, PW/2, PH - 2.5, {align:'center'});
+      }
+      pageIdx++;
+      await yield_(0);                                // منع تجميد الواجهة
     }
-    await yield_(0);                                // منع تجميد الواجهة
   }
   if(opts.share){
     const blob = pdf.output('blob');
@@ -1954,7 +1980,7 @@ async function shareAdminOrderImage(o){
   }
   busy(true,'جارٍ تجهيز صورة الطلب…');
   try{
-    const canvas = await renderPaper_(docHTML(doc,'order'));
+    const {canvas} = await renderPaper_(docHTML(doc,'order'));
     const blob=await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
     const file=new File([blob],'طلب_'+o.id+'.png',{type:'image/png'});
 
@@ -2108,7 +2134,8 @@ function reportHTML(orders){
           <td style="${td};${unavail?'color:#B3261E;font-weight:700':''}">${unavail?'غير متاح':'متاح'}</td>
         </tr>`;
       }).join('');
-      return `<div style="margin-top:8px">
+      return `<div class="rpt-order-block" style="margin-top:8px;padding-top:2px">
+        <div style="font-size:10px;color:#8A97A6;margin-bottom:2px">صاحب الحساب: ${esc(cust.name)}</div>
         <div style="background:${BRAND};color:#fff;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700">
           طلب #${esc(o.id)} — ${esc(dateStr2_(o.date))} — ${esc(st.ar)}${o.customer?' — صاحب الأوردر: '+esc(o.customer):''}
         </div>
@@ -2233,8 +2260,8 @@ function reportHTML(orders){
 
 async function buildFullReportPdf_(orders){
   if(typeof html2canvas==='undefined' || !window.jspdf){ toast('محتاج نت أول مرة عشان يجهّز الـ PDF'); return; }
-  const canvas = await renderPaper_(reportHTML(orders));
-  await canvasToPdf_(canvas, 'تقرير_الأبواب_'+new Date().toISOString().slice(0,10)+'.pdf');
+  const {canvas, breaksPx} = await renderPaper_(reportHTML(orders), { breakSelector: '.rpt-order-block' });
+  await canvasToPdf_(canvas, 'تقرير_الأبواب_'+new Date().toISOString().slice(0,10)+'.pdf', { hardBreaksPx: breaksPx });
 }
 
 async function exportAdminFullReport(){
@@ -2446,7 +2473,7 @@ async function buildPendingDoorsPdf_(orders){
   const data = buildPendingDoorsData_(orders);
   if(!data.length){ toast('مفيش طلبات معلّقة'); return; }
   if(typeof html2canvas==='undefined' || !window.jspdf){ toast('محتاج نت أول مرة عشان يجهّز الـ PDF'); return; }
-  const canvas = await renderPaper_(pendingDoorsHTML(data));
+  const {canvas} = await renderPaper_(pendingDoorsHTML(data));
   await canvasToPdf_(canvas, 'تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.pdf', {share:true});
 }
 
@@ -3827,7 +3854,7 @@ async function shareOrderImage(o){
 
   busy(true,'جارٍ تجهيز صورة الطلب…');
   try{
-    const canvas = await renderPaper_(docHTML(o,'order'));
+    const {canvas} = await renderPaper_(docHTML(o,'order'));
     const blob=await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
     const file=new File([blob],'طلب_'+o.id+'.png',{type:'image/png'});
 
@@ -4129,7 +4156,7 @@ async function makeDoc(o,mode,priced){
   if(typeof html2canvas==='undefined' || !window.jspdf){toast('محتاج نت أول مرة عشان يجهّز الـ PDF');return;}
   busy(true,'جارٍ تجهيز المستند…');
   try{
-    const canvas = await renderPaper_(docHTML(o,mode,priced));
+    const {canvas} = await renderPaper_(docHTML(o,mode,priced));
     await canvasToPdf_(canvas, (mode==='quote'?'عرض_سعر_':'طلب_')+o.id+(priced?'_بالسعر':'')+'.pdf');
   }catch(err){ toast('تعذّر تجهيز الـ PDF: '+(err&&err.message?err.message:err)); }
   busy(false);
