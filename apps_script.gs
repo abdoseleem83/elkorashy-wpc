@@ -57,11 +57,12 @@ var COL_SUPERSEDED = 20; // علامة "الطلب ده اتعدّل وعنده 
 var HEAD_ITEMS = [
   'Order No', 'Date', 'Distributor', 'Type', 'Item', 'Colour Code',
   'Size', 'Included with Door', 'Milling', 'Unit', 'Qty', 'Unit Price', 'Line Total', 'Available',
-  'Frame (cm)', 'Bror', 'Frame Height (cm)', 'Width (cm)', 'Produced Qty'
+  'Frame (cm)', 'Bror', 'Frame Height (cm)', 'Width (cm)', 'Produced Qty', 'Door Height (cm)'
 ];
 var COL_ITEM_WIDTH = 18;  // العرض بالسم كرقم خام (بس للأبواب) — بيتستخدم لخصم/رجوع رصيد المخزون بدقة
 var COL_ITEM_AVAIL = 14;   // عمود "متاح؟" في تبويب Order_Items — Y/N، بيتحدّث من شاشة المصنع
 var COL_ITEM_PRODUCED = 19; // عمود "الكمية المنتجة" — رقم من صفر لحد الكمية المطلوبة، بيتحدّث من شاشة المصنع
+var COL_ITEM_DOORHEIGHT = 20; // ارتفاع الضلفة (سم) — اختياري، بس للأبواب المقاس القياسي (لو مختلف عن الاستاندر 210)
 // عمودين جداد (v28) بيخزّنوا قيمة الحلق/البرور خام (منفصلين عن نص "Included with Door" الإنجليزي)
 // عشان شاشة المصنع تقدر تعرضهم في عمودين منفصلين بالعربي بدل نص متلاصق واحد
 
@@ -273,7 +274,8 @@ function doGet(e) {
               dbror:     valsOI[iOI][15] || '',
               frameHeight: valsOI[iOI][16] || '',
               width:     valsOI[iOI][17] || '',
-              produced:  Number(valsOI[iOI][18]) || 0
+              produced:  Number(valsOI[iOI][18]) || 0,
+              doorHeight: valsOI[iOI][19] || ''
             });
           }
         }
@@ -557,7 +559,8 @@ function doGet(e) {
             dbror:    valsILW[iILW][15] || '',
             frameHeight: valsILW[iILW][16] || '',
             width:    valsILW[iILW][17] || '',
-            produced: Number(valsILW[iILW][18]) || 0
+            produced: Number(valsILW[iILW][18]) || 0,
+            doorHeight: valsILW[iILW][19] || ''
           });
         }
       }
@@ -744,7 +747,8 @@ function saveOrder_(o) {
       isDoor ? (it.dbror || '') : '',
       isDoor ? (it.frameHeight || '') : '',
       isDoor ? (it.w || '') : '',
-      0   // Produced Qty — يبدأ صفر لكل صنف جديد، وبيتحدّث بعدين من شاشة المصنع
+      0,   // Produced Qty — يبدأ صفر لكل صنف جديد، وبيتحدّث بعدين من شاشة المصنع
+      isDoor ? (it.doorHeight || '') : ''
     ]);
   }
 
