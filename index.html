@@ -315,6 +315,14 @@ input::placeholder{color:#A8B4C2}
 .note b{color:var(--brand)}
 /* ============ العداد ============ */
 .qty{display:flex;align-items:center;border:1.5px solid var(--line);border-radius:10px;overflow:hidden;width:fit-content;background:#FCFDFE}
+.qty.sm{transform:scale(.78);transform-origin:center}
+.qty.sm input{width:42px}
+.specol .sizePick{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px;border-radius:13px;border:1.5px solid transparent;transition:background .15s,border-color .15s}
+.specol .sizePick.on{background:#EAF2FA;border-color:#BFE0F5}
+.specol .sizePick .hgtIn{width:100%;text-align:center;border:1.5px solid var(--line);border-radius:8px;
+  padding:4px 2px;font-size:9.5px;background:#FCFDFE;margin-top:1px}
+.specol .sizePick .hgtIn:focus{border-color:var(--brand);outline:none}
+.specol .sizePick .hgtIn::placeholder{color:#AEBBC8}
 .qty button{width:40px;height:40px;font-size:19px;font-weight:600;color:var(--brand);display:grid;place-items:center}
 .qty button:active{background:#EDF3F9}
 .qty input{width:54px;text-align:center;border:0;border-inline:1.5px solid var(--line);border-radius:0;padding:10px 0;background:transparent}
@@ -506,7 +514,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v83';
+const APP_BUILD   = 'v86';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -689,13 +697,13 @@ const state = {
   profile: load(LS_PROFILE, {name:'', phone:'', region:''}),
   cart:    load(LS_CART, []),
   orders:  load(LS_ORDERS, []),
-  pick:{code:'', size:null, custom:{w:'',h:''}, frame:null, dbror:null, frameHeight:'', doorHeight:'', qty:1},
+  pick:{code:'', sizes:{}, customOn:false, custom:{w:'',h:'',qty:1}, frame:null, dbror:null, frameHeight:''},
   newSection: load(LS_SECTION, ''),   // '' (لسه محددش) | doors | acc | frame | bror
   fr:{cm:10, code:'', jamb:2, header:1, note:''},   // حلق منفصل: عدد قوائم ٢٢٠ سم + عدد عتب ١١٠ سم، والكود إجباري. note: ملحوظة مقاس مخصوص لو تكملة
   br:{size:'6×9', code:'', rods:1}, // برور إضافي بالعود — code = كود/لون الباب (إجباري زي الحلق)
   acc:{},
   touched:false,             // اتضغط إرسال؟ عشان نوضّح الحقول الناقصة
-  customer:{name:'', phone:''},   // صاحب الأوردر (اختياري) — لو فاضي يبقى نفس صاحب الحساب
+  customer:{name:'', phone:''},   // صاحب الأوردر — إجباري من v84، لازم يتكتب حتى لو نفس صاحب الحساب
   orderNote:'',                    // ملاحظات الطلب (اختياري)
   editingId:null,            // لو مش null، معناها بيتعدّل طلب موجود بدل ما يتبعت طلب جديد
   editingMeta:null,          // بيانات صاحب الطلب الأصلي لما المصنع هو اللي بيعدّل
@@ -716,12 +724,12 @@ function selectDoor(code){
   const p=state.pick;
   if(p.code===code){
     // ضغط على نفس الباب المفتوح — يقفل ويلمّ
-    p.code=''; p.size=null; p.custom={w:'',h:''};
-    p.frame=null; p.dbror=null; p.frameHeight=''; p.doorHeight=''; p.qty=1;
+    p.code=''; p.sizes={}; p.customOn=false; p.custom={w:'',h:'',qty:1};
+    p.frame=null; p.dbror=null; p.frameHeight='';
   } else {
     // باب جديد = اختيارات جديدة، عشان الموزع يحدد كل حاجة بنفسه من الأول
-    p.code=code; p.size=null; p.custom={w:'',h:''};
-    p.frame=null; p.dbror=null; p.frameHeight=''; p.doorHeight=''; p.qty=1;
+    p.code=code; p.sizes={}; p.customOn=false; p.custom={w:'',h:'',qty:1};
+    p.frame=null; p.dbror=null; p.frameHeight='';
   }
   render();
 }
@@ -934,7 +942,7 @@ async function saveStockDrafts(){
   toast(failed ? ('اتحفظ '+done+' وفشل '+failed) : ('اتحفظت '+done+' أرصدة'));
 }
 
-function profileOk(){return !!state.profile.name.trim() && phoneOk(state.profile.phone);}
+function profileOk(){return !!state.profile.name.trim() && phoneOk(state.profile.phone) && !!state.customer.name.trim();}
 
 function toast(m,ms){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms||2600);}
 function busy(on,txt){const b=document.getElementById('busy');if(txt)document.getElementById('busyTxt').textContent=txt;b.classList.toggle('on',!!on);}
@@ -986,15 +994,28 @@ function render(){
 function verBar(){ return ''; }   // الإصدار/التحديث/التثبيت بقوا في الشريط فوق
 
 function viewNew(){
-  const p=state.pick, isCustom=p.size==='custom', bad=state.touched;
+  const p=state.pick, bad=state.touched;
+  const selWidths = Object.keys(p.sizes).map(Number).sort((a,b)=>a-b);
 
   const sizeCol=SIZES.map(s=>{
     const st = stockFor(p.code, s.w);
-    return `<button class="colchip ${p.size===s.w?'on':''} ${st>0?'instock':''}" data-act="pick-size" data-w="${s.w}">
-      ${s.w} سم${pricesVisible()?`<span class="sub">${money(s.price)}ج</span>`:''}
-      ${st>0?`<span class="stk">متوفر ${st}</span>`:''}</button>`;
+    const sel = p.sizes[s.w];
+    const on = sel!=null;
+    return `<div class="sizePick ${on?'on':''}">
+      <button class="colchip ${on?'on':''} ${st>0?'instock':''}" data-act="toggle-size" data-w="${s.w}">
+        ${s.w} سم${pricesVisible()?`<span class="sub">${money(s.price)}ج</span>`:''}
+        ${st>0?`<span class="stk">متوفر ${st}</span>`:''}</button>
+      ${on?`<div class="qty sm">
+        <button data-act="size-qty-minus" data-w="${s.w}">−</button>
+        <input type="number" inputmode="numeric" min="1" value="${sel.qty}" data-act="size-qty-set" data-w="${s.w}">
+        <button data-act="size-qty-plus" data-w="${s.w}">+</button>
+      </div>
+      <input type="number" inputmode="numeric" min="1" class="hgtIn" value="${esc(sel.height||'')}" placeholder="ارتفاع ${DOOR_STD_HEIGHT}" title="ارتفاع الضلفة (سم) — اختياري، سيبه فاضي لو ${DOOR_STD_HEIGHT} استاندر" data-act="size-height" data-w="${s.w}">`:''}
+    </div>`;
   }).join('')
-    +`<button class="colchip ${isCustom?'on':''}" data-act="pick-size" data-w="custom">خاص${pricesVisible()?`<span class="sub">+${CUSTOM_EXTRA}ج</span>`:''}</button>`;
+    +`<div class="sizePick ${p.customOn?'on':''}">
+      <button class="colchip ${p.customOn?'on':''}" data-act="toggle-custom">خاص${pricesVisible()?`<span class="sub">+${CUSTOM_EXTRA}ج</span>`:''}</button>
+    </div>`;
 
   const frameCol=FRAMES.map(f=>`<button class="colchip ${p.frame===f.cm?'on':''}" data-act="pick-frame" data-cm="${f.cm}">${f.cm} سم</button>`).join('')
     +`<button class="colchip ${p.frame===0?'on':''}" data-act="pick-frame" data-cm="0">بدون</button>`;
@@ -1035,52 +1056,52 @@ function viewNew(){
 
   // ── لوحة تفاصيل الباب — بتتحط تحت الصف اللي فيه الباب المختار ──
   // مفيش حاجة متحددة افتراضيًا: الموزع لازم يختار المقاس والحلق والبرور بنفسه
-  const readyToAdd = p.code && p.size!=null && p.frame!=null && p.dbror!=null
-    && (p.size!=='custom' || (Number(p.custom.w)>0 && Number(p.custom.h)>0));
+  const customReady = p.customOn && Number(p.custom.w)>0 && Number(p.custom.h)>0;
+  const readyToAdd = p.code && (selWidths.length>0 || customReady) && p.frame!=null && p.dbror!=null;
 
   const detailPanel = p.code ? `
     <div class="doorpanel">
       <div class="dphead"><b>${esc(p.code)}</b><span>${esc(doorByCode(p.code).name)}</span></div>
 
       <div class="specgrid">
-        <div class="specol"><div class="sol-h">المقاس</div>${sizeCol}</div>
+        <div class="specol"><div class="sol-h">المقاس <span style="font-weight:400">(تقدر تختار أكتر من مقاس، ولكل واحد ارتفاعه)</span></div>${sizeCol}</div>
         <div class="specol"><div class="sol-h">الحلق</div>${frameCol}</div>
         <div class="specol"><div class="sol-h">البرور</div>${dbrorCol}</div>
       </div>
 
-      ${(()=>{ // رسالة التوفر — بتظهر بعد ما يختار مقاس قياسي وله رصيد
-        if(p.size==null || p.size==='custom') return '';
-        const st = stockFor(p.code, p.size);
+      ${selWidths.length ? `<div class="stockstack">${selWidths.map(w=>{
+        // رسالة التوفر — سطر مستقل لكل مقاس قياسي مختار
+        const st = stockFor(p.code, w);
         if(st===null) return '';
         if(st<=0) return `<div class="stockbar out">${ico("factory")}
-          <span>المقاس ده بيتصنّع حسب الطلب — المصنع هيتواصل معاك بالميعاد.</span></div>`;
-        const enough = st >= (Number(p.qty)||1);
+          <span><b>${w} سم:</b> بيتصنّع حسب الطلب — المصنع هيتواصل معاك بالميعاد.</span></div>`;
+        const enough = st >= (Number((p.sizes[w]||{}).qty)||1);
         return `<div class="stockbar ${enough?'ok':'part'}">${ico(enough?"checkC":"warn")}
-          <span>${enough
+          <span><b>${w} سم:</b> ${enough
             ? `متوفر بالمخزن (${st} باب) — <b>${READY_HOURS_TXT}</b>`
             : `المتوفر دلوقتي <b>${st}</b> بس من الكمية اللي طلبتها — المتوفر ${READY_HOURS_TXT}، والباقي بيتصنّع حسب الطلب.`}</span></div>`;
-      })()}
+      }).join('')}</div>` : ''}
 
-      ${(p.size!=null && p.size!=='custom')?`<div class="box"><label class="fld"><span>ارتفاع الضلفة (سم) — الاستاندر ${DOOR_STD_HEIGHT}، اختياري لو أكبر أو أقل</span>
-        <input type="number" inputmode="numeric" min="1" value="${esc(p.doorHeight||'')}" placeholder="سيبها فاضية لو ${DOOR_STD_HEIGHT} (استاندر)" data-act="door-height"></label></div>`:''}
+      ${selWidths.length?`<div class="note" style="margin-top:8px">💡 الارتفاع بجنب كل مقاس اختياري — سيبه فاضي لو ${DOOR_STD_HEIGHT} استاندر، أو اكتب رقم مختلف لو المقاس ده بس محتاج ارتفاع تاني.</div>`:''}
 
       ${p.frame?`<div class="box"><label class="fld"><span>ارتفاع الحلق (سم) — اختياري، لو محتاج ارتفاع خاص</span>
         <input type="number" inputmode="numeric" min="1" value="${esc(p.frameHeight||'')}" placeholder="سيبها فاضية لو الارتفاع عادي" data-act="frame-height"></label></div>`:''}
 
-      ${isCustom?`<div class="box"><div class="row2">
+      ${p.customOn?`<div class="box"><div class="row2">
           <label class="fld"><span>العرض (سم)</span><input type="number" inputmode="numeric" min="1" value="${esc(p.custom.w)}" placeholder="مثال 85" data-act="cust" data-k="w"></label>
           <label class="fld"><span>الارتفاع (سم)</span><input type="number" inputmode="numeric" min="1" value="${esc(p.custom.h)}" placeholder="مثال 210" data-act="cust" data-k="h"></label>
-        </div><div class="note">المقاسات خارج الاستاندر بيتضاف عليها <b>${CUSTOM_EXTRA} ج</b>.</div></div>`:''}
+        </div>
+        <div class="grp" style="margin-top:8px">كمية المقاس الخاص</div>
+        <div class="qty">
+          <button data-act="cust-qty-minus">−</button>
+          <input type="number" inputmode="numeric" min="1" value="${p.custom.qty}" data-act="cust-qty-set">
+          <button data-act="cust-qty-plus">+</button>
+        </div>
+        <div class="note">المقاسات خارج الاستاندر بيتضاف عليها <b>${CUSTOM_EXTRA} ج</b>.</div></div>`:''}
 
-      <div class="grp">الكمية</div>
-      <div class="qty">
-        <button data-act="qty-minus">−</button>
-        <input type="number" inputmode="numeric" min="1" value="${p.qty}" data-act="qty-set">
-        <button data-act="qty-plus">+</button>
-      </div>
       <div class="note" id="sumline">${esc(currentSummary())}</div>
       <button class="btn primary" style="margin-top:12px" data-act="add-door" ${readyToAdd?'':'disabled'}>
-        ${readyToAdd?'أضف الباب للسلة':'اختر المقاس والحلق والبرور أولاً'}</button>
+        ${readyToAdd?'أضف الأبواب للسلة':'اختر مقاس واحد على الأقل والحلق والبرور'}</button>
     </div>` : '';
 
   // ── شبكة الأبواب مقسّمة صفوف من ٤، واللوحة بتتحط تحت الصف اللي فيه المختار ──
@@ -1190,8 +1211,8 @@ function viewNew(){
     <div class="row2">
       <label class="fld"><span>الاسم <b class="req">*</b></span>
         <input type="text" class="${bad && !state.profile.name.trim()?'bad':''}" value="${esc(state.profile.name)}" placeholder="الاسم كما هو مسجّل" data-act="prof" data-k="name"></label>
-      <label class="fld"><span>صاحب الأوردر</span>
-        <input type="text" value="${esc(state.customer.name)}" placeholder="لو مختلف عنك" data-act="cust-name"></label>
+      <label class="fld"><span>صاحب الأوردر <b class="req">*</b></span>
+        <input type="text" class="${bad && !state.customer.name.trim()?'bad':''}" value="${esc(state.customer.name)}" placeholder="اسم صاحب الأوردر" data-act="cust-name"></label>
     </div>
     <div class="row2">
       <label class="fld"><span>رقم الموبايل <b class="req">*</b></span>
@@ -1201,7 +1222,7 @@ function viewNew(){
     </div>
     <label class="fld"><span>المنطقة</span>
       <input type="text" value="${esc(state.profile.region)}" placeholder="طنطا مثلاً" data-act="prof" data-k="region"></label>
-    ${bad && !profileOk() ? `<div class="note" style="color:var(--danger)">الاسم ورقم الموبايل إجباريين — الرقم لازم يكون ١١ رقم يبدأ بـ 01.</div>` : ''}
+    ${bad && !profileOk() ? `<div class="note" style="color:var(--danger)">الاسم ورقم الموبايل وصاحب الأوردر إجباريين — الرقم لازم يكون ١١ رقم يبدأ بـ 01.</div>` : ''}
     <label class="fld" style="margin-top:11px"><span>ملاحظات <span style="font-weight:400;color:var(--muted)">(اختياري)</span></span>
       <textarea rows="2" placeholder="أي تفاصيل إضافية عن الطلب" data-act="ord-note">${esc(state.orderNote)}</textarea></label>
   </section>
@@ -1216,21 +1237,29 @@ function currentSummary(){
   const p=state.pick;
   if(!p.code) return '';
   const d=doorByCode(p.code);
+  const widths = Object.keys(p.sizes).map(Number).sort((a,b)=>a-b);
+  const customReady = p.customOn && Number(p.custom.w)>0 && Number(p.custom.h)>0;
 
-  if(p.size==null) return 'اختر المقاس.';
-  let sizeTxt,unit;
-  if(p.size==='custom'){
-    const w=Number(p.custom.w)||0,h=Number(p.custom.h)||0;
-    if(!w||!h) return 'اكتب العرض والارتفاع.';
-    sizeTxt=w+'×'+h+' سم (خاص)'; unit=priceForWidth(w)+CUSTOM_EXTRA;
-  } else { sizeTxt=p.size+' سم'; unit=priceForWidth(p.size); }
-  if(p.size!=='custom') sizeTxt=doorSizeText_(sizeTxt,p.doorHeight);
-
+  if(!widths.length && !p.customOn) return 'اختر مقاس واحد على الأقل.';
+  if(p.customOn && !customReady) return 'اكتب العرض والارتفاع للمقاس الخاص.';
   if(p.frame==null) return 'اختر الحلق (أو «بدون حلق») عشان تكمّل.';
   if(p.dbror==null) return 'اختر البرور (أو «بدون برور») عشان تكمّل.';
 
-  let t='باب '+d.code+' '+d.name+' — '+sizeTxt+' × '+p.qty;
-  if(pricesVisible()) t+=' = '+money(unit*p.qty)+' ج';
+  const parts=[]; let totalQty=0, totalPrice=0;
+  widths.forEach(w=>{
+    const entry=p.sizes[w]||{qty:1,height:''};
+    const qty=Number(entry.qty)||1; totalQty+=qty;
+    const unit=priceForWidth(w); totalPrice+=unit*qty;
+    parts.push(doorSizeText_(w+' سم',entry.height)+' × '+qty);
+  });
+  if(customReady){
+    const w=Number(p.custom.w), h=Number(p.custom.h), qty=Number(p.custom.qty)||1;
+    totalQty+=qty; totalPrice+=(priceForWidth(w)+CUSTOM_EXTRA)*qty;
+    parts.push(w+'×'+h+' سم (خاص) × '+qty);
+  }
+
+  let t='باب '+d.code+' '+d.name+' — '+parts.join('، ')+' — إجمالي '+totalQty;
+  if(pricesVisible()) t+=' = '+money(totalPrice)+' ج';
   if(p.frame) t+=' | حلق '+frameText_(p.frame,p.frameHeight);
   if(p.dbror) t+=' | برور '+p.dbror;
   if(p.frame||p.dbror) t+=' (شامل مع الباب)';
@@ -1269,7 +1298,7 @@ function viewCart(){
       ✏️ بتعدّل الطلب <b>#${esc(state.editingId)}</b>${state.editingMeta?' — العميل: <b>'+esc(state.editingMeta.name||'')+'</b>':''} — الحفظ هيلغي الطلب القديم ده وهيعمل طلب جديد بالأصناف المعدّلة.
       ${state.editingMeta?`
       <div class="row2" style="margin-top:9px">
-        <label class="fld"><span>اسم صاحب الأوردر</span>
+        <label class="fld"><span>اسم صاحب الأوردر <b class="req">*</b></span>
           <input type="text" value="${esc(state.editingMeta.customer||'')}" placeholder="لو اتغيّر" data-act="edit-meta-customer"></label>
         <label class="fld"><span>تليفون صاحب الأوردر</span>
           <input type="tel" inputmode="tel" value="${esc(state.editingMeta.customerPhone||'')}" placeholder="لو اتغيّر" data-act="edit-meta-phone"></label>
@@ -1294,7 +1323,7 @@ function viewCart(){
     <div class="note" style="margin-top:0;margin-bottom:12px">
       الاسم: <b>${esc(state.profile.name||'—')}</b> · ${esc(state.profile.region||'المنطقة غير محددة')}<br>
       المخزن: <b>${esc(WAREHOUSE)}</b>
-      ${ok?'':'<br><span style="color:var(--danger)">اكتب الاسم ورقم الموبايل في تبويب «طلب جديد» قبل الإرسال.</span>'}
+      ${ok?'':'<br><span style="color:var(--danger)">اكتب الاسم ورقم الموبايل واسم صاحب الأوردر في تبويب «طلب جديد» قبل الإرسال.</span>'}
     </div>
     <button class="btn brand" data-act="submit">${editing?ico("save")+' حفظ التعديل وإرسال واتساب':'إرسال طلب الأوردر على واتساب'}</button>
     <div class="btnrow" style="margin-top:9px">
@@ -3341,11 +3370,18 @@ document.addEventListener('click',e=>{
       selectDoor(el.dataset.code);
       window.scrollTo({top:0,behavior:'smooth'});
       break;
-    case 'pick-size': p.size = el.dataset.w==='custom'?'custom':Number(el.dataset.w); render(); break;
+    case 'toggle-size': {
+      const w=Number(el.dataset.w);
+      if(p.sizes[w]!=null) delete p.sizes[w]; else p.sizes[w]={qty:1,height:''};
+      render(); break;
+    }
+    case 'toggle-custom': p.customOn=!p.customOn; render(); break;
+    case 'size-qty-minus': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.qty=Math.max(1,(Number(e.qty)||1)-1); render(); break; }
+    case 'size-qty-plus':  { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.qty=(Number(e.qty)||1)+1; render(); break; }
+    case 'cust-qty-minus': p.custom.qty=Math.max(1,(Number(p.custom.qty)||1)-1); render(); break;
+    case 'cust-qty-plus':  p.custom.qty=(Number(p.custom.qty)||1)+1; render(); break;
     case 'pick-frame': p.frame=Number(el.dataset.cm); render(); break;
     case 'pick-dbror': p.dbror=el.dataset.size; render(); break;
-    case 'qty-minus': p.qty=Math.max(1,p.qty-1); render(); break;
-    case 'qty-plus':  p.qty=p.qty+1; render(); break;
     case 'fr-cm': state.fr.cm=Number(el.dataset.cm); render(); break;
     case 'fr-code': state.fr.code=el.dataset.code; render(); break;
     case 'br-size': state.br.size=el.dataset.size; render(); break;
@@ -3541,8 +3577,9 @@ document.addEventListener('input',e=>{
   }
   if(a==='ord-note'){ state.orderNote=el.value; return; }
   if(a==='frame-height'){ state.pick.frameHeight=el.value; return; }
-  if(a==='door-height'){ state.pick.doorHeight=el.value; return; }
-  if(a==='qty-set'){ state.pick.qty=Math.max(1,parseInt(el.value,10)||1); refreshSummary(); return; }
+  if(a==='size-height'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.height=el.value; refreshSummary(); return; }
+  if(a==='size-qty-set'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.qty=Math.max(1,parseInt(el.value,10)||1); refreshSummary(); return; }
+  if(a==='cust-qty-set'){ state.pick.custom.qty=Math.max(1,parseInt(el.value,10)||1); refreshSummary(); return; }
   if(a==='acc-set'){ state.acc[el.dataset.id]=Math.max(0,parseFloat(el.value)||0); refreshAccBtn(); return; }
   if(a==='fr-jamb'){ state.fr.jamb=el.value; render(); return; }
   if(a==='fr-header'){ state.fr.header=el.value; render(); return; }
@@ -3610,32 +3647,51 @@ function refreshRodBtn(act){
    ============================================================ */
 function addDoor(){
   const p=state.pick;
-  if(!p.code || p.size==null || p.frame==null || p.dbror==null){
-    toast('اختر المقاس والحلق والبرور أولاً'); return;
+  const widths = Object.keys(p.sizes).map(Number).filter(w=>(Number((p.sizes[w]||{}).qty)||0)>0);
+  const customReady = p.customOn && Number(p.custom.w)>0 && Number(p.custom.h)>0 && Number(p.custom.qty)>0;
+  if(!p.code || (!widths.length && !customReady) || p.frame==null || p.dbror==null){
+    toast('اختر مقاس واحد على الأقل والحلق والبرور أولاً'); return;
   }
   const d=doorByCode(p.code);
-  let sizeTxt,sizeEn,unitPrice;
-  if(p.size==='custom'){
-    const w=Number(p.custom.w)||0,h=Number(p.custom.h)||0;
-    if(!w||!h){toast('اكتب العرض والارتفاع للمقاس الخاص');return;}
-    sizeTxt=w+'×'+h+' سم (مقاس خاص — مقاس الفتحة المعمارية)'; sizeEn=w+'x'+h+' cm (custom)'; unitPrice=priceForWidth(w)+CUSTOM_EXTRA;
-  } else { sizeTxt=p.size+' سم'; sizeEn=p.size+' cm'; unitPrice=priceForWidth(p.size); }
-  // ارتفاع الضلفة اختياري وبس للمقاس القياسي (المقاس الخاص أصلًا بياخد ارتفاعه من حقل الطول بتاعه)
-  const doorHeight = (p.size!=='custom' && p.doorHeight) ? Number(p.doorHeight) : 0;
+  const addedTxts=[];
 
-  state.cart.push({
-    kind:'door',
-    title:'باب WPC '+d.code+' — '+d.name,
-    titleEn:'WPC Door '+d.code+' - '+d.en,
-    code:d.code, img:d.img, sizeTxt, sizeEn, unitPrice, qty:p.qty,
-    w: p.size==='custom' ? '' : p.size,   // العرض بالسم كرقم خام — لخصم الرصيد بدقة، فاضي لو مقاس خاص (مش متتبّع في المخزون)
-    frame:p.frame||0, dbror:p.dbror||'', frameHeight:p.frameHeight?Number(p.frameHeight):0,
-    doorHeight
+  widths.forEach(w=>{
+    const entry=p.sizes[w]||{qty:1,height:''};
+    const qty=Number(entry.qty)||1;
+    // ارتفاع الضلفة اختياري ولكل مقاس ارتفاعه الخاص بيه (المقاس الخاص أصلًا بياخد ارتفاعه من حقل الطول بتاعه)
+    const doorHeight = entry.height ? Number(entry.height) : 0;
+    const sizeTxt=w+' سم', sizeEn=w+' cm', unitPrice=priceForWidth(w);
+    state.cart.push({
+      kind:'door',
+      title:'باب WPC '+d.code+' — '+d.name,
+      titleEn:'WPC Door '+d.code+' - '+d.en,
+      code:d.code, img:d.img, sizeTxt, sizeEn, unitPrice, qty,
+      w,   // العرض بالسم كرقم خام — لخصم الرصيد بدقة
+      frame:p.frame||0, dbror:p.dbror||'', frameHeight:p.frameHeight?Number(p.frameHeight):0,
+      doorHeight
+    });
+    addedTxts.push(doorSizeText_(sizeTxt,doorHeight)+' × '+qty);
   });
+
+  if(customReady){
+    const w=Number(p.custom.w), h=Number(p.custom.h), qty=Number(p.custom.qty)||1;
+    const sizeTxt=w+'×'+h+' سم (مقاس خاص — مقاس الفتحة المعمارية)', sizeEn=w+'x'+h+' cm (custom)', unitPrice=priceForWidth(w)+CUSTOM_EXTRA;
+    state.cart.push({
+      kind:'door',
+      title:'باب WPC '+d.code+' — '+d.name,
+      titleEn:'WPC Door '+d.code+' - '+d.en,
+      code:d.code, img:d.img, sizeTxt, sizeEn, unitPrice, qty,
+      w:'',   // مقاس خاص مش متتبّع في المخزون
+      frame:p.frame||0, dbror:p.dbror||'', frameHeight:p.frameHeight?Number(p.frameHeight):0,
+      doorHeight:0
+    });
+    addedTxts.push(sizeTxt+' × '+qty);
+  }
+
   save(LS_CART,state.cart);
-  toast('اتضاف للسلة: '+d.code+' — '+doorSizeText_(sizeTxt,doorHeight));
+  toast('اتضاف للسلة: '+d.code+' — '+addedTxts.join('، '));
   // نلمّ الاختيارات ونقفل اللوحة عشان يختار باب تاني بارتياح
-  state.pick={code:'', size:null, custom:{w:'',h:''}, frame:null, dbror:null, frameHeight:'', doorHeight:'', qty:1};
+  state.pick={code:'', sizes:{}, customOn:false, custom:{w:'',h:'',qty:1}, frame:null, dbror:null, frameHeight:''};
   render();
 }
 
@@ -3715,15 +3771,15 @@ function editCartLine(i){
   save(LS_CART,state.cart);
 
   if(it.kind==='door'){
-    let sizeVal=null, customW='', customH='';
+    let sizes={}, customOn=false, customW='', customH='', customQty=1;
     let m = /^(\d+)\s*cm$/i.exec(it.sizeEn||'');
-    if(m){ sizeVal = Number(m[1]); }
+    if(m){ sizes[Number(m[1])] = {qty:it.qty||1, height: it.doorHeight?String(it.doorHeight):''}; }
     else {
       m = /^(\d+)\s*x\s*(\d+)\s*cm\s*\(custom\)$/i.exec(it.sizeEn||'');
-      if(m){ sizeVal='custom'; customW=m[1]; customH=m[2]; }
+      if(m){ customOn=true; customW=m[1]; customH=m[2]; customQty=it.qty||1; }
     }
-    state.pick = {code:it.code||'', size:sizeVal, custom:{w:customW,h:customH},
-      frame:it.frame||0, dbror:it.dbror||'', frameHeight:it.frameHeight?String(it.frameHeight):'', qty:it.qty||1};
+    state.pick = {code:it.code||'', sizes, customOn, custom:{w:customW,h:customH,qty:customQty},
+      frame:it.frame||0, dbror:it.dbror||'', frameHeight:it.frameHeight?String(it.frameHeight):''};
     state.newSection='doors'; save(LS_SECTION,state.newSection);
   } else if(it.kind==='frame' || it.kind==='bror'){
     const isFr = it.kind==='frame';
@@ -3810,7 +3866,7 @@ function draftOrder(){
     phone: m ? m.phone : state.profile.phone,
     region: m ? m.region : state.profile.region,
     warehouse:WAREHOUSE, items:JSON.parse(JSON.stringify(state.cart)), total:cartTotal(),
-    // صاحب الأوردر: حقل اختياري — لو اتكتب بيتسجّل، لو فاضي يبقى نفس صاحب الحساب
+    // صاحب الأوردر: إجباري من v84 — بيتسجّل زي ما اتكتب
     customer: m ? (m.customer||'') : state.customer.name.trim(),
     customerPhone: m ? (m.customerPhone||'') : state.customer.phone.trim(),
     note: state.orderNote.trim()
@@ -3937,19 +3993,24 @@ async function retryPendingOrders_(){
 function submitOrder(){
   if(!state.cart.length){toast('السلة فاضية');return;}
   if(!state.editingMeta){
-    // طلب جديد أو تعديل عادي من الموزع — لازم اسم الحساب وبيانات صحيحة. صاحب الأوردر اختياري
+    // طلب جديد أو تعديل عادي من الموزع — لازم اسم الحساب وبيانات صحيحة وصاحب الأوردر
     if(!profileOk()){
       state.touched=true; state.tab='new'; render();
       window.scrollTo({top:0,behavior:'smooth'});
-      toast('اكتب الاسم ورقم موبايل صحيح — إجباري');
+      toast('اكتب الاسم ورقم موبايل صحيح واسم صاحب الأوردر — إجباري');
       return;
     }
   } else {
-    // تعديل من شاشة المصنع — اسم الحساب إجباري هنا كمان، لو ناقص بنسأل. صاحب الأوردر اختياري
+    // تعديل من شاشة المصنع — اسم الحساب وصاحب الأوردر إجباريين هنا كمان، لو ناقصين بنسأل
     if(!state.editingMeta.name || !state.editingMeta.name.trim()){
       const v = (prompt('اسم الحساب (صاحب الجهاز) مفقود من الطلب ده — اكتبه عشان تقدر تحفظ:') || '').trim();
       if(!v){ toast('لازم تكتب اسم الحساب عشان تكمّل الحفظ'); return; }
       state.editingMeta.name = v;
+    }
+    if(!state.editingMeta.customer || !state.editingMeta.customer.trim()){
+      const v2 = (prompt('اسم صاحب الأوردر مفقود من الطلب ده — اكتبه عشان تقدر تحفظ:') || '').trim();
+      if(!v2){ toast('لازم تكتب اسم صاحب الأوردر عشان تكمّل الحفظ'); return; }
+      state.editingMeta.customer = v2;
     }
   }
   const wasEditing = !!state.editingId;
