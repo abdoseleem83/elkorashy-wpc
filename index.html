@@ -525,7 +525,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v88';
+const APP_BUILD   = 'v89';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1016,10 +1016,19 @@ function viewNew(){
     +`<button class="colchip ${p.customOn?'on':''}" data-act="toggle-custom">خاص${pricesVisible()?`<span class="sub">+${CUSTOM_EXTRA}ج</span>`:''}</button>`;
 
   // شبكة صغيرة لاختيار الحلق/البرور جوه كارت كل مقاس — كل مقاس له حلقه وبروره الخاصين بيه
-  const frameMiniChips=(sel,w)=>FRAMES.map(f=>`<button class="miniChip ${sel===f.cm?'on':''}" data-act="size-frame" data-w="${w}" data-cm="${f.cm}">${f.cm} سم</button>`).join('')
-    +`<button class="miniChip ${sel===0?'on':''}" data-act="size-frame" data-w="${w}" data-cm="0">بدون</button>`;
-  const dbrorMiniChips=(sel,w)=>BRORS.map(b=>`<button class="miniChip ${sel===b.size?'on':''}" data-act="size-dbror" data-w="${w}" data-size="${esc(b.size)}">${esc(b.size)}</button>`).join('')
-    +`<button class="miniChip ${sel===''?'on':''}" data-act="size-dbror" data-w="${w}" data-size="">بدون</button>`;
+  // w بيبقى رقم المقاس العادي، أو النص 'custom' للمقاس الخاص — وبناءً عليه بنبعت الحدث للـhandler الصح
+  const frameMiniChips=(sel,w)=>{
+    const act = w==='custom' ? 'cust-frame' : 'size-frame';
+    const wAttr = w==='custom' ? '' : ` data-w="${w}"`;
+    return FRAMES.map(f=>`<button class="miniChip ${sel===f.cm?'on':''}" data-act="${act}"${wAttr} data-cm="${f.cm}">${f.cm} سم</button>`).join('')
+      +`<button class="miniChip ${sel===0?'on':''}" data-act="${act}"${wAttr} data-cm="0">بدون</button>`;
+  };
+  const dbrorMiniChips=(sel,w)=>{
+    const act = w==='custom' ? 'cust-dbror' : 'size-dbror';
+    const wAttr = w==='custom' ? '' : ` data-w="${w}"`;
+    return BRORS.map(b=>`<button class="miniChip ${sel===b.size?'on':''}" data-act="${act}"${wAttr} data-size="${esc(b.size)}">${esc(b.size)}</button>`).join('')
+      +`<button class="miniChip ${sel===''?'on':''}" data-act="${act}"${wAttr} data-size="">بدون</button>`;
+  };
 
   const sizeCards = selWidths.map(w=>{
     const e=p.sizes[w];
