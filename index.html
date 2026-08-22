@@ -525,7 +525,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v90';
+const APP_BUILD   = 'v91';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -4125,21 +4125,37 @@ function itemProdPending_(it){
   const produced = Math.max(0, Math.min(qty, Number(it.produced)||0));
   return { produced, pending: qty-produced };
 }
-function docRowHTML_(it, idx, priced){
-  let size='', frameTxt='—', brorTxt='—', qty=it.qty, unit;
+// بيرجّع عرض وارتفاع الفتحة المعمارية للباب من sizeEn (المخزّن دايمًا بالإنجليزي بصيغة ثابتة)
+function doorWH_(it){
+  let m = /^(\d+)\s*cm$/i.exec(it.sizeEn||'');
+  if(m) return { w:Number(m[1]), h: it.doorHeight?Number(it.doorHeight):DOOR_STD_HEIGHT };
+  m = /^(\d+)\s*x\s*(\d+)\s*cm\s*\(custom\)$/i.exec(it.sizeEn||'');
+  if(m) return { w:Number(m[1]), h:Number(m[2]) };
+  return { w:'', h:'' };
+}
+
+function docRowHTML_(it, idx, priced, showFrameHCol){
+  let widthTxt='—', heightTxt='—', frameW='—', frameH='—', brorTxt='—', qty=it.qty, unit;
   if(it.kind==='door'){
-    size=doorSizeText_(it.sizeTxt,it.doorHeight); frameTxt=it.frame?frameText_(it.frame,it.frameHeight):'—'; brorTxt=it.dbror?it.dbror:'—'; unit='باب';
+    const wh = doorWH_(it);
+    widthTxt = wh.w||'—'; heightTxt = wh.h||'—';
+    frameW = it.frame ? it.frame : '—';
+    frameH = it.frame ? (it.frameHeight ? it.frameHeight : 'استاندر') : '—';
+    brorTxt = it.dbror ? it.dbror : '—';
+    unit='باب';
   } else if(it.kind==='frame'||it.kind==='bror'){
-    size=(it.rodCm?'عود '+it.rodCm+' سم · ':'')+it.spec; unit='عود';
-  } else { size='—'; unit=it.unit||'قطعة'; }
+    unit='عود';
+  } else { unit=it.unit||'قطعة'; }
   const pp = itemProdPending_(it);
   return `<tr>
     <td style="text-align:center">${idx}</td>
     <td><b>${esc(it.title)}</b></td>
-    <td style="font-size:11px;color:#5B6B7D">${esc(size)}</td>
-    <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(frameTxt)}</td>
-    <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(brorTxt)}</td>
     <td style="text-align:center">${qty} ${esc(unit)}</td>
+    <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(widthTxt)}</td>
+    <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(heightTxt)}</td>
+    <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(frameW)}</td>
+    ${showFrameHCol?`<td style="text-align:center;font-size:11px;color:${frameH==='استاندر'?'#8A6512':'#5B6B7D'}">${esc(frameH)}</td>`:''}
+    <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(brorTxt)}</td>
     <td style="text-align:center;font-size:11px;color:${pp.produced>=qty&&qty>0?'#1E8E52':(pp.produced>0?'#B8790A':'#6B7A8C')}">${pp.produced}</td>
     <td style="text-align:center;font-size:11px;font-weight:700;color:${pp.pending>0?'#B3261E':'#6B7A8C'}">${pp.pending}</td>
     ${priced?`<td style="text-align:center">${money(it.kind==='door'?it.unitPrice:it.price)}</td>
@@ -4158,11 +4174,11 @@ function sortSizeKeys_(keys){
   });
 }
 
-function docRows(o, priced){
+function docRows(o, priced, showFrameHCol){
   const items=o.items||[];
   const doorItems=items.filter(it=>it.kind==='door');
   const otherItems=items.filter(it=>it.kind!=='door');
-  const colspan=priced?10:8;
+  const colspan=(priced?11:9)+(showFrameHCol?1:0);
 
   const groups={};
   doorItems.forEach(it=>{ const k=doorSizeText_(it.sizeTxt,it.doorHeight)||''; (groups[k]=groups[k]||[]).push(it); });
@@ -4171,11 +4187,11 @@ function docRows(o, priced){
   let n=0, rows='';
   order.forEach(k=>{
     rows += `<tr><td colspan="${colspan}" style="background:#EAF2FA;padding:6px 8px;font-weight:700;color:#0B4A7A;font-size:11.5px;font-family:Arial,'Helvetica Neue',sans-serif">🚪 أبواب مقاس ${esc(k)}</td></tr>`;
-    groups[k].forEach(it=>{ rows += docRowHTML_(it, ++n, priced); });
+    groups[k].forEach(it=>{ rows += docRowHTML_(it, ++n, priced, showFrameHCol); });
   });
   if(otherItems.length){
     rows += `<tr><td colspan="${colspan}" style="background:#F3F6FA;padding:6px 8px;font-weight:700;color:#5B6B7D;font-size:11.5px;font-family:Arial,'Helvetica Neue',sans-serif">🔩 حلق / برور / إكسسوارات</td></tr>`;
-    otherItems.forEach(it=>{ rows += docRowHTML_(it, ++n, priced); });
+    otherItems.forEach(it=>{ rows += docRowHTML_(it, ++n, priced, showFrameHCol); });
   }
   return rows;
 }
@@ -4206,6 +4222,8 @@ function docTotalsHTML(o){
 function docHTML(o,mode,priced){
   const isQuote = mode==='quote';
   if(priced===undefined) priced = pricesVisible();
+  // عمود "ارتفاع الحلق" شرطي — بيظهر بس لو صنف باب واحد على الأقل في الطلب ده متسجّل له ارتفاع حلق فعلي
+  const showFrameHCol = (o.items||[]).some(it=>it.kind==='door' && it.frame && it.frameHeight);
   return `
   <div style="position:relative;font-family:Arial,'Helvetica Neue',sans-serif;direction:rtl;background:#fff;padding:34px 32px;color:#14243A;">
     <div style="position:absolute;inset:0;background:url('${ASSETS.mark}') no-repeat center center;background-size:34% auto;opacity:.06;"></div>
@@ -4245,19 +4263,21 @@ function docHTML(o,mode,priced){
       <table style="width:100%;margin-top:18px;border-collapse:collapse;font-size:12px">
         <thead>
           <tr style="background:#002050;color:#EAF2FA;font-family:Arial,'Helvetica Neue',sans-serif">
-            <th style="padding:9px 5px;width:26px">م</th>
-            <th style="padding:9px 5px;text-align:right">الصنف</th>
-            <th style="padding:9px 5px;width:66px">المقاس</th>
-            <th style="padding:9px 5px;width:54px">الحلق</th>
-            <th style="padding:9px 5px;width:54px">البرور</th>
-            <th style="padding:9px 5px;width:60px">الكمية</th>
-            <th style="padding:9px 5px;width:50px">جاهز</th>
-            <th style="padding:9px 5px;width:54px">متبقي</th>
+            <th style="padding:9px 5px;width:24px">م</th>
+            <th style="padding:9px 5px;text-align:right">كود</th>
+            <th style="padding:9px 5px;width:52px">الكمية</th>
+            <th style="padding:9px 3px;width:58px">عرض الفتحة المعمارية</th>
+            <th style="padding:9px 3px;width:62px">ارتفاع الفتحة المعمارية</th>
+            <th style="padding:9px 3px;width:50px">عرض الحلق</th>
+            ${showFrameHCol?`<th style="padding:9px 3px;width:56px">ارتفاع الحلق</th>`:''}
+            <th style="padding:9px 5px;width:48px">البرور</th>
+            <th style="padding:9px 5px;width:44px">جاهز</th>
+            <th style="padding:9px 5px;width:48px">متبقي</th>
             ${priced?`<th style="padding:9px 5px;width:64px">السعر</th>
             <th style="padding:9px 5px;width:74px">الإجمالي</th>`:''}
           </tr>
         </thead>
-        <tbody style="background:#fff">${docRows(o,priced)}</tbody>
+        <tbody style="background:#fff">${docRows(o,priced,showFrameHCol)}</tbody>
       </table>
       ${docTotalsHTML(o)}
 
