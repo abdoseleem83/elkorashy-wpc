@@ -525,7 +525,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v89';
+const APP_BUILD   = 'v90';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -581,7 +581,7 @@ function frameText_(cm, height){
   if(!cm) return '';
   return cm+' سم' + (height?' (ارتفاع '+height+' سم)':'');
 }
-// بيبني نص مقاس الباب شامل ارتفاع الضلفة لو مختلف عن الاستاندر 215 (اختياري، زي الحلق بالظبط)
+// بيبني نص مقاس الباب شامل ارتفاع الفتحة المعمارية لو مختلف عن الاستاندر 215 (اختياري، زي الحلق بالظبط)
 function doorSizeText_(sizeTxt, height){
   return (sizeTxt||'') + (height?' (ارتفاع '+height+' سم)':'');
 }
@@ -1048,7 +1048,7 @@ function viewNew(){
         </div>
       </div>
       ${stockLine}
-      <label class="fld sm"><span>ارتفاع الضلفة (سم)</span>
+      <label class="fld sm"><span style="color:var(--danger)">ارتفاع الفتحة المعمارية (سم)</span>
         <input type="number" inputmode="numeric" min="1" class="hgtIn" value="${esc(e.height||'')}" placeholder="استاندر ${DOOR_STD_HEIGHT}" data-act="size-height" data-w="${w}"></label>
       <div class="miniLbl">الحلق</div>
       <div class="miniChips">${frameMiniChips(e.frame,w)}</div>
@@ -3705,7 +3705,7 @@ function addDoor(){
   widths.forEach(w=>{
     const e=p.sizes[w];
     const qty=Number(e.qty)||1;
-    // ارتفاع الضلفة اختياري ولكل مقاس ارتفاعه الخاص بيه (المقاس الخاص أصلًا بياخد ارتفاعه من حقل الطول بتاعه)
+    // ارتفاع الفتحة المعمارية اختياري ولكل مقاس ارتفاعه الخاص بيه (المقاس الخاص أصلًا بياخد ارتفاعه من حقل الطول بتاعه)
     const doorHeight = e.height ? Number(e.height) : 0;
     const sizeTxt=w+' سم', sizeEn=w+' cm', unitPrice=priceForWidth(w);
     state.cart.push({
