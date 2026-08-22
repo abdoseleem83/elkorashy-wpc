@@ -514,7 +514,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v86';
+const APP_BUILD   = 'v87';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -570,11 +570,11 @@ function frameText_(cm, height){
   if(!cm) return '';
   return cm+' سم' + (height?' (ارتفاع '+height+' سم)':'');
 }
-// بيبني نص مقاس الباب شامل ارتفاع الضلفة لو مختلف عن الاستاندر 210 (اختياري، زي الحلق بالظبط)
+// بيبني نص مقاس الباب شامل ارتفاع الضلفة لو مختلف عن الاستاندر 215 (اختياري، زي الحلق بالظبط)
 function doorSizeText_(sizeTxt, height){
   return (sizeTxt||'') + (height?' (ارتفاع '+height+' سم)':'');
 }
-const DOOR_STD_HEIGHT = 210;
+const DOOR_STD_HEIGHT = 215;
 const PRICE_NOTE = 'الأسعار بعاليه حسب وقت التسعير وغير ملزمة إلا في حالة سداد المبلغ كامل أو نصفه.';
 
 const DOORS = [
@@ -1089,7 +1089,7 @@ function viewNew(){
 
       ${p.customOn?`<div class="box"><div class="row2">
           <label class="fld"><span>العرض (سم)</span><input type="number" inputmode="numeric" min="1" value="${esc(p.custom.w)}" placeholder="مثال 85" data-act="cust" data-k="w"></label>
-          <label class="fld"><span>الارتفاع (سم)</span><input type="number" inputmode="numeric" min="1" value="${esc(p.custom.h)}" placeholder="مثال 210" data-act="cust" data-k="h"></label>
+          <label class="fld"><span>الارتفاع (سم)</span><input type="number" inputmode="numeric" min="1" value="${esc(p.custom.h)}" placeholder="مثال 215" data-act="cust" data-k="h"></label>
         </div>
         <div class="grp" style="margin-top:8px">كمية المقاس الخاص</div>
         <div class="qty">
