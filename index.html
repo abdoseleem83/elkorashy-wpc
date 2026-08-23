@@ -525,7 +525,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v92';
+const APP_BUILD   = 'v93';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -4231,15 +4231,18 @@ function docTotalsHTML(o){
   const perSize={};
   doorItems.forEach(it=>{ const k=doorSizeText_(it.sizeTxt,it.doorHeight)||''; perSize[k]=(perSize[k]||0)+(Number(it.qty)||0); });
   const keys=sortSizeKeys_(Object.keys(perSize));
-  const lines=keys.map(k=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span>أبواب مقاس ${esc(k)}</span><b>${perSize[k]} باب</b></div>`).join('');
+  const cards=keys.map(k=>`<div style="flex:1;min-width:96px;background:#EAF2FA;border:1px solid #B9D4EA;border-radius:9px;padding:8px 10px;text-align:center">
+    <div style="font-size:10.5px;color:#4A7290">${esc(k)}</div>
+    <div style="font-size:15px;font-weight:700;color:#002050">${perSize[k]}</div>
+  </div>`).join('');
   const doorsTotal=keys.reduce((s,k)=>s+perSize[k],0);
   const overallTotal=items.reduce((s,it)=>s+(Number(it.qty)||0),0);
   const overallProduced=items.reduce((s,it)=>s+itemProdPending_(it).produced,0);
   const overallPending=overallTotal-overallProduced;
 
-  return `<div style="margin-top:14px;padding:10px 13px;background:#F3F6FA;border-radius:9px">
-    ${lines}
-    <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0 0;border-top:1px dashed #DCE4EC;margin-top:4px"><span><b>إجمالي الأبواب</b></span><b>${doorsTotal} باب</b></div>
+  return `<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">${cards}</div>
+  <div style="margin-top:10px;padding:10px 13px;background:#F3F6FA;border-radius:9px">
+    <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0"><span><b>إجمالي الأبواب</b></span><b>${doorsTotal} باب</b></div>
     <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span><b>الإجمالي الكلي</b></span><b>${overallTotal} قطعة</b></div>
     <div style="display:flex;justify-content:space-between;font-size:11.5px;padding:2px 0;color:#1E8E52"><span>جاهز</span><b>${overallProduced} قطعة</b></div>
     <div style="display:flex;justify-content:space-between;font-size:11.5px;padding:2px 0;color:#B3261E"><span>متبقي</span><b>${overallPending} قطعة</b></div>
