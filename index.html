@@ -525,7 +525,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v97';
+const APP_BUILD   = 'v98';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -721,7 +721,7 @@ const state = {
   orders:  load(LS_ORDERS, []),
   pick:{code:'', sizes:{}, customOn:false, custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false}},
   newSection: load(LS_SECTION, ''),   // '' (لسه محددش) | doors | acc | frame | bror | prodium
-  fr:{cm:10, code:'', jamb:2, header:1, jambCm:220, headerCm:110, extra:[], note:''},   // حلق منفصل: عدد قوائم ٢٢٠ سم + عدد عتب ١١٠ سم (الارتفاعات قابلة للتعديل)، وممكن تضيف أعواد بارتفاعات تانية في extra، والكود إجباري. note: ملحوظة اختيارية
+  fr:{cm:10, code:'', doorW:'', jamb:2, header:1, jambCm:220, headerCm:110, extra:[], note:''},   // حلق منفصل: عدد قوائم ٢٢٠ سم + عدد عتب ١١٠ سم (الارتفاعات قابلة للتعديل)، وممكن تضيف أعواد بارتفاعات تانية في extra، والكود إجباري. doorW = مقاس الباب اللي الحلق ده ليه (70/80/90/100) — اختياري. note: ملحوظة اختيارية
   br:{size:'6×9', code:'', rods:1, lenM:BROR_ROD_M_DEFAULT}, // برور إضافي بالعود — code = كود/لون الباب (إجباري زي الحلق)، lenM = طول العود بالمتر (قابل للتغيير لو حد طلب مقاس تكملة)
   pd:{code:'', qty:1}, // ألواح بروديوم — code = كود/لون الباب (إجباري زي البرور)، qty = عدد الألواح
   acc:{},
@@ -1117,6 +1117,10 @@ function viewNew(){
   // كود/لون الباب للحلق المنفصل — إجباري زي باقي الاختيارات
   const frCodeChips=DOORS.map(d=>`
     <button class="chip ${state.fr.code===d.code?'on':''}" data-act="fr-code" data-code="${d.code}">${d.code} — ${esc(d.name)}</button>`).join('');
+  // مقاس الباب اللي الحلق ده مخصوص له (70/80/90/100) — اختياري، بس بيوضح للمصنع
+  const frDoorWChips=SIZES.map(s=>`
+    <button class="chip ${String(state.fr.doorW)===String(s.w)?'on':''}" data-act="fr-doorw" data-w="${s.w}">${s.w} سم</button>`).join('')
+    +`<button class="chip ${!state.fr.doorW?'on':''}" data-act="fr-doorw" data-w="">مش محدد</button>`;
 
   const brRods=Number(state.br.rods)||0;
   const brSel=BRORS.find(b=>b.size===state.br.size)||BRORS[0];
@@ -1232,6 +1236,8 @@ function viewNew(){
     <div class="chips">${frChips}</div>
     <div class="sol-h" style="margin:12px 0 6px">كود الباب (اللون) <b class="req">*</b></div>
     <div class="chips">${frCodeChips}</div>
+    <div class="sol-h" style="margin:12px 0 6px">لباب مقاس كام؟ <span style="font-weight:400;color:var(--muted)">(اختياري — يوضح للمصنع)</span></div>
+    <div class="chips">${frDoorWChips}</div>
     <div class="sol-h" style="margin:12px 0 6px">عدد الأعواد لكل ارتفاع</div>
     <div class="rodrow">
       <div class="rodbox">
@@ -1260,7 +1266,7 @@ function viewNew(){
     </label>
     <button class="btn ghost sm" style="margin-top:9px" data-act="add-fr" ${frRods>0&&state.fr.code?'':'disabled'}>
       ${!state.fr.code ? 'اختر كود الباب أولاً'
-        : (frRods>0 ? `أضف ${frRods} عود — حلق ${frSel.cm} سم ${esc(state.fr.code)}`
+        : (frRods>0 ? `أضف ${frRods} عود — حلق ${frSel.cm} سم ${esc(state.fr.code)}${state.fr.doorW?' — لباب '+state.fr.doorW+' سم':''}`
                     : 'اكتب عدد الأعواد')}</button>
   </section>`;
 
@@ -3545,6 +3551,7 @@ document.addEventListener('click',e=>{
     case 'cust-dbror': p.custom.dbror=el.dataset.size; render(); break;
     case 'fr-cm': state.fr.cm=Number(el.dataset.cm); render(); break;
     case 'fr-code': state.fr.code=el.dataset.code; render(); break;
+    case 'fr-doorw': state.fr.doorW=el.dataset.w; render(); break;
     case 'fr-extra-add': state.fr.extra=[...(state.fr.extra||[]), {cm:'',qty:1}]; render(); break;
     case 'fr-extra-del': { const i=Number(el.dataset.i); state.fr.extra.splice(i,1); render(); break; }
     case 'br-size': state.br.size=el.dataset.size; render(); break;
@@ -3910,25 +3917,26 @@ function addRod(kind){
     const extra = (st.extra||[]).map(x=>({cm:Math.max(0,Math.round(Number(x.cm)||0)), qty:Math.max(0,Math.round(Number(x.qty)||0))})).filter(x=>x.cm>0 && x.qty>0);
     const extraTotal = extra.reduce((s,x)=>s+x.qty,0);
     if(jamb+header+extraTotal<=0){toast('اكتب عدد الأعواد');return;}
+    const forDoor = st.doorW ? ' — لباب '+st.doorW+' سم' : '';
     if(jamb){
       push(f.cm+' سم', jambCm, jamb, f.price,
-        'حلق باب '+f.cm+' سم — قائم '+jambCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+(st.note?' — ملاحظة: '+st.note:''),
+        'حلق باب '+f.cm+' سم — قائم '+jambCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
         'Door Frame '+f.cm+' cm - jamb '+jambCm+'cm'+(st.code?' - '+st.code:''));
       added += jamb;
     }
     if(header){
       push(f.cm+' سم', headerCm, header, f.price,
-        'حلق باب '+f.cm+' سم — عتب '+headerCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+(st.note?' — ملاحظة: '+st.note:''),
+        'حلق باب '+f.cm+' سم — عتب '+headerCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
         'Door Frame '+f.cm+' cm - header '+headerCm+'cm'+(st.code?' - '+st.code:''));
       added += header;
     }
     extra.forEach(x=>{
       push(f.cm+' سم', x.cm, x.qty, f.price,
-        'حلق باب '+f.cm+' سم — عود '+x.cm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+(st.note?' — ملاحظة: '+st.note:''),
+        'حلق باب '+f.cm+' سم — عود '+x.cm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
         'Door Frame '+f.cm+' cm - rod '+x.cm+'cm'+(st.code?' - '+st.code:''));
       added += x.qty;
     });
-    state.fr.jamb=2; state.fr.header=1; state.fr.jambCm=220; state.fr.headerCm=110; state.fr.extra=[]; state.fr.note='';
+    state.fr.jamb=2; state.fr.header=1; state.fr.jambCm=220; state.fr.headerCm=110; state.fr.extra=[]; state.fr.doorW=''; state.fr.note='';
   } else {
     const b = BRORS.find(x=>x.size===st.size)||BRORS[0];
     const rods = Math.max(0, Math.round(Number(st.rods)||0));
