@@ -525,7 +525,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v93';
+const APP_BUILD   = 'v94';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1762,26 +1762,30 @@ async function deleteOrder(id){
   state.admin.delBusy = null; render();
 }
 
-// مسح كل الطلبات اللي حالتها "تم التسليم" دفعة واحدة — تنظيف دوري، إجراء نهائي وجماعي فمحتاج تأكيد قوي
+// مسح كل الطلبات المؤرشفة (تم التسليم) دفعة واحدة — تنظيف دوري، إجراء نهائي وجماعي فمحتاج تأكيد قوي
 async function clearDeliveredOrders(){
-  const n = (state.admin.rows||[]).filter(o=>o.status==='Delivered').length;
-  if(!n){ toast('مفيش طلبات "تم التسليم" لمسحها'); return; }
-  if(!confirm('هيتمسح '+n+' طلب حالتهم "تم التسليم" نهائيًا من الشيت (الطلب وكل أصنافه) — الإجراء ده مش قابل للتراجع. متأكد؟')) return;
+  const list = state.admin.archRows || [];
+  const n = list.filter(o=>o.status==='Delivered').length;
+  if(!n){ toast('مفيش طلبات مؤرشفة لمسحها'); return; }
+  if(!confirm('هيتمسح '+n+' طلب من الأرشيف نهائيًا من الشيت (الطلب وكل أصنافه) — الإجراء ده مش قابل للتراجع. متأكد؟')) return;
   if(!confirm('تأكيد أخير: هيتحذف '+n+' طلب فعلًا ونهائيًا. اضغط موافق للمتابعة.')) return;
-  state.admin.loading = true; render();
+  state.admin.archLoading = true; render();
   try{
     const d = await jsonp(APPS_SCRIPT_URL
       + '?action=deleteDelivered&pw=' + encodeURIComponent(state.admin.pw), 25000);
     if(!d || !d.ok) throw new Error((d && d.error) || 'فشل المسح');
+    state.admin.archRows = list.filter(o=>o.status!=='Delivered');
     state.admin.rows = (state.admin.rows||[]).filter(o=>o.status!=='Delivered');
     Object.keys(state.admin.items||{}).forEach(id=>{
-      if(!state.admin.rows.find(o=>String(o.id)===id)){ delete state.admin.items[id]; delete state.admin.itemsOpen[id]; }
+      if(!(state.admin.rows||[]).find(o=>String(o.id)===id) && !(state.admin.archRows||[]).find(o=>String(o.id)===id)){
+        delete state.admin.items[id]; delete state.admin.itemsOpen[id];
+      }
     });
-    toast('اتمسح '+(d.count||n)+' طلب "تم التسليم"');
+    toast('اتمسح '+(d.count||n)+' طلب من الأرشيف');
   }catch(err){
     toast('تعذّر المسح: ' + (err.message || err));
   }
-  state.admin.loading = false; render();
+  state.admin.archLoading = false; render();
 }
 
 function toggleOrderItemsPreview(o){
@@ -3217,7 +3221,7 @@ function viewAdmin(){
         <button class="btn ${a.viewStock?'brand':'act-edit'} sm" data-act="adm-toggle-stock">${ico("box")}${a.viewStock?'رجوع للطلبات':'أرصدة المخزن'}</button>
         <button class="btn ${viewingArchive?'brand':'act-edit'} sm" data-act="adm-toggle-archive">${ico("folder")}${viewingArchive?'رجوع للطلبات':'الأرشيف'}</button>
         <button class="btn act-money sm" data-act="adm-prices-open"><i>💲</i>الأسعار</button>
-        <button class="btn act-del sm" data-act="adm-clear-delivered">${ico("trash")}مسح المسلّم</button>
+        ${viewingArchive?`<button class="btn act-del sm" data-act="adm-clear-delivered">${ico("trash")}حذف المؤرشف</button>`:''}
         <button class="btn act-tool sm" data-act="adm-logout">${ico("lock")}خروج</button>
       </div>`;
 
