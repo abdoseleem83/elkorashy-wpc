@@ -525,7 +525,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v95';
+const APP_BUILD   = 'v97';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -604,6 +604,7 @@ const DOORS = [
 
 const SIZES = [{w:70,price:5200},{w:80,price:5200},{w:90,price:5400},{w:100,price:6000}];
 let CUSTOM_EXTRA = 300;
+let HAFR_EXTRA = 600;   // باب حفر — زيادة ثابتة فوق سعر الباب العادي لنفس المقاس
 
 /* الحلق — سعر المتر الطولي، وبيتباع بالعود 2.15 م */
 const FRAMES = [{cm:10,price:117.81},{cm:15,price:144.14},{cm:20,price:170.47}];
@@ -643,7 +644,7 @@ const PRICE_TIERS = {
 };
 // كل مستوى سعر (جملة/معرض/عميل) بقى بيتخزّن كقيمة مستقلة لكل صنف — مش بيتحسب تلقائي من زيادة ثابتة.
 // الزيادات فوق (doorAdd/otherAdd) بتُستخدم بس كقيمة مبدئية أول مرة تفتح فيها شاشة تعديل الأسعار قبل ما تحفظ حاجة بنفسك.
-const TIER_OVERRIDES = { showroom:{sizes:{},customExtra:null,frames:{},brors:{},acc:{},panel:{}}, customer:{sizes:{},customExtra:null,frames:{},brors:{},acc:{},panel:{}} };
+const TIER_OVERRIDES = { showroom:{sizes:{},customExtra:null,hafrExtra:null,frames:{},brors:{},acc:{},panel:{}}, customer:{sizes:{},customExtra:null,hafrExtra:null,frames:{},brors:{},acc:{},panel:{}} };
 const ACC_EN_TO_ID_ = {}; ACCESSORIES.forEach(a=>{ ACC_EN_TO_ID_[a.en] = a.id; });
 // بيرجّع سعر الصنف على مستوى معيّن (جملة/معرض/عميل). لو الصنف ده اتحفظله سعر مخصوص لنفس المستوى بيترجع هو،
 // وإلا بيترجع سعر الجملة + الزيادة الافتراضية للمستوى (fallback للأصناف اللي لسه محدّش عدّل سعرها بنفسه).
@@ -653,6 +654,7 @@ function tierPrice(basePrice, kind, tierKey, key){
   const ov = TIER_OVERRIDES[tierKey];
   if(ov){
     if(key==='customExtra'){ if(ov.customExtra!=null) return Number(ov.customExtra)||0; }
+    else if(key==='hafrExtra'){ if(ov.hafrExtra!=null) return Number(ov.hafrExtra)||0; }
     else if(key!=null && ov[group] && ov[group][key]!=null){ return Number(ov[group][key])||0; }
   }
   const t = PRICE_TIERS[tierKey] || PRICE_TIERS.dist;
@@ -678,6 +680,7 @@ function applyPriceOverrides(){
   const dist = ov.dist || ov;
   if(dist.sizes) SIZES.forEach(s=>{ if(dist.sizes[s.w]!=null) s.price=Number(dist.sizes[s.w])||0; });
   if(dist.customExtra!=null) CUSTOM_EXTRA = Number(dist.customExtra)||0;
+  if(dist.hafrExtra!=null) HAFR_EXTRA = Number(dist.hafrExtra)||0;
   if(dist.frames) FRAMES.forEach(f=>{ if(dist.frames[f.cm]!=null) f.price=Number(dist.frames[f.cm])||0; });
   if(dist.brors) BRORS.forEach(b=>{ if(dist.brors[b.size]!=null) b.price=Number(dist.brors[b.size])||0; });
   if(dist.acc) ACCESSORIES.forEach(a=>{ if(dist.acc[a.id]!=null) a.price=Number(dist.acc[a.id])||0; });
@@ -686,6 +689,7 @@ function applyPriceOverrides(){
     const t = ov[tk]; if(!t) return;
     if(t.sizes) TIER_OVERRIDES[tk].sizes = {...t.sizes};
     if(t.customExtra!=null) TIER_OVERRIDES[tk].customExtra = t.customExtra;
+    if(t.hafrExtra!=null) TIER_OVERRIDES[tk].hafrExtra = t.hafrExtra;
     if(t.frames) TIER_OVERRIDES[tk].frames = {...t.frames};
     if(t.brors) TIER_OVERRIDES[tk].brors = {...t.brors};
     if(t.acc) TIER_OVERRIDES[tk].acc = {...t.acc};
@@ -715,9 +719,9 @@ const state = {
   profile: load(LS_PROFILE, {name:'', phone:'', region:''}),
   cart:    load(LS_CART, []),
   orders:  load(LS_ORDERS, []),
-  pick:{code:'', sizes:{}, customOn:false, custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null}},
+  pick:{code:'', sizes:{}, customOn:false, custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false}},
   newSection: load(LS_SECTION, ''),   // '' (لسه محددش) | doors | acc | frame | bror | prodium
-  fr:{cm:10, code:'', jamb:2, header:1, note:''},   // حلق منفصل: عدد قوائم ٢٢٠ سم + عدد عتب ١١٠ سم، والكود إجباري. note: ملحوظة مقاس مخصوص لو تكملة
+  fr:{cm:10, code:'', jamb:2, header:1, jambCm:220, headerCm:110, extra:[], note:''},   // حلق منفصل: عدد قوائم ٢٢٠ سم + عدد عتب ١١٠ سم (الارتفاعات قابلة للتعديل)، وممكن تضيف أعواد بارتفاعات تانية في extra، والكود إجباري. note: ملحوظة اختيارية
   br:{size:'6×9', code:'', rods:1, lenM:BROR_ROD_M_DEFAULT}, // برور إضافي بالعود — code = كود/لون الباب (إجباري زي الحلق)، lenM = طول العود بالمتر (قابل للتغيير لو حد طلب مقاس تكملة)
   pd:{code:'', qty:1}, // ألواح بروديوم — code = كود/لون الباب (إجباري زي البرور)، qty = عدد الألواح
   acc:{},
@@ -771,7 +775,7 @@ function showDoorPreview(code){
   document.getElementById('closeDoorPreview').onclick = () => ov.remove();
 }
 function millById(id){return MILLS.find(m=>m.id===id)||MILLS[1];}
-function priceForWidth(w){const n=Number(w)||0;for(const s of SIZES) if(n<=s.w) return s.price;return SIZES[SIZES.length-1].price;}
+function priceForWidth(w, hafr){const n=Number(w)||0;let p=SIZES[SIZES.length-1].price;for(const s of SIZES) if(n<=s.w){p=s.price;break;}return p+(hafr?HAFR_EXTRA:0);}
 function rodPrice(perMetre, cm){return Math.round(perMetre*((Number(cm)||220)/100)*100)/100;}
 function linePrice(it){return (it.kind==='door'?it.unitPrice:it.price)*it.qty;}
 function cartTotal(){return state.cart.reduce((s,it)=>s+linePrice(it),0);}
@@ -1037,6 +1041,12 @@ function viewNew(){
     return BRORS.map(b=>`<button class="miniChip ${sel===b.size?'on':''}" data-act="${act}"${wAttr} data-size="${esc(b.size)}">${esc(b.size)}</button>`).join('')
       +`<button class="miniChip ${sel===''?'on':''}" data-act="${act}"${wAttr} data-size="">بدون</button>`;
   };
+  const hafrMiniChips=(sel,w)=>{
+    const act = w==='custom' ? 'cust-hafr' : 'size-hafr';
+    const wAttr = w==='custom' ? '' : ` data-w="${w}"`;
+    return `<button class="miniChip ${!sel?'on':''}" data-act="${act}"${wAttr} data-v="0">عادي</button>`
+      +`<button class="miniChip ${sel?'on':''}" data-act="${act}"${wAttr} data-v="1">حفر${pricesVisible()?` (+${HAFR_EXTRA}ج)`:''}</button>`;
+  };
 
   const sizeCards = selWidths.map(w=>{
     const e=p.sizes[w];
@@ -1056,6 +1066,8 @@ function viewNew(){
         </div>
       </div>
       ${stockLine}
+      <div class="miniLbl">النوع</div>
+      <div class="miniChips">${hafrMiniChips(e.hafr,w)}</div>
       <label class="fld sm"><span style="color:var(--danger)">ارتفاع الفتحة المعمارية (سم)</span>
         <input type="number" inputmode="numeric" min="1" class="hgtIn" value="${esc(e.height||'')}" placeholder="استاندر ${DOOR_STD_HEIGHT}" data-act="size-height" data-w="${w}"></label>
       <div class="miniLbl">الحلق</div>
@@ -1080,6 +1092,8 @@ function viewNew(){
         <button data-act="cust-qty-plus">+</button>
       </div>
       <div class="note">المقاسات خارج الاستاندر بيتضاف عليها <b>${CUSTOM_EXTRA} ج</b>.</div>
+      <div class="miniLbl">النوع</div>
+      <div class="miniChips">${hafrMiniChips(p.custom.hafr,'custom')}</div>
       <div class="miniLbl">الحلق</div>
       <div class="miniChips">${frameMiniChips(p.custom.frame,'custom')}</div>
       ${p.custom.frame?`<label class="fld sm"><span>ارتفاع الحلق (سم) — اختياري</span>
@@ -1090,10 +1104,14 @@ function viewNew(){
 
   const frJamb=Math.max(0,Number(state.fr.jamb)||0);
   const frHeader=Math.max(0,Number(state.fr.header)||0);
-  const frRods=frJamb+frHeader;
+  const frJambCm=Math.max(1,Math.round(Number(state.fr.jambCm)||220));
+  const frHeaderCm=Math.max(1,Math.round(Number(state.fr.headerCm)||110));
+  const frExtra=(state.fr.extra||[]).map(x=>({cm:Math.max(0,Math.round(Number(x.cm)||0)), qty:Math.max(0,Math.round(Number(x.qty)||0))}));
+  const frExtraRods=frExtra.reduce((s,x)=>s+(x.cm>0?x.qty:0),0);
+  const frRods=frJamb+frHeader+frExtraRods;
   const frSel=FRAMES.find(f=>f.cm===state.fr.cm)||FRAMES[0];
   // سعر كل مقاس على حدة حسب طوله الفعلي
-  const frJambPrice=rodPrice(frSel.price,220), frHeaderPrice=rodPrice(frSel.price,110);
+  const frJambPrice=rodPrice(frSel.price,frJambCm), frHeaderPrice=rodPrice(frSel.price,frHeaderCm);
   const frChips=FRAMES.map(f=>`
     <button class="chip ${state.fr.cm===f.cm?'on':''}" data-act="fr-cm" data-cm="${f.cm}">${f.cm} سم</button>`).join('');
   // كود/لون الباب للحلق المنفصل — إجباري زي باقي الاختيارات
@@ -1196,34 +1214,53 @@ function viewNew(){
       ${accTotal?'أضف الإكسسوارات':'اختر الكميات أولاً'}</button>
   </section>`;
 
+  const frExtraRows = frExtra.map((x,idx)=>`
+    <div class="rodbox">
+      <div class="rl">عود إضافي<small>ارتفاع مخصوص</small></div>
+      <div class="row2" style="gap:6px">
+        <input type="number" inputmode="numeric" min="1" step="1" placeholder="سم" value="${esc(state.fr.extra[idx].cm)}" data-act="fr-extra-cm" data-i="${idx}">
+        <input type="number" inputmode="numeric" min="0" step="1" placeholder="عدد" value="${esc(state.fr.extra[idx].qty)}" data-act="fr-extra-qty" data-i="${idx}">
+      </div>
+      ${x.cm>0&&pricesVisible()?`<div class="rp">${money(rodPrice(frSel.price,x.cm))} ج/عود</div>`:''}
+      <button class="btn ghost sm" style="margin-top:6px;padding:4px 10px" data-act="fr-extra-del" data-i="${idx}">✕ حذف</button>
+    </div>`).join('');
+
   const secFrame = `
   <section class="card">
-    <div class="step"><span class="n">${ico("frame","lg")}</span><h2>حلق فقط</h2><span class="hint">قائم ٢٢٠ · عتب ١١٠ سم</span></div>
+    <div class="step"><span class="n">${ico("frame","lg")}</span><h2>حلق فقط</h2><span class="hint">ارتفاع الأعواد قابل للتعديل</span></div>
     <div class="sol-h" style="margin-bottom:6px">المقاس</div>
     <div class="chips">${frChips}</div>
     <div class="sol-h" style="margin:12px 0 6px">كود الباب (اللون) <b class="req">*</b></div>
     <div class="chips">${frCodeChips}</div>
-    <div class="sol-h" style="margin:12px 0 6px">عدد الأعواد لكل مقاس</div>
+    <div class="sol-h" style="margin:12px 0 6px">عدد الأعواد لكل ارتفاع</div>
     <div class="rodrow">
       <div class="rodbox">
-        <div class="rl">قائم <b>٢٢٠ سم</b><small>جنبي الباب</small></div>
-        <input type="number" inputmode="numeric" min="0" step="1" value="${esc(state.fr.jamb)}" data-act="fr-jamb">
+        <div class="rl">قائم<small>جنبي الباب</small></div>
+        <div class="row2" style="gap:6px">
+          <input type="number" inputmode="numeric" min="1" step="1" placeholder="سم" value="${esc(state.fr.jambCm)}" data-act="fr-jambCm">
+          <input type="number" inputmode="numeric" min="0" step="1" placeholder="عدد" value="${esc(state.fr.jamb)}" data-act="fr-jamb">
+        </div>
         ${pricesVisible()?`<div class="rp">${money(frJambPrice)} ج/عود</div>`:''}
       </div>
       <div class="rodbox">
-        <div class="rl">عتب <b>١١٠ سم</b><small>أعلى الباب</small></div>
-        <input type="number" inputmode="numeric" min="0" step="1" value="${esc(state.fr.header)}" data-act="fr-header">
+        <div class="rl">عتب<small>أعلى الباب</small></div>
+        <div class="row2" style="gap:6px">
+          <input type="number" inputmode="numeric" min="1" step="1" placeholder="سم" value="${esc(state.fr.headerCm)}" data-act="fr-headerCm">
+          <input type="number" inputmode="numeric" min="0" step="1" placeholder="عدد" value="${esc(state.fr.header)}" data-act="fr-header">
+        </div>
         ${pricesVisible()?`<div class="rp">${money(frHeaderPrice)} ج/عود</div>`:''}
       </div>
+      ${frExtraRows}
     </div>
-    <div class="note" style="margin-top:9px">الباب الواحد بياخد ٢ قائم + ١ عتب — اطلب اللي محتاجه بس.</div>
+    <button class="btn ghost sm" style="margin-top:9px" data-act="fr-extra-add">${ico("plus")} عود بارتفاع تاني</button>
+    <div class="note" style="margin-top:9px">الباب الواحد بياخد ٢ قائم + ١ عتب — غيّر الارتفاع (سم) لأي عود لو مختلف عن الاستاندر، وأضف أعواد بارتفاعات تانية لو محتاج.</div>
     <label class="fld" style="margin-top:9px">
-      <span>ملحوظة مقاس مخصوص <span style="font-weight:400;color:var(--muted)">(لو حد طلب تكملة مش المقاس القياسي — اكتب كام سم)</span></span>
+      <span>ملحوظة <span style="font-weight:400;color:var(--muted)">(اختياري)</span></span>
       <input type="text" placeholder="مثال: عتب تكملة 60 سم" value="${esc(state.fr.note||'')}" data-act="fr-note">
     </label>
     <button class="btn ghost sm" style="margin-top:9px" data-act="add-fr" ${frRods>0&&state.fr.code?'':'disabled'}>
       ${!state.fr.code ? 'اختر كود الباب أولاً'
-        : (frRods>0 ? `أضف ${frJamb?frJamb+' قائم':''}${frJamb&&frHeader?' + ':''}${frHeader?frHeader+' عتب':''} — حلق ${frSel.cm} سم ${esc(state.fr.code)}`
+        : (frRods>0 ? `أضف ${frRods} عود — حلق ${frSel.cm} سم ${esc(state.fr.code)}`
                     : 'اكتب عدد الأعواد')}</button>
   </section>`;
 
@@ -1317,9 +1354,10 @@ function currentSummary(){
   widths.forEach(w=>{
     const e=p.sizes[w];
     const qty=Number(e.qty)||1; totalQty+=qty;
-    const unit=priceForWidth(w); totalPrice+=unit*qty;
+    const unit=priceForWidth(w,e.hafr); totalPrice+=unit*qty;
     let line=doorSizeText_(w+' سم',e.height)+' × '+qty;
     const bits=[];
+    if(e.hafr) bits.push('حفر');
     if(e.frame) bits.push('حلق '+frameText_(e.frame,e.frameHeight));
     if(e.dbror) bits.push('برور '+e.dbror);
     if(bits.length) line+=' ('+bits.join('، ')+')';
@@ -1327,9 +1365,10 @@ function currentSummary(){
   });
   if(customReady){
     const w=Number(p.custom.w), h=Number(p.custom.h), qty=Number(p.custom.qty)||1;
-    totalQty+=qty; totalPrice+=(priceForWidth(w)+CUSTOM_EXTRA)*qty;
+    totalQty+=qty; totalPrice+=(priceForWidth(w,p.custom.hafr)+CUSTOM_EXTRA)*qty;
     let line=w+'×'+h+' سم (خاص) × '+qty;
     const bits=[];
+    if(p.custom.hafr) bits.push('حفر');
     if(p.custom.frame) bits.push('حلق '+frameText_(p.custom.frame,p.custom.frameHeight));
     if(p.custom.dbror) bits.push('برور '+p.custom.dbror);
     if(bits.length) line+=' ('+bits.join('، ')+')';
@@ -2003,6 +2042,7 @@ function openAdminPrices(){
   state.admin.priceEdit = {
     sizes: Object.fromEntries(SIZES.map(s=>[s.w, triFor_(s.price,'door',s.w)])),
     customExtra: triFor_(CUSTOM_EXTRA,'door','customExtra'),
+    hafrExtra: triFor_(HAFR_EXTRA,'door','hafrExtra'),
     frames: Object.fromEntries(FRAMES.map(f=>[f.cm, triFor_(f.price,'frame',f.cm)])),
     brors: Object.fromEntries(BRORS.map(b=>[b.size, triFor_(b.price,'bror',b.size)])),
     acc: Object.fromEntries(ACCESSORIES.map(a=>[a.id, triFor_(a.price,'acc',a.id)])),
@@ -2016,6 +2056,7 @@ function saveAdminPrices(){
   const pe = state.admin.priceEdit; if(!pe) return;
   SIZES.forEach(s=>{ if(pe.sizes[s.w]) s.price=Number(pe.sizes[s.w].dist)||0; });
   CUSTOM_EXTRA = Number(pe.customExtra.dist)||0;
+  if(pe.hafrExtra) HAFR_EXTRA = Number(pe.hafrExtra.dist)||0;
   FRAMES.forEach(f=>{ if(pe.frames[f.cm]) f.price=Number(pe.frames[f.cm].dist)||0; });
   BRORS.forEach(b=>{ if(pe.brors[b.size]) b.price=Number(pe.brors[b.size].dist)||0; });
   ACCESSORIES.forEach(a=>{ if(pe.acc[a.id]) a.price=Number(pe.acc[a.id].dist)||0; });
@@ -2027,6 +2068,7 @@ function saveAdminPrices(){
     out[tier] = {
       sizes: pickGroup(pe.sizes, tier),
       customExtra: Number(pe.customExtra[tier])||0,
+      hafrExtra: Number((pe.hafrExtra||{})[tier])||0,
       frames: pickGroup(pe.frames, tier),
       brors: pickGroup(pe.brors, tier),
       acc: pickGroup(pe.acc, tier),
@@ -2034,8 +2076,8 @@ function saveAdminPrices(){
     };
   });
   save(LS_PRICES, out);
-  TIER_OVERRIDES.showroom = { sizes:{...out.showroom.sizes}, customExtra:out.showroom.customExtra, frames:{...out.showroom.frames}, brors:{...out.showroom.brors}, acc:{...out.showroom.acc}, panel:{...out.showroom.panel} };
-  TIER_OVERRIDES.customer = { sizes:{...out.customer.sizes}, customExtra:out.customer.customExtra, frames:{...out.customer.frames}, brors:{...out.customer.brors}, acc:{...out.customer.acc}, panel:{...out.customer.panel} };
+  TIER_OVERRIDES.showroom = { sizes:{...out.showroom.sizes}, customExtra:out.showroom.customExtra, hafrExtra:out.showroom.hafrExtra, frames:{...out.showroom.frames}, brors:{...out.showroom.brors}, acc:{...out.showroom.acc}, panel:{...out.showroom.panel} };
+  TIER_OVERRIDES.customer = { sizes:{...out.customer.sizes}, customExtra:out.customer.customExtra, hafrExtra:out.customer.hafrExtra, frames:{...out.customer.frames}, brors:{...out.customer.brors}, acc:{...out.customer.acc}, panel:{...out.customer.panel} };
   state.admin.pricesOpen=false; state.admin.priceEdit=null;
   toast('اتحفظت الأسعار الجديدة');
   render();
@@ -3120,6 +3162,7 @@ function viewAdminPrices(){
   const rowsFrames = FRAMES.map(f=>priTri_('حلق '+f.cm+' سم', 'frames', f.cm, pe.frames[f.cm], '(للمتر)')).join('');
   const rowsBrors = BRORS.map(b=>priTri_('برور '+esc(b.size), 'brors', b.size, pe.brors[b.size], '(للمتر)')).join('');
   const rowsAcc = ACCESSORIES.map(a=>priTri_(esc(a.name), 'acc', a.id, pe.acc[a.id], '('+esc(a.unit)+')')).join('');
+  const rowPanel = priTri_('لوح بروديوم', 'panel', 'prodium', pe.panel.prodium, '(للوح)');
 
   return `
   <section class="card">
@@ -3133,6 +3176,7 @@ function viewAdminPrices(){
     ${head}
     ${rowsSizes}
     ${priTri_('إضافة المقاس الخاص', 'customExtra', 'customExtra', pe.customExtra)}
+    ${priTri_('إضافة باب حفر', 'hafrExtra', 'hafrExtra', pe.hafrExtra)}
 
     <div class="grp" style="margin-top:14px">أسعار الحلق (للمتر الطولي)</div>
     ${head}
@@ -3141,6 +3185,10 @@ function viewAdminPrices(){
     <div class="grp" style="margin-top:14px">أسعار البرور (للمتر الطولي)</div>
     ${head}
     ${rowsBrors}
+
+    <div class="grp" style="margin-top:14px">أسعار ألواح بروديوم</div>
+    ${head}
+    ${rowPanel}
 
     <div class="grp" style="margin-top:14px">أسعار الإكسسوارات</div>
     ${head}
@@ -3481,7 +3529,7 @@ document.addEventListener('click',e=>{
       break;
     case 'toggle-size': {
       const w=Number(el.dataset.w);
-      if(p.sizes[w]!=null) delete p.sizes[w]; else p.sizes[w]={qty:1,height:'',frame:null,frameHeight:'',dbror:null};
+      if(p.sizes[w]!=null) delete p.sizes[w]; else p.sizes[w]={qty:1,height:'',frame:null,frameHeight:'',dbror:null,hafr:false};
       render(); break;
     }
     case 'toggle-custom': p.customOn=!p.customOn; render(); break;
@@ -3491,10 +3539,14 @@ document.addEventListener('click',e=>{
     case 'cust-qty-plus':  p.custom.qty=(Number(p.custom.qty)||1)+1; render(); break;
     case 'size-frame': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.frame=Number(el.dataset.cm); render(); break; }
     case 'size-dbror': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.dbror=el.dataset.size; render(); break; }
+    case 'size-hafr': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.hafr=(el.dataset.v==='1'); render(); break; }
+    case 'cust-hafr': p.custom.hafr=(el.dataset.v==='1'); render(); break;
     case 'cust-frame': p.custom.frame=Number(el.dataset.cm); render(); break;
     case 'cust-dbror': p.custom.dbror=el.dataset.size; render(); break;
     case 'fr-cm': state.fr.cm=Number(el.dataset.cm); render(); break;
     case 'fr-code': state.fr.code=el.dataset.code; render(); break;
+    case 'fr-extra-add': state.fr.extra=[...(state.fr.extra||[]), {cm:'',qty:1}]; render(); break;
+    case 'fr-extra-del': { const i=Number(el.dataset.i); state.fr.extra.splice(i,1); render(); break; }
     case 'br-size': state.br.size=el.dataset.size; render(); break;
     case 'br-code': state.br.code=el.dataset.code; render(); break;
     case 'pd-code': state.pd.code=el.dataset.code; render(); break;
@@ -3697,6 +3749,10 @@ document.addEventListener('input',e=>{
   if(a==='acc-set'){ state.acc[el.dataset.id]=Math.max(0,parseFloat(el.value)||0); refreshAccBtn(); return; }
   if(a==='fr-jamb'){ state.fr.jamb=el.value; render(); return; }
   if(a==='fr-header'){ state.fr.header=el.value; render(); return; }
+  if(a==='fr-jambCm'){ state.fr.jambCm=el.value; render(); return; }
+  if(a==='fr-headerCm'){ state.fr.headerCm=el.value; render(); return; }
+  if(a==='fr-extra-cm'){ state.fr.extra[Number(el.dataset.i)].cm=el.value; render(); return; }
+  if(a==='fr-extra-qty'){ state.fr.extra[Number(el.dataset.i)].qty=el.value; render(); return; }
   if(a==='fr-note'){ state.fr.note=el.value; return; }
   if(a==='br-rods'){ state.br.rods=el.value; refreshRodBtn('add-br'); return; }
   if(a==='br-lenM'){ state.br.lenM=el.value; render(); return; }
@@ -3704,7 +3760,9 @@ document.addEventListener('input',e=>{
   if(a==='price-set'){
     const pe=state.admin.priceEdit; if(!pe) return;
     const v=parseFloat(el.value)||0, g=el.dataset.group, k=el.dataset.key, tier=el.dataset.tier;
-    if(g==='customExtra') pe.customExtra[tier]=v; else if(pe[g][k]) pe[g][k][tier]=v;
+    if(g==='customExtra') pe.customExtra[tier]=v;
+    else if(g==='hafrExtra') pe.hafrExtra[tier]=v;
+    else if(pe[g][k]) pe[g][k][tier]=v;
     return;
   }
   if(a==='prod-set'){
@@ -3788,30 +3846,30 @@ function addDoor(){
     const qty=Number(e.qty)||1;
     // ارتفاع الفتحة المعمارية اختياري ولكل مقاس ارتفاعه الخاص بيه (المقاس الخاص أصلًا بياخد ارتفاعه من حقل الطول بتاعه)
     const doorHeight = e.height ? Number(e.height) : 0;
-    const sizeTxt=w+' سم', sizeEn=w+' cm', unitPrice=priceForWidth(w);
+    const sizeTxt=w+' سم', sizeEn=w+' cm', unitPrice=priceForWidth(w,e.hafr);
     state.cart.push({
       kind:'door',
-      title:'باب WPC '+d.code+' — '+d.name,
-      titleEn:'WPC Door '+d.code+' - '+d.en,
+      title:'باب WPC '+d.code+' — '+d.name+(e.hafr?' (حفر)':''),
+      titleEn:'WPC Door '+d.code+' - '+d.en+(e.hafr?' (Carved)':''),
       code:d.code, img:d.img, sizeTxt, sizeEn, unitPrice, qty,
       w,   // العرض بالسم كرقم خام — لخصم الرصيد بدقة
       frame:e.frame||0, dbror:e.dbror||'', frameHeight:e.frameHeight?Number(e.frameHeight):0,
-      doorHeight
+      doorHeight, hafr:!!e.hafr
     });
     addedTxts.push(doorSizeText_(sizeTxt,doorHeight)+' × '+qty);
   });
 
   if(customReady){
     const w=Number(p.custom.w), h=Number(p.custom.h), qty=Number(p.custom.qty)||1;
-    const sizeTxt=w+'×'+h+' سم (مقاس خاص — مقاس الفتحة المعمارية)', sizeEn=w+'x'+h+' cm (custom)', unitPrice=priceForWidth(w)+CUSTOM_EXTRA;
+    const sizeTxt=w+'×'+h+' سم (مقاس خاص — مقاس الفتحة المعمارية)', sizeEn=w+'x'+h+' cm (custom)', unitPrice=priceForWidth(w,p.custom.hafr)+CUSTOM_EXTRA;
     state.cart.push({
       kind:'door',
-      title:'باب WPC '+d.code+' — '+d.name,
-      titleEn:'WPC Door '+d.code+' - '+d.en,
+      title:'باب WPC '+d.code+' — '+d.name+(p.custom.hafr?' (حفر)':''),
+      titleEn:'WPC Door '+d.code+' - '+d.en+(p.custom.hafr?' (Carved)':''),
       code:d.code, img:d.img, sizeTxt, sizeEn, unitPrice, qty,
       w:'',   // مقاس خاص مش متتبّع في المخزون
       frame:p.custom.frame||0, dbror:p.custom.dbror||'', frameHeight:p.custom.frameHeight?Number(p.custom.frameHeight):0,
-      doorHeight:0
+      doorHeight:0, hafr:!!p.custom.hafr
     });
     addedTxts.push(sizeTxt+' × '+qty);
   }
@@ -3819,7 +3877,7 @@ function addDoor(){
   save(LS_CART,state.cart);
   toast('اتضاف للسلة: '+d.code+' — '+addedTxts.join('، '));
   // نلمّ الاختيارات ونقفل اللوحة عشان يختار باب تاني بارتياح
-  state.pick={code:'', sizes:{}, customOn:false, custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null}};
+  state.pick={code:'', sizes:{}, customOn:false, custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false}};
   render();
 }
 
@@ -3847,20 +3905,30 @@ function addRod(kind){
     const f = FRAMES.find(x=>x.cm===st.cm)||FRAMES[0];
     const jamb = Math.max(0, Math.round(Number(st.jamb)||0));
     const header = Math.max(0, Math.round(Number(st.header)||0));
-    if(jamb+header<=0){toast('اكتب عدد الأعواد');return;}
+    const jambCm = Math.max(1, Math.round(Number(st.jambCm)||220));
+    const headerCm = Math.max(1, Math.round(Number(st.headerCm)||110));
+    const extra = (st.extra||[]).map(x=>({cm:Math.max(0,Math.round(Number(x.cm)||0)), qty:Math.max(0,Math.round(Number(x.qty)||0))})).filter(x=>x.cm>0 && x.qty>0);
+    const extraTotal = extra.reduce((s,x)=>s+x.qty,0);
+    if(jamb+header+extraTotal<=0){toast('اكتب عدد الأعواد');return;}
     if(jamb){
-      push(f.cm+' سم', 220, jamb, f.price,
-        'حلق باب '+f.cm+' سم — قائم ٢٢٠ سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+(st.note?' — ملاحظة: '+st.note:''),
-        'Door Frame '+f.cm+' cm - jamb 220cm'+(st.code?' - '+st.code:''));
+      push(f.cm+' سم', jambCm, jamb, f.price,
+        'حلق باب '+f.cm+' سم — قائم '+jambCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+(st.note?' — ملاحظة: '+st.note:''),
+        'Door Frame '+f.cm+' cm - jamb '+jambCm+'cm'+(st.code?' - '+st.code:''));
       added += jamb;
     }
     if(header){
-      push(f.cm+' سم', 110, header, f.price,
-        'حلق باب '+f.cm+' سم — عتب ١١٠ سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+(st.note?' — ملاحظة: '+st.note:''),
-        'Door Frame '+f.cm+' cm - header 110cm'+(st.code?' - '+st.code:''));
+      push(f.cm+' سم', headerCm, header, f.price,
+        'حلق باب '+f.cm+' سم — عتب '+headerCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+(st.note?' — ملاحظة: '+st.note:''),
+        'Door Frame '+f.cm+' cm - header '+headerCm+'cm'+(st.code?' - '+st.code:''));
       added += header;
     }
-    state.fr.jamb=2; state.fr.header=1; state.fr.note='';
+    extra.forEach(x=>{
+      push(f.cm+' سم', x.cm, x.qty, f.price,
+        'حلق باب '+f.cm+' سم — عود '+x.cm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+(st.note?' — ملاحظة: '+st.note:''),
+        'Door Frame '+f.cm+' cm - rod '+x.cm+'cm'+(st.code?' - '+st.code:''));
+      added += x.qty;
+    });
+    state.fr.jamb=2; state.fr.header=1; state.fr.jambCm=220; state.fr.headerCm=110; state.fr.extra=[]; state.fr.note='';
   } else {
     const b = BRORS.find(x=>x.size===st.size)||BRORS[0];
     const rods = Math.max(0, Math.round(Number(st.rods)||0));
@@ -3925,12 +3993,13 @@ function editCartLine(i){
   save(LS_CART,state.cart);
 
   if(it.kind==='door'){
+    const isHafr = !!it.hafr || /\(حفر\)|\(Carved\)/i.test((it.title||'')+(it.titleEn||''));
     let sizes={}, customOn=false, customW='', customH='', customQty=1, customFrame=null, customFrameHeight='', customDbror=null;
     let m = /^(\d+)\s*cm$/i.exec(it.sizeEn||'');
     if(m){
       sizes[Number(m[1])] = {
         qty:it.qty||1, height: it.doorHeight?String(it.doorHeight):'',
-        frame: it.frame||0, frameHeight: it.frameHeight?String(it.frameHeight):'', dbror: it.dbror||''
+        frame: it.frame||0, frameHeight: it.frameHeight?String(it.frameHeight):'', dbror: it.dbror||'', hafr:isHafr
       };
     } else {
       m = /^(\d+)\s*x\s*(\d+)\s*cm\s*\(custom\)$/i.exec(it.sizeEn||'');
@@ -3940,18 +4009,19 @@ function editCartLine(i){
       }
     }
     state.pick = {code:it.code||'', sizes, customOn,
-      custom:{w:customW,h:customH,qty:customQty,frame:customFrame,frameHeight:customFrameHeight,dbror:customDbror}};
+      custom:{w:customW,h:customH,qty:customQty,frame:customFrame,frameHeight:customFrameHeight,dbror:customDbror,hafr:isHafr}};
     state.newSection='doors'; save(LS_SECTION,state.newSection);
   } else if(it.kind==='frame' || it.kind==='bror'){
     const isFr = it.kind==='frame';
     if(isFr){
       let cm = FRAMES[0].cm;
       const mm=/^(\d+)/.exec(it.spec||''); if(mm) cm=Number(mm[1]);
-      // بنرجّع العدد في خانة المقاس الصح حسب طول العود المحفوظ
-      const isHeader = Number(it.rodCm)===110;
+      const rodCm = Number(it.rodCm)||220;
+      // بنرجّع العدد في خانة المقاس الصح حسب طول العود المحفوظ — قائم/عتب لو الطول قياسي، وإلا سطر إضافي
       state.fr = {cm, code:it.code||'',
-                  jamb:   isHeader ? 0 : (it.qty||1),
-                  header: isHeader ? (it.qty||1) : 0};
+                  jamb:   rodCm===220 ? (it.qty||1) : 0, jambCm:220,
+                  header: rodCm===110 ? (it.qty||1) : 0, headerCm:110,
+                  extra: (rodCm!==220 && rodCm!==110) ? [{cm:rodCm, qty:it.qty||1}] : []};
     } else {
       let size = BRORS[0].size;
       const mm=/^([\d×xX]+)/.exec(it.spec||''); if(mm) size=mm[1].replace(/x|X/,'×');
@@ -3998,7 +4068,7 @@ async function adminEditOrder(o){
                img:(DOORS.find(d=>d.code===it.code)||{}).img || '',
                sizeTxt:arabicSizeText_(it.size), sizeEn:it.size||'', unitPrice:price, qty,
                w:it.width||'', frame:Number(it.frame)||0, dbror:it.dbror||'', frameHeight:Number(it.frameHeight)||0,
-               doorHeight:Number(it.doorHeight)||0 };
+               doorHeight:Number(it.doorHeight)||0, hafr:/\(حفر\)|\(Carved\)/i.test((it.title||'')) };
     }
     if(it.type==='Frame' || it.type==='Bror'){
       const isFr = it.type==='Frame';
