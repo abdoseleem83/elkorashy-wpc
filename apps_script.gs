@@ -721,7 +721,8 @@ function saveOrder_(o) {
 
     var type = isDoor ? 'Door'
              : (it.kind === 'frame' ? 'Frame'
-             : (it.kind === 'bror'  ? 'Bror' : 'Accessory'));
+             : (it.kind === 'bror'  ? 'Bror'
+             : (it.kind === 'panel' ? 'Panel' : 'Accessory')));
 
     var unit = isDoor ? 'door' : (isRod ? ('rod ' + (it.rodCm || 220) + 'cm') : (it.unit || 'pc'));
 
