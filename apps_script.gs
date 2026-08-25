@@ -668,7 +668,7 @@ function saveOrder_(o) {
   var rods = 0;
   for (var i = 0; i < items.length; i++) {
     var k = items[i].kind;
-    if (k === 'frame' || k === 'bror') rods += Number(items[i].qty) || 0;
+    if (k === 'frame' || k === 'bror') rods += (items[i].isSet ? (Number(items[i].qty)||0)*3 : Number(items[i].qty) || 0);
     else qty += Number(items[i].qty) || 0;
   }
 
@@ -730,7 +730,7 @@ function saveOrder_(o) {
              : (it.kind === 'bror'  ? 'Bror'
              : (it.kind === 'panel' ? 'Panel' : 'Accessory')));
 
-    var unit = isDoor ? 'door' : (isRod ? ('rod ' + (it.rodCm || 220) + 'cm') : (it.unit || 'pc'));
+    var unit = isDoor ? 'door' : (it.isSet ? 'set' : (isRod ? ('rod ' + (it.rodCm || 220) + 'cm') : (it.unit || 'pc')));
 
     lines.push([
       o.id,
@@ -785,8 +785,9 @@ function recomputeOrderTotals_(id) {
     for (var i = 0; i < valsI.length; i++) {
       if (String(valsI[i][0]) !== String(id)) continue;
       var type = String(valsI[i][3] || '');
+      var unit = String(valsI[i][9] || '');
       var q = Number(valsI[i][10]) || 0;
-      if (type === 'Frame' || type === 'Bror') rods += q; else qty += q;
+      if (type === 'Frame' || type === 'Bror') rods += (unit === 'set' ? q * 3 : q); else qty += q;
       total += Number(valsI[i][12]) || 0;
     }
   }

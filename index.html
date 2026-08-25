@@ -1315,8 +1315,12 @@ function viewNew(){
     </label>
     <button class="btn ghost sm" style="margin-top:9px" data-act="add-fr" ${frRods>0&&state.fr.code?'':'disabled'}>
       ${!state.fr.code ? 'اختر كود الباب أولاً'
-        : (frRods>0 ? `أضف ${frRods} عود — حلق ${frSel.cm} سم ${esc(state.fr.code)}${state.fr.doorW?' — لباب '+state.fr.doorW+' سم':''}`
-                    : (frKind==='full' ? 'اكتب الكمية' : 'اكتب عدد الأعواد وطولها'))}</button>
+        : (frRods>0 ? (
+            (frKind==='full' && !frNonStd)
+              ? `أضف ${frQty} طقم — حلق كامل ${frSel.cm} سم ${esc(state.fr.code)}${state.fr.doorW?' — لباب '+state.fr.doorW+' سم':''}`
+              : `أضف ${frRods} عود — حلق ${frSel.cm} سم ${esc(state.fr.code)}${state.fr.doorW?' — لباب '+state.fr.doorW+' سم':''}`
+          )
+          : (frKind==='full' ? 'اكتب الكمية' : 'اكتب عدد الأعواد وطولها'))}</button>
   </section>`;
 
   const secBror = `
@@ -1450,7 +1454,8 @@ function viewCart(){
       if(inc.length) spec+='<br>شامل: '+inc.join(' + ')+(priced?' — بدون سعر':'');
       if(it.note) spec+='<br><span style="color:#8A6512">'+esc(it.note)+'</span>';
     } else if(it.kind==='frame'||it.kind==='bror'){
-      spec=it.qty+' عود'+(it.rodCm?' × '+it.rodCm+' سم':'')+(priced?' — '+money(it.price)+' ج/عود':'');
+      spec = it.isSet ? (it.qty+' طقم'+(priced?' — '+money(it.price)+' ج/طقم':''))
+                       : (it.qty+' عود'+(it.rodCm?' × '+it.rodCm+' سم':'')+(priced?' — '+money(it.price)+' ج/عود':''));
     } else spec=(priced?money(it.price)+' ج × ':'× ')+it.qty;
 
     return `<div class="line">${th}<div class="info2"><b>${esc(it.title)}</b>
@@ -2432,7 +2437,7 @@ function reportHTML(orders){
   // ---------- ٣) إجمالي الأصناف (كل العملاء) ----------
   const grand = {};
   orders.forEach(o=>(o.items||[]).forEach(it=>{
-    const key = it.type+'|'+(it.code||it.title||'');
+    const key = it.type+'|'+(it.code||it.title||'')+(it.isSet?'|set':'');
     if(!grand[key]) grand[key] = { type:it.type, code:it.code||'', name:itemNameAr_(it), qty:0, produced:0, orderIds:new Set() };
     grand[key].qty += Number(it.qty)||0;
     grand[key].produced += itemProdPending_(it).produced;
@@ -2942,7 +2947,7 @@ function buildAdminOrdersDetail_(orders){
       const qty = Number(it.qty)||0;
       const pp = itemProdPending_(it);
       clientQty += qty; clientProduced += pp.produced;
-      const key = it.type+'|'+(it.code||it.title||'');
+      const key = it.type+'|'+(it.code||it.title||'')+(it.isSet?'|set':'');
       if(!codeTotals[key]) codeTotals[key] = { type:it.type, code:it.code||'', name:itemNameAr_(it), qty:0, produced:0 };
       codeTotals[key].qty += qty;
       codeTotals[key].produced += pp.produced;
@@ -3095,7 +3100,7 @@ async function buildAdminOrdersExcel_(orders){
 
   const grand = {};
   orders.forEach(o=>(o.items||[]).forEach(it=>{
-    const key = it.type+'|'+(it.code||it.title||'');
+    const key = it.type+'|'+(it.code||it.title||'')+(it.isSet?'|set':'');
     if(!grand[key]) grand[key] = { type:it.type, code:it.code||'', name:itemNameAr_(it), qty:0, produced:0, orderIds:new Set() };
     grand[key].qty += Number(it.qty)||0;
     grand[key].produced += itemProdPending_(it).produced;
@@ -3989,37 +3994,57 @@ function addRod(kind){
   };
 
   let added = 0;
+  let addedIsSet = false;
   if(isFrame){
     const f = FRAMES.find(x=>x.cm===st.cm)||FRAMES[0];
     const forDoor = st.doorW ? ' — لباب '+st.doorW+' سم' : '';
     const kind = st.kind==='rods' ? 'rods' : 'full';
     if(kind==='full'){
       const qty = Math.max(0, Math.round(Number(st.qty)||0));
-      const jamb = qty*2;
-      const header = qty*1;
       const jambCm = Math.max(1, Math.round(Number(st.jambCm)||220));
       const headerCm = Math.max(1, Math.round(Number(st.headerCm)||110));
       const extra = (st.extra||[]).map(x=>({cm:Math.max(0,Math.round(Number(x.cm)||0)), qty:Math.max(0,Math.round(Number(x.qty)||0))})).filter(x=>x.cm>0 && x.qty>0);
-      const extraTotal = extra.reduce((s,x)=>s+x.qty,0);
-      if(jamb+header+extraTotal<=0){toast('اكتب الكمية');return;}
-      if(jamb){
-        push(f.cm+' سم', jambCm, jamb, f.price,
-          'حلق باب '+f.cm+' سم — قائم '+jambCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
-          'Door Frame '+f.cm+' cm - jamb '+jambCm+'cm'+(st.code?' - '+st.code:''));
-        added += jamb;
+      const isStd = (jambCm===220 && headerCm===110 && !extra.length);
+      if(qty<=0){toast('اكتب الكمية');return;}
+      if(isStd){
+        // الحالة الاستاندر: سطر واحد "حلق كامل" بعدد الأطقم — من غير تفاصيل قائم/عتب/الطول لأنها معروفة للمصنع
+        const setPrice = Math.round((rodPrice(f.price,220)*2 + rodPrice(f.price,110)*1)*100)/100;
+        const key = 'frame|fullset|'+f.cm+'|'+st.code+'|'+(st.doorW||'');
+        const ex = state.cart.find(it=>it.kind==='frame' && it.key===key);
+        if(ex){ ex.qty += qty; }
+        else{
+          state.cart.push({
+            kind:'frame', key, qty, code:st.code, rodCm:0, isSet:true, perM:f.price, price:setPrice,
+            spec: 'حلق كامل '+f.cm+' سم'+(st.code?' — '+st.code:''),
+            title: 'حلق كامل باب '+f.cm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
+            titleEn: 'Full Door Frame '+f.cm+' cm'+(st.code?' - '+st.code:''),
+            doorW: st.doorW||'', note: st.note||''
+          });
+        }
+        added += qty;
+        addedIsSet = true;
+      } else {
+        const jamb = qty*2;
+        const header = qty*1;
+        if(jamb){
+          push(f.cm+' سم', jambCm, jamb, f.price,
+            'حلق باب '+f.cm+' سم — قائم '+jambCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
+            'Door Frame '+f.cm+' cm - jamb '+jambCm+'cm'+(st.code?' - '+st.code:''));
+          added += jamb;
+        }
+        if(header){
+          push(f.cm+' سم', headerCm, header, f.price,
+            'حلق باب '+f.cm+' سم — عتب '+headerCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
+            'Door Frame '+f.cm+' cm - header '+headerCm+'cm'+(st.code?' - '+st.code:''));
+          added += header;
+        }
+        extra.forEach(x=>{
+          push(f.cm+' سم', x.cm, x.qty, f.price,
+            'حلق باب '+f.cm+' سم — عود '+x.cm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
+            'Door Frame '+f.cm+' cm - rod '+x.cm+'cm'+(st.code?' - '+st.code:''));
+          added += x.qty;
+        });
       }
-      if(header){
-        push(f.cm+' سم', headerCm, header, f.price,
-          'حلق باب '+f.cm+' سم — عتب '+headerCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
-          'Door Frame '+f.cm+' cm - header '+headerCm+'cm'+(st.code?' - '+st.code:''));
-        added += header;
-      }
-      extra.forEach(x=>{
-        push(f.cm+' سم', x.cm, x.qty, f.price,
-          'حلق باب '+f.cm+' سم — عود '+x.cm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
-          'Door Frame '+f.cm+' cm - rod '+x.cm+'cm'+(st.code?' - '+st.code:''));
-        added += x.qty;
-      });
     } else {
       const rods = Math.max(0, Math.round(Number(st.rods)||0));
       const rodsCm = Math.max(0, Math.round(Number(st.rodsCm)||0));
@@ -4045,7 +4070,7 @@ function addRod(kind){
   }
 
   save(LS_CART,state.cart);
-  toast('اتضاف '+added+' عود');
+  toast(addedIsSet ? ('اتضاف '+added+' طقم حلق كامل') : ('اتضاف '+added+' عود'));
   render();
 }
 
@@ -4121,15 +4146,23 @@ function editCartLine(i){
     if(isFr){
       let cm = FRAMES[0].cm;
       const mm=/^(\d+)/.exec(it.spec||''); if(mm) cm=Number(mm[1]);
-      const rodCm = Number(it.rodCm)||220;
-      // بنرجّع العدد في خانة المقاس الصح حسب طول العود المحفوظ — قائم/عتب لو الطول قياسي، وإلا سطر أعواد حرة
-      const isStdCm = (rodCm===220 || rodCm===110);
-      const restoredQty = rodCm===220 ? Math.round((it.qty||2)/2) : (it.qty||1);
-      state.fr = {cm, code:it.code||'', doorW: it.doorW||'', note: it.note||'', kind: isStdCm?'full':'rods',
-                  qty: isStdCm?restoredQty:1, nonStd:false,
-                  jamb:   rodCm===220 ? (it.qty||1) : 0, jambCm:220,
-                  header: rodCm===110 ? (it.qty||1) : 0, headerCm:110,
-                  extra: [], rods: isStdCm?'':(it.qty||1), rodsCm: isStdCm?'':rodCm};
+      if(it.isSet){
+        // سطر "حلق كامل" الموحّد — بنرجّع الكمية (عدد الأطقم) زي ما هي
+        state.fr = {cm, code:it.code||'', doorW: it.doorW||'', note: it.note||'', kind:'full',
+                    qty: it.qty||1, nonStd:false,
+                    jamb:2, jambCm:220, header:1, headerCm:110,
+                    extra: [], rods:'', rodsCm:''};
+      } else {
+        const rodCm = Number(it.rodCm)||220;
+        // بنرجّع العدد في خانة المقاس الصح حسب طول العود المحفوظ — قائم/عتب لو الطول قياسي، وإلا سطر أعواد حرة
+        const isStdCm = (rodCm===220 || rodCm===110);
+        const restoredQty = rodCm===220 ? Math.round((it.qty||2)/2) : (it.qty||1);
+        state.fr = {cm, code:it.code||'', doorW: it.doorW||'', note: it.note||'', kind: isStdCm?'full':'rods',
+                    qty: isStdCm?restoredQty:1, nonStd:false,
+                    jamb:   rodCm===220 ? (it.qty||1) : 0, jambCm:220,
+                    header: rodCm===110 ? (it.qty||1) : 0, headerCm:110,
+                    extra: [], rods: isStdCm?'':(it.qty||1), rodsCm: isStdCm?'':rodCm};
+      }
     } else {
       let size = BRORS[0].size;
       const mm=/^([\d×xX]+)/.exec(it.spec||''); if(mm) size=mm[1].replace(/x|X/,'×');
@@ -4243,7 +4276,7 @@ function buildMessage(o){
       const inc=[]; if(it.frame) inc.push('حلق '+frameText_(it.frame,it.frameHeight)); if(it.dbror) inc.push('برور '+it.dbror);
       if(inc.length) m+='   شامل مع الباب: '+inc.join(' + ')+'\n';
     } else if(it.kind==='frame'||it.kind==='bror'){
-      m+='   '+it.qty+' عود'+(priced?' × '+money(it.price)+' ج':'')+'\n';
+      m+='   '+it.qty+(it.isSet?' طقم':' عود')+(priced?' × '+money(it.price)+' ج':'')+'\n';
     } else m+='   الكمية: '+it.qty+' '+(it.unit||'')+'\n';
   });
   m+='——————\n';
@@ -4443,7 +4476,7 @@ function docRowHTML_(it, idx, priced, showFrameHCol){
     brorTxt = it.dbror ? it.dbror : '—';
     unit='باب';
   } else if(it.kind==='frame'||it.kind==='bror'){
-    unit='عود';
+    unit = it.isSet ? 'طقم' : 'عود';
   } else { unit=it.unit||'قطعة'; }
   const pp = itemProdPending_(it);
   return `<tr>
@@ -4642,7 +4675,7 @@ function exportExcel(orders,fname){
           isDoor?(it.frameHeight||''):'',
           isDoor?(it.dbror||''):'',
           isDoor?(it.millEn||''):'',
-          isDoor?'door':(isRod?('rod '+(it.rodCm||220)+'cm'):(it.unit||'pc')),
+          isDoor?'door':(it.isSet?'set':(isRod?('rod '+(it.rodCm||220)+'cm'):(it.unit||'pc'))),
           Number(it.qty)||0,
           itemProdPending_(it).produced,
           itemProdPending_(it).pending,
