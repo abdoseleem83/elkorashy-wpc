@@ -586,6 +586,14 @@ function frameText_(cm, height){
 function doorSizeText_(sizeTxt, height){
   return (sizeTxt||'') + (height?' (ارتفاع '+height+' سم)':'');
 }
+// نوع الحلق: "كامل" (طقم كامل شامل مع الباب زي المعتاد — من غير تفاصيل زيادة) أو "أعواد" (عدد أعواد إضافي منفصل، بيتكتب كملحوظة على الصنف)
+function frameKindNote_(kind, rodQty, forDoors){
+  if(kind!=='rods') return '';
+  let t = 'حلق أعواد';
+  if(rodQty) t += ' — '+rodQty+' عود';
+  if(forDoors) t += ' — لباب '+forDoors;
+  return t;
+}
 const DOOR_STD_HEIGHT = 215;
 const PRICE_NOTE = 'الأسعار بعاليه حسب وقت التسعير وغير ملزمة إلا في حالة سداد المبلغ كامل أو نصفه.';
 
@@ -728,10 +736,9 @@ const state = {
   profile: load(LS_PROFILE, {name:'', phone:'', region:''}),
   cart:    load(LS_CART, []),
   orders:  load(LS_ORDERS, []),
-  pick:{code:'', sizes:{}, customOn:false, custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false}},
+  pick:{code:'', sizes:{}, customOn:false, custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,frameKind:null,frameRodQty:'',frameForDoors:''}},
   newSection: load(LS_SECTION, ''),   // '' (لسه محددش) | doors | acc | frame | bror | prodium
-  fr:{cm:10, code:'', doorW:'', jamb:2, header:1, jambCm:220, headerCm:110, extra:[], note:'', kind:'full', doorCount:'', height:''},   // حلق منفصل: عدد قوائم ٢٢٠ سم + عدد عتب ١١٠ سم (الارتفاعات قابلة للتعديل)، وممكن تضيف أعواد بارتفاعات تانية في extra، والكود إجباري. doorW = مقاس الباب اللي الحلق ده ليه (70/80/90/100) — اختياري. note: ملحوظة اختيارية.
-  // kind='full'|'rods': "كامل" بيحسب قايم/عتب أوتوماتيك من doorCount (عدد الأبواب) + height (ارتفاع مخصوص اختياري بيغيّر طول القايم)، "أعواد" بيرجّع التحكم اليدوي الكامل زي الأول (jamb/header/extra يدوي)
+  fr:{cm:10, code:'', doorW:'', kind:'full', qty:1, nonStd:false, jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:''},   // حلق منفصل: kind = 'full' (طقم كامل — الكمية × [٢ قائم ٢٢٠سم + ١ عتب ١١٠سم]، والارتفاع يتغيّر بس لو nonStd=true) أو 'rods' (أعواد حرة — عدد وطول بيحددهم المستخدم من غير قيمة افتراضية). doorW = مقاس الباب اللي الحلق ده ليه (70/80/90/100) — اختياري. note: ملحوظة اختيارية
   br:{size:'6×9', code:'', rods:1, lenM:BROR_ROD_M_DEFAULT}, // برور إضافي بالعود — code = كود/لون الباب (إجباري زي الحلق)، lenM = طول العود بالمتر (قابل للتغيير لو حد طلب مقاس تكملة)
   pd:{code:'', qty:1}, // ألواح بروديوم — code = كود/لون الباب (إجباري زي البرور)، qty = عدد الألواح
   acc:{},
@@ -757,10 +764,10 @@ function selectDoor(code){
   const p=state.pick;
   if(p.code===code){
     // ضغط على نفس الباب المفتوح — يقفل ويلمّ
-    p.code=''; p.sizes={}; p.customOn=false; p.custom={w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null};
+    p.code=''; p.sizes={}; p.customOn=false; p.custom={w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,frameKind:null,frameRodQty:'',frameForDoors:''};
   } else {
     // باب جديد = اختيارات جديدة، عشان الموزع يحدد كل حاجة بنفسه من الأول
-    p.code=code; p.sizes={}; p.customOn=false; p.custom={w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null};
+    p.code=code; p.sizes={}; p.customOn=false; p.custom={w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,frameKind:null,frameRodQty:'',frameForDoors:''};
   }
   render();
 }
@@ -1045,6 +1052,14 @@ function viewNew(){
     return FRAMES.map(f=>`<button class="miniChip ${sel===f.cm?'on':''}" data-act="${act}"${wAttr} data-cm="${f.cm}">${f.cm} سم</button>`).join('')
       +`<button class="miniChip ${sel===0?'on':''}" data-act="${act}"${wAttr} data-cm="0">بدون</button>`;
   };
+  // اختيار نوع الحلق: كامل (طقم كامل شامل مع الباب زي المعتاد) أو أعواد (عدد أعواد إضافي منفصل عن كمية الباب)
+  const frameKindChips=(kind,w)=>{
+    const act = w==='custom' ? 'cust-frame-kind' : 'size-frame-kind';
+    const wAttr = w==='custom' ? '' : ` data-w="${w}"`;
+    const k = kind||'full';
+    return `<button class="miniChip iconChip ${k==='full'?'on':''}" data-act="${act}"${wAttr} data-k="full">${ico('door')}</button>`
+      +`<button class="miniChip iconChip ${k==='rods'?'on':''}" data-act="${act}"${wAttr} data-k="rods">${ico('ruler')}<span>أعواد</span></button>`;
+  };
   const dbrorMiniChips=(sel,w)=>{
     const act = w==='custom' ? 'cust-dbror' : 'size-dbror';
     const wAttr = w==='custom' ? '' : ` data-w="${w}"`;
@@ -1112,22 +1127,21 @@ function viewNew(){
       <div class="miniChips">${dbrorMiniChips(p.custom.dbror,'custom')}</div>
     </div>` : '';
 
-  const frKind = (state.fr.kind||'full');
-  const frDoorCount = Math.max(0, Math.round(Number(state.fr.doorCount)||0));
-  const frJamb=Math.max(0,Number(state.fr.jamb)||0);
-  const frHeader=Math.max(0,Number(state.fr.header)||0);
+  const frKind=state.fr.kind==='rods'?'rods':'full';
+  const frQty=Math.max(0,Math.round(Number(state.fr.qty)||0));
+  const frNonStd=!!state.fr.nonStd;
+  const frJamb=frKind==='full' ? frQty*2 : Math.max(0,Number(state.fr.jamb)||0);
+  const frHeader=frKind==='full' ? frQty*1 : Math.max(0,Number(state.fr.header)||0);
   const frJambCm=Math.max(1,Math.round(Number(state.fr.jambCm)||220));
   const frHeaderCm=Math.max(1,Math.round(Number(state.fr.headerCm)||110));
   const frExtra=(state.fr.extra||[]).map(x=>({cm:Math.max(0,Math.round(Number(x.cm)||0)), qty:Math.max(0,Math.round(Number(x.qty)||0))}));
   const frExtraRods=frExtra.reduce((s,x)=>s+(x.cm>0?x.qty:0),0);
-  const frRods=frJamb+frHeader+frExtraRods;
+  const frRodsQty=Math.max(0,Math.round(Number(state.fr.rods)||0));
+  const frRodsCm=Math.max(0,Math.round(Number(state.fr.rodsCm)||0));
+  const frRods=frKind==='full' ? (frJamb+frHeader+frExtraRods) : frRodsQty;
   const frSel=FRAMES.find(f=>f.cm===state.fr.cm)||FRAMES[0];
   // سعر كل مقاس على حدة حسب طوله الفعلي
   const frJambPrice=rodPrice(frSel.price,frJambCm), frHeaderPrice=rodPrice(frSel.price,frHeaderCm);
-  // أيقونتين "كامل" (بيتحسب أوتوماتيك من عدد الأبواب) / "أعواد" (تحكم يدوي كامل زي الأول)
-  const frKindChips=
-    `<button class="miniChip iconChip ${frKind==='full'?'on':''}" data-act="fr-kind" data-k="full">${ico('door')}<span>كامل</span></button>`
-    +`<button class="miniChip iconChip ${frKind==='rods'?'on':''}" data-act="fr-kind" data-k="rods">${ico('ruler')}<span>أعواد</span></button>`;
   const frChips=FRAMES.map(f=>`
     <button class="chip ${state.fr.cm===f.cm?'on':''}" data-act="fr-cm" data-cm="${f.cm}">${f.cm} سم</button>`).join('');
   // كود/لون الباب للحلق المنفصل — إجباري زي باقي الاختيارات
@@ -1135,7 +1149,8 @@ function viewNew(){
     <button class="chip ${state.fr.code===d.code?'on':''}" data-act="fr-code" data-code="${d.code}">${d.code} — ${esc(d.name)}</button>`).join('');
   // مقاس الباب اللي الحلق ده مخصوص له (70/80/90/100) — اختياري، بس بيوضح للمصنع
   const frDoorWChips=SIZES.map(s=>`
-    <button class="chip ${String(state.fr.doorW)===String(s.w)?'on':''}" data-act="fr-doorw" data-w="${s.w}">${s.w} سم</button>`).join('')    +`<button class="chip ${!state.fr.doorW?'on':''}" data-act="fr-doorw" data-w="">مش محدد</button>`;
+    <button class="chip ${String(state.fr.doorW)===String(s.w)?'on':''}" data-act="fr-doorw" data-w="${s.w}">${s.w} سم</button>`).join('')
+    +`<button class="chip ${!state.fr.doorW?'on':''}" data-act="fr-doorw" data-w="">مش محدد</button>`;
 
   const brRods=Number(state.br.rods)||0;
   const brSel=BRORS.find(b=>b.size===state.br.size)||BRORS[0];
@@ -1253,39 +1268,46 @@ function viewNew(){
     <div class="chips">${frCodeChips}</div>
     <div class="sol-h" style="margin:12px 0 6px">لباب مقاس كام؟ <span style="font-weight:400;color:var(--muted)">(اختياري — يوضح للمصنع)</span></div>
     <div class="chips">${frDoorWChips}</div>
-    <div class="sol-h" style="margin:12px 0 6px">نوع الطلب</div>
-    <div class="miniChips">${frKindChips}</div>
-    ${frKind==='full' ? `
-    <div class="row2" style="margin-top:9px">
-      <label class="fld sm"><span>عدد الأبواب</span>
-        <input type="number" inputmode="numeric" min="0" step="1" placeholder="عدد الأبواب" value="${esc(state.fr.doorCount||'')}" data-act="fr-doorcount"></label>
-      <label class="fld sm"><span>الارتفاع (سم) — اختياري</span>
-        <input type="number" inputmode="numeric" min="1" step="1" placeholder="استاندر 220" value="${esc(state.fr.height||'')}" data-act="fr-height"></label>
+    <div class="sol-h" style="margin:12px 0 6px">نوع الحلق</div>
+    <div class="miniChips">
+      <button class="miniChip iconChip ${frKind==='full'?'on':''}" data-act="fr-kind" data-k="full">${ico('door')}<span>حلق كامل</span></button>
+      <button class="miniChip iconChip ${frKind==='rods'?'on':''}" data-act="fr-kind" data-k="rods">${ico('ruler')}<span>أعواد</span></button>
     </div>
-    <div class="note" style="margin-top:9px">هيتحسب أوتوماتيك: ٢ قائم + ١ عتب لكل باب${pricesVisible()&&frDoorCount>0?` — ${money(frJambPrice)} ج/قائم × ${frJamb} + ${money(frHeaderPrice)} ج/عتب × ${frHeader}`:''}.</div>
-    ` : `
-    <div class="sol-h" style="margin:12px 0 6px">عدد الأعواد لكل ارتفاع</div>
-    <div class="rodrow">
+    ${frKind==='full' ? `
+    <div class="sol-h" style="margin:12px 0 6px">الكمية <span style="font-weight:400;color:var(--muted)">(عدد الأطقم — الطقم = ٢ عود ٢٢٠سم + ١ عود ١١٠سم)</span></div>
+    <div class="row2" style="gap:6px;max-width:220px">
+      <input type="number" inputmode="numeric" min="0" step="1" placeholder="العدد" value="${esc(state.fr.qty)}" data-act="fr-qty">
+    </div>
+    ${pricesVisible()&&frQty>0?`<div class="rp" style="margin-top:6px">${money(frJambPrice)} ج/عود ٢٢٠سم — ${money(frHeaderPrice)} ج/عود ١١٠سم</div>`:''}
+    <button class="btn ghost sm" style="margin-top:9px" data-act="fr-nonstd-toggle">${frNonStd?'إخفاء الارتفاع المخصوص':'الارتفاع مش استاندر؟'}</button>
+    ${frNonStd ? `
+    <div class="rodrow" style="margin-top:9px">
       <div class="rodbox">
-        <div class="rl">قائم<small>جنبي الباب</small></div>
-        <div class="row2" style="gap:6px">
-          <input type="number" inputmode="numeric" min="1" step="1" placeholder="سم" value="${esc(state.fr.jambCm)}" data-act="fr-jambCm">
-          <input type="number" inputmode="numeric" min="0" step="1" placeholder="عدد" value="${esc(state.fr.jamb)}" data-act="fr-jamb">
-        </div>
-        ${pricesVisible()?`<div class="rp">${money(frJambPrice)} ج/عود</div>`:''}
+        <div class="rl">الطول الأول<small>افتراضي ٢٢٠سم</small></div>
+        <input type="number" inputmode="numeric" min="1" step="1" placeholder="سم" value="${esc(state.fr.jambCm)}" data-act="fr-jambCm">
       </div>
       <div class="rodbox">
-        <div class="rl">عتب<small>أعلى الباب</small></div>
-        <div class="row2" style="gap:6px">
-          <input type="number" inputmode="numeric" min="1" step="1" placeholder="سم" value="${esc(state.fr.headerCm)}" data-act="fr-headerCm">
-          <input type="number" inputmode="numeric" min="0" step="1" placeholder="عدد" value="${esc(state.fr.header)}" data-act="fr-header">
-        </div>
-        ${pricesVisible()?`<div class="rp">${money(frHeaderPrice)} ج/عود</div>`:''}
+        <div class="rl">الطول التاني<small>افتراضي ١١٠سم</small></div>
+        <input type="number" inputmode="numeric" min="1" step="1" placeholder="سم" value="${esc(state.fr.headerCm)}" data-act="fr-headerCm">
       </div>
       ${frExtraRows}
     </div>
     <button class="btn ghost sm" style="margin-top:9px" data-act="fr-extra-add">${ico("plus")} عود بارتفاع تاني</button>
-    <div class="note" style="margin-top:9px">الباب الواحد بياخد ٢ قائم + ١ عتب — غيّر الارتفاع (سم) لأي عود لو مختلف عن الاستاندر، وأضف أعواد بارتفاعات تانية لو محتاج.</div>
+    ` : ''}
+    <div class="note" style="margin-top:9px">الباب الواحد بياخد ٢ عود ٢٢٠سم + ١ عود ١١٠سم — لو الارتفاع مختلف عن الاستاندر دوس "الارتفاع مش استاندر؟" وغيّره.</div>
+    ` : `
+    <div class="sol-h" style="margin:12px 0 6px">الكمية والطول</div>
+    <div class="rodrow">
+      <div class="rodbox">
+        <div class="rl">أعواد حرة<small>حدد العدد والطول</small></div>
+        <div class="row2" style="gap:6px">
+          <input type="number" inputmode="numeric" min="1" step="1" placeholder="الطول (سم)" value="${esc(state.fr.rodsCm)}" data-act="fr-rodsCm">
+          <input type="number" inputmode="numeric" min="0" step="1" placeholder="العدد" value="${esc(state.fr.rods)}" data-act="fr-rods">
+        </div>
+        ${(pricesVisible() && frRodsCm>0)?`<div class="rp">${money(rodPrice(frSel.price,frRodsCm))} ج/عود</div>`:''}
+      </div>
+    </div>
+    <div class="note" style="margin-top:9px">اكتب عدد الأعواد وطولها اللي محتاجها — مفيش قيمة افتراضية.</div>
     `}
     <label class="fld" style="margin-top:9px">
       <span>ملحوظة <span style="font-weight:400;color:var(--muted)">(اختياري)</span></span>
@@ -1294,7 +1316,7 @@ function viewNew(){
     <button class="btn ghost sm" style="margin-top:9px" data-act="add-fr" ${frRods>0&&state.fr.code?'':'disabled'}>
       ${!state.fr.code ? 'اختر كود الباب أولاً'
         : (frRods>0 ? `أضف ${frRods} عود — حلق ${frSel.cm} سم ${esc(state.fr.code)}${state.fr.doorW?' — لباب '+state.fr.doorW+' سم':''}`
-                    : 'اكتب عدد الأعواد')}</button>
+                    : (frKind==='full' ? 'اكتب الكمية' : 'اكتب عدد الأعواد وطولها'))}</button>
   </section>`;
 
   const secBror = `
@@ -1426,6 +1448,7 @@ function viewCart(){
       spec=doorSizeText_(it.sizeTxt,it.doorHeight)+(priced?' · '+money(it.unitPrice)+' ج':'')+' × '+it.qty;
       const inc=[]; if(it.frame) inc.push('حلق '+frameText_(it.frame,it.frameHeight)); if(it.dbror) inc.push('برور '+it.dbror);
       if(inc.length) spec+='<br>شامل: '+inc.join(' + ')+(priced?' — بدون سعر':'');
+      if(it.note) spec+='<br><span style="color:#8A6512">'+esc(it.note)+'</span>';
     } else if(it.kind==='frame'||it.kind==='bror'){
       spec=it.qty+' عود'+(it.rodCm?' × '+it.rodCm+' سم':'')+(priced?' — '+money(it.price)+' ج/عود':'');
     } else spec=(priced?money(it.price)+' ج × ':'× ')+it.qty;
@@ -2023,7 +2046,7 @@ function arabicItemTitle_(it){
   if(it.type==='Door'){
     const d = DOORS.find(x=>x.code===it.code);
     const base = d ? ('باب '+d.code+' '+d.name) : (it.code||it.title||'');
-    return base + (String(it.milling||'').trim() ? ' (حفر)' : '');
+    return base + (String(it.milling||'').trim() ? ' (حفر)' : '') + (it.itemNote ? ' — '+it.itemNote : '');
   }
   if(it.type==='Frame'){
     let t = 'حلق '+(it.size||'')+(it.code?' — '+it.code:'');
@@ -3575,7 +3598,7 @@ document.addEventListener('click',e=>{
       break;
     case 'toggle-size': {
       const w=Number(el.dataset.w);
-      if(p.sizes[w]!=null) delete p.sizes[w]; else p.sizes[w]={qty:1,height:'',frame:null,frameHeight:'',dbror:null,hafr:false};
+      if(p.sizes[w]!=null) delete p.sizes[w]; else p.sizes[w]={qty:1,height:'',frame:null,frameHeight:'',dbror:null,hafr:false,frameKind:null,frameRodQty:'',frameForDoors:''};
       render(); break;
     }
     case 'toggle-custom': p.customOn=!p.customOn; render(); break;
@@ -3584,15 +3607,18 @@ document.addEventListener('click',e=>{
     case 'cust-qty-minus': p.custom.qty=Math.max(1,(Number(p.custom.qty)||1)-1); render(); break;
     case 'cust-qty-plus':  p.custom.qty=(Number(p.custom.qty)||1)+1; render(); break;
     case 'size-frame': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.frame=Number(el.dataset.cm); render(); break; }
+    case 'size-frame-kind': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.frameKind=el.dataset.k; render(); break; }
+    case 'cust-frame-kind': p.custom.frameKind=el.dataset.k; render(); break;
     case 'size-dbror': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.dbror=el.dataset.size; render(); break; }
     case 'size-hafr': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.hafr=(el.dataset.v==='1'); render(); break; }
     case 'cust-hafr': p.custom.hafr=(el.dataset.v==='1'); render(); break;
     case 'cust-frame': p.custom.frame=Number(el.dataset.cm); render(); break;
     case 'cust-dbror': p.custom.dbror=el.dataset.size; render(); break;
     case 'fr-cm': state.fr.cm=Number(el.dataset.cm); render(); break;
-    case 'fr-kind': state.fr.kind=el.dataset.k; syncFrFull_(); render(); break;
     case 'fr-code': state.fr.code=el.dataset.code; render(); break;
     case 'fr-doorw': state.fr.doorW=el.dataset.w; render(); break;
+    case 'fr-kind': state.fr.kind=el.dataset.k; render(); break;
+    case 'fr-nonstd-toggle': state.fr.nonStd=!state.fr.nonStd; if(!state.fr.nonStd){state.fr.jambCm=220; state.fr.headerCm=110; state.fr.extra=[];} render(); break;
     case 'fr-extra-add': state.fr.extra=[...(state.fr.extra||[]), {cm:'',qty:1}]; render(); break;
     case 'fr-extra-del': { const i=Number(el.dataset.i); state.fr.extra.splice(i,1); render(); break; }
     case 'br-size': state.br.size=el.dataset.size; render(); break;
@@ -3792,15 +3818,20 @@ document.addEventListener('input',e=>{
   if(a==='size-height'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.height=el.value; refreshSummary(); return; }
   if(a==='size-frame-height'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.frameHeight=el.value; return; }
   if(a==='cust-frame-height'){ state.pick.custom.frameHeight=el.value; return; }
+  if(a==='size-frame-rodqty'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.frameRodQty=el.value; return; }
+  if(a==='cust-frame-rodqty'){ state.pick.custom.frameRodQty=el.value; return; }
+  if(a==='size-frame-fordoors'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.frameForDoors=el.value; return; }
+  if(a==='cust-frame-fordoors'){ state.pick.custom.frameForDoors=el.value; return; }
   if(a==='size-qty-set'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.qty=Math.max(1,parseInt(el.value,10)||1); refreshSummary(); return; }
   if(a==='cust-qty-set'){ state.pick.custom.qty=Math.max(1,parseInt(el.value,10)||1); refreshSummary(); return; }
   if(a==='acc-set'){ state.acc[el.dataset.id]=Math.max(0,parseFloat(el.value)||0); refreshAccBtn(); return; }
-  if(a==='fr-doorcount'){ state.fr.doorCount=el.value; syncFrFull_(); render(); return; }
-  if(a==='fr-height'){ state.fr.height=el.value; syncFrFull_(); render(); return; }
   if(a==='fr-jamb'){ state.fr.jamb=el.value; render(); return; }
   if(a==='fr-header'){ state.fr.header=el.value; render(); return; }
   if(a==='fr-jambCm'){ state.fr.jambCm=el.value; render(); return; }
   if(a==='fr-headerCm'){ state.fr.headerCm=el.value; render(); return; }
+  if(a==='fr-qty'){ state.fr.qty=el.value; render(); return; }
+  if(a==='fr-rods'){ state.fr.rods=el.value; render(); return; }
+  if(a==='fr-rodsCm'){ state.fr.rodsCm=el.value; render(); return; }
   if(a==='fr-extra-cm'){ state.fr.extra[Number(el.dataset.i)].cm=el.value; render(); return; }
   if(a==='fr-extra-qty'){ state.fr.extra[Number(el.dataset.i)].qty=el.value; render(); return; }
   if(a==='fr-note'){ state.fr.note=el.value; return; }
@@ -3897,6 +3928,7 @@ function addDoor(){
     // ارتفاع الفتحة المعمارية اختياري ولكل مقاس ارتفاعه الخاص بيه (المقاس الخاص أصلًا بياخد ارتفاعه من حقل الطول بتاعه)
     const doorHeight = e.height ? Number(e.height) : 0;
     const sizeTxt=w+' سم', sizeEn=w+' cm', unitPrice=priceForWidth(w,e.hafr);
+    const frameKind = e.frame ? (e.frameKind||'full') : null;
     state.cart.push({
       kind:'door',
       title:'باب '+d.code+' '+d.name+(e.hafr?' (حفر)':''),
@@ -3904,6 +3936,8 @@ function addDoor(){
       code:d.code, img:d.img, sizeTxt, sizeEn, unitPrice, qty,
       w,   // العرض بالسم كرقم خام — لخصم الرصيد بدقة
       frame:e.frame||0, dbror:e.dbror||'', frameHeight:e.frameHeight?Number(e.frameHeight):0,
+      frameKind, frameRodQty:frameKind==='rods'?(e.frameRodQty||''):'', frameForDoors:frameKind==='rods'?(e.frameForDoors||''):'',
+      note: frameKind==='rods' ? frameKindNote_('rods', e.frameRodQty, e.frameForDoors) : '',
       doorHeight, hafr:!!e.hafr, millEn:e.hafr?'Carved':''
     });
     addedTxts.push(doorSizeText_(sizeTxt,doorHeight)+' × '+qty);
@@ -3912,6 +3946,7 @@ function addDoor(){
   if(customReady){
     const w=Number(p.custom.w), h=Number(p.custom.h), qty=Number(p.custom.qty)||1;
     const sizeTxt=w+'×'+h+' سم (مقاس خاص — مقاس الفتحة المعمارية)', sizeEn=w+'x'+h+' cm (custom)', unitPrice=priceForWidth(w,p.custom.hafr)+CUSTOM_EXTRA;
+    const customFrameKind = p.custom.frame ? (p.custom.frameKind||'full') : null;
     state.cart.push({
       kind:'door',
       title:'باب '+d.code+' '+d.name+(p.custom.hafr?' (حفر)':''),
@@ -3919,6 +3954,8 @@ function addDoor(){
       code:d.code, img:d.img, sizeTxt, sizeEn, unitPrice, qty,
       w:'',   // مقاس خاص مش متتبّع في المخزون
       frame:p.custom.frame||0, dbror:p.custom.dbror||'', frameHeight:p.custom.frameHeight?Number(p.custom.frameHeight):0,
+      frameKind:customFrameKind, frameRodQty:customFrameKind==='rods'?(p.custom.frameRodQty||''):'', frameForDoors:customFrameKind==='rods'?(p.custom.frameForDoors||''):'',
+      note: customFrameKind==='rods' ? frameKindNote_('rods', p.custom.frameRodQty, p.custom.frameForDoors) : '',
       doorHeight:0, hafr:!!p.custom.hafr, millEn:p.custom.hafr?'Carved':''
     });
     addedTxts.push(sizeTxt+' × '+qty);
@@ -3927,21 +3964,10 @@ function addDoor(){
   save(LS_CART,state.cart);
   toast('اتضاف للسلة: '+d.code+' — '+addedTxts.join('، '));
   // نلمّ الاختيارات ونقفل اللوحة عشان يختار باب تاني بارتياح
-  state.pick={code:'', sizes:{}, customOn:false, custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false}};
+  state.pick={code:'', sizes:{}, customOn:false, custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,frameKind:null,frameRodQty:'',frameForDoors:''}};
   render();
 }
 
-// بيزامن قيم القايم/العتب الخام (state.fr.jamb/header/jambCm) مع وضع "كامل" — بيتنادى كل ما doorCount أو height أو kind يتغيّروا.
-// كده addRod() وحسابات render() بتفضل بتقرأ state.fr.jamb/header/jambCm زي ما هي من غير أي تعديل تاني عليهم.
-function syncFrFull_(){
-  if((state.fr.kind||'full')!=='full') return;
-  const c = Math.max(0, Math.round(Number(state.fr.doorCount)||0));
-  state.fr.jamb = c*2; state.fr.header = c;
-  const h = Math.max(0, Math.round(Number(state.fr.height)||0));
-  state.fr.jambCm = h>0 ? h : 220;
-  state.fr.headerCm = 110;
-  state.fr.extra = [];
-}
 function addRod(kind){
   const isFrame = kind==='frame';
   const st = isFrame?state.fr:state.br;
@@ -3965,34 +3991,45 @@ function addRod(kind){
   let added = 0;
   if(isFrame){
     const f = FRAMES.find(x=>x.cm===st.cm)||FRAMES[0];
-    const jamb = Math.max(0, Math.round(Number(st.jamb)||0));
-    const header = Math.max(0, Math.round(Number(st.header)||0));
-    const jambCm = Math.max(1, Math.round(Number(st.jambCm)||220));
-    const headerCm = Math.max(1, Math.round(Number(st.headerCm)||110));
-    const extra = (st.extra||[]).map(x=>({cm:Math.max(0,Math.round(Number(x.cm)||0)), qty:Math.max(0,Math.round(Number(x.qty)||0))})).filter(x=>x.cm>0 && x.qty>0);
-    const extraTotal = extra.reduce((s,x)=>s+x.qty,0);
-    if(jamb+header+extraTotal<=0){toast('اكتب عدد الأعواد');return;}
     const forDoor = st.doorW ? ' — لباب '+st.doorW+' سم' : '';
-    if(jamb){
-      push(f.cm+' سم', jambCm, jamb, f.price,
-        'حلق باب '+f.cm+' سم — قائم '+jambCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
-        'Door Frame '+f.cm+' cm - jamb '+jambCm+'cm'+(st.code?' - '+st.code:''));
-      added += jamb;
+    const kind = st.kind==='rods' ? 'rods' : 'full';
+    if(kind==='full'){
+      const qty = Math.max(0, Math.round(Number(st.qty)||0));
+      const jamb = qty*2;
+      const header = qty*1;
+      const jambCm = Math.max(1, Math.round(Number(st.jambCm)||220));
+      const headerCm = Math.max(1, Math.round(Number(st.headerCm)||110));
+      const extra = (st.extra||[]).map(x=>({cm:Math.max(0,Math.round(Number(x.cm)||0)), qty:Math.max(0,Math.round(Number(x.qty)||0))})).filter(x=>x.cm>0 && x.qty>0);
+      const extraTotal = extra.reduce((s,x)=>s+x.qty,0);
+      if(jamb+header+extraTotal<=0){toast('اكتب الكمية');return;}
+      if(jamb){
+        push(f.cm+' سم', jambCm, jamb, f.price,
+          'حلق باب '+f.cm+' سم — قائم '+jambCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
+          'Door Frame '+f.cm+' cm - jamb '+jambCm+'cm'+(st.code?' - '+st.code:''));
+        added += jamb;
+      }
+      if(header){
+        push(f.cm+' سم', headerCm, header, f.price,
+          'حلق باب '+f.cm+' سم — عتب '+headerCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
+          'Door Frame '+f.cm+' cm - header '+headerCm+'cm'+(st.code?' - '+st.code:''));
+        added += header;
+      }
+      extra.forEach(x=>{
+        push(f.cm+' سم', x.cm, x.qty, f.price,
+          'حلق باب '+f.cm+' سم — عود '+x.cm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
+          'Door Frame '+f.cm+' cm - rod '+x.cm+'cm'+(st.code?' - '+st.code:''));
+        added += x.qty;
+      });
+    } else {
+      const rods = Math.max(0, Math.round(Number(st.rods)||0));
+      const rodsCm = Math.max(0, Math.round(Number(st.rodsCm)||0));
+      if(rods<=0 || rodsCm<=0){toast('اكتب عدد الأعواد وطولها');return;}
+      push(f.cm+' سم', rodsCm, rods, f.price,
+        'حلق باب '+f.cm+' سم — عود '+rodsCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
+        'Door Frame '+f.cm+' cm - rod '+rodsCm+'cm'+(st.code?' - '+st.code:''));
+      added += rods;
     }
-    if(header){
-      push(f.cm+' سم', headerCm, header, f.price,
-        'حلق باب '+f.cm+' سم — عتب '+headerCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
-        'Door Frame '+f.cm+' cm - header '+headerCm+'cm'+(st.code?' - '+st.code:''));
-      added += header;
-    }
-    extra.forEach(x=>{
-      push(f.cm+' سم', x.cm, x.qty, f.price,
-        'حلق باب '+f.cm+' سم — عود '+x.cm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
-        'Door Frame '+f.cm+' cm - rod '+x.cm+'cm'+(st.code?' - '+st.code:''));
-      added += x.qty;
-    });
-    state.fr.jamb=2; state.fr.header=1; state.fr.jambCm=220; state.fr.headerCm=110; state.fr.extra=[]; state.fr.doorW=''; state.fr.note=''; state.fr.doorCount=''; state.fr.height='';
-    syncFrFull_();
+    state.fr.jamb=2; state.fr.header=1; state.fr.jambCm=220; state.fr.headerCm=110; state.fr.extra=[]; state.fr.rods=''; state.fr.rodsCm=''; state.fr.doorW=''; state.fr.note=''; state.fr.qty=1; state.fr.nonStd=false;
   } else {
     const b = BRORS.find(x=>x.size===st.size)||BRORS[0];
     const rods = Math.max(0, Math.round(Number(st.rods)||0));
@@ -4059,21 +4096,25 @@ function editCartLine(i){
   if(it.kind==='door'){
     const isHafr = !!it.hafr || /\(حفر\)|\(Carved\)/i.test((it.title||'')+(it.titleEn||''));
     let sizes={}, customOn=false, customW='', customH='', customQty=1, customFrame=null, customFrameHeight='', customDbror=null;
+    let customFrameKind=null, customFrameRodQty='', customFrameForDoors='';
     let m = /^(\d+)\s*cm$/i.exec(it.sizeEn||'');
     if(m){
       sizes[Number(m[1])] = {
         qty:it.qty||1, height: it.doorHeight?String(it.doorHeight):'',
-        frame: it.frame||0, frameHeight: it.frameHeight?String(it.frameHeight):'', dbror: it.dbror||'', hafr:isHafr
+        frame: it.frame||0, frameHeight: it.frameHeight?String(it.frameHeight):'', dbror: it.dbror||'', hafr:isHafr,
+        frameKind: it.frameKind||null, frameRodQty: it.frameRodQty||'', frameForDoors: it.frameForDoors||''
       };
     } else {
       m = /^(\d+)\s*x\s*(\d+)\s*cm\s*\(custom\)$/i.exec(it.sizeEn||'');
       if(m){
         customOn=true; customW=m[1]; customH=m[2]; customQty=it.qty||1;
         customFrame=it.frame||0; customFrameHeight=it.frameHeight?String(it.frameHeight):''; customDbror=it.dbror||'';
+        customFrameKind=it.frameKind||null; customFrameRodQty=it.frameRodQty||''; customFrameForDoors=it.frameForDoors||'';
       }
     }
     state.pick = {code:it.code||'', sizes, customOn,
-      custom:{w:customW,h:customH,qty:customQty,frame:customFrame,frameHeight:customFrameHeight,dbror:customDbror,hafr:isHafr}};
+      custom:{w:customW,h:customH,qty:customQty,frame:customFrame,frameHeight:customFrameHeight,dbror:customDbror,hafr:isHafr,
+        frameKind:customFrameKind,frameRodQty:customFrameRodQty,frameForDoors:customFrameForDoors}};
     state.newSection='doors'; save(LS_SECTION,state.newSection);
   } else if(it.kind==='frame' || it.kind==='bror'){
     const isFr = it.kind==='frame';
@@ -4081,11 +4122,14 @@ function editCartLine(i){
       let cm = FRAMES[0].cm;
       const mm=/^(\d+)/.exec(it.spec||''); if(mm) cm=Number(mm[1]);
       const rodCm = Number(it.rodCm)||220;
-      // بنرجّع العدد في خانة المقاس الصح حسب طول العود المحفوظ — قائم/عتب لو الطول قياسي، وإلا سطر إضافي
-      state.fr = {cm, code:it.code||'', doorW: it.doorW||'', note: it.note||'', kind:'rods', doorCount:'', height:'',
+      // بنرجّع العدد في خانة المقاس الصح حسب طول العود المحفوظ — قائم/عتب لو الطول قياسي، وإلا سطر أعواد حرة
+      const isStdCm = (rodCm===220 || rodCm===110);
+      const restoredQty = rodCm===220 ? Math.round((it.qty||2)/2) : (it.qty||1);
+      state.fr = {cm, code:it.code||'', doorW: it.doorW||'', note: it.note||'', kind: isStdCm?'full':'rods',
+                  qty: isStdCm?restoredQty:1, nonStd:false,
                   jamb:   rodCm===220 ? (it.qty||1) : 0, jambCm:220,
                   header: rodCm===110 ? (it.qty||1) : 0, headerCm:110,
-                  extra: (rodCm!==220 && rodCm!==110) ? [{cm:rodCm, qty:it.qty||1}] : []};
+                  extra: [], rods: isStdCm?'':(it.qty||1), rodsCm: isStdCm?'':rodCm};
     } else {
       let size = BRORS[0].size;
       const mm=/^([\d×xX]+)/.exec(it.spec||''); if(mm) size=mm[1].replace(/x|X/,'×');
@@ -4132,7 +4176,8 @@ async function adminEditOrder(o){
                img:(DOORS.find(d=>d.code===it.code)||{}).img || '',
                sizeTxt:arabicSizeText_(it.size), sizeEn:it.size||'', unitPrice:price, qty,
                w:it.width||'', frame:Number(it.frame)||0, dbror:it.dbror||'', frameHeight:Number(it.frameHeight)||0,
-               doorHeight:Number(it.doorHeight)||0, hafr:/\(حفر\)|\(Carved\)/i.test((it.title||'')) };
+               doorHeight:Number(it.doorHeight)||0, hafr:/\(حفر\)|\(Carved\)/i.test((it.title||'')),
+               note: it.itemNote||'' };
     }
     if(it.type==='Frame' || it.type==='Bror'){
       const isFr = it.type==='Frame';
@@ -4403,7 +4448,7 @@ function docRowHTML_(it, idx, priced, showFrameHCol){
   const pp = itemProdPending_(it);
   return `<tr>
     <td style="text-align:center">${idx}</td>
-    <td><b>${esc(it.title)}</b></td>
+    <td><b>${esc(it.title)}</b>${(it.kind==='door'&&it.note)?`<br><span style="font-size:9.5px;color:#8A6512">${esc(it.note)}</span>`:''}</td>
     <td style="text-align:center">${qty} ${esc(unit)}</td>
     <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(widthTxt)}</td>
     <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(heightTxt)}</td>
