@@ -57,7 +57,8 @@ var COL_SUPERSEDED = 20; // علامة "الطلب ده اتعدّل وعنده 
 var HEAD_ITEMS = [
   'Order No', 'Date', 'Distributor', 'Type', 'Item', 'Colour Code',
   'Size', 'Included with Door', 'Milling', 'Unit', 'Qty', 'Unit Price', 'Line Total', 'Available',
-  'Frame (cm)', 'Bror', 'Frame Height (cm)', 'Width (cm)', 'Produced Qty', 'Door Height (cm)'
+  'Frame (cm)', 'Bror', 'Frame Height (cm)', 'Width (cm)', 'Produced Qty', 'Door Height (cm)',
+  'For Door Width (cm)', 'Item Note'
 ];
 var COL_ITEM_WIDTH = 18;  // العرض بالسم كرقم خام (بس للأبواب) — بيتستخدم لخصم/رجوع رصيد المخزون بدقة
 var COL_ITEM_AVAIL = 14;   // عمود "متاح؟" في تبويب Order_Items — Y/N، بيتحدّث من شاشة المصنع
@@ -275,7 +276,9 @@ function doGet(e) {
               frameHeight: valsOI[iOI][16] || '',
               width:     valsOI[iOI][17] || '',
               produced:  Number(valsOI[iOI][18]) || 0,
-              doorHeight: valsOI[iOI][19] || ''
+              doorHeight: valsOI[iOI][19] || '',
+              forDoorWidth: valsOI[iOI][20] || '',
+              itemNote:  valsOI[iOI][21] || ''
             });
           }
         }
@@ -560,7 +563,10 @@ function doGet(e) {
             frameHeight: valsILW[iILW][16] || '',
             width:    valsILW[iILW][17] || '',
             produced: Number(valsILW[iILW][18]) || 0,
-            doorHeight: valsILW[iILW][19] || ''
+            doorHeight: valsILW[iILW][19] || '',
+            milling:  valsILW[iILW][8],
+            forDoorWidth: valsILW[iILW][20] || '',
+            itemNote: valsILW[iILW][21] || ''
           });
         }
       }
@@ -749,7 +755,9 @@ function saveOrder_(o) {
       isDoor ? (it.frameHeight || '') : '',
       isDoor ? (it.w || '') : '',
       0,   // Produced Qty — يبدأ صفر لكل صنف جديد، وبيتحدّث بعدين من شاشة المصنع
-      isDoor ? (it.doorHeight || '') : ''
+      isDoor ? (it.doorHeight || '') : '',
+      isRod ? (it.doorW || '') : '',      // الحلق/البرور ده لباب مقاس كام (اختياري)
+      it.note || ''                        // ملاحظة حرة على الصنف (اختياري)
     ]);
   }
 

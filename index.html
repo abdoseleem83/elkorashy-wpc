@@ -525,7 +525,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v98';
+const APP_BUILD   = 'v99';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1995,10 +1995,22 @@ const ACC_EN_TO_AR_ = {}; ACCESSORIES.forEach(a=>{ ACC_EN_TO_AR_[a.en] = a.name;
 function arabicItemTitle_(it){
   if(it.type==='Door'){
     const d = DOORS.find(x=>x.code===it.code);
-    return d ? ('باب WPC '+d.code+' — '+d.name) : (it.title||'');
+    const base = d ? ('باب '+d.code+' '+d.name) : (it.code||it.title||'');
+    return base + (String(it.milling||'').trim() ? ' (حفر)' : '');
   }
-  if(it.type==='Frame') return 'حلق باب '+(it.size||'')+(it.code?' — '+it.code:'');
-  if(it.type==='Bror')  return 'برور '+(it.size||'');
+  if(it.type==='Frame'){
+    let t = 'حلق '+(it.size||'')+(it.code?' — '+it.code:'');
+    if(it.forDoorWidth) t += ' — لباب '+it.forDoorWidth+' سم';
+    if(it.itemNote) t += ' — '+it.itemNote;
+    return t;
+  }
+  if(it.type==='Bror'){
+    let t = 'برور '+(it.size||'')+(it.code?' — '+it.code:'');
+    if(it.forDoorWidth) t += ' — لباب '+it.forDoorWidth+' سم';
+    if(it.itemNote) t += ' — '+it.itemNote;
+    return t;
+  }
+  if(it.type==='Panel') return 'لوح بروديوم'+(it.code?' — '+it.code:'');
   return ACC_EN_TO_AR_[it.title] || it.title || '';
 }
 
@@ -2021,10 +2033,11 @@ function buildAdminDocOrder_(o, its, tierKey){
     priceTierLabel: tierKey ? (PRICE_TIERS[tierKey]||PRICE_TIERS.dist).label : '',
     items: its.map(it=>{
       const sz = it.type==='Door' ? doorSizeText_(arabicSizeText_(it.size), it.doorHeight) : (it.size||'');
-      const kind = it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':'acc'));
+      const kind = it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':(it.type==='Panel'?'panel':'acc')));
       const price = tierKey ? tierPrice(it.unitPrice||0, kind, tierKey, tierKeyFor_(it, kind)) : (it.unitPrice||0);
       return {
-        kind, title: (it.avail===false?'⚠️ غير متاح — ':'') + arabicItemTitle_(it) + (it.type==='Door'&&it.code?' ('+it.code+')':''),
+        kind, title: (it.avail===false?'⚠️ غير متاح — ':'') + arabicItemTitle_(it),
+        code: it.code||'',
         sizeTxt: sz, sizeEn: it.size||'', spec: sz, unit: it.unit||'', qty: it.qty||0,
         unitPrice: price, price: price,
         frame: it.frame||'', dbror: it.dbror||'', frameHeight: it.frameHeight||'', doorHeight: it.doorHeight||'',
@@ -3856,12 +3869,12 @@ function addDoor(){
     const sizeTxt=w+' سم', sizeEn=w+' cm', unitPrice=priceForWidth(w,e.hafr);
     state.cart.push({
       kind:'door',
-      title:'باب WPC '+d.code+' — '+d.name+(e.hafr?' (حفر)':''),
+      title:'باب '+d.code+' '+d.name+(e.hafr?' (حفر)':''),
       titleEn:'WPC Door '+d.code+' - '+d.en+(e.hafr?' (Carved)':''),
       code:d.code, img:d.img, sizeTxt, sizeEn, unitPrice, qty,
       w,   // العرض بالسم كرقم خام — لخصم الرصيد بدقة
       frame:e.frame||0, dbror:e.dbror||'', frameHeight:e.frameHeight?Number(e.frameHeight):0,
-      doorHeight, hafr:!!e.hafr
+      doorHeight, hafr:!!e.hafr, millEn:e.hafr?'Carved':''
     });
     addedTxts.push(doorSizeText_(sizeTxt,doorHeight)+' × '+qty);
   });
@@ -3871,12 +3884,12 @@ function addDoor(){
     const sizeTxt=w+'×'+h+' سم (مقاس خاص — مقاس الفتحة المعمارية)', sizeEn=w+'x'+h+' cm (custom)', unitPrice=priceForWidth(w,p.custom.hafr)+CUSTOM_EXTRA;
     state.cart.push({
       kind:'door',
-      title:'باب WPC '+d.code+' — '+d.name+(p.custom.hafr?' (حفر)':''),
+      title:'باب '+d.code+' '+d.name+(p.custom.hafr?' (حفر)':''),
       titleEn:'WPC Door '+d.code+' - '+d.en+(p.custom.hafr?' (Carved)':''),
       code:d.code, img:d.img, sizeTxt, sizeEn, unitPrice, qty,
       w:'',   // مقاس خاص مش متتبّع في المخزون
       frame:p.custom.frame||0, dbror:p.custom.dbror||'', frameHeight:p.custom.frameHeight?Number(p.custom.frameHeight):0,
-      doorHeight:0, hafr:!!p.custom.hafr
+      doorHeight:0, hafr:!!p.custom.hafr, millEn:p.custom.hafr?'Carved':''
     });
     addedTxts.push(sizeTxt+' × '+qty);
   }
@@ -3896,14 +3909,15 @@ function addRod(kind){
 
   // بيضيف/بيجمّع سطر عود واحد في السلة (كل مقاس سطر مستقل)
   const push = (spec, cm, qty, perM, titleAr, titleEn) => {
-    const key = kind+'|'+spec+'|'+cm+'|'+st.code;
+    const key = kind+'|'+spec+'|'+cm+'|'+st.code+'|'+(st.doorW||'');
     const ex = state.cart.find(it=>it.kind===kind && it.key===key);
     if(ex){ ex.qty += qty; return; }
     state.cart.push({
       kind, key, qty, code:st.code, rodCm:cm, perM,
       price: rodPrice(perM, cm),
       spec:  spec+' — '+cm+' سم'+(st.code?' — '+st.code:''),
-      title: titleAr, titleEn
+      title: titleAr, titleEn,
+      doorW: isFrame ? (st.doorW||'') : '', note: isFrame ? (st.note||'') : ''
     });
   };
 
@@ -4026,7 +4040,7 @@ function editCartLine(i){
       const mm=/^(\d+)/.exec(it.spec||''); if(mm) cm=Number(mm[1]);
       const rodCm = Number(it.rodCm)||220;
       // بنرجّع العدد في خانة المقاس الصح حسب طول العود المحفوظ — قائم/عتب لو الطول قياسي، وإلا سطر إضافي
-      state.fr = {cm, code:it.code||'',
+      state.fr = {cm, code:it.code||'', doorW: it.doorW||'', note: it.note||'',
                   jamb:   rodCm===220 ? (it.qty||1) : 0, jambCm:220,
                   header: rodCm===110 ? (it.qty||1) : 0, headerCm:110,
                   extra: (rodCm!==220 && rodCm!==110) ? [{cm:rodCm, qty:it.qty||1}] : []};
@@ -4083,7 +4097,8 @@ async function adminEditOrder(o){
       const rodCm = (String(it.unit||'').match(/^rod\s+(\d+)/)||[])[1];
       return { kind:isFr?'frame':'bror', key:(isFr?'حلق':'برور')+(it.size||'')+'|'+(it.code||''),
                title:arabicItemTitle_(it), titleEn:it.title||'', code:it.code||'',
-               spec:it.size||'', price, qty, rodCm:rodCm?Number(rodCm):undefined };
+               spec:it.size||'', price, qty, rodCm:rodCm?Number(rodCm):undefined,
+               doorW: it.forDoorWidth||'', note: it.itemNote||'' };
     }
     if(it.type==='Panel'){
       return { kind:'panel', key:'panel|'+(it.code||''),
