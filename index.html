@@ -526,7 +526,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v100';
+const APP_BUILD   = 'v101';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2298,6 +2298,10 @@ function reportHTML(orders){
     .map(o=>Object.assign({}, o, { items:(o.items||[]).filter(it=>it.type==='Door') }))
     .filter(o=>o.items.length);
 
+  // عمود "ارتفاع الحلق" شرطي على مستوى التقرير كله (زي docHTML/customerTableHTML_) — يظهر بس لو صنف باب
+  // واحد على الأقل في كل الطلبات متسجّل له عرض حلق + ارتفاع حلق مع بعض.
+  const showFrameHCol = orders.some(o=>(o.items||[]).some(it=>it.frame && it.frameHeight));
+
   let grandQty = 0;
   orders.forEach(o=>{ grandQty += (o.items||[]).reduce((s,it)=>s+(Number(it.qty)||0),0); });
 
@@ -2354,17 +2358,21 @@ function reportHTML(orders){
     const ordBlocks = cust.orders.map(o=>{
       const st = STATUS[o.status] || {ar:o.status||'—'};
       const itemRows = (o.items||[]).map(it=>{
-        const bits=[];
-        if(it.size) bits.push(it.type==='Door'?doorSizeText_(it.size,it.doorHeight):it.size);
-        if(it.frame) bits.push(frameText_(it.frame,it.frameHeight));
-        if(it.dbror) bits.push('برور '+it.dbror);
+        const wh = doorWH_(it.size, it.doorHeight);
+        const frameW = it.frame ? it.frame : '—';
+        const frameH = it.frame ? (it.frameHeight ? it.frameHeight : 'استاندر') : '—';
+        const brorTxt = it.dbror ? it.dbror : '—';
         const unavail = it.avail===false;
         const pp = itemProdPending_(it);
         return `<tr>
           <td style="${td}">${esc(itemTypeAr_(it.type))}</td>
           <td style="${td}">${esc(it.code||'—')}</td>
           <td style="${td};text-align:right">${esc(itemNameAr_(it))}</td>
-          <td style="${td};font-size:10px;color:#5B6B7D">${esc(bits.join(' / ')||'—')}</td>
+          <td style="${td};font-size:10px;color:#5B6B7D">${esc(wh.w||'—')}</td>
+          <td style="${td};font-size:10px;color:#5B6B7D">${esc(wh.h||'—')}</td>
+          <td style="${td};font-size:10px;color:#5B6B7D">${esc(frameW)}</td>
+          ${showFrameHCol?`<td style="${td};font-size:10px;color:${frameH==='استاندر'?'#8A6512':'#5B6B7D'}">${esc(frameH)}</td>`:''}
+          <td style="${td};font-size:10px;color:#5B6B7D">${esc(brorTxt)}</td>
           <td style="${td}">${esc(itemUnitAr_(it.unit))}</td>
           <td style="${td}"><b>${Number(it.qty)||0}</b></td>
           <td style="${td};color:#1E8E52">${pp.produced}</td>
@@ -2382,7 +2390,11 @@ function reportHTML(orders){
             <th style="${th};background:${LIGHT};color:${NAVY};width:52px">النوع</th>
             <th style="${th};background:${LIGHT};color:${NAVY};width:52px">الكود</th>
             <th style="${th};background:${LIGHT};color:${NAVY}">الصنف</th>
-            <th style="${th};background:${LIGHT};color:${NAVY}">المقاس / الحلق / البرور</th>
+            <th style="${th};background:${LIGHT};color:${NAVY};width:52px">عرض الفتحة</th>
+            <th style="${th};background:${LIGHT};color:${NAVY};width:56px">ارتفاع الفتحة</th>
+            <th style="${th};background:${LIGHT};color:${NAVY};width:48px">عرض الحلق</th>
+            ${showFrameHCol?`<th style="${th};background:${LIGHT};color:${NAVY};width:52px">ارتفاع الحلق</th>`:''}
+            <th style="${th};background:${LIGHT};color:${NAVY};width:48px">البرور</th>
             <th style="${th};background:${LIGHT};color:${NAVY};width:56px">الوحدة</th>
             <th style="${th};background:${LIGHT};color:${NAVY};width:48px">الكمية</th>
             <th style="${th};background:${LIGHT};color:${NAVY};width:46px">جاهز</th>
@@ -2967,6 +2979,10 @@ async function buildAdminOrdersExcel_(orders){
     .filter(o=>o.items.length);
   if(!orders.length){ toast('مفيش أبواب في الطلبات الحالية'); return; }
 
+  // عمود "ارتفاع الحلق" شرطي على مستوى المصنَّف كله (زي docHTML/reportHTML) — يظهر بس لو صنف باب
+  // واحد على الأقل في كل الطلبات متسجّل له عرض حلق + ارتفاع حلق مع بعض.
+  const showFrameHCol = orders.some(o=>(o.items||[]).some(it=>it.frame && it.frameHeight));
+
   busy(true,'جارٍ تجهيز الإكسيل…');
 
   const NAVY='FF002050', BRAND='FF1080C0', LIGHT='FFEAF2FA', WHITE='FFFFFFFF',
@@ -3035,12 +3051,16 @@ async function buildAdminOrdersExcel_(orders){
 
   // ---------- ورقة 2: تفاصيل حسب العميل ----------
   const wsDet = wb.addWorksheet('تفاصيل حسب العميل', { views:[{ rightToLeft:true }] });
-  wsDet.columns = [ {width:4},{width:12},{width:12},{width:24},{width:12},{width:14},{width:10},{width:9},{width:9},{width:9} ];
-  const detLastCol = 10;
+  wsDet.columns = [ {width:4},{width:12},{width:12},{width:24},{width:11},{width:11},{width:10}
+    ].concat(showFrameHCol?[{width:10}]:[]).concat([{width:9},{width:12},{width:9},{width:9},{width:9},{width:9}]);
+  const detLastCol = 13 + (showFrameHCol?1:0);
   addHeaderBand_(wsDet, detLastCol, 'تفاصيل الطلبات حسب العميل', COMPANY_AR+' — '+new Date().toLocaleDateString('ar-EG'));
   wsDet.addRow([]);
 
   const data = buildAdminOrdersDetail_(orders);
+  // ترقيم الأعمدة ديناميكي حسب ظهور عمود "ارتفاع الحلق" — عشان تلوين الخلايا الصح، وبيستخدمه
+  // كل من صفوف الأصناف وصفوف إجمالي الكود مع بعض.
+  const BROR_COL = showFrameHCol?9:8, QTY_COL2 = BROR_COL+2, PRO_COL2 = QTY_COL2+1, PEND_COL2 = PRO_COL2+1, AVAIL_COL2 = PEND_COL2+1;
   data.forEach(cust=>{
     const rName = wsDet.addRow(['', 'صاحب الحساب:  '+cust.name]);
     wsDet.mergeCells(rName.number,2,rName.number,detLastCol);
@@ -3053,20 +3073,24 @@ async function buildAdminOrdersExcel_(orders){
       wsDet.mergeCells(rOrd.number,2,rOrd.number,detLastCol);
       rOrd.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:BRAND}}; c.font={bold:true,color:{argb:WHITE},name:FONT,size:10.5}; c.alignment={horizontal:'right',vertical:'middle'}; });
 
-      const hdr = wsDet.addRow(['','النوع','الكود','الصنف','المقاس / الحلق / البرور','الوحدة','الكمية','جاهز','متبقي','متاح؟']);
+      const hdrCells = ['','النوع','الكود','الصنف','عرض الفتحة','ارتفاع الفتحة','عرض الحلق']
+        .concat(showFrameHCol?['ارتفاع الحلق']:[]).concat(['البرور','الوحدة','الكمية','جاهز','متبقي','متاح؟']);
+      const hdr = wsDet.addRow(hdrCells);
       hdr.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}}; c.font={bold:true,color:{argb:NAVY},name:FONT,size:10}; c.alignment={horizontal:'center'}; c.border=border; });
 
       (o.items||[]).forEach(it=>{
-        const sizeBits = [];
-        if(it.size) sizeBits.push(it.type==='Door'?doorSizeText_(it.size,it.doorHeight):it.size);
-        if(it.frame) sizeBits.push(frameText_(it.frame, it.frameHeight));
-        if(it.dbror) sizeBits.push('برور '+it.dbror);
+        const wh = doorWH_(it.size, it.doorHeight);
+        const frameW = it.frame ? it.frame : '—';
+        const frameH = it.frame ? (it.frameHeight ? it.frameHeight : 'استاندر') : '—';
+        const brorTxt = it.dbror ? it.dbror : '—';
         const pp = itemProdPending_(it);
-        const row = wsDet.addRow(['', itemTypeAr_(it.type), it.code||'—', itemNameAr_(it), sizeBits.join(' / ')||'—', itemUnitAr_(it.unit), Number(it.qty)||0, pp.produced, pp.pending, it.avail===false?'غير متاح':'متاح']);
+        const cells = ['', itemTypeAr_(it.type), it.code||'—', itemNameAr_(it), wh.w||'—', wh.h||'—', frameW]
+          .concat(showFrameHCol?[frameH]:[]).concat([brorTxt, itemUnitAr_(it.unit), Number(it.qty)||0, pp.produced, pp.pending, it.avail===false?'غير متاح':'متاح']);
+        const row = wsDet.addRow(cells);
         row.eachCell((c,i)=>{ if(i===1) return; c.border=border; c.font={name:FONT,size:10}; c.alignment={horizontal:'center'};
-          if(i===8) c.font={name:FONT,size:10,color:{argb:'FF1E8E52'}};
-          if(i===9 && pp.pending>0) c.font={name:FONT,size:10,color:{argb:'FFB3261E'},bold:true};
-          if(i===10 && it.avail===false) c.font={name:FONT,size:10,color:{argb:'FFB3261E'},bold:true}; });
+          if(i===PRO_COL2) c.font={name:FONT,size:10,color:{argb:'FF1E8E52'}};
+          if(i===PEND_COL2 && pp.pending>0) c.font={name:FONT,size:10,color:{argb:'FFB3261E'},bold:true};
+          if(i===AVAIL_COL2 && it.avail===false) c.font={name:FONT,size:10,color:{argb:'FFB3261E'},bold:true}; });
       });
     });
 
@@ -3075,8 +3099,10 @@ async function buildAdminOrdersExcel_(orders){
       wsDet.mergeCells(rCodeHdr.number,2,rCodeHdr.number,detLastCol);
       rCodeHdr.eachCell((c,i)=>{ if(i===1) return; c.font={bold:true,color:{argb:NAVY},name:FONT,size:10.5}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF3F6FA'}}; });
       cust.codeTotals.forEach(ct=>{
-        const r = wsDet.addRow(['', itemTypeAr_(ct.type), ct.code||'—', ct.name, '', '', ct.qty, ct.produced, ct.qty-ct.produced, '']);
-        r.eachCell((c,i)=>{ if(i===1) return; c.font={name:FONT,size:10, color: i===8?{argb:'FF1E8E52'}:(i===9&&(ct.qty-ct.produced)>0?{argb:'FFB3261E'}:undefined)}; if((i>=2&&i<=4)||i===7||i===8||i===9) c.border=border; c.alignment={horizontal:'center'}; });
+        const cells = ['', itemTypeAr_(ct.type), ct.code||'—', ct.name, '', '', '']
+          .concat(showFrameHCol?['']:[]).concat(['', '', ct.qty, ct.produced, ct.qty-ct.produced, '']);
+        const r = wsDet.addRow(cells);
+        r.eachCell((c,i)=>{ if(i===1) return; c.font={name:FONT,size:10, color: i===PRO_COL2?{argb:'FF1E8E52'}:(i===PEND_COL2&&(ct.qty-ct.produced)>0?{argb:'FFB3261E'}:undefined)}; if((i>=2&&i<=4)||i===QTY_COL2||i===PRO_COL2||i===PEND_COL2) c.border=border; c.alignment={horizontal:'center'}; });
       });
     }
 
