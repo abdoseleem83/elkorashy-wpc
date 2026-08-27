@@ -1,30 +1,24 @@
 // ⚠️ مهم: غيّر رقم النسخة دي في كل مرة ترفع تحديث جديد.
 // ده اللي بيخلي المتصفح يرمي الكاش القديم ويجيب الملفات الجديدة.
-const CACHE_VERSION = 'v101';
-const CACHE_NAME = 'elkorashy-wpc-' + CACHE_VERSION;
+// 🔑 الرقم ده لازم يطابق APP_BUILD في index.html و APP_VERSION في apps_script.gs.
+const CACHE_VERSION = 'v200';
+const CACHE_NAME = 'elkorashy-' + CACHE_VERSION;
 
+// الملفات اللي بتتحمّل إجباري وقت تثبيت النسخة — خليها **أقل حاجة ممكنة**.
+//
+// 🐞 غلطة اتصلحت: كنا حاطين vendor/ (١.٥ ميجا) والكتالوج الاحتياطي (٢٢٦ كيلو)
+// هنا. النتيجة إن كل مستخدم كان بيتحمّل **٢ ميجا** أول ما يفتح التطبيق بعد أي
+// تحديث — حتى لو عمره ما هيعمل PDF ولا إكسل. وده كان بيخلي الفتح تقيل جدًا
+// على النت الضعيف، وبيلغي فايدة إننا خلّينا المكتبات تتحمّل عند الطلب أصلاً.
+//
+// دلوقتي: الأساسيات بس (٤٣٠ كيلو). وباقي الملفات بتتخزّن **أول مرة تتستخدم
+// فعلاً** عن طريق الـ cache-first تحت — يعني أول PDF بيتعمل وانت أونلاين
+// بيخزّن المكتبة، وبعدها تشتغل أوفلاين عادي.
 const PRECACHE = [
   './',
-  './index.html',
   './manifest.json',
-  './icon-192.png',
-  './icon-512.png',
-  './img/logo.png',
-  './img/mark.png',
-  './img/doors/A01.jpg',
-  './img/doors/A02.jpg',
-  './img/doors/A03.jpg',
-  './img/doors/A04.jpg',
-  './img/doors/A05.jpg',
-  './img/doors/A06.jpg',
-  './img/doors/A07.jpg',
-  './img/doors/A08.jpg',
-  './img/doors/A09.jpg',
-  './img/doors/A010.jpg',
-  './img/doors/A015.jpg'
+  './logo.jpg'
 ];
-// v74: صور الأبواب واللوجو بقوا ملفات منفصلة جوه img/ بدل base64 داخل index.html —
-// بنحطهم هنا في الـ PRECACHE عشان يتخزّنوا في الكاش زي باقي أصول التثبيت.
 
 self.addEventListener('install', (event) => {
   // 🔑 دي أهم سطر في الملف: النسخة الجديدة بتفرض نفسها فورًا من غير ما تستنى
@@ -46,17 +40,21 @@ self.addEventListener('activate', (event) => {
     // امسح كل الكاشات القديمة بتاعة النسخ السابقة
     const keys = await caches.keys();
     await Promise.all(
-      keys.filter(k => k.startsWith('elkorashy-wpc-') && k !== CACHE_NAME)
+      keys.filter(k => k.startsWith('elkorashy-') && k !== CACHE_NAME)
           .map(k => caches.delete(k))
     );
     // خد السيطرة على كل الصفحات المفتوحة فورًا من غير ما تستنى إعادة فتح
     await self.clients.claim();
 
-    // اقفل/حدّث كل الصفحات المفتوحة عشان تشتغل بالكود الجديد على طول.
-    // النسخ القديمة من index.html مش بتعرف تعمل reload لوحدها، فبنعملهولها احنا.
+    // ⚠️ قبل كده كنا بنعمل client.navigate() لكل تاب مفتوح هنا — يعني الصفحة
+    // بتتحدّث تحت إيد المستخدم فجأة. لو كان بيكتب طلب، الشاشة بتتقلب قدامه.
+    // دلوقتي بنبعت رسالة للصفحة بس، وهي اللي بتقرر إمتى تعمل reload (index.html
+    // فيه معالج controllerchange بيعرض رسالة الأول وبيحمي من حلقة تحديث
+    // لا نهائية). النسخ القديمة جدًا اللي مافيهاش المعالج ده هتاخد التحديث
+    // في أول فتح جديد للتطبيق — وده مقبول تمامًا مقابل إننا مانضيعش شغل حد.
     const clients = await self.clients.matchAll({ type: 'window' });
     clients.forEach(client => {
-      if ('navigate' in client) client.navigate(client.url).catch(() => {});
+      try { client.postMessage({ type: 'SW_ACTIVATED', version: CACHE_VERSION }); } catch (e) {}
     });
   })());
 });
@@ -69,9 +67,44 @@ self.addEventListener('message', (event) => {
   }
 });
 
+
+// ===== Push Notification Handler =====
+// ⚠️ الإشعارات دي متوقفة حاليًا من ناحية السيرفر (شوف الشرح في apps_script.gs) —
+// المعالج سايبينه شغال عشان لو ربطنا خدمة إشعارات حقيقية بعدين (FCM مثلاً)
+// يشتغل على طول من غير تعديل.
+self.addEventListener('push', (event) => {
+  let data = { title: '🔔 القرشي', body: 'إشعار جديد' };
+  try { if (event.data) data = event.data.json(); } catch (e) {}
+  event.waitUntil(
+    self.registration.showNotification(data.title || '🔔 القرشي', {
+      body: data.body || '',
+      // 🐞 المسارات دي كانت './icons/icon-192.png' و './icons/icon-96.png' —
+      // مفيش فولدر اسمه icons أصلاً، والأيقونات في جذر المشروع مباشرة،
+      // و icon-96 مش موجود خالص. يعني الإشعار كان يطلع من غير أي أيقونة.
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      dir: 'rtl',
+      lang: 'ar',
+      tag: data.tag || 'elkorashy-push',
+      renotify: true,
+      data: { url: data.url || './' }
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || './';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+      for (const c of clients) { if (c.url.includes('index.html') || c.url.endsWith('/')) { c.focus(); return; } }
+      return self.clients.openWindow(url);
+    })
+  );
+});
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
@@ -110,21 +143,31 @@ self.addEventListener('fetch', (event) => {
       } catch (e) {
         // مفيش نت → رجّع آخر نسخة متخزنة عشان التطبيق يفضل شغال أوفلاين
         const cached = await caches.match(req);
-        return cached || caches.match('./index.html');
+        return cached || caches.match('./index.html') || caches.match('./');
       }
     })());
     return;
   }
 
-  // باقي الملفات (خطوط، مكتبات، أيقونات...): stale-while-revalidate
+  // باقي الملفات (المكتبات، الأيقونات، الكتالوج الاحتياطي): cache-first.
+  // ⚠️ الملفات دي كلها مربوطة بالنسخة (الكاش بيتمسح كله مع كل نسخة جديدة)،
+  // فالقراءة من الكاش الأول آمنة وأسرع بكتير — خصوصًا للمكتبات اللي حجمها
+  // ١.٥ ميجا. التحديث بيجي مع تغيير CACHE_VERSION.
   event.respondWith((async () => {
     const cached = await caches.match(req);
-    const network = fetch(req).then(res => {
-      if (res && res.status === 200) {
-        caches.open(CACHE_NAME).then(c => c.put(req, res.clone())).catch(() => {});
+    if (cached) return cached;
+    try {
+      const res = await fetch(req);
+      // 🐞 الشرط القديم كان res.type === 'basic' — وده بيستبعد أي ملف من
+      // دومين تاني، يعني مكتبات الـ CDN مكانتش بتتخزّن أبدًا. بقت محلية
+      // دلوقتي، بس بنسيب الشرط واسع عشان أي ملف خارجي يتخزّن برضه.
+      if (res && (res.status === 200 || res.type === 'opaque')) {
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(req, res.clone()).catch(() => {});
       }
       return res;
-    }).catch(() => null);
-    return cached || network || new Response('', { status: 504 });
+    } catch (e) {
+      return new Response('', { status: 504, statusText: 'offline' });
+    }
   })());
 });
