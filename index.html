@@ -526,7 +526,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v102';
+const APP_BUILD   = 'v103';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -535,27 +535,27 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2aVRVaUVubR3w
 
 /* ============================================================
    أطوال الأعواد الحقيقية (المصنع)
-   الحلق بيتقطّع مقاسين: قائم ٢٢٠ سم (جنبي الباب) وعتب ١١٠ سم (فوق الباب).
+   الحلق بيتقطّع مقاسين: قائم ٢٢٠ سم (جنبي الباب) وعارضة حلق علوية ١١٠ سم (فوق الباب).
    البرور عود واحد ٢٢٦ سم.
    التسعير بيتحسب بالمتر الطولي × طول العود الفعلي — فكل مقاس له سعره.
    ============================================================ */
 const FRAME_ROD_TYPES = [
   { key:'jamb',   cm:220, label:'قائم', hint:'جنبي الباب' },
-  { key:'header', cm:110, label:'عتب',  hint:'أعلى الباب' }
+  { key:'header', cm:110, label:'عارضة حلق علوية',  hint:'أعلى الباب' }
 ];
 const BROR_ROD_CM = 226;
 const ROD_LEN = 2.20;   // للتوافق مع الكود القديم — الطول الافتراضي للحلق بالمتر
 
 /* ============================================================
    متطلبات التقطيع للباب الواحد (بيانات المصنع)
-   الباب بياخد: ٣ أعواد حلق — عودين ٢٢٠ سم (القوائم) + عود ١١٠ سم (العتب)
+   الباب بياخد: ٣ أعواد حلق — عودين ٢٢٠ سم (القوائم) + عود ١١٠ سم (عارضة الحلق العلوية)
                 ٥ أعواد برور — كل عود ٢٢٦ سم
    الأرقام دي بتتحسب أوتوماتيك لكل باب وبتظهر في مستند الطلب
    عشان المصنع يعرف يقطّع على طول من غير حسابات بالإيد.
    ============================================================ */
 const FRAME_PER_DOOR = [
   { qty:2, cm:220, label:'قائم' },     // جنبي الباب
-  { qty:1, cm:110, label:'عتب'  }      // أعلى الباب
+  { qty:1, cm:110, label:'عارضة حلق علوية'  }      // أعلى الباب
 ];
 const BROR_PER_DOOR  = { qty:5, cm:BROR_ROD_CM };
 
@@ -750,7 +750,7 @@ const state = {
   orders:  load(LS_ORDERS, []),
   pick:{code:'', sizes:{}, customOn:false, custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,frameKind:null,frameRodQty:'',frameForDoors:''}},
   newSection: load(LS_SECTION, ''),   // '' (لسه محددش) | doors | acc | frame | bror | prodium
-  fr:{cm:10, code:'', doorW:'', kind:'full', qty:1, nonStd:false, jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:''},   // حلق منفصل: kind = 'full' (طقم كامل — الكمية × [٢ قائم ٢٢٠سم + ١ عتب ١١٠سم]، والارتفاع يتغيّر بس لو nonStd=true) أو 'rods' (أعواد حرة — عدد وطول بيحددهم المستخدم من غير قيمة افتراضية). doorW = مقاس الباب اللي الحلق ده ليه (70/80/90/100) — اختياري. note: ملحوظة اختيارية
+  fr:{cm:10, code:'', doorW:'', kind:'full', qty:1, nonStd:false, jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:''},   // حلق منفصل: kind = 'full' (طقم كامل — الكمية × [٢ قائم ٢٢٠سم + ١ عارضة حلق علوية ١١٠سم]، والارتفاع يتغيّر بس لو nonStd=true) أو 'rods' (أعواد حرة — عدد وطول بيحددهم المستخدم من غير قيمة افتراضية). doorW = مقاس الباب اللي الحلق ده ليه (70/80/90/100) — اختياري. note: ملحوظة اختيارية
   br:{size:'6×9', code:'', rods:1, lenM:BROR_ROD_M_DEFAULT}, // برور إضافي بالعود — code = كود/لون الباب (إجباري زي الحلق)، lenM = طول العود بالمتر (قابل للتغيير لو حد طلب مقاس تكملة)
   pd:{code:'', qty:1}, // ألواح بروديوم — code = كود/لون الباب (إجباري زي البرور)، qty = عدد الألواح
   acc:{},
@@ -1322,7 +1322,7 @@ function viewNew(){
     `}
     <label class="fld" style="margin-top:9px">
       <span>ملحوظة <span style="font-weight:400;color:var(--muted)">(اختياري)</span></span>
-      <input type="text" placeholder="مثال: عتب تكملة 60 سم" value="${esc(state.fr.note||'')}" data-act="fr-note">
+      <input type="text" placeholder="مثال: عارضة حلق علوية تكملة 60 سم" value="${esc(state.fr.note||'')}" data-act="fr-note">
     </label>
     <button class="btn ghost sm" style="margin-top:9px" data-act="add-fr" ${frRods>0&&state.fr.code?'':'disabled'}>
       ${!state.fr.code ? 'اختر كود الباب أولاً'
@@ -4009,7 +4009,7 @@ function addRod(kind){
       const isStd = (jambCm===220 && headerCm===110 && !extra.length);
       if(qty<=0){toast('اكتب الكمية');return;}
       if(isStd){
-        // الحالة الاستاندر: سطر واحد "حلق كامل" بعدد الأطقم — من غير تفاصيل قائم/عتب/الطول لأنها معروفة للمصنع
+        // الحالة الاستاندر: سطر واحد "حلق كامل" بعدد الأطقم — من غير تفاصيل قائم/عارضة حلق علوية/الطول لأنها معروفة للمصنع
         const setPrice = Math.round((rodPrice(f.price,220)*2 + rodPrice(f.price,110)*1)*100)/100;
         const key = 'frame|fullset|'+f.cm+'|'+st.code+'|'+(st.doorW||'');
         const ex = state.cart.find(it=>it.kind==='frame' && it.key===key);
@@ -4036,7 +4036,7 @@ function addRod(kind){
         }
         if(header){
           push(f.cm+' سم', headerCm, header, f.price,
-            'حلق باب '+f.cm+' سم — عتب '+headerCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
+            'حلق باب '+f.cm+' سم — عارضة حلق علوية '+headerCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
             'Door Frame '+f.cm+' cm - header '+headerCm+'cm'+(st.code?' - '+st.code:''));
           added += header;
         }
@@ -4156,7 +4156,7 @@ function editCartLine(i){
                     extra: [], rods:'', rodsCm:''};
       } else {
         const rodCm = Number(it.rodCm)||220;
-        // بنرجّع العدد في خانة المقاس الصح حسب طول العود المحفوظ — قائم/عتب لو الطول قياسي، وإلا سطر أعواد حرة
+        // بنرجّع العدد في خانة المقاس الصح حسب طول العود المحفوظ — قائم/عارضة حلق علوية لو الطول قياسي، وإلا سطر أعواد حرة
         const isStdCm = (rodCm===220 || rodCm===110);
         const restoredQty = rodCm===220 ? Math.round((it.qty||2)/2) : (it.qty||1);
         state.fr = {cm, code:it.code||'', doorW: it.doorW||'', note: it.note||'', kind: isStdCm?'full':'rods',
