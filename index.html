@@ -526,7 +526,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v101';
+const APP_BUILD   = 'v102';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -603,6 +603,25 @@ const DOORS = [
   {code:'A010', name:'رمادي', en:'Grey',   img:ASSETS.doors.A010},
   {code:'A015', name:'أرو فاتح', en:'Light Arrow', img:ASSETS.doors.A015}
 ];
+// خلفية/بردر شيبس "كود الباب" في أقسام الحلق/البرور/البروديوم — بتاخد لون قريب من اسم اللون نفسه
+// (مش لون مسحوب من الصورة لأن الصور بتاعتنا لقطات لاستوديو/غرفة كاملة مش سواتش لون نضيف)
+const DOOR_COLOR_SWATCH = {
+  'أرو':       {bg:'#EAD9BC', border:'#C6A468'},
+  'خشبي':      {bg:'#D7B685', border:'#A47C46'},
+  'بني':       {bg:'#CDA379', border:'#96693D'},
+  'أبيض':      {bg:'#F6F6F4', border:'#D6D9DC'},
+  'زان':       {bg:'#E7CE9C', border:'#B99655'},
+  'شيري':      {bg:'#D69A80', border:'#A85C3B'},
+  'رمادي':     {bg:'#DBDFE2', border:'#A6AEB6'},
+  'أرو فاتح':  {bg:'#F2E6CC', border:'#D3B788'}
+};
+// بتبني style="" جاهز لشيب كود باب — بترجع فاضي لو الشيب مختار (عشان مايكسرش هايلايت .chip.on الأزرق الغامق)
+function doorChipStyle_(code, selected){
+  if(selected) return '';
+  const d = DOORS.find(x=>x.code===code);
+  const sw = d && DOOR_COLOR_SWATCH[d.name];
+  return sw ? ` style="background:${sw.bg};border-color:${sw.border}"` : '';
+}
 
 const SIZES = [{w:70,price:5200},{w:80,price:5200},{w:90,price:5400},{w:100,price:6000}];
 // لون مختلف لكارت مقاس معيّن في مستند الأوردر/عرض السعر (docTotalsHTML) — عشان يتميّز بسرعة عن باقي المقاسات.
@@ -1138,7 +1157,7 @@ function viewNew(){
     <button class="chip ${state.fr.cm===f.cm?'on':''}" data-act="fr-cm" data-cm="${f.cm}">${f.cm} سم</button>`).join('');
   // كود/لون الباب للحلق المنفصل — إجباري زي باقي الاختيارات
   const frCodeChips=DOORS.map(d=>`
-    <button class="chip ${state.fr.code===d.code?'on':''}" data-act="fr-code" data-code="${d.code}">${d.code} — ${esc(d.name)}</button>`).join('');
+    <button class="chip ${state.fr.code===d.code?'on':''}" data-act="fr-code" data-code="${d.code}"${doorChipStyle_(d.code,state.fr.code===d.code)}>${d.code} — ${esc(d.name)}</button>`).join('');
   // مقاس الباب اللي الحلق ده مخصوص له (70/80/90/100) — اختياري، بس بيوضح للمصنع
   const frDoorWChips=SIZES.map(s=>`
     <button class="chip ${String(state.fr.doorW)===String(s.w)?'on':''}" data-act="fr-doorw" data-w="${s.w}">${s.w} سم</button>`).join('')
@@ -1150,7 +1169,7 @@ function viewNew(){
     <button class="chip ${state.br.size===b.size?'on':''}" data-act="br-size" data-size="${esc(b.size)}">برور ${esc(b.size)}</button>`).join('');
   // كود/لون الباب للبرور المنفصل — إجباري زي الحلق بالظبط
   const brCodeChips=DOORS.map(d=>`
-    <button class="chip ${state.br.code===d.code?'on':''}" data-act="br-code" data-code="${d.code}">${d.code} — ${esc(d.name)}</button>`).join('');
+    <button class="chip ${state.br.code===d.code?'on':''}" data-act="br-code" data-code="${d.code}"${doorChipStyle_(d.code,state.br.code===d.code)}>${d.code} — ${esc(d.name)}</button>`).join('');
   // طول العود المطلوب بالمتر — افتراضيًا الطول القياسي، وقابل للتعديل لو حد طلب مقاس تكملة (زي ٣م)
   const brLenM=Number(state.br.lenM)||BROR_ROD_M_DEFAULT;
   const brRodCm=Math.max(1,Math.round(brLenM*100));
@@ -1159,7 +1178,7 @@ function viewNew(){
   const pdQty=Math.max(0,Math.round(Number(state.pd.qty)||0));
   // كود/لون الباب للوح البروديوم — إجباري زي البرور بالظبط
   const pdCodeChips=DOORS.map(d=>`
-    <button class="chip ${state.pd.code===d.code?'on':''}" data-act="pd-code" data-code="${d.code}">${d.code} — ${esc(d.name)}</button>`).join('');
+    <button class="chip ${state.pd.code===d.code?'on':''}" data-act="pd-code" data-code="${d.code}"${doorChipStyle_(d.code,state.pd.code===d.code)}>${d.code} — ${esc(d.name)}</button>`).join('');
 
   const accCards=ACCESSORIES.map(a=>{
     const q=state.acc[a.id]||0;
