@@ -72,6 +72,15 @@ var COL_ITEM_DOORHEIGHT = 20; // ارتفاع الضلفة (سم) — اختيا
    بعد كل محاولة غلط بنستنى شوية قبل الرد (بتزيد كل مرة)، ولو المحاولات
    الغلط عدّت حد معيّن في ١٠ دقايق بنقفل الدخول تمامًا ١٥ دقيقة.
    ============================================================ */
+// بتمنع Formula Injection: أي نص حر من العميل (اسم/ملاحظة) بيتكتب في الشيت،
+// لو بيبدأ بـ = أو + أو - أو @ جوجل شيتس ممكن تفسّره كصيغة (formula) بدل نص عادي.
+// بنحط علامة اقتباس (') قبله عشان يتخزن كنص حرفي زي ما هو، بالظبط زي ما بيحصل بالفعل لرقم الموبايل تحت.
+function sanitizeCell_(s) {
+  s = String(s == null ? '' : s);
+  if (/^[=+\-@]/.test(s)) return "'" + s;
+  return s;
+}
+
 function checkAdminPw_(pw) {
   var cache = CacheService.getScriptCache();
   var failKey = 'adm_fail_count';
@@ -330,7 +339,7 @@ function doGet(e) {
         var rOM = findRow_(shOM, e.parameter.id);
         if (rOM < 0) return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
         if (e.parameter.customer !== undefined) {
-          shOM.getRange(rOM, COL_CUSTOMER).setValue(String(e.parameter.customer || ''));
+          shOM.getRange(rOM, COL_CUSTOMER).setValue(sanitizeCell_(e.parameter.customer || ''));
         }
         if (e.parameter.date) {
           var dOM = new Date(String(e.parameter.date) + 'T00:00:00');
@@ -681,7 +690,7 @@ function saveOrder_(o) {
     o.id,
     dateS,
     timeS,
-    o.name || '',
+    sanitizeCell_(o.name || ''),
     "'" + (o.phone || ''),   // الفاصلة العليا بتخلي الرقم نص عشان الصفر ما يتقصّش
     o.region || '',
     warehouseEn_(o.warehouse),
@@ -694,8 +703,8 @@ function saveOrder_(o) {
     o.msg || '',
     '',                  // Status Updated — بيتحط وقت تغيير الحالة
     '',                  // Archived
-    o.customer || '',    // صاحب الأوردر لو مختلف عن صاحب الجهاز
-    o.note || '',        // ملاحظات العميل
+    sanitizeCell_(o.customer || ''),    // صاحب الأوردر لو مختلف عن صاحب الجهاز
+    sanitizeCell_(o.note || ''),        // ملاحظات العميل
     o.customerPhone || ''  // تليفون صاحب الأوردر لو مختلف عن صاحب الجهاز
   ];
 
@@ -735,7 +744,7 @@ function saveOrder_(o) {
     lines.push([
       o.id,
       dateS,
-      o.name || '',
+      sanitizeCell_(o.name || ''),
       type,
       it.titleEn || it.title || '',            // النسخة الإنجليزية أولاً
       it.code || '',
@@ -757,7 +766,7 @@ function saveOrder_(o) {
       0,   // Produced Qty — يبدأ صفر لكل صنف جديد، وبيتحدّث بعدين من شاشة المصنع
       isDoor ? (it.doorHeight || '') : '',
       isRod ? (it.doorW || '') : '',      // الحلق/البرور ده لباب مقاس كام (اختياري)
-      it.note || ''                        // ملاحظة حرة على الصنف (اختياري)
+      sanitizeCell_(it.note || '')         // ملاحظة حرة على الصنف (اختياري)
     ]);
   }
 

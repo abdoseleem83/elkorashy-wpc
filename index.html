@@ -569,13 +569,6 @@ function brorRodsFor(doorQty){
   return { ...BROR_PER_DOOR, total:BROR_PER_DOOR.qty*n };
 }
 // نص مختصر يتعرض جنب الباب في المستندات
-function cutText_(it){
-  if(it.kind!=='door') return '';
-  const parts=[];
-  if(it.frame) parts.push(frameRodsFor(it.qty).map(f=>f.total+'×'+f.cm+' سم').join(' + ')+' حلق');
-  if(it.dbror) parts.push(brorRodsFor(it.qty).total+'×'+BROR_PER_DOOR.cm+' سم برور');
-  return parts.join(' · ');
-}
 
 // بيبني نص الحلق شامل الارتفاع الخاص لو الموزع/العميل حدده (اختياري)
 function frameText_(cm, height){
@@ -791,7 +784,6 @@ function showDoorPreview(code){
   ov.addEventListener('click', e=>{ if(e.target===ov) ov.remove(); });
   document.getElementById('closeDoorPreview').onclick = () => ov.remove();
 }
-function millById(id){return MILLS.find(m=>m.id===id)||MILLS[1];}
 function priceForWidth(w, hafr){const n=Number(w)||0;let p=SIZES[SIZES.length-1].price;for(const s of SIZES) if(n<=s.w){p=s.price;break;}return p+(hafr?HAFR_EXTRA:0);}
 function rodPrice(perMetre, cm){return Math.round(perMetre*((Number(cm)||220)/100)*100)/100;}
 function linePrice(it){return (it.kind==='door'?it.unitPrice:it.price)*it.qty;}
@@ -2255,16 +2247,6 @@ function toggleOrderItemsLoadOnly_(id){
 
 // تقرير PDF شامل: كل الطلبات مقسّمة حسب المرحلة، كل طلب بتاريخه واسم صاحبه وأصنافه وكمياتها
 // بيجمع الأصناف المتكررة (نفس الاسم/الكود/المقاس) في سطر واحد بكميتهم مجمّعة
-function mergeReportItems_(items){
-  const map = {}, ord = [];
-  (items||[]).forEach(it=>{
-    const key = (it.title||'')+'|'+(it.code||'')+'|'+(it.size||'')+'|'+(it.unit||'')+'|'+(it.frame||'')+'|'+(it.dbror||'')+'|'+(it.frameHeight||'')+'|'+(it.doorHeight||'');
-    if(!map[key]){ map[key] = {type:it.type, title:arabicItemTitle_(it), code:it.code, size:it.size, frame:it.frame, dbror:it.dbror, frameHeight:it.frameHeight, doorHeight:it.doorHeight, unit:it.unit, qty:0, avail:true}; ord.push(key); }
-    map[key].qty += Number(it.qty)||0;
-    if(it.avail===false) map[key].avail = false;
-  });
-  return ord.map(k=>map[k]);
-}
 
 // بيرجّع عرض الباب بالسم لو المقاس قياسي ("70 cm") عشان نقدر نجمّع بيه، أو null لو مقاس خاص/غير قياسي
 function doorWidthGroup_(sizeStr){
@@ -2272,18 +2254,6 @@ function doorWidthGroup_(sizeStr){
   return m ? Number(m[1]) : null;
 }
 
-function reportItemRowHTML_(it){
-  const sub = it.type==='Door'
-    ? [it.frame?'حلق '+frameText_(it.frame,it.frameHeight):'', it.dbror?'برور '+it.dbror:''].filter(Boolean).join(' · ')
-    : (it.size||'');
-  return `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:4px 0;border-bottom:1px dashed #E4EAF0">
-    <span style="font-size:11.5px;${it.avail===false?'color:#B3261E':''}">
-      ${it.avail===false?'⚠️ ':''}<b>${esc(it.title||'')}</b>${it.code?' <span style="color:#6B7A8C">('+esc(it.code)+')</span>':''}
-      ${sub?'<br><span style="font-size:10.5px;color:#6B7A8C">'+esc(sub)+'</span>':''}
-    </span>
-    <span style="font-size:12px;font-weight:700;white-space:nowrap">${esc(it.qty||0)} ${esc(it.unit||'')}</span>
-  </div>`;
-}
 
 // تقرير الطلبات الشامل (PDF) — بنفس تقسيمة ملف الإكسيل بالظبط:
 // ١) ملخص الطلبات  ٢) تفاصيل حسب العميل  ٣) إجمالي الأصناف
@@ -2566,21 +2536,8 @@ function buildPendingDoorsData_(orders){
 }
 
 // عدد الأيام من تاريخ الطلب لحد النهاردة — بيتحسب من تاريخ الطلب (yyyy-MM-dd)
-function daysSince_(dateStr){
-  if(!dateStr) return null;
-  const d = new Date(dateStr+'T00:00:00');
-  if(isNaN(d.getTime())) return null;
-  const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
-  return diff < 0 ? 0 : diff;
-}
 
 // نوتة صنف واحد: بتجمع معلومات الحلق الإضافي/البرور في سطر ملاحظات واحد — زي النموذج المطلوب بالظبط
-function itemNote_(it){
-  const parts=[];
-  if(it.frame) parts.push('مع حلق اضافي '+it.frame+' سم'+(it.frameHeight?' (ارتفاع '+it.frameHeight+' سم)':''));
-  if(it.dbror) parts.push('بار'+it.dbror);
-  return parts.join(' — ') || '';
-}
 
 // بيرجّع أصناف العميل مجمّعة (لو نفس الصنف اتكرر في أكتر من طلب، بيتجمعوا في سطر واحد بالكمية الإجمالية)
 function mergedCustomerItems_(cust){
@@ -4771,47 +4728,6 @@ function updateInstallGate(){
   g.classList.add('hidden'); g.innerHTML='';
 }
 
-function gateHTML(){
-  const ios = isIOSDevice();
-  const inApp = isInAppWebView();
-  let mid;
-  if(inApp){
-    mid = `
-      <div class="gatesteps" style="border:1.5px solid #C9A227">
-        <div class="gatestep" style="color:#F0D98A"><b>!</b> فاتح اللينك من جوه تطبيق تاني (زي فيسبوك/انستجرام) — التثبيت ما بيشتغلش من هنا.</div>
-        <div class="gatestep"><b>1</b> دوس ⋮ (تلات نقط) فوق يمين الشاشة</div>
-        <div class="gatestep"><b>2</b> اختار «فتح في المتصفح» أو «Open in Chrome»</div>
-      </div>
-      <button class="gatebtn" data-act="gate-copy">📋 نسخ لينك التطبيق</button>`;
-  } else if(ios){
-    mid = isIOSSafari() ? `
-      <div class="gatesteps">
-        <div class="gatestep"><b>1</b> دوس زرار المشاركة ⬆️ تحت في نص الشاشة</div>
-        <div class="gatestep"><b>2</b> انزل تحت واختار «إضافة إلى الشاشة الرئيسية»</div>
-        <div class="gatestep"><b>3</b> دوس «إضافة» فوق على اليمين</div>
-      </div>` : `
-      <div class="gatesteps" style="border:1.5px solid #C9A227">
-        <div class="gatestep" style="color:#F0D98A"><b>!</b> افتح اللينك من متصفح <b>Safari</b> — التثبيت ما بيشتغلش من غيره على الآيفون.</div>
-        <div class="gatestep"><b>1</b> دوس المشاركة ⬆️ واختار «فتح في Safari»</div>
-        <div class="gatestep"><b>2</b> ومن Safari دوس المشاركة ⬆️ ← «إضافة إلى الشاشة الرئيسية»</div>
-      </div>
-      <button class="gatebtn" data-act="gate-copy">📋 نسخ لينك التطبيق</button>`;
-  } else {
-    mid = `
-      <button class="gatebtn" data-act="gate-install">📲 تثبيت التطبيق الآن</button>
-      <div class="gatesteps">
-        <div class="gatestep"><b>!</b> لو الزرار مش عامل حاجة، ثبّته يدوي:</div>
-        <div class="gatestep"><b>1</b> افتح قائمة المتصفح ⋮ فوق على اليمين</div>
-        <div class="gatestep"><b>2</b> اختار «تثبيت التطبيق» أو «Add to Home screen»</div>
-      </div>`;
-  }
-  return `
-    <img class="gatelogo" src="${ASSETS.logo}" alt="ELKORASHI">
-    <h1>ELKORASHI DOORS — أبواب WPC</h1>
-    <div class="gatesub">ثبّت التطبيق على شاشتك الرئيسية الأول عشان تقدر تبعت وتتابع طلباتك بسهولة</div>
-    ${mid}
-    <button class="gateskip" data-act="gate-skip">متابعة بدون تثبيت الآن</button>`;
-}
 
 async function gateInstall(){
   if(deferredPrompt){
