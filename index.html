@@ -526,7 +526,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v104';
+const APP_BUILD   = 'v105';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -996,6 +996,11 @@ function profileOk(){return !!state.profile.name.trim() && phoneOk(state.profile
 function toast(m,ms){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms||2600);}
 function busy(on,txt){const b=document.getElementById('busy');if(txt)document.getElementById('busyTxt').textContent=txt;b.classList.toggle('on',!!on);}
 function dateStr(ts){return new Date(ts).toLocaleDateString('ar-EG',{day:'2-digit',month:'2-digit',year:'numeric'});}
+// نفس الفكرة بس بأرقام إنجليزية وشكل يوم/شهر/سنة ثابت — مستخدمة في صيغة "طلب أوردر رقم (...) بتاريخ ..." في المستند المطبوع
+function dateStrDMY_(ts){
+  const d=new Date(ts), p=n=>String(n).padStart(2,'0');
+  return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear();
+}
 
 /* ============================================================
    الرسم
@@ -1805,6 +1810,16 @@ async function loadTrack(){
     if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
     state.track.rows = d.orders || [];
     state.track.at = Date.now();
+    // بنحدّث رقم الطلب "العادي" وعدد التعديلات في النسخة المحلية من أي رد سيرفر بيوصلنا،
+    // عشان لو الرد الأول وقت الإرسال ضاع (النت اتقطع) يتظبط تلقائي أول ما نفتح "تابع طلبك"
+    let changedLocal=false;
+    state.track.rows.forEach(r=>{
+      const lo = state.orders.find(x=>String(x.id)===String(r.id));
+      if(lo && r.displayNo && (lo.displayNo!==r.displayNo || lo.editCount!==r.editCount)){
+        lo.displayNo=r.displayNo; lo.editCount=r.editCount||0; changedLocal=true;
+      }
+    });
+    if(changedLocal) save(LS_ORDERS,state.orders.slice(0,80));
   }catch(err){
     state.track.err = err.message || String(err);
   }
@@ -3654,6 +3669,8 @@ document.addEventListener('click',e=>{
       save(LS_CART,state.cart);
       state.editingId = o.id;
       state.editingDate = new Date(o.ts).toISOString().slice(0,10);
+      state.editingDisplayNo = o.displayNo || '';
+      state.editingEditCount = Number(o.editCount)||0;
       state.tab='cart'; render(); window.scrollTo({top:0,behavior:'smooth'});
       toast('بتعدّل الطلب #'+o.id+' — عدّل السلة واضغط «حفظ التعديل»');
     }); break;
@@ -4235,6 +4252,8 @@ async function adminEditOrder(o){
   state.editingId = o.id;
   state.editingMeta = { name:o.dist||'', phone:o.phone||'', region:o.region||'', customer:o.customer||'', customerPhone:o.customerPhone||'' };
   state.editingDate = o.date || new Date().toISOString().slice(0,10);
+  state.editingDisplayNo = o.displayNo || '';
+  state.editingEditCount = Number(o.editCount)||0;
   state.tab='cart'; render(); window.scrollTo({top:0,behavior:'smooth'});
   toast('بتعدّل الطلب #'+o.id+' — عدّل السلة واضغط «حفظ التعديل»');
 }
@@ -4256,7 +4275,10 @@ function draftOrder(){
     customer: m ? (m.customer||'') : state.customer.name.trim(),
     customerPhone: m ? (m.customerPhone||'') : state.customer.phone.trim(),
     note: state.orderNote.trim(),
-    replacesId: state.editingId || ''   // لو ده تعديل لطلب قديم، بنحتفظ برقمه هنا عشان يبان في الطباعة/الرسالة
+    replacesId: state.editingId || '',   // لو ده تعديل لطلب قديم، بنحتفظ برقمه هنا عشان يبان في الطباعة/الرسالة
+    // رقم الطلب "العادي" بيتورّث من الطلب الأصلي وقت التعديل (فاضي = السيرفر هيدّي رقم جديد تسلسلي)
+    displayNo: state.editingId ? (state.editingDisplayNo || '') : '',
+    editCount: state.editingId ? (Number(state.editingEditCount||0) + 1) : 0
   };
 }
 
@@ -4337,6 +4359,12 @@ async function sendOrderToServer_(o){
   if(payload.length < 6000){
     try{
       const d = await jsonp(APPS_SCRIPT_URL + '?action=newOrder&payload=' + encodeURIComponent(payload), 20000);
+      if(d && d.ok && d.displayNo){
+        // بنسجّل رقم الطلب "العادي" اللي السيرفر رجّعه على النسخة المحلية عشان يبان صح في أي طباعة/مشاركة لاحقة
+        o.displayNo = d.displayNo; o.editCount = d.editCount||0;
+        const idx = state.orders.findIndex(x=>String(x.id)===String(o.id));
+        if(idx>-1){ state.orders[idx].displayNo=d.displayNo; state.orders[idx].editCount=d.editCount||0; save(LS_ORDERS,state.orders.slice(0,80)); }
+      }
       return !!(d && d.ok);
     }catch(err){ return false; }
   }
@@ -4415,6 +4443,7 @@ function submitOrder(){
   const wasAdminEdit = !!state.editingMeta;
   state.cart=[]; save(LS_CART,state.cart); state.touched=false;
   state.editingId=null; state.editingMeta=null; state.editingDate=null;
+  state.editingDisplayNo=null; state.editingEditCount=null;
   state.customer={name:'',phone:''}; state.orderNote='';   // تصفير بيانات صاحب الأوردر للطلب الجاي
 
   if(APPS_SCRIPT_URL){
@@ -4578,8 +4607,10 @@ function docHTML(o,mode,priced){
           <div style="font-size:12px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} · ${esc(WAREHOUSE)}</div>
         </div>
         <div style="text-align:left">
-          <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:15px;font-weight:700;color:#1080C0">#${esc(o.id)}</div>
-          <div style="font-size:11.5px;color:#6B7A8C">${esc(dateStr(o.ts))}</div>
+          <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:14px;font-weight:700;color:#1080C0">
+            ${(!isQuote && o.displayNo) ? ('طلب اوردر رقم ( '+esc(o.displayNo)+(o.editCount?' معدل '+esc(o.editCount):'')+' )') : ('#'+esc(o.id))}
+          </div>
+          <div style="font-size:11.5px;color:#6B7A8C">${(!isQuote && o.displayNo)?'بتاريخ ':''}${esc(dateStrDMY_(o.ts))}</div>
           ${o.replacesId?`<div style="font-size:11.5px;font-weight:700;color:#B3261E;margin-top:2px">🔁 بدل الطلب #${esc(o.replacesId)}</div>`:''}
         </div>
       </div>

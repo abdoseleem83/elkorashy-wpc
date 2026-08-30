@@ -46,7 +46,7 @@ var PRICE_NOTE   = 'الأسعار بعاليه حسب وقت التسعير و�
 var HEAD_ORDERS = [
   'Order No', 'Date', 'Time', 'Distributor', 'Phone', 'Region',
   'Warehouse', 'Total Qty', 'Total Rods', 'Total Amount', 'Status', 'Note to Distributor', 'Pricing Terms', 'Message', 'Status Updated',
-  'Archived', 'Customer', 'Order Note', 'Customer Phone', 'Superseded', 'Replaces Order'
+  'Archived', 'Customer', 'Order Note', 'Customer Phone', 'Superseded', 'Replaces Order', 'Display No', 'Edit Count'
 ];
 var COL_ARCHIVED = 16;
 var COL_CUSTOMER = 17;   // اسم صاحب الأوردر لو مختلف عن صاحب الجهاز
@@ -54,6 +54,8 @@ var COL_ORDNOTE  = 18;   // ملاحظات العميل على الطلب   // Y
 var COL_CUST_PHONE = 19; // رقم تليفون صاحب الأوردر لو مختلف عن صاحب الجهاز
 var COL_SUPERSEDED = 20; // علامة "الطلب ده اتعدّل وعنده نسخة جديدة" — بتتحط لما نقدرش نمسح الطلب القديم أوتوماتيك (لسه دخل التنفيذ)
 var COL_REPLACES = 21;   // لو الطلب ده جه بدل تعديل طلب قديم، بيتحط هنا رقم الطلب القديم — عشان المصنع يعرف إنه تعديل مش طلب جديد مستقل
+var COL_DISPLAY_NO = 22; // رقم الطلب "العادي" التسلسلي (1، 2، 3...) اللي بيبان للعميل/المصنع بدل كود الطلب الداخلي الطويل
+var COL_EDIT_COUNT  = 23; // عدد مرات التعديل — بيتورّث من الطلب الأصلي وبيزيد ١ مع كل تعديل، وبيبان زي "معدل 1" في المستند
 
 var HEAD_ITEMS = [
   'Order No', 'Date', 'Distributor', 'Type', 'Item', 'Colour Code',
@@ -80,6 +82,22 @@ function sanitizeCell_(s) {
   s = String(s == null ? '' : s);
   if (/^[=+\-@]/.test(s)) return "'" + s;
   return s;
+}
+
+// بيرجّع رقم الطلب "العادي" التسلسلي الجاي (1، 2، 3...) — بيتخزن في Script Properties وبيتزوّد بأمان.
+// ملحوظة: من غير قفل هنا عمدًا — اللي بينادي الدالة دي (doPost / doGet لأكشن newOrder) ماسك
+// LockService.getScriptLock() أصلًا على العملية كلها، فقفل تاني جوّه كان ممكن يعمل قفل مزدوج.
+// أول مرة (لو مفيش رقم متخزّن قبل كده) بيبدأ من عدد الطلبات الموجودة فعلاً في الشيت عشان الترقيم يكمل من عندهم مش يرجع لـ١.
+function nextOrderDisplayNo_(sh) {
+  var props = PropertiesService.getScriptProperties();
+  var cur = props.getProperty('ORDER_DISPLAY_NO_SEQ');
+  if (cur === null) {
+    var last = sh.getLastRow();
+    cur = String(Math.max(0, last - 1));
+  }
+  var next = Number(cur) + 1;
+  props.setProperty('ORDER_DISPLAY_NO_SEQ', String(next));
+  return next;
 }
 
 function checkAdminPw_(pw) {
@@ -119,8 +137,8 @@ function doPost(e) {
       return json({ ok: false, error: 'Unknown action' });
     }
 
-    saveOrder_(body.order);
-    return json({ ok: true, id: body.order.id });
+    var saved = saveOrder_(body.order);
+    return json({ ok: true, id: body.order.id, displayNo: saved.displayNo, editCount: saved.editCount });
 
   } catch (err) {
     logError_(err);
@@ -150,8 +168,8 @@ function doGet(e) {
         lockNO.waitLock(20000);
         var orderNO = JSON.parse(String(e.parameter.payload || '{}'));
         if (!orderNO || !orderNO.id) return reply({ ok: false, error: 'بيانات الطلب ناقصة' }, cb);
-        saveOrder_(orderNO);
-        return reply({ ok: true, id: orderNO.id }, cb);
+        var savedNO = saveOrder_(orderNO);
+        return reply({ ok: true, id: orderNO.id, displayNo: savedNO.displayNo, editCount: savedNO.editCount }, cb);
       } catch (errNO) {
         logError_(errNO);
         return reply({ ok: false, error: String(errNO) }, cb);
@@ -251,6 +269,8 @@ function doGet(e) {
           customerPhone: isAdmin ? String(rows[i][COL_CUST_PHONE - 1] || '').replace(/^'/, '') : '',
           ordNote:  rows[i][COL_ORDNOTE  - 1] || '',
           replacesId: rows[i][COL_REPLACES - 1] || '',
+          displayNo: rows[i][COL_DISPLAY_NO - 1] || '',
+          editCount: rows[i][COL_EDIT_COUNT - 1] || 0,
           archived: isAdmin ? (String(rows[i][COL_ARCHIVED - 1] || '') === 'Y') : undefined
         });
       }
@@ -598,6 +618,8 @@ function doGet(e) {
           customerPhone: String(rowsLW[jLW][COL_CUST_PHONE - 1] || '').replace(/^'/, ''),
           ordNote:   rowsLW[jLW][COL_ORDNOTE  - 1] || '',
           replacesId: rowsLW[jLW][COL_REPLACES - 1] || '',
+          displayNo: rowsLW[jLW][COL_DISPLAY_NO - 1] || '',
+          editCount: rowsLW[jLW][COL_EDIT_COUNT - 1] || 0,
           items:     itemsByIdLW[idLW] || []
         });
       }
@@ -726,6 +748,17 @@ function saveOrder_(o) {
   var rowIdxRepl = existing > 0 ? existing : shO.getLastRow();
   shO.getRange(rowIdxRepl, COL_REPLACES).setValue(sanitizeCell_(o.replacesId || ''));
 
+  // رقم الطلب "العادي" (Display No) + عدد مرات التعديل:
+  // لو ده تعديل وجالنا رقم موروث من الطلب القديم (o.displayNo) بنستخدمه زي ما هو ونزوّد عداد التعديل،
+  // ولو طلب جديد بالكامل بنطلب رقم تسلسلي جديد من nextOrderDisplayNo_.
+  var displayNo = o.displayNo ? Number(o.displayNo) : 0;
+  var editCount = Number(o.editCount) || 0;
+  if (!displayNo) {
+    displayNo = nextOrderDisplayNo_(shO);
+    editCount = 0;
+  }
+  shO.getRange(rowIdxRepl, COL_DISPLAY_NO, 1, 2).setValues([[displayNo, editCount]]);
+
   // ---- سطور التفاصيل ----
   var shI = sheet_(SHEET_ITEMS, HEAD_ITEMS);
   clearItemRows_(shI, o.id);   // لو الطلب اتحدّث، بنمسح سطوره القديمة الأول
@@ -788,6 +821,8 @@ function saveOrder_(o) {
   if (existing < 0) {
     adjustStockForItems_(items, -1);
   }
+
+  return { displayNo: displayNo, editCount: editCount };
 }
 
 // بيرجّع رصيد أصناف طلب (قبل ما سطوره تتمسح) — بتتنادى من cancelOrder و deleteOrder
