@@ -526,7 +526,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v103';
+const APP_BUILD   = 'v104';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1543,7 +1543,7 @@ function viewOrders(){
       : `<button class="btn ghost sm" data-act="ord-del" data-id="${esc(o.id)}">🗑 حذف</button>`;
     return `
     <div class="ord">
-      <div class="oh"><span class="oid">#${esc(o.id)}</span>${live?statusPill(live.status):''}</div>
+      <div class="oh"><span class="oid">#${esc(o.id)}</span>${o.replacesId?`<span style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px">🔁 تعديل على #${esc(o.replacesId)}</span>`:''}${live?statusPill(live.status):''}</div>
       <div class="os">${esc(dateStr(o.ts))} · ${o.items.length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
         ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}<br>
         ${esc(o.items.map(x=>x.title).slice(0,3).join('، '))}${o.items.length>3?'…':''}
@@ -3528,7 +3528,7 @@ function viewAdmin(){
          <button class="btn act-del sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}>${ico("trash")}${delBusy?'…':'حذف'}</button>`;
 
     return `<div class="ord">
-      <div class="oh"><span class="oid">#${esc(o.id)}</span>${statusPill(o.status)}</div>
+      <div class="oh"><span class="oid">#${esc(o.id)}</span>${o.replacesId?`<span style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px">🔁 تعديل على #${esc(o.replacesId)}</span>`:''}${statusPill(o.status)}</div>
       <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}
         ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}
         ${o.ordNote?`<br><span style="color:#8A6512">ملاحظات: ${esc(o.ordNote)}</span>`:''}<br>
@@ -4255,7 +4255,8 @@ function draftOrder(){
     // صاحب الأوردر: إجباري من v84 — بيتسجّل زي ما اتكتب
     customer: m ? (m.customer||'') : state.customer.name.trim(),
     customerPhone: m ? (m.customerPhone||'') : state.customer.phone.trim(),
-    note: state.orderNote.trim()
+    note: state.orderNote.trim(),
+    replacesId: state.editingId || ''   // لو ده تعديل لطلب قديم، بنحتفظ برقمه هنا عشان يبان في الطباعة/الرسالة
   };
 }
 
@@ -4263,6 +4264,7 @@ function buildMessage(o){
   const priced=pricesVisible();
   let m='🚪 طلب أوردر — '+COMPANY+'\n';
   m+='رقم الطلب: #'+o.id+'\n';
+  if(o.replacesId) m+='🔁 تعديل على الطلب رقم: #'+o.replacesId+'\n';
   m+='الاسم: '+(o.name||'-')+'\n';
   m+='المنطقة: '+(o.region||'-')+'\n';
   m+='الموبايل: '+(o.phone||'-')+'\n';
@@ -4571,13 +4573,14 @@ function docHTML(o,mode,priced){
         <img src="${ASSETS.logo}" style="height:56px;width:auto">
         <div style="flex:1">
           <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:22px;font-weight:700;color:#002050">
-            ${isQuote?'عرض سعر':'طلب أوردر'}${isQuote&&o.priceTierLabel?` <span style="font-size:12.5px;font-weight:700;color:#1080C0;background:#EAF2FA;border:1px solid #B9D4EA;border-radius:20px;padding:3px 12px;vertical-align:middle">${esc(o.priceTierLabel)}</span>`:''}
+            ${isQuote?'عرض سعر':(o.replacesId?'تعديل على أوردر':'طلب أوردر')}${isQuote&&o.priceTierLabel?` <span style="font-size:12.5px;font-weight:700;color:#1080C0;background:#EAF2FA;border:1px solid #B9D4EA;border-radius:20px;padding:3px 12px;vertical-align:middle">${esc(o.priceTierLabel)}</span>`:''}
           </div>
           <div style="font-size:12px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} · ${esc(WAREHOUSE)}</div>
         </div>
         <div style="text-align:left">
           <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:15px;font-weight:700;color:#1080C0">#${esc(o.id)}</div>
           <div style="font-size:11.5px;color:#6B7A8C">${esc(dateStr(o.ts))}</div>
+          ${o.replacesId?`<div style="font-size:11.5px;font-weight:700;color:#B3261E;margin-top:2px">🔁 بدل الطلب #${esc(o.replacesId)}</div>`:''}
         </div>
       </div>
 

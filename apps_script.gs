@@ -46,13 +46,14 @@ var PRICE_NOTE   = 'الأسعار بعاليه حسب وقت التسعير و�
 var HEAD_ORDERS = [
   'Order No', 'Date', 'Time', 'Distributor', 'Phone', 'Region',
   'Warehouse', 'Total Qty', 'Total Rods', 'Total Amount', 'Status', 'Note to Distributor', 'Pricing Terms', 'Message', 'Status Updated',
-  'Archived', 'Customer', 'Order Note', 'Customer Phone', 'Superseded'
+  'Archived', 'Customer', 'Order Note', 'Customer Phone', 'Superseded', 'Replaces Order'
 ];
 var COL_ARCHIVED = 16;
 var COL_CUSTOMER = 17;   // اسم صاحب الأوردر لو مختلف عن صاحب الجهاز
 var COL_ORDNOTE  = 18;   // ملاحظات العميل على الطلب   // Y/N — بيتحدّد أوتوماتيك لما الحالة تبقى Delivered، أو يدوي من زرار الأرشفة
 var COL_CUST_PHONE = 19; // رقم تليفون صاحب الأوردر لو مختلف عن صاحب الجهاز
 var COL_SUPERSEDED = 20; // علامة "الطلب ده اتعدّل وعنده نسخة جديدة" — بتتحط لما نقدرش نمسح الطلب القديم أوتوماتيك (لسه دخل التنفيذ)
+var COL_REPLACES = 21;   // لو الطلب ده جه بدل تعديل طلب قديم، بيتحط هنا رقم الطلب القديم — عشان المصنع يعرف إنه تعديل مش طلب جديد مستقل
 
 var HEAD_ITEMS = [
   'Order No', 'Date', 'Distributor', 'Type', 'Item', 'Colour Code',
@@ -249,6 +250,7 @@ function doGet(e) {
           customer: rows[i][COL_CUSTOMER - 1] || '',
           customerPhone: isAdmin ? String(rows[i][COL_CUST_PHONE - 1] || '').replace(/^'/, '') : '',
           ordNote:  rows[i][COL_ORDNOTE  - 1] || '',
+          replacesId: rows[i][COL_REPLACES - 1] || '',
           archived: isAdmin ? (String(rows[i][COL_ARCHIVED - 1] || '') === 'Y') : undefined
         });
       }
@@ -595,6 +597,7 @@ function doGet(e) {
           customer:  rowsLW[jLW][COL_CUSTOMER - 1] || '',
           customerPhone: String(rowsLW[jLW][COL_CUST_PHONE - 1] || '').replace(/^'/, ''),
           ordNote:   rowsLW[jLW][COL_ORDNOTE  - 1] || '',
+          replacesId: rowsLW[jLW][COL_REPLACES - 1] || '',
           items:     itemsByIdLW[idLW] || []
         });
       }
@@ -717,6 +720,11 @@ function saveOrder_(o) {
   } else {
     shO.appendRow(rowO);
   }
+
+  // عمود "Replaces Order" (٢١) بيتكتب لوحده — عشان الرينج اللي فوق (rowO.length = ١٩ عمود)
+  // منلمسش عمود Superseded (٢٠) اللي بيتحط بمنطق تاني في cancelOrder
+  var rowIdxRepl = existing > 0 ? existing : shO.getLastRow();
+  shO.getRange(rowIdxRepl, COL_REPLACES).setValue(sanitizeCell_(o.replacesId || ''));
 
   // ---- سطور التفاصيل ----
   var shI = sheet_(SHEET_ITEMS, HEAD_ITEMS);
