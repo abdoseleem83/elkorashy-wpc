@@ -4872,7 +4872,7 @@ async function doInstall(){
    التشغيل
    ============================================================ */
 const savedPw = sessionStorage.getItem('wpc_adm');
-if(savedPw){ state.admin.pw = savedPw; state.admin.open = true; startAdminPolling(); adminPoll(); }
+if(savedPw){ state.admin.pw = savedPw; adminLoad(); startAdminPolling(); }
 document.getElementById('hdrLogo').src = ASSETS.logo;
 document.documentElement.style.setProperty('--mark', 'url('+ASSETS.mark+')');
 document.getElementById('vsVer').textContent = 'الإصدار ' + APP_BUILD;
