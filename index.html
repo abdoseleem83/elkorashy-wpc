@@ -526,7 +526,7 @@ function preloadDoorImages_(){
   });
 }
 
-const APP_BUILD   = 'v106';
+const APP_BUILD   = 'v107';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2878,7 +2878,7 @@ async function exportCustomerPdf_(name){
     await loadStock(true);
     const all = await fetchPendingOrders_();
     if(all){
-      const mine = all.filter(o=>((o.customer||'').trim() || 'بدون اسم') === name);
+      const mine = all.filter(o=>(String(o.customer||'').trim() || 'بدون اسم') === name);
       if(!mine.length){ toast('مفيش طلبات معلّقة للعميل ده (يمكن كلها اتسلّمت)'); }
       else await buildPendingDoorsPdf_(mine);
     }
@@ -3559,7 +3559,7 @@ function viewAdmin(){
   const groups = {};
   const order = [];
   list.forEach(o=>{
-    const key = (o.customer||'').trim() || 'بدون اسم';
+    const key = String(o.customer||'').trim() || 'بدون اسم';
     if(!groups[key]){ groups[key]=[]; order.push(key); }
     groups[key].push(o);
   });
