@@ -1,16 +1,30 @@
 // ⚠️ مهم: غيّر رقم النسخة دي في كل مرة ترفع تحديث جديد.
 // ده اللي بيخلي المتصفح يرمي الكاش القديم ويجيب الملفات الجديدة.
-const CACHE_VERSION = 'v108';
+const CACHE_VERSION = 'v109';
 const CACHE_NAME = 'elkorashy-wpc-' + CACHE_VERSION;
 // كاش منفصل للمكتبات الخارجية — مش بيتمسح مع كل تحديث للتطبيق، لأن روابطها فيها
 // رقم إصدار ثابت. لو كانت جوه الكاش العادي كانت هتتحمّل من النت من أول وجديد
 // مع كل نسخة جديدة نرفعها، وده اللي إحنا عايزين نتفاداه.
 const LIB_CACHE = 'elkorashy-libs-v1';
 
+// ⚠️ الأصول اتقسمت لقسمين — ودي كانت مشكلة حقيقية:
+// قبل كده كل حاجة (بما فيها 412 كيلوبايت صور وأيقونات) كانت في قايمة واحدة بتتجدّد
+// بالكامل مع كل CACHE_VERSION، والكاش القديم بيتمسح في activate. يعني كل تحديث
+// بترفعه كان بينزّل الصور كلها من أول وجديد على كل جهاز — وهي أصلاً عمرها ما بتتغيّر.
+//
+// دلوقتي:
+//  • APP_SHELL  → في الكاش المرقّم، بيتجدّد مع كل نسخة (صغير: HTML + manifest)
+//  • STATIC     → في كاش دايم، بيتنزّل أول مرة بس، ومابيتمسحش مع التحديثات
+// لو غيّرت صورة فعلاً، زوّد ASSET_VERSION تحت عشان تتجدّد.
 const PRECACHE = [
   './',
   './index.html',
-  './manifest.json',
+  './manifest.json'
+];
+
+const ASSET_VERSION = 'a1';
+const ASSET_CACHE   = 'elkorashy-assets-' + ASSET_VERSION;
+const STATIC = [
   './icon-192.png',
   './icon-512.png',
   './img/logo.png',
@@ -27,22 +41,32 @@ const PRECACHE = [
   './img/doors/A010.jpg',
   './img/doors/A015.jpg'
 ];
-// v74: صور الأبواب واللوجو بقوا ملفات منفصلة جوه img/ بدل base64 داخل index.html —
-// بنحطهم هنا في الـ PRECACHE عشان يتخزّنوا في الكاش زي باقي أصول التثبيت.
 
 self.addEventListener('install', (event) => {
   // 🔑 دي أهم سطر في الملف: النسخة الجديدة بتفرض نفسها فورًا من غير ما تستنى
   // إذن من الصفحة ولا تستنى التابات تتقفل. ده اللي بيخرّج الأجهزة العالقة على
   // نسخة قديمة من غير ما المستخدم يعمل أي حاجة.
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => Promise.all(
-        PRECACHE.map(u => fetch(u, { cache: 'no-store' })
-          .then(r => (r && r.ok) ? cache.put(u, r) : null)
-          .catch(() => null))
-      ))
-  );
+  event.waitUntil((async () => {
+    // ١) قشرة التطبيق — بتتجدّد إجباريًا مع كل نسخة
+    const shell = await caches.open(CACHE_NAME);
+    await Promise.all(PRECACHE.map(u =>
+      fetch(u, { cache: 'no-store' })
+        .then(r => (r && r.ok) ? shell.put(u, r) : null)
+        .catch(() => null)
+    ));
+
+    // ٢) الصور والأيقونات — بننزّل الناقص بس. اللي متخزّن خلاص بيتساب زي ما هو،
+    //    فالتحديث العادي مابينزّلش ولا بايت صور.
+    const assets = await caches.open(ASSET_CACHE);
+    await Promise.all(STATIC.map(async u => {
+      if (await assets.match(u)) return;             // موجود خلاص
+      try {
+        const r = await fetch(u);
+        if (r && r.ok) await assets.put(u, r);
+      } catch (e) {}
+    }));
+  })());
 });
 
 self.addEventListener('activate', (event) => {
@@ -50,7 +74,7 @@ self.addEventListener('activate', (event) => {
     // امسح كل الكاشات القديمة بتاعة النسخ السابقة
     const keys = await caches.keys();
     await Promise.all(
-      keys.filter(k => k.startsWith('elkorashy-') && k !== CACHE_NAME && k !== LIB_CACHE)
+      keys.filter(k => k.startsWith('elkorashy-') && k !== CACHE_NAME && k !== LIB_CACHE && k !== ASSET_CACHE)
           .map(k => caches.delete(k))
     );
     // خد السيطرة على كل الصفحات المفتوحة فورًا من غير ما تستنى إعادة فتح
@@ -143,7 +167,26 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // باقي الملفات (صور، أيقونات...): stale-while-revalidate
+  // الصور والأيقونات: cache-first من الكاش الدايم. محتواها ثابت، فمافيش داعي نسأل
+  // الشبكة عنها كل مرة — وده كمان بيخلي التطبيق يفتح أوفلاين بصوره كاملة.
+  if (/\.(png|jpe?g|webp|svg|gif|ico)$/i.test(url.pathname)) {
+    event.respondWith((async () => {
+      const assets = await caches.open(ASSET_CACHE);
+      const hit = await assets.match(req, { ignoreSearch: true });
+      if (hit) return hit;
+      try {
+        const res = await fetch(req);
+        if (cacheable(res)) assets.put(req, res.clone()).catch(() => {});
+        return res;
+      } catch (e) {
+        const any = await caches.match(req, { ignoreSearch: true });   // كاش قديم من نسخة سابقة
+        return any || new Response('', { status: 504 });
+      }
+    })());
+    return;
+  }
+
+  // أي حاجة تانية: stale-while-revalidate
   event.respondWith((async () => {
     const cached = await caches.match(req);
     const network = fetch(req).then(res => {
