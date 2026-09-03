@@ -3923,6 +3923,8 @@ function viewAdmin(){
    ============================================================ */
 document.getElementById('tabs').addEventListener('click',e=>{
   const b=e.target.closest('button[data-tab]'); if(!b) return;
+  // سايب شاشة «طلب جديد» وفيه صنف مسحوب للتعديل ما اتكملش؟ رجّعه للسلة بدل ما يضيع
+  if(b.dataset.tab!=='new') restorePulledLine_();
   state.tab=b.dataset.tab; render(); window.scrollTo({top:0,behavior:'smooth'});
   if(state.tab==='orders' && state.track.rows===null && state.orders.length) loadTrack();
   if(state.tab==='new') loadStock();
@@ -4311,6 +4313,7 @@ function addDoor(){
   }
 
   save(LS_CART,state.cart);
+  clearPulledLine_();
   toast('اتضاف للسلة: '+d.code+' — '+addedTxts.join('، '));
   // نلمّ الاختيارات ونقفل اللوحة عشان يختار باب تاني بارتياح
   state.pick={code:'', sizes:{}, customOn:false, custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,frameKind:null,frameRodQty:'',frameForDoors:''}};
@@ -4414,6 +4417,7 @@ function addRod(kind){
   }
 
   save(LS_CART,state.cart);
+  clearPulledLine_();
   toast(addedIsSet ? ('اتضاف '+added+' طقم حلق كامل') : ('اتضاف '+added+' عود'));
   render();
 }
@@ -4436,6 +4440,7 @@ function addPanel(){
     });
   }
   save(LS_CART,state.cart);
+  clearPulledLine_();
   toast('اتضاف '+qty+' لوح بروديوم');
   state.pd={code:'', qty:1};
   render();
@@ -4451,14 +4456,34 @@ function addAccessories(){
     n+=q;
   });
   if(!n){toast('محددتش أي كميات');return;}
-  state.acc={}; save(LS_CART,state.cart); toast('اتضافت الإكسسوارات'); render();
+  state.acc={}; save(LS_CART,state.cart); clearPulledLine_(); toast('اتضافت الإكسسوارات'); render();
 }
 
 // تعديل صنف موجود في السلة: بنشيله من السلة ونفتحله شاشة الاختيار بنفس بياناته
 // جاهزة قدام العين — لما يدوس «أضف» تاني بيرجع يتضاف بالتعديلات الجديدة.
+// ⚠️ باج كان هنا: الدالة دي بتشيل الصنف من السلة على طول وتحطّ بياناته في شاشة الاختيار.
+// لو المستخدم غيّر رأيه (رجع لتبويب تاني، أو قفل التطبيق) الصنف كان بيضيع خالص من غير
+// ما ياخد باله. دلوقتي بنمسك نسخة منه، وبنرجّعها تلقائي لو ساب الشاشة من غير ما يضيف.
+let _pulledLine = null;
+
+// بيرجّع الصنف اللي اتسحب للتعديل لو المستخدم ما كمّلش التعديل
+function restorePulledLine_(silent){
+  if(!_pulledLine) return false;
+  const { item, index } = _pulledLine;
+  _pulledLine = null;
+  state.cart.splice(Math.min(index, state.cart.length), 0, item);
+  save(LS_CART, state.cart);
+  if(!silent) toast('رجّعنا «'+(item.title||'الصنف')+'» للسلة — التعديل ما اتكملش');
+  return true;
+}
+// بيتنده بعد أي إضافة ناجحة — يعني التعديل خلص فعلاً ومفيش حاجة نرجّعها
+function clearPulledLine_(){ _pulledLine = null; }
+
 function editCartLine(i){
   const it = state.cart[i];
   if(!it) return;
+  restorePulledLine_(true);                      // لو فيه تعديل سابق ما اتكملش، رجّعه الأول
+  _pulledLine = { item: JSON.parse(JSON.stringify(it)), index: i };
   state.cart.splice(i,1);
   save(LS_CART,state.cart);
 
@@ -5230,6 +5255,9 @@ loadStock();   // أرصدة المخزن بتتحمّل في الخلفية م�
 preloadDoorImages_();   // نبدأ تحميل صور الأبواب بدري عشان تبقى جاهزة وقت التصدير
 retryPendingOrders_();   // لو فيه طلبات اتسجلت على الجهاز بس ما وصلتش المصنع، نحاول تاني
 window.addEventListener('online', retryPendingOrders_);
+// التطبيق اتقفل أو راح للخلفية وفيه صنف مسحوب للتعديل؟ نرجّعه للسلة قبل ما يضيع
+window.addEventListener('pagehide', ()=>restorePulledLine_(true));
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) restorePulledLine_(true); });
 function markUpdateReady(){
   const btn=document.querySelector('.verstrip [data-act="update"]');
   if(btn) btn.classList.add('vs-install');
