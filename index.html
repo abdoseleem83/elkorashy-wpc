@@ -42,6 +42,23 @@
   --r:16px;
   --shadow:0 4px 18px rgba(0,32,80,.09);
   --mark:none;
+
+  /* ---- توكنز التصميم المحدّثة (v108) ----
+     سلّم ظلال متدرّج بدل ظل واحد لكل حاجة، وسلّم زوايا، ومنحنيات حركة موحّدة.
+     ده اللي بيخلي الشاشة تبان مرتّبة وفيها عمق بدل ما كل الكروت في نفس المستوى. */
+  --e1:0 1px 2px rgba(12,32,64,.06), 0 1px 3px rgba(12,32,64,.05);
+  --e2:0 2px 6px rgba(12,32,64,.06), 0 6px 16px rgba(12,32,64,.07);
+  --e3:0 6px 14px rgba(12,32,64,.08), 0 16px 34px rgba(12,32,64,.10);
+  --r-sm:10px;
+  --r-md:14px;
+  --r-lg:18px;
+  --r-pill:999px;
+  --ease:cubic-bezier(.2,.7,.3,1);          /* دخول ناعم — بيقف من غير ارتداد */
+  --ease-out:cubic-bezier(.16,1,.3,1);      /* خروج سريع في الأول وبطيء في الآخر */
+  --t-fast:.13s;
+  --t-med:.22s;
+  --surface-2:#F8FAFD;                       /* سطح تاني للتمييز جوه الكروت */
+  --line-soft:#E7EDF4;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
@@ -223,7 +240,7 @@ button{cursor:pointer;border:0;background:none}
 label.fld{display:block;margin-bottom:10px}
 label.fld span{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}
 label.fld span .req{color:var(--danger);font-weight:700}
-input[type=text],input[type=tel],input[type=number],select,textarea{
+input[type=text],input[type=tel],input[type=number],input[type=password],input[type=date],input[type=search],select,textarea{
   width:100%;padding:10px 11px;border:1.5px solid var(--line);border-radius:10px;background:#FCFDFE;
 }
 input:focus,select:focus,textarea:focus{border-color:var(--brand);outline:none}
@@ -434,6 +451,153 @@ input::placeholder{color:#A8B4C2}
 
 /* ============ المستند (عرض سعر / طلب) ============ */
 #paper{position:fixed;top:-10000px;left:-10000px;width:794px;background:#fff}
+/* ============================================================
+   طبقة التحديث البصري — v108
+   ------------------------------------------------------------
+   مكتوبة كطبقة فوق التصميم الأصلي عشان أي حاجة مش مذكورة هنا
+   تفضل شغّالة زي ما هي بالظبط. اللي اتغيّر:
+   • شريط التبويبات بقى بقرص متحرّك بدل خط تحت — أوضح وبيتحرك بنعومة
+   • الكروت والأزرار بقى لهم سلّم ظلال وزوايا موحّد بدل ظل واحد لكل حاجة
+   • فتح وقفل اللوحات بقى فيه حركة قصيرة (١٨٠ مللي) بدل ما يظهر فجأة
+   • مساحات اللمس كبرت للحد الآمن (44px) عشان الضغط ما يغلطش
+   ============================================================ */
+
+/* ---------- الأيقونات: سُمك أنعم ووضوح أعلى على الشاشات الصغيرة ---------- */
+.i{stroke-width:1.75;shape-rendering:geometricPrecision}
+.i.lg{stroke-width:1.7}
+.tabs button .i{stroke-width:1.8;transition:transform var(--t-med) var(--ease-out),color var(--t-fast)}
+
+/* ---------- شريط التبويبات ---------- */
+.tabs{
+  background:var(--card);border-bottom:1px solid var(--line-soft);
+  padding:6px 6px calc(4px + env(safe-area-inset-bottom,0px));gap:4px;
+  box-shadow:0 1px 0 rgba(12,32,64,.04);
+}
+.tabs button{
+  border-bottom:0;border-radius:var(--r-md);padding:7px 2px 6px;min-height:52px;
+  gap:4px;font-size:11px;position:relative;isolation:isolate;
+  transition:color var(--t-fast) var(--ease);
+}
+/* القرص المتحرّك ورا الأيقونة — هو ده اللي بيبيّن التبويب الشغّال */
+.tabs button::before{
+  content:'';position:absolute;inset:0;z-index:-1;border-radius:var(--r-md);
+  background:linear-gradient(180deg,#EAF4FC,#DCEDFA);
+  opacity:0;transform:scale(.86);
+  transition:opacity var(--t-med) var(--ease-out),transform var(--t-med) var(--ease-out);
+}
+.tabs button.on::before{opacity:1;transform:scale(1)}
+.tabs button.on{color:var(--navy);font-weight:700}
+.tabs button.on .i{color:var(--brand);transform:translateY(-1px) scale(1.06)}
+.tabs button:active{transform:scale(.96)}
+.tabs .badge{
+  top:2px;inset-inline-end:calc(50% - 21px);
+  background:linear-gradient(180deg,#E05A4E,#C33B2E);
+  box-shadow:0 1px 4px rgba(195,59,46,.4);border:1.5px solid var(--card);
+}
+
+/* ---------- الهيدر ---------- */
+#appbar::after{height:2.5px;opacity:.9}
+.top{box-shadow:0 1px 12px rgba(0,32,80,.22)}
+.top img.logo{box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.wh-chip{border-radius:var(--r-sm);backdrop-filter:saturate(1.4)}
+.verstrip button{
+  border-radius:var(--r-sm);min-height:32px;
+  transition:background var(--t-fast),transform var(--t-fast) var(--ease);
+}
+.verstrip button:active{transform:scale(.95)}
+
+/* ---------- الكروت ---------- */
+.card{
+  border-radius:var(--r-lg);border-color:var(--line-soft);
+  box-shadow:var(--e2);margin-bottom:12px;
+}
+.card::before{opacity:.045}
+/* الكروت اللي بره الشاشة مش بتتحسب في الرسم — الفرق بيبان في شاشة المصنع
+   لما يكون فيه عشرات الطلبات: التمرير بيبقى ناعم بدل ما يتهتّ. */
+.wrap>.card{content-visibility:auto;contain-intrinsic-size:auto 320px}
+
+.step .n{border-radius:var(--r-sm);box-shadow:0 2px 8px rgba(16,128,192,.28)}
+
+/* ---------- شريط الأقسام ---------- */
+.secnav{gap:7px}
+.secnav button{
+  border-radius:var(--r-md);border-color:var(--line-soft);box-shadow:var(--e1);
+  min-height:62px;
+  transition:border-color var(--t-fast),background var(--t-fast),
+             box-shadow var(--t-fast),transform var(--t-fast) var(--ease);
+}
+.secnav button:active{transform:scale(.97)}
+.secnav button.on{box-shadow:0 0 0 1.5px var(--brand),var(--e2)}
+
+/* ---------- الأزرار ---------- */
+.btn{
+  border-radius:var(--r-md);min-height:44px;
+  transition:transform var(--t-fast) var(--ease),box-shadow var(--t-med) var(--ease),
+             background var(--t-fast),opacity var(--t-fast);
+}
+.btn:active{transform:scale(.97)}
+.btn.brand{box-shadow:0 2px 4px rgba(16,128,192,.18),0 6px 16px rgba(16,128,192,.24)}
+.btn.brand:active{box-shadow:0 1px 3px rgba(16,128,192,.2)}
+.btn.wood{box-shadow:0 2px 4px rgba(166,100,47,.18),0 6px 16px rgba(166,100,47,.24)}
+.btn.primary{box-shadow:0 2px 4px rgba(0,32,80,.2),0 6px 16px rgba(0,32,80,.18)}
+.btn.ghost{border-color:var(--line-soft);box-shadow:var(--e1)}
+.btn.sm{min-height:38px;border-radius:var(--r-sm)}
+.toolgrid{gap:6px}
+.toolgrid .btn,.cardacts .btn{min-height:40px;border-radius:var(--r-sm);box-shadow:none}
+.cardacts{gap:5px;scrollbar-width:none;-ms-overflow-style:none}
+.cardacts::-webkit-scrollbar{display:none}
+
+/* ---------- خانات الإدخال ---------- */
+input[type=text],input[type=tel],input[type=number],input[type=password],input[type=date],input[type=search],select,textarea{
+  border-radius:var(--r-sm);border-color:var(--line-soft);min-height:44px;
+  transition:border-color var(--t-fast),box-shadow var(--t-fast),background var(--t-fast);
+}
+input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(16,128,192,.14)}
+input.bad{box-shadow:0 0 0 3px rgba(179,38,30,.1)}
+
+/* ---------- الشريط السفلي ---------- */
+.bar{box-shadow:0 -2px 10px rgba(12,32,64,.06),0 -10px 30px rgba(12,32,64,.08)}
+
+/* ---------- التوست ---------- */
+#toast{border-radius:var(--r-md);box-shadow:var(--e3)}
+
+/* ---------- الحركة: ظهور اللوحات والكروت ---------- */
+@keyframes riseIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+/* الحركة بتشتغل بس لما المستخدم يبدّل تبويب — مش مع كل ضغطة زرار.
+   لو سابناها عامة كانت الكروت هتعيد الحركة مع كل +/- وده هيبان اهتزاز. */
+#view.enter>.card{animation:riseIn var(--t-med) var(--ease-out) both}
+#view.enter>.card:nth-child(2){animation-delay:.03s}
+#view.enter>.card:nth-child(3){animation-delay:.06s}
+#view.enter>.card:nth-child(n+4){animation-delay:.09s}
+
+/* لو المستخدم مفعّل «تقليل الحركة» في نظامه، كل ده بيتلغي (القاعدة فوق في أول الملف) */
+
+/* ---------- شاشات أكبر: عرض أوسع ومسافات أريح ---------- */
+@media (min-width:720px){
+  .wrap{max-width:760px;padding:18px}
+  .card{padding:16px}
+  .tabs button{font-size:12px}
+}
+/* ---------- تصحيحات شكل (v108) ---------- */
+/* شريط الأقسام: خمس أزرار في شبكة أربعة كانت بتسيب الزرار الأخير لوحده في سطر.
+   تلاتة في الصف بيدّي توزيع متوازن (3 + 2 في النص) ومساحة لمس أكبر. */
+.secnav{display:flex;flex-wrap:wrap;justify-content:center;gap:7px}
+.secnav button{flex:1 1 calc(33.333% - 7px);min-width:96px;max-width:none}
+
+/* الأيقونات جوه الحالات الفاضية والصور المصغّرة — كانت مقاسة لإيموجي بالخط */
+.empty .em{opacity:.35;line-height:0}
+.empty .em .i{width:52px;height:52px;stroke-width:1.4}
+.line .ic .i{width:24px;height:24px;color:var(--muted);stroke-width:1.7}
+.chip .ic,.specol .colchip .ic{line-height:0}
+.lineacts .i{width:18px;height:18px}
+
+/* أزرار فيها أيقونة + كلام: مسافة ثابتة بينهم بدل ما تعتمد على مسافة النص */
+.btn .i{margin-inline-end:6px}
+.toolgrid .btn .i,.cardacts .btn .i{margin-inline-end:0}
+
+/* شارة السلة: تختفي وهي صفر بدل ما تفضل «0» أحمر على طول */
+.tabs .badge.zero{display:none}
 </style>
 </head>
 <body>
@@ -596,7 +760,6 @@ const APP_BUILD   = 'v108';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
-const ADMIN_WHATS = '201067765483';   // مش مستخدم في إرسال الطلبات دلوقتي — سايبه لو احتجناه تاني
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2aVRVaUVubR3w4a3weiQTHGp03SvMozh83NY3OtBD14n1YugCjbcWdYEJUPJb-s3E/exec';
 
 /* ============================================================
@@ -605,12 +768,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2aVRVaUVubR3w
    البرور عود واحد ٢٢٦ سم.
    التسعير بيتحسب بالمتر الطولي × طول العود الفعلي — فكل مقاس له سعره.
    ============================================================ */
-const FRAME_ROD_TYPES = [
-  { key:'jamb',   cm:220, label:'قائم', hint:'جنبي الباب' },
-  { key:'header', cm:110, label:'عارضة حلق علوية',  hint:'أعلى الباب' }
-];
 const BROR_ROD_CM = 226;
-const ROD_LEN = 2.20;   // للتوافق مع الكود القديم — الطول الافتراضي للحلق بالمتر
 
 /* ============================================================
    متطلبات التقطيع للباب الواحد (بيانات المصنع)
@@ -625,15 +783,6 @@ const FRAME_PER_DOOR = [
 ];
 const BROR_PER_DOOR  = { qty:5, cm:BROR_ROD_CM };
 
-// إجمالي أعواد الحلق/البرور المطلوبة لعدد أبواب
-function frameRodsFor(doorQty){
-  const n = Number(doorQty)||0;
-  return FRAME_PER_DOOR.map(f=>({ ...f, total:f.qty*n }));
-}
-function brorRodsFor(doorQty){
-  const n = Number(doorQty)||0;
-  return { ...BROR_PER_DOOR, total:BROR_PER_DOOR.qty*n };
-}
 // نص مختصر يتعرض جنب الباب في المستندات
 
 // بيبني نص الحلق شامل الارتفاع الخاص لو الموزع/العميل حدده (اختياري)
@@ -712,10 +861,6 @@ const BROR_ROD_M_DEFAULT = BROR_ROD_CM/100;   // 2.26 م — الطول القي
 let PRODIUM_PRICE = 1668;
 
 /* تفريز الكالون */
-const MILLS = [
-  {id:'smart',  ar:'سمارت', en:'Smart',   ic:'🔐'},
-  {id:'normal', ar:'عادي',  en:'Standard', ic:'🔑'}
-];
 
 const ACCESSORIES = [
   {id:'h1', name:'مقبض باب مودرن / نيو مودرن',  en:'Door Handle - Modern / New Modern',    price:230,  unit:'قطعة'},
@@ -1123,6 +1268,7 @@ function restoreFocus_(snap){
 }
 
 let _renderQueued = false;
+let _lastRenderedTab = null;
 // النداء العادي: بيتجمّع مع أي نداءات تانية في نفس اللحظة ويتنفّذ مرة واحدة
 function render(){
   if(_renderQueued) return;
@@ -1149,6 +1295,11 @@ function renderNow(){
   const snap = captureFocus_();
   const sy = window.scrollY;
 
+  // حركة الدخول للكروت بتتفعّل بس لما التبويب يتغيّر فعلاً
+  const tabChanged = (_lastRenderedTab !== state.tab);
+  _lastRenderedTab = state.tab;
+  v.classList.toggle('enter', tabChanged);
+
   v.innerHTML = state.tab==='new' ? viewNew()
               : state.tab==='cart' ? viewCart()
               : state.tab==='admin' ? viewAdmin()
@@ -1159,7 +1310,10 @@ function renderNow(){
   if(snap && window.scrollY !== sy) window.scrollTo(0, sy);
 
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===state.tab));
-  document.getElementById('cartBadge').textContent=cartCount();
+  const cb=document.getElementById('cartBadge');
+  const cn=cartCount();
+  cb.textContent=cn;
+  cb.classList.toggle('zero', cn===0);   // «0» أحمر على طول فوق السلة كان مشوّش
   updateAdmBadge();
 
   const show = state.tab==='new' && state.cart.length>0;
@@ -1499,7 +1653,7 @@ function viewNew(){
 
   const secEmpty = `
   <div class="empty">
-    <span class="em">👆</span>
+    <span class="em">${ico("hand","xl")}</span>
     <p>اختر قسم من فوق (الأبواب / الإكسسوارات / حلق فقط / برور فقط / ألواح بروديوم) عشان تبدأ.</p>
   </div>`;
 
@@ -1590,8 +1744,9 @@ function viewCart(){
   const priced=pricesVisible();
 
   const lines=state.cart.map((it,i)=>{
-    const th = it.kind==='door' ? `<img src="${esc(it.img)}" alt="" onerror="this.outerHTML='<div class=\\'ic\\'>🚪</div>'">`
-             : `<div class="ic">${it.kind==='frame'?'📏':it.kind==='bror'?'📐':it.kind==='panel'?'🪵':'🔩'}</div>`;
+    const kindIcon = it.kind==='frame'?'ruler':it.kind==='bror'?'bror':it.kind==='panel'?'panel':'parts';
+    const th = it.kind==='door' ? `<img src="${esc(it.img)}" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ic',innerHTML:ico('door','lg')}))">`
+             : `<div class="ic">${ico(kindIcon,'lg')}</div>`;
     let spec;
     if(it.kind==='door'){
       spec=doorSizeText_(it.sizeTxt,it.doorHeight)+(priced?' · '+money(it.unitPrice)+' ج':'')+' × '+it.qty;
@@ -1606,8 +1761,8 @@ function viewCart(){
     return `<div class="line">${th}<div class="info2"><b>${esc(it.title)}</b>
       <div class="spec">${spec}</div>${priced?`<div class="pr">${money(linePrice(it))} ج</div>`:''}</div>
       <div class="lineacts">
-        <button class="edit" data-act="edit-line" data-i="${i}" title="تعديل">✏️</button>
-        <button class="del" data-act="del" data-i="${i}" title="حذف">✕</button>
+        <button class="edit" data-act="edit-line" data-i="${i}" title="تعديل" aria-label="تعديل">${ico("edit")}</button>
+        <button class="del" data-act="del" data-i="${i}" title="حذف" aria-label="حذف">${ico("x")}</button>
       </div></div>`;}).join('');
 
   const ok=profileOk();
@@ -1616,7 +1771,7 @@ function viewCart(){
   <section class="card">
     <div class="step"><span class="n">✓</span><h2>مراجعة الطلب</h2></div>
     ${editing?`<div class="note" style="margin-top:0;background:#FFF6E5;color:#8A6512;border-radius:8px;padding:9px 12px">
-      ✏️ بتعدّل الطلب <b>#${esc(state.editingId)}</b>${state.editingMeta?' — العميل: <b>'+esc(state.editingMeta.name||'')+'</b>':''} — الحفظ هيلغي الطلب القديم ده وهيعمل طلب جديد بالأصناف المعدّلة.
+      ${ico("edit")} بتعدّل الطلب <b>#${esc(state.editingId)}</b>${state.editingMeta?' — العميل: <b>'+esc(state.editingMeta.name||'')+'</b>':''} — الحفظ هيلغي الطلب القديم ده وهيعمل طلب جديد بالأصناف المعدّلة.
       ${state.editingMeta?`
       <div class="row2" style="margin-top:9px">
         <label class="fld"><span>اسم صاحب الأوردر <b class="req">*</b></span>
@@ -1648,7 +1803,7 @@ function viewCart(){
     </div>
     <button class="btn brand" data-act="submit">${editing?ico("save")+' حفظ التعديل وإرسال واتساب':'إرسال طلب الأوردر على واتساب'}</button>
     <div class="btnrow" style="margin-top:9px">
-      <button class="btn ghost sm" data-act="quote-cart">📄 PDF الطلب</button>
+      <button class="btn ghost sm" data-act="quote-cart">${ico("doc")} PDF الطلب</button>
       <button class="btn ghost sm" data-act="clear">تفريغ السلة</button>
     </div>
   </section>
@@ -1663,21 +1818,21 @@ function viewOrders(){
   (t.rows||[]).forEach(r=>{ liveById[String(r.id)] = r; });
 
   const refreshBtn = `<button class="btn ghost sm" style="margin-bottom:12px" data-act="track-load" ${t.loading?'disabled':''}>
-    ${t.loading?'⏳ جارٍ تحديث الحالة…':'🔄 تحديث حالة الطلبات من المصنع'}</button>`;
+    ${t.loading?ico('clock')+' جارٍ تحديث الحالة…':ico('refresh')+' تحديث حالة الطلبات من المصنع'}</button>`;
   const errNote = t.err ? `<div class="note" style="color:var(--danger);margin-bottom:10px">${esc(t.err)}</div>` : '';
 
   const cards = state.orders.map(o=>{
     const live = liveById[String(o.id)];
     const locked = isOrderLocked_(live);
     const editBtn = locked
-      ? `<button class="btn ghost sm" disabled title="الطلب دخل التنفيذ ومينفعش يتعدّل">🔒 اتقفل التعديل</button>`
-      : `<button class="btn ghost sm" data-act="ord-edit" data-id="${esc(o.id)}">✏️ تعديل</button>`;
+      ? `<button class="btn ghost sm" disabled title="الطلب دخل التنفيذ ومينفعش يتعدّل">${ico("lock")} اتقفل التعديل</button>`
+      : `<button class="btn ghost sm" data-act="ord-edit" data-id="${esc(o.id)}">${ico("edit")} تعديل</button>`;
     const delBtn = locked
-      ? `<button class="btn ghost sm" disabled title="الطلب دخل التنفيذ ومينفعش يتحذف">🔒 اتقفل الحذف</button>`
-      : `<button class="btn ghost sm" data-act="ord-del" data-id="${esc(o.id)}">🗑 حذف</button>`;
+      ? `<button class="btn ghost sm" disabled title="الطلب دخل التنفيذ ومينفعش يتحذف">${ico("lock")} اتقفل الحذف</button>`
+      : `<button class="btn ghost sm" data-act="ord-del" data-id="${esc(o.id)}">${ico("trash")} حذف</button>`;
     return `
     <div class="ord">
-      <div class="oh"><span class="oid">#${esc(o.id)}</span>${o.replacesId?`<span style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px">🔁 تعديل على #${esc(o.replacesId)}</span>`:''}${live?statusPill(live.status):''}</div>
+      <div class="oh"><span class="oid">#${esc(o.id)}</span>${o.replacesId?`<span style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على #${esc(o.replacesId)}</span>`:''}${live?statusPill(live.status):''}</div>
       <div class="os">${esc(dateStr(o.ts))} · ${o.items.length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
         ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}<br>
         ${esc(o.items.map(x=>x.title).slice(0,3).join('، '))}${o.items.length>3?'…':''}
@@ -1685,8 +1840,8 @@ function viewOrders(){
         ${live && live.note?('<br><b style="color:var(--brand)">'+esc(live.note)+'</b>'):''}</div>
       <div class="oa">
         ${editBtn}
-        <button class="btn ghost sm" data-act="ord-pdf"   data-id="${esc(o.id)}">📄 PDF</button>
-        <button class="btn ghost sm" data-act="ord-xls"   data-id="${esc(o.id)}">📊 إكسيل</button>
+        <button class="btn ghost sm" data-act="ord-pdf"   data-id="${esc(o.id)}">${ico("doc")} PDF</button>
+        <button class="btn ghost sm" data-act="ord-xls"   data-id="${esc(o.id)}">${ico("sheet")} إكسيل</button>
         <button class="btn ghost sm" data-act="resend"    data-id="${esc(o.id)}">↗ إرسال</button>
         ${delBtn}
       </div>
@@ -1856,7 +2011,7 @@ async function canvasToPdf_(canvas, filename, opts){
 
 const ICONS = {
   door:    '<rect x="4" y="2.5" width="16" height="19" rx="1.6"/><circle cx="16.4" cy="12" r="1.05" fill="currentColor" stroke="none"/><path d="M7.2 6.2h6.2M7.2 9.4h6.2"/>',
-  parts:   '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.6v3M12 18.4v3M2.6 12h3M18.4 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/>',
+  parts:   '<circle cx="12" cy="12" r="3.1"/><path d="M19.1 14.8a1.5 1.5 0 0 0 .3 1.65l.05.06a1.82 1.82 0 1 1-2.58 2.58l-.06-.06a1.5 1.5 0 0 0-1.65-.3 1.5 1.5 0 0 0-.91 1.37v.17a1.82 1.82 0 0 1-3.64 0v-.09a1.5 1.5 0 0 0-.98-1.37 1.5 1.5 0 0 0-1.65.3l-.06.06a1.82 1.82 0 1 1-2.58-2.58l.06-.06a1.5 1.5 0 0 0 .3-1.65 1.5 1.5 0 0 0-1.37-.91H4.2a1.82 1.82 0 0 1 0-3.64h.09a1.5 1.5 0 0 0 1.37-.98 1.5 1.5 0 0 0-.3-1.65l-.06-.06A1.82 1.82 0 1 1 7.88 4.6l.06.06a1.5 1.5 0 0 0 1.65.3h.07a1.5 1.5 0 0 0 .91-1.37V3.4a1.82 1.82 0 0 1 3.64 0v.09a1.5 1.5 0 0 0 .91 1.37 1.5 1.5 0 0 0 1.65-.3l.06-.06a1.82 1.82 0 1 1 2.58 2.58l-.06.06a1.5 1.5 0 0 0-.3 1.65v.07a1.5 1.5 0 0 0 1.37.91h.17a1.82 1.82 0 0 1 0 3.64h-.09a1.5 1.5 0 0 0-1.37.91z"/>',
   frame:   '<rect x="3" y="3" width="18" height="18" rx="1.6"/><rect x="7" y="7" width="10" height="10" rx="1"/>',
   bror:    '<path d="M3 8.5h18v7H3z"/><path d="M7 8.5v7M12 8.5v7M17 8.5v7"/>',
   panel:   '<rect x="4" y="2.6" width="16" height="18.8" rx="1.4"/><path d="M8.4 2.6v18.8M13 2.6v18.8"/>',
@@ -1866,7 +2021,7 @@ const ICONS = {
   doc:     '<path d="M6 2.6h8l4.2 4.2v14.6H6z"/><path d="M14 2.6v4.4h4.2"/><path d="M9 12.4h6M9 16h6"/>',
   sheet:   '<rect x="3.4" y="3.4" width="17.2" height="17.2" rx="1.6"/><path d="M3.4 9.2h17.2M3.4 15h17.2M9.2 3.4v17.2M15 3.4v17.2"/>',
   report:  '<path d="M6 2.6h8l4.2 4.2v14.6H6z"/><path d="M14 2.6v4.4h4.2"/><path d="M9.2 17.4v-3.6M12 17.4v-6M14.8 17.4v-2.2"/>',
-  ruler:   '<rect x="1.8" y="7.4" width="20.4" height="9.2" rx="1.3" transform="rotate(-6 12 12)"/><path d="M6 9.6v2.6M9.6 9.1v3.6M13.2 8.6v2.6M16.8 8.1v3.6"/>',
+  ruler:   '<rect x="2.2" y="8.4" width="19.6" height="7.2" rx="1.8"/><path d="M6.2 8.4v3M9.5 8.4v4.4M12.8 8.4v3M16.1 8.4v4.4M19.4 8.4v3"/>',
   send:    '<path d="M21 3.4 10.8 13.6"/><path d="M21 3.4 14.6 21l-3.8-7.4L3.4 9.8z"/>',
   edit:    '<path d="M15.6 3.9 20 8.3 8.6 19.7l-5.1.7.7-5.1z"/><path d="M13.9 5.7 18.3 10"/>',
   box:     '<path d="M3 7.6 12 3l9 4.6v8.8L12 21l-9-4.6z"/><path d="M3 7.6 12 12l9-4.4M12 12v9"/>',
@@ -1891,9 +2046,13 @@ const ICONS = {
   plus:    '<path d="M12 4.6v14.8M4.6 12h14.8"/>',
   search:  '<circle cx="10.8" cy="10.8" r="7.2"/><path d="m16.2 16.2 4.4 4.4"/>',
   money:   '<rect x="2.6" y="5.6" width="18.8" height="12.8" rx="2"/><circle cx="12" cy="12" r="2.8"/><path d="M6.2 12h.02M17.8 12h.02"/>',
-  hand:    '<path d="M12 21.4c-4.4 0-7.6-3-7.6-7V9.6a1.5 1.5 0 0 1 3 0V4.4a1.5 1.5 0 0 1 3 0v4.2M10.4 8.6V3.6a1.5 1.5 0 0 1 3 0v5M13.4 9V6a1.5 1.5 0 0 1 3 0v6"/>',
+  hand:    '<path d="M2.6 12.6h3.2l3.4 3.1h3.4a1.5 1.5 0 0 1 0 3H9"/><path d="M9.2 15.7h3.4l6-4.1a1.7 1.7 0 0 1 2.3 2.5l-5.6 5.2a3 3 0 0 1-2 .8H5.8l-3.2-2"/><path d="M8.4 8.2a3.2 3.2 0 1 1 6.4 0 3.2 3.2 0 0 1-6.4 0z"/>',
   key:     '<circle cx="7.6" cy="15.4" r="4"/><path d="m10.6 12.6 8.4-8.4M16.4 6.8l2.2 2.2M14.2 9l2.2 2.2"/>',
-  newDoc:  '<path d="M6 2.6h8l4.2 4.2v14.6H6z"/><path d="M14 2.6v4.4h4.2"/><path d="M12 11.6v6M9 14.6h6"/>'
+  newDoc:  '<path d="M6 2.6h8l4.2 4.2v14.6H6z"/><path d="M14 2.6v4.4h4.2"/><path d="M12 11.6v6M9 14.6h6"/>',
+  bell:    '<path d="M18.4 9.4a6.4 6.4 0 1 0-12.8 0c0 6.2-2.4 7.6-2.4 7.6h17.6s-2.4-1.4-2.4-7.6z"/><path d="M13.9 20.6a2.2 2.2 0 0 1-3.8 0"/>',
+  clock:   '<circle cx="12" cy="12" r="9.2"/><path d="M12 6.8V12l3.4 2"/>',
+  filter:  '<path d="M3.2 4.6h17.6l-6.9 8.2v6.1l-3.8 2v-8.1z"/>',
+  share:   '<circle cx="18" cy="5.6" r="2.8"/><circle cx="6" cy="12" r="2.8"/><circle cx="18" cy="18.4" r="2.8"/><path d="m8.5 10.6 7-3.6M8.5 13.4l7 3.6"/>'
 };
 // بيرجّع أيقونة SVG جاهزة — cls اختيارية (lg / xl لتكبير الحجم)
 function ico(name, cls){
@@ -2656,15 +2815,13 @@ async function buildFullReportPdf_(orders){
   await canvasToPdf_(canvas, 'تقرير_الأبواب_'+new Date().toISOString().slice(0,10)+'.pdf', { hardBreaksPx: breaksPx });
 }
 
+// التقرير الكامل: كل الطلبات النشطة بتفاصيلها، كل طلب في صفحة لوحده.
+// (كان مكتوب وشغّال بس مالوش زرار في الشاشة خالص — اترجع في شريط أدوات المصنع.)
 async function exportAdminFullReport(){
-  if(!APPS_SCRIPT_URL || !state.admin.pw) return;
   busy(true,'جارٍ تجهيز التقرير…');
   try{
-    const d = await jsonp(APPS_SCRIPT_URL + '?action=listWithItems&pw=' + encodeURIComponent(state.admin.pw), 25000);
-    if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
-    const orders = d.orders || [];
-    if(!orders.length){ toast('مفيش طلبات لسه'); busy(false); return; }
-    await buildFullReportPdf_(orders);
+    const orders = await fetchPendingOrders_();
+    if(orders) await buildFullReportPdf_(orders);
   }catch(err){
     toast('تعذّر تجهيز التقرير: ' + (err.message || err));
   }
@@ -3291,19 +3448,18 @@ function dateStr2_(d){
   try{ return new Date(d).toLocaleDateString('ar-EG',{day:'2-digit',month:'2-digit',year:'numeric'}); }catch(e){ return String(d); }
 }
 
+// إكسيل تفصيلي بكل الطلبات — كان كمان بدون زرار.
+// ⚠️ وكان فيه باج: busy(false) كانت مكتوبة في حالة الخطأ بس، فلو التصدير نجح
+// شاشة «جارٍ التحميل» كانت بتفضل شغّالة للأبد والتطبيق يبان متعلّق.
 async function exportAdminExcel(){
-  if(!APPS_SCRIPT_URL || !state.admin.pw) return;
   busy(true,'جارٍ تحميل بيانات الطلبات…');
   try{
-    const d = await jsonp(APPS_SCRIPT_URL + '?action=listWithItems&pw=' + encodeURIComponent(state.admin.pw), 25000);
-    if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
-    const orders = d.orders || [];
-    if(!orders.length){ toast('مفيش طلبات لسه'); busy(false); return; }
-    await buildAdminOrdersExcel_(orders);
+    const orders = await fetchPendingOrders_();
+    if(orders) await buildAdminOrdersExcel_(orders);
   }catch(err){
     toast('تعذّر تجهيز الإكسيل: ' + (err.message || err));
-    busy(false);
   }
+  busy(false);
 }
 
 
@@ -3435,7 +3591,7 @@ function viewAdminPrices(){
     ${rowsAcc}
 
     <div class="btnrow" style="margin-top:14px">
-      <button class="btn wood" data-act="adm-prices-save">💾 حفظ الأسعار</button>
+      <button class="btn wood" data-act="adm-prices-save">${ico("save")} حفظ الأسعار</button>
       <button class="btn ghost sm" data-act="adm-prices-cancel">إلغاء</button>
     </div>
   </section>`;
@@ -3471,7 +3627,7 @@ function prodTableHTML_(oid, its, a, qtyMode){
             <input type="number" inputmode="numeric" min="1" value="${esc(draft)}"
               data-act="item-qty-set" data-id="${esc(oid)}" data-idx="${idx}"
               style="width:48px;text-align:center;border:1px solid var(--line);border-radius:6px;padding:4px 2px;font-size:12px;font-weight:700">
-            <button class="btn sm" data-act="adm-qty-save" data-id="${esc(oid)}" data-idx="${idx}" ${qBusy?'disabled':''} style="font-size:10px;padding:4px 6px">${qBusy?'…':'✅'}</button>
+            <button class="btn sm" data-act="adm-qty-save" data-id="${esc(oid)}" data-idx="${idx}" ${qBusy?'disabled':''} style="font-size:10px;padding:4px 6px">${qBusy?'…':ico('check')}</button>
           </div>
         </td>
         <td style="padding:6px 5px;text-align:center">
@@ -3493,8 +3649,8 @@ function prodTableHTML_(oid, its, a, qtyMode){
 
     const lastCell = editing
       ? `<div style="display:flex;gap:4px;justify-content:center">
-          <button class="btn sm" data-act="adm-prod-save" data-id="${esc(oid)}" data-idx="${idx}" ${busy?'disabled':''} style="font-size:10px;padding:4px 6px">${busy?'…':'✅'}</button>
-          <button class="btn ghost sm" data-act="adm-prod-cancel" data-id="${esc(oid)}" data-idx="${idx}" ${busy?'disabled':''} style="font-size:10px;padding:4px 6px">✕</button>
+          <button class="btn sm" data-act="adm-prod-save" data-id="${esc(oid)}" data-idx="${idx}" ${busy?'disabled':''} style="font-size:10px;padding:4px 6px">${busy?'…':ico('check')}</button>
+          <button class="btn ghost sm" data-act="adm-prod-cancel" data-id="${esc(oid)}" data-idx="${idx}" ${busy?'disabled':''} style="font-size:10px;padding:4px 6px">${ico('x')}</button>
         </div>`
       : `<b style="color:${pending>0?'#B3261E':'#6B7A8C'}">${pending}</b>`;
 
@@ -3524,7 +3680,7 @@ function viewAdmin(){
 
   const a = state.admin;
 
-  if(a.loading) return `<div class="empty"><span class="em">⏳</span><p>جارٍ التحميل…</p></div>`;
+  if(a.loading) return `<div class="empty"><span class="em">${ico("clock","xl")}</span><p>جارٍ التحميل…</p></div>`;
 
   if(!a.open){
     return `<section class="card">
@@ -3543,11 +3699,13 @@ function viewAdmin(){
 
   const headerBtns = `<div class="toolgrid">
         <button class="btn act-tool sm" data-act="adm-reload">${ico("refresh")}تحديث</button>
-        <button class="btn act-report sm" data-act="adm-pending-pdf">${ico("doc")}تصدير PDF</button>
-        <button class="btn act-report sm" data-act="adm-pending-xls">${ico("sheet")}تصدير إكسيل</button>
+        <button class="btn act-report sm" data-act="adm-pending-pdf">${ico("doc")}متبقي PDF</button>
+        <button class="btn act-report sm" data-act="adm-pending-xls">${ico("sheet")}متبقي إكسيل</button>
+        <button class="btn act-report sm" data-act="adm-full-pdf">${ico("report")}تقرير كامل</button>
+        <button class="btn act-report sm" data-act="adm-full-xls">${ico("sheet")}كل الطلبات إكسيل</button>
         <button class="btn ${a.viewStock?'brand':'act-edit'} sm" data-act="adm-toggle-stock">${ico("box")}${a.viewStock?'رجوع للطلبات':'أرصدة المخزن'}</button>
         <button class="btn ${viewingArchive?'brand':'act-edit'} sm" data-act="adm-toggle-archive">${ico("folder")}${viewingArchive?'رجوع للطلبات':'الأرشيف'}</button>
-        <button class="btn act-money sm" data-act="adm-prices-open"><i>💲</i>الأسعار</button>
+        <button class="btn act-money sm" data-act="adm-prices-open">${ico("money")}الأسعار</button>
         ${viewingArchive?`<button class="btn act-del sm" data-act="adm-clear-delivered">${ico("trash")}حذف المؤرشف</button>`:''}
         <button class="btn act-tool sm" data-act="adm-logout">${ico("lock")}خروج</button>
       </div>`;
@@ -3559,7 +3717,7 @@ function viewAdmin(){
       <div class="step"><span class="n">${ico("folder","lg")}</span><h2>الأرشيف</h2></div>
       ${headerBtns}
     </section>
-    <div class="empty"><span class="em">⏳</span><p>جارٍ تحميل الأرشيف…</p></div>${verBar()}`;
+    <div class="empty"><span class="em">${ico("clock","xl")}</span><p>جارٍ تحميل الأرشيف…</p></div>${verBar()}`;
   }
 
   // ---------- شاشة أرصدة المخزن ----------
@@ -3633,7 +3791,7 @@ function viewAdmin(){
       <div class="step"><span class="n">${viewingArchive?ico("folder","lg"):ico("factory","lg")}</span><h2>${viewingArchive?'الأرشيف':'متابعة المصنع'}</h2></div>
       ${headerBtns}
     </section>
-    <div class="empty"><span class="em">📋</span><p>${viewingArchive?'مفيش طلبات مؤرشفة.':'مفيش طلبات نشطة لسه.'}</p></div>${verBar()}`;
+    <div class="empty"><span class="em">${ico("clip","xl")}</span><p>${viewingArchive?'مفيش طلبات مؤرشفة.':'مفيش طلبات نشطة لسه.'}</p></div>${verBar()}`;
   }
 
   const orderCardHTML_ = o=>{
@@ -3670,7 +3828,7 @@ function viewAdmin(){
                 style="border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px">
             </label>
           </div>
-          <button class="btn sm" data-act="adm-meta-save" data-id="${esc(o.id)}" ${metaBusy?'disabled':''} style="margin-top:7px;font-size:11px;padding:6px 12px">${metaBusy?'…':'💾 حفظ بيانات الطلب'}</button>
+          <button class="btn sm" data-act="adm-meta-save" data-id="${esc(o.id)}" ${metaBusy?'disabled':''} style="margin-top:7px;font-size:11px;padding:6px 12px">${metaBusy?'…':ico('save')+' حفظ بيانات الطلب'}</button>
         </div>`;
       }
       if(its && its.length){
@@ -3685,14 +3843,14 @@ function viewAdmin(){
 
     const actionBtns = `<button class="btn ${itemsOpen?'brand':'act-edit'} sm" data-act="adm-toggle-items" data-id="${esc(o.id)}">${ico("box")}${itemsOpen?'إخفاء':'الأصناف'}</button>
          <button class="btn ${qtyMode?'brand':'act-edit'} sm" data-act="adm-toggle-qtymode" data-id="${esc(o.id)}">${ico("edit")}تعديل</button>
-         <button class="btn act-edit sm" data-act="adm-add-items" data-id="${esc(o.id)}"><i>➕</i>إضافة</button>
+         <button class="btn act-edit sm" data-act="adm-add-items" data-id="${esc(o.id)}">${ico("plus")}إضافة</button>
          <button class="btn act-send sm" data-act="adm-share" data-id="${esc(o.id)}">${ico("send")}إرسال</button>
-         <button class="btn act-money sm" data-act="adm-quote" data-id="${esc(o.id)}"><i>💰</i>سعر</button>
+         <button class="btn act-money sm" data-act="adm-quote" data-id="${esc(o.id)}">${ico("money")}سعر</button>
          ${viewingArchive?`<button class="btn act-tool sm" data-act="adm-unarchive" data-id="${esc(o.id)}" ${archBusy?'disabled':''}>${ico("refresh")}${archBusy?'…':'رجّع'}</button>`:''}
          <button class="btn act-del sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}>${ico("trash")}${delBusy?'…':'حذف'}</button>`;
 
     return `<div class="ord">
-      <div class="oh"><span class="oid">#${esc(o.id)}</span>${o.replacesId?`<span style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px">🔁 تعديل على #${esc(o.replacesId)}</span>`:''}${statusPill(o.status)}</div>
+      <div class="oh"><span class="oid">#${esc(o.id)}</span>${o.replacesId?`<span style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على #${esc(o.replacesId)}</span>`:''}${statusPill(o.status)}</div>
       <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}
         ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}
         ${o.ordNote?`<br><span style="color:#8A6512">ملاحظات: ${esc(o.ordNote)}</span>`:''}<br>
@@ -3862,6 +4020,8 @@ document.addEventListener('click',e=>{
     case 'adm-prices-cancel': state.admin.pricesOpen=false; state.admin.priceEdit=null; render(); break;
     case 'adm-pending-pdf':  exportPendingDoorsPdf_(); break;
     case 'adm-pending-xls':  exportPendingDoorsExcel_(); break;
+    case 'adm-full-pdf':     exportAdminFullReport(); break;
+    case 'adm-full-xls':     exportAdminExcel(); break;
     case 'adm-clear-delivered': clearDeliveredOrders(); break;
     case 'adm-del':     deleteOrder(el.dataset.id); break;
     case 'adm-unarchive': unarchiveOrder(el.dataset.id); break;
@@ -4929,16 +5089,10 @@ let deferredPrompt=null;
 function isInstalled(){
   return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 }
-const isStandaloneMode = isInstalled;   // اسم بديل لنفس الفحص
 
 function isIOSDevice(){
   return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-}
-function isIOSSafari(){
-  const ua = navigator.userAgent;
-  const isSafari = /safari/i.test(ua) && !/crios|fxios|edgios|opios|instagram|fban|fbav|line|micromessenger/i.test(ua);
-  return isIOSDevice() && isSafari;
 }
 
 function syncInstallBtn(){
