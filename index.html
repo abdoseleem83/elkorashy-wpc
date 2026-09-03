@@ -3327,7 +3327,8 @@ async function buildAdminOrdersExcel_(orders){
     grandQty += qty; grandProducedSum += produced;
     const pending = qty-produced;
     const st = STATUS[o.status] || {ar:o.status||'—'};
-    const r = wsSum.addRow(['', o.id, dateStr2_(o.date), o.dist||'', o.customer||'—', String(o.phone||''), o.region||'', o.warehouse||'', st.ar, qty, produced, pending]);
+    const r = wsSum.addRow(['', o.id, xlDate_(o.date), o.dist||'', o.customer||'—', String(o.phone||''), o.region||'', o.warehouse||'', st.ar, qty, produced, pending]);
+    xlDateCell_(r, 3);
     r.eachCell((c,i)=>{ if(i===1) return; c.border=border; c.font={name:FONT,size:10.5, color: i===11?{argb:'FF1E8E52'}:(i===12&&pending>0?{argb:'FFB3261E'}:undefined)}; c.alignment={horizontal:'center',vertical:'middle'};
       if(idx%2===1) c.fill={type:'pattern',pattern:'solid',fgColor:{argb:ZEBRA}}; });
   });
@@ -3441,6 +3442,21 @@ async function buildAdminOrdersExcel_(orders){
   const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   downloadBlob(blob, 'تقرير_الأبواب_'+new Date().toISOString().slice(0,10)+'.xlsx');
   busy(false);
+}
+
+// التاريخ في ملفات الإكسيل لازم يتكتب كقيمة تاريخ حقيقية مش نص.
+// كان بيتكتب نص بأرقام عربية (زي "٠٣‏/٠٩‏/٢٠٢٦") — شكله مظبوط بس إكسيل مايعرفش
+// يرتّبه ولا يفلتر بمدى تواريخ ولا يستخدمه في PivotTable، فعمود التاريخ كان
+// عمليًا مالوش فايدة للمصنع. بنرجّع Date وبنحط numFmt على الخانة بعد الإضافة.
+function xlDate_(v){
+  if(v===''||v==null) return '';
+  const d = (v instanceof Date) ? v : new Date(v);
+  return isNaN(d.getTime()) ? '' : d;
+}
+// بتحط تنسيق تاريخ ومحاذاة على خانة واحدة في صف إكسيل (بترجّع من غير ما تعمل حاجة لو مش تاريخ)
+function xlDateCell_(row, col){
+  const c = row.getCell(col);
+  if(c.value instanceof Date){ c.numFmt = 'yyyy-mm-dd'; c.alignment = { horizontal:'center' }; }
 }
 
 function dateStr2_(d){
@@ -5009,14 +5025,14 @@ async function exportExcel(orders,fname){
     const sum=[], det=[];
 
     orders.forEach(o=>{
-      const sumRow=[o.id, dateStr(o.ts), o.name||'', String(o.phone||''), o.region||'', o.warehouse||WAREHOUSE, o.status||'', (o.items||[]).length];
+      const sumRow=[o.id, xlDate_(o.ts), o.name||'', String(o.phone||''), o.region||'', o.warehouse||WAREHOUSE, o.status||'', (o.items||[]).length];
       if(priced) sumRow.push(Number(o.total)||0);
       sum.push(sumRow);
       (o.items||[]).forEach(it=>{
         const isDoor=it.kind==='door', isRod=it.kind==='frame'||it.kind==='bror';
         const pp=itemProdPending_(it);
         const row=[
-          o.id, dateStr(o.ts), o.name||'', String(o.phone||''), o.region||'', o.status||'',
+          o.id, xlDate_(o.ts), o.name||'', String(o.phone||''), o.region||'', o.status||'',
           isDoor?'Door':(it.kind==='frame'?'Frame':it.kind==='bror'?'Bror':it.kind==='panel'?'Panel':'Accessory'),
           it.titleEn||it.title||'', it.code||'',
           isDoor?(it.sizeEn||it.sizeTxt||''):(isRod?(it.spec||''):(it.kind==='panel'?(it.spec||''):'')),
@@ -5045,9 +5061,10 @@ async function exportExcel(orders,fname){
         c.alignment = { horizontal:'center', vertical:'middle' };
       });
       hr.height = 22;
-      rows.forEach(r=>ws.addRow(r));
+      rows.forEach(r=>xlDateCell_(ws.addRow(r), 2));   // عمود Date هو التاني في الورقتين
       ws.autoFilter = { from:{row:1,column:1}, to:{row:1,column:head.length} };
       head.forEach((h,i)=>{
+        if(String(h)==='Date'){ ws.getColumn(i+1).width = 12; return; }   // قيمة تاريخ، مش نص يتقاس
         let w = String(h).length + 2;
         rows.forEach(r=>{ const v=r[i]==null?'':String(r[i]); if(v.length+2>w) w=v.length+2; });
         ws.getColumn(i+1).width = Math.min(38, Math.max(9, w));
