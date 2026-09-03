@@ -78,6 +78,18 @@ var COL_ITEM_DOORHEIGHT = 20; // ارتفاع الضلفة (سم) — اختيا
 // بتمنع Formula Injection: أي نص حر من العميل (اسم/ملاحظة) بيتكتب في الشيت،
 // لو بيبدأ بـ = أو + أو - أو @ جوجل شيتس ممكن تفسّره كصيغة (formula) بدل نص عادي.
 // بنحط علامة اقتباس (') قبله عشان يتخزن كنص حرفي زي ما هو، بالظبط زي ما بيحصل بالفعل لرقم الموبايل تحت.
+// تنسيق تاريخ آمن. قبل كده كان الكود بينادي Utilities.formatDate(new Date(cell)) على طول،
+// فأي صف فيه خانة تاريخ فاضية أو مكتوبة غلط بالإيد كان بيرمي استثناء يوقّع الرد كله —
+// يعني شاشة المصنع وكل التقارير بتفضل فاضية بسبب صف واحد بايظ.
+function fmtDate_(v) {
+  try {
+    if (v === '' || v === null || v === undefined) return '';
+    var d = (v instanceof Date) ? v : new Date(v);
+    if (isNaN(d.getTime())) return '';
+    return Utilities.formatDate(d, TZ, 'yyyy-MM-dd');
+  } catch (err) { return ''; }
+}
+
 function sanitizeCell_(s) {
   s = String(s == null ? '' : s);
   if (/^[=+\-@]/.test(s)) return "'" + s;
@@ -256,7 +268,7 @@ function doGet(e) {
 
         out.push({
           id:     rows[i][0],
-          date:   Utilities.formatDate(new Date(rows[i][1]), TZ, 'yyyy-MM-dd'),
+          date:   fmtDate_(rows[i][1]),
           dist:   rows[i][3],
           phone:  isAdmin ? String(rows[i][4] || '').replace(/^'/, '') : '',
           region: rows[i][5],
@@ -369,7 +381,7 @@ function doGet(e) {
         }
         return reply({ ok: true, id: e.parameter.id,
           customer: shOM.getRange(rOM, COL_CUSTOMER).getValue(),
-          date: Utilities.formatDate(new Date(shOM.getRange(rOM, 2).getValue()), TZ, 'yyyy-MM-dd') }, cb);
+          date: fmtDate_(shOM.getRange(rOM, 2).getValue()) }, cb);
       } finally {
         try { lockOM.releaseLock(); } catch (eOM) {}
       }
@@ -608,7 +620,7 @@ function doGet(e) {
         var idLW = String(rowsLW[jLW][0]);
         outLW.push({
           id:        idLW,
-          date:      Utilities.formatDate(new Date(rowsLW[jLW][1]), TZ, 'yyyy-MM-dd'),
+          date:      fmtDate_(rowsLW[jLW][1]),
           dist:      rowsLW[jLW][3],
           phone:     String(rowsLW[jLW][4] || '').replace(/^'/, ''),
           region:    rowsLW[jLW][5],
