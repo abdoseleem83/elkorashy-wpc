@@ -2115,7 +2115,7 @@ async function loadTrack(){
         lo.displayNo=r.displayNo; lo.editCount=r.editCount||0; changedLocal=true;
       }
     });
-    if(changedLocal) save(LS_ORDERS,state.orders.slice(0,80));
+    if(changedLocal) save(LS_ORDERS,state.orders);
   }catch(err){
     state.track.err = err.message || String(err);
   }
@@ -4703,14 +4703,19 @@ async function shareOrderImage(o){
    ============================================================ */
 async function sendOrderToServer_(o){
   const payload = JSON.stringify(o);
-  if(payload.length < 6000){
+  // ⚠️ الشرط القديم كان `payload.length < 6000` — بيقيس النص الخام. لكن الحروف العربية
+  // بتتحوّل لـ %XX%XX في الرابط، يعني بتتضخّم 3 أضعاف تقريبًا. فطلب طوله 5999 حرف
+  // كان بيوصل لرابط ~18000 حرف — أطول من اللي المتصفح وApps Script بيقبلوه، فبيفشل.
+  // بنقيس الرابط النهائي نفسه دلوقتي، وبنسيب هامش أمان تحت الحد المتعارف عليه (8000).
+  const jsonpUrl = APPS_SCRIPT_URL + '?action=newOrder&payload=' + encodeURIComponent(payload);
+  if(jsonpUrl.length < 7500){
     try{
-      const d = await jsonp(APPS_SCRIPT_URL + '?action=newOrder&payload=' + encodeURIComponent(payload), 20000);
+      const d = await jsonp(jsonpUrl, 20000);
       if(d && d.ok && d.displayNo){
         // بنسجّل رقم الطلب "العادي" اللي السيرفر رجّعه على النسخة المحلية عشان يبان صح في أي طباعة/مشاركة لاحقة
         o.displayNo = d.displayNo; o.editCount = d.editCount||0;
         const idx = state.orders.findIndex(x=>String(x.id)===String(o.id));
-        if(idx>-1){ state.orders[idx].displayNo=d.displayNo; state.orders[idx].editCount=d.editCount||0; save(LS_ORDERS,state.orders.slice(0,80)); }
+        if(idx>-1){ state.orders[idx].displayNo=d.displayNo; state.orders[idx].editCount=d.editCount||0; save(LS_ORDERS,state.orders); }
       }
       return !!(d && d.ok);
     }catch(err){ return false; }
@@ -4738,19 +4743,29 @@ async function syncOrder_(o){
 }
 
 // بيحاول يبعت أي طلبات فشل إرسالها قبل كده — بيتنادى عند فتح التطبيق وعند رجوع النت
+// ⚠️ الدالة دي بتتنده عند فتح التطبيق وكمان مع كل حدث "النت رجع". لو الاتنين حصلوا
+// مع بعض (أو النت قطع ورجع بسرعة) كان ممكن نسختين يشتغلوا في نفس الوقت، الاتنين
+// يقروا نفس القايمة ويبعتوا نفس الطلبات — يعني طلبات مكررة عند المصنع. القفل ده بيمنع ده.
+let _retryRunning = false;
 async function retryPendingOrders_(){
+  if(_retryRunning) return;
   if(!APPS_SCRIPT_URL || !navigator.onLine) return;
   const pending = loadPendingSync_();
   if(!pending.length) return;
-  const stillPending = [];
-  for(const id of pending){
-    const o = state.orders.find(x=>String(x.id)===String(id));
-    if(!o) continue;   // اتشال من عندنا لأي سبب — متبقاش نحاول تاني
-    const ok = await sendOrderToServer_(o);
-    if(ok === false) stillPending.push(id);
+  _retryRunning = true;
+  try{
+    const stillPending = [];
+    for(const id of pending){
+      const o = state.orders.find(x=>String(x.id)===String(id));
+      if(!o) continue;   // اتشال من عندنا لأي سبب — متبقاش نحاول تاني
+      const ok = await sendOrderToServer_(o);
+      if(ok === false) stillPending.push(id);
+    }
+    savePendingSync_(stillPending);
+    if(pending.length && !stillPending.length) toast('✅ اتبعتت كل الطلبات اللي كانت معلّقة للمصنع');
+  } finally {
+    _retryRunning = false;
   }
-  savePendingSync_(stillPending);
-  if(pending.length && !stillPending.length) toast('✅ اتبعتت كل الطلبات اللي كانت معلّقة للمصنع');
 }
 
 function submitOrder(){
