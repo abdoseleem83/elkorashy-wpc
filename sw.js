@@ -1,7 +1,11 @@
 // ⚠️ مهم: غيّر رقم النسخة دي في كل مرة ترفع تحديث جديد.
 // ده اللي بيخلي المتصفح يرمي الكاش القديم ويجيب الملفات الجديدة.
-const CACHE_VERSION = 'v107';
+const CACHE_VERSION = 'v108';
 const CACHE_NAME = 'elkorashy-wpc-' + CACHE_VERSION;
+// كاش منفصل للمكتبات الخارجية — مش بيتمسح مع كل تحديث للتطبيق، لأن روابطها فيها
+// رقم إصدار ثابت. لو كانت جوه الكاش العادي كانت هتتحمّل من النت من أول وجديد
+// مع كل نسخة جديدة نرفعها، وده اللي إحنا عايزين نتفاداه.
+const LIB_CACHE = 'elkorashy-libs-v1';
 
 const PRECACHE = [
   './',
@@ -46,7 +50,7 @@ self.addEventListener('activate', (event) => {
     // امسح كل الكاشات القديمة بتاعة النسخ السابقة
     const keys = await caches.keys();
     await Promise.all(
-      keys.filter(k => k.startsWith('elkorashy-wpc-') && k !== CACHE_NAME)
+      keys.filter(k => k.startsWith('elkorashy-') && k !== CACHE_NAME && k !== LIB_CACHE)
           .map(k => caches.delete(k))
     );
     // خد السيطرة على كل الصفحات المفتوحة فورًا من غير ما تستنى إعادة فتح
@@ -116,11 +120,34 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // باقي الملفات (خطوط، مكتبات، أيقونات...): stale-while-revalidate
+  // مكتبات الـ CDN (html2canvas / jsPDF / ExcelJS): الرابط فيه رقم الإصدار فمحتواه ثابت
+  // للأبد — فالأفضل cache-first: أول تحميل بس من النت وبعدها فورية أوفلاين.
+  // ⚠️ كان فيه باج هنا: الرد بتاع الـ CDN بيجي "opaque" وحالته 0 مش 200، فالشرط القديم
+  // (status === 200) كان بيرفض يخزّنه — يعني المكتبات ماكانتش بتتكاش أصلًا وكانت
+  // بتتحمّل من النت كل مرة. الشرط الجديد بيقبل الردود الـ opaque كمان.
+  const cacheable = res => res && (res.ok || res.type === 'opaque');
+
+  if (url.hostname === 'cdnjs.cloudflare.com') {
+    event.respondWith((async () => {
+      const c = await caches.open(LIB_CACHE);
+      const cached = await c.match(req);
+      if (cached) return cached;
+      try {
+        const res = await fetch(req);
+        if (cacheable(res)) c.put(req, res.clone()).catch(() => {});
+        return res;
+      } catch (e) {
+        return new Response('', { status: 504 });
+      }
+    })());
+    return;
+  }
+
+  // باقي الملفات (صور، أيقونات...): stale-while-revalidate
   event.respondWith((async () => {
     const cached = await caches.match(req);
     const network = fetch(req).then(res => {
-      if (res && res.status === 200) {
+      if (cacheable(res)) {
         caches.open(CACHE_NAME).then(c => c.put(req, res.clone())).catch(() => {});
       }
       return res;

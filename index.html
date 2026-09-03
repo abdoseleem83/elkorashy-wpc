@@ -12,10 +12,13 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ELKORASHI">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<!-- المكتبات التقيلة (html2canvas / jsPDF / ExcelJS) مابقتش بتتحمّل مع فتح التطبيق.
+     كانت ~2.4 ميجا جافاسكريبت بتتقفل قدام أول رسم للشاشة وبتأخّر الفتح تأخير واضح على الموبايل.
+     دلوقتي بتتحمّل أول مرة بس وقت ما المستخدم يطلب PDF/صورة/إكسيل (شوف ensureLib_ تحت)،
+     وبعدها بتفضل في كاش الـ Service Worker فالمرة الجاية فورية.
+     مكتبة xlsx اتشالت خالص — كانت مكرّرة مع ExcelJS اللي بيعمل نفس الشغل وأحسن. -->
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
 <style>
 :root{
   --navy:#002050;
@@ -521,12 +524,75 @@ async function logoBase64_(){
 // بنحمّل صور الأبواب واللوجو بدري في الخلفية عشان تبقى جاهزة في كاش المتصفح
 // وقت ما المستخدم يفتح لوحة اختيار الباب أو يعمل تصدير PDF/صورة (بدل ما تتأخر في اللحظة دي).
 function preloadDoorImages_(){
-  [ASSETS.logo, ASSETS.mark, ...Object.values(ASSETS.doors)].forEach(src=>{
-    const im = new Image(); im.src = src;
-  });
+  // كان بيبدأ 13 تحميل صورة مع أول لحظة فتح فيزاحم رسم الشاشة نفسها.
+  // دلوقتي بيستنى المتصفح يفضى (requestIdleCallback) فالفتحة بقت أسرع محسوسًا.
+  const go = () => {
+    [ASSETS.logo, ASSETS.mark, ...Object.values(ASSETS.doors)].forEach(src=>{
+      const im = new Image(); im.decoding = 'async'; im.src = src;
+    });
+  };
+  (window.requestIdleCallback || (fn => setTimeout(fn, 1200)))(go, { timeout: 3000 });
 }
 
-const APP_BUILD   = 'v107';
+/* ============================================================
+   تحميل المكتبات التقيلة عند الطلب (Lazy loading)
+   ------------------------------------------------------------
+   قبل كده كانت 4 مكتبات (~2.4 ميجا) بتتحمّل في <head> مع كل فتحة للتطبيق،
+   حتى لو المستخدم مش هيصدّر أي حاجة. ده كان بيأخّر ظهور الشاشة الأولى ثواني
+   على الموبايل. دلوقتي كل مكتبة بتتحمّل أول مرة تتطلب فيها بس، والوعد بتاعها
+   بيتخزّن فمافيش تحميل مكرر، والـ Service Worker بيكاشها فالمرات الجاية فورية.
+   ============================================================ */
+const LIB_URLS = {
+  html2canvas:'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+  jspdf      :'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  exceljs    :'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'
+};
+const LIB_READY = {
+  html2canvas:()=>typeof html2canvas!=='undefined',
+  jspdf      :()=>!!window.jspdf,
+  exceljs    :()=>typeof ExcelJS!=='undefined'
+};
+const _libPromises = {};
+function ensureLib_(name){
+  if(LIB_READY[name] && LIB_READY[name]()) return Promise.resolve(true);
+  if(_libPromises[name]) return _libPromises[name];
+  _libPromises[name] = new Promise((resolve, reject)=>{
+    const sc = document.createElement('script');
+    sc.src = LIB_URLS[name];
+    sc.async = true;
+    sc.onload  = () => resolve(true);
+    sc.onerror = () => { delete _libPromises[name]; sc.remove(); reject(new Error(name)); };
+    document.head.appendChild(sc);
+  });
+  return _libPromises[name];
+}
+// بتحمّل مجموعة مكتبات مع بعض وبتوري رسالة واضحة لو النت مقطوع.
+// بترجّع true لو كله تمام، و false لو فشل — فكل مكان بيستخدمها بيعمل return عادي.
+async function needLibs_(...names){
+  const missing = names.filter(n => !(LIB_READY[n] && LIB_READY[n]()));
+  if(!missing.length) return true;
+  busy(true,'جارٍ تجهيز الأدوات…');
+  try{
+    await Promise.all(missing.map(ensureLib_));
+    return true;
+  }catch(e){
+    toast('محتاج نت أول مرة عشان يجهّز الملف — جرّب تاني وانت متصل');
+    return false;
+  }finally{
+    busy(false);
+  }
+}
+// أول ما المستخدم يفتح شاشة فيها تصدير، بنبدأ نجيب المكتبات في الخلفية بهدوء
+// عشان أول ضغطة على «PDF» تبقى فورية بدل ما يستنى التحميل ساعتها.
+let _libsWarmed = false;
+function warmExportLibs_(){
+  if(_libsWarmed) return;
+  _libsWarmed = true;
+  const go = () => { ensureLib_('html2canvas').catch(()=>{}); ensureLib_('jspdf').catch(()=>{}); };
+  (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
+}
+
+const APP_BUILD   = 'v108';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -849,7 +915,7 @@ function reservedFor(code, sizeW){
 
 // تصدير PDF لجدول أرصدة المخزن مع عمود "مطلوب لعملاء" (المحجوز من الطلبات المعلّقة)
 async function exportStockPdf_(){
-  if(typeof html2canvas==='undefined' || !window.jspdf){ toast('محتاج نت أول مرة عشان يجهّز الـ PDF'); return; }
+  if(!await needLibs_('html2canvas','jspdf')) return;
   state.admin.stockPdfBusy = true; render();
   busy(true,'جارٍ تجهيز تقرير الأرصدة…');
   try{
@@ -1012,7 +1078,60 @@ function pricesVisible(){ return false; }
 // كل التبويبات متاحة للجميع (مفيش تقييد حسابات دلوقتي)
 function allowedTabs(){ return ['new','cart','orders','admin']; }
 
+/* ------------------------------------------------------------
+   الرسم — نسخة سريعة
+   ------------------------------------------------------------
+   المشاكل اللي كانت موجودة واتصلّحت هنا:
+   ١) كل ضغطة زرار (+/-، اختيار مقاس، شيك بوكس) كانت بتعيد بناء الشاشة كلها فورًا،
+      ولو الكود نده render() أكتر من مرة في نفس اللحظة كانت بتتنفّذ كلها — شغل مكرر ملهوش لازمة.
+      دلوقتي النداءات بتتجمّع وتتنفّذ مرة واحدة في أقرب إطار رسم (requestAnimationFrame).
+   ٢) الكتابة في خانات الحلق/البرور كانت بتنده render() فالخانة بتتمسح من الصفحة،
+      فالفوكس والكيبورد بيقفلوا بعد كل حرف. دلوقتي بنحفظ الخانة اللي فيها الفوكس
+      ومكان المؤشر جواها وبنرجّعهم بعد الرسم.
+   ٣) مكان التمرير (scroll) كان بيتهزّ لما يتغيّر طول الصفحة. بنثبّته دلوقتي.
+   ------------------------------------------------------------ */
+
+// بصمة تعرّف الخانة اللي فيها الفوكس عشان نلاقيها تاني بعد إعادة الرسم
+function focusKey_(el){
+  if(!el || !el.dataset || !el.dataset.act) return null;
+  const d = el.dataset;
+  const q = v => String(v).replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+  return ['act','k','w','i','id','idx','code','group','key','tier']
+    .filter(n => d[n] != null)
+    .map(n => '[data-'+n+'="'+q(d[n])+'"]')
+    .join('');
+}
+
+function captureFocus_(){
+  const el = document.activeElement;
+  if(!el || !/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return null;
+  const sel = focusKey_(el);
+  if(!sel) return null;
+  let start=null, end=null;
+  try{ start=el.selectionStart; end=el.selectionEnd; }catch(e){}
+  return { sel, start, end };
+}
+
+function restoreFocus_(snap){
+  if(!snap) return;
+  const el = document.querySelector(snap.sel);
+  if(!el || el===document.activeElement) return;
+  try{
+    el.focus({preventScroll:true});
+    if(snap.start!=null && el.setSelectionRange) el.setSelectionRange(snap.start, snap.end);
+  }catch(e){}
+}
+
+let _renderQueued = false;
+// النداء العادي: بيتجمّع مع أي نداءات تانية في نفس اللحظة ويتنفّذ مرة واحدة
 function render(){
+  if(_renderQueued) return;
+  _renderQueued = true;
+  requestAnimationFrame(()=>{ _renderQueued = false; renderNow(); });
+}
+
+function renderNow(){
+  _renderQueued = false;
   updateInstallGate();
 
   const nav=document.getElementById('tabs');
@@ -1023,15 +1142,22 @@ function render(){
   if(!allowed.includes(state.tab)) state.tab=allowed[0];
   save(LS_TAB, state.tab);
   document.querySelectorAll('#tabs button[data-tab]').forEach(b=>{
-    const on=allowed.includes(b.dataset.tab);
-    b.hidden=!on;
+    b.hidden = !allowed.includes(b.dataset.tab);
   });
 
   const v=document.getElementById('view');
+  const snap = captureFocus_();
+  const sy = window.scrollY;
+
   v.innerHTML = state.tab==='new' ? viewNew()
               : state.tab==='cart' ? viewCart()
               : state.tab==='admin' ? viewAdmin()
               : viewOrders();
+
+  restoreFocus_(snap);
+  // لو الصفحة قصرت فجأة المتصفح بيقفز لفوق — بنرجّع المكان زي ما كان
+  if(snap && window.scrollY !== sy) window.scrollTo(0, sy);
+
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===state.tab));
   document.getElementById('cartBadge').textContent=cartCount();
   updateAdmBadge();
@@ -1043,6 +1169,9 @@ function render(){
     document.getElementById('barCount').textContent=cartCount()+' صنف في السلة';
   }
   document.body.style.paddingBottom = show ? '104px' : '30px';
+
+  // الشاشات اللي فيها تصدير: بنسخّن المكتبات في الخلفية عشان أول ضغطة تبقى فورية
+  if(state.tab==='admin' || state.tab==='orders' || state.tab==='cart') warmExportLibs_();
 }
 
 function verBar(){ return ''; }   // الإصدار/التحديث/التثبيت بقوا في الشريط فوق
@@ -1609,6 +1738,11 @@ async function renderPaper_(html, opts){
 
   // scale المطلوب مقابل السقف المسموح
   let scale = (opts && opts.scale) || 2;
+  // التقارير الطويلة (أكتر من ~4 صفحات A4) مش محتاجة دقة x2 — الفرق مش بيبان في PDF
+  // بس الوقت والذاكرة بيتضاعفوا. بنقلّل الدقة تدريجيًا مع الطول فالتقرير بيطلع أسرع بكتير.
+  const a4h = w * 1.414;
+  if(h > a4h * 4)      scale = Math.min(scale, 1.5);
+  else if(h > a4h * 2) scale = Math.min(scale, 1.75);
   const maxScale = Math.sqrt(MAX_CANVAS_PIXELS / Math.max(w*h, 1));
   if(scale > maxScale) scale = Math.max(1, maxScale);
 
@@ -1680,7 +1814,11 @@ async function canvasToPdf_(canvas, filename, opts){
   }
 
   const slice = document.createElement('canvas');
-  const ctx = slice.getContext('2d');
+  // willReadFrequently:false + إعادة استخدام نفس اللوحة بدل ما نعيد حجزها كل صفحة.
+  // تغيير width/height بيمسح اللوحة ويعيد حجز الذاكرة، وده كان بيتعمل لكل صفحة
+  // حتى لما الطول مايكونش اتغيّر — أبطأ حاجة في تجهيز تقرير طويل.
+  const ctx = slice.getContext('2d', { alpha:false });
+  slice.width = canvas.width;
 
   let totalPages = 0;
   segments.forEach(([s,e])=>{ totalPages += Math.max(1, Math.ceil((e-s)/pageHpx)); });
@@ -1691,8 +1829,7 @@ async function canvasToPdf_(canvas, filename, opts){
     for(let j=0;j<subPages;j++){
       const sy = segStart + j*pageHpx;
       const sh = Math.min(pageHpx, segEnd - sy);
-      slice.width = canvas.width;
-      slice.height = sh;
+      if(slice.height !== sh) slice.height = sh;
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0,0,slice.width,slice.height);
       ctx.drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, canvas.width, sh);
@@ -1706,7 +1843,7 @@ async function canvasToPdf_(canvas, filename, opts){
         pdf.text(String(pageIdx+1) + ' / ' + totalPages, PW/2, PH - 2.5, {align:'center'});
       }
       pageIdx++;
-      await yield_(0);                                // منع تجميد الواجهة
+      if(pageIdx % 2 === 0) await yield_(0);          // منع تجميد الواجهة من غير ما نبطّأ التقرير
     }
   }
   if(opts.share){
@@ -2237,7 +2374,8 @@ async function shareAdminOrderImage(o){
   const doc = buildAdminDocOrder_(o, its);
   const caption = 'طلب أوردر #'+o.id+' — '+(o.dist||'');
 
-  if(typeof html2canvas==='undefined'){
+  try{ await ensureLib_('html2canvas'); }
+  catch(e){
     openWhatsAppFree(caption);
     toast('مفيش نت كفاية لتجهيز الصورة — هيتفتح واتساب بالنص بس');
     return;
@@ -2513,7 +2651,7 @@ function reportHTML(orders){
 }
 
 async function buildFullReportPdf_(orders){
-  if(typeof html2canvas==='undefined' || !window.jspdf){ toast('محتاج نت أول مرة عشان يجهّز الـ PDF'); return; }
+  if(!await needLibs_('html2canvas','jspdf')) return;
   const {canvas, breaksPx} = await renderPaper_(reportHTML(orders), { breakSelector: '.rpt-order-block' });
   await canvasToPdf_(canvas, 'تقرير_الأبواب_'+new Date().toISOString().slice(0,10)+'.pdf', { hardBreaksPx: breaksPx });
 }
@@ -2728,7 +2866,7 @@ function pendingDoorsHTML(data){
 async function buildPendingDoorsPdf_(orders){
   const data = buildPendingDoorsData_(orders);
   if(!data.length){ toast('مفيش طلبات معلّقة'); return; }
-  if(typeof html2canvas==='undefined' || !window.jspdf){ toast('محتاج نت أول مرة عشان يجهّز الـ PDF'); return; }
+  if(!await needLibs_('html2canvas','jspdf')) return;
   const {canvas, breaksPx} = await renderPaper_(pendingDoorsHTML(data), { breakSelector: '.rpt-cust-block' });
   await canvasToPdf_(canvas, 'تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.pdf', {share:true, hardBreaksPx: breaksPx});
 }
@@ -2736,7 +2874,7 @@ async function buildPendingDoorsPdf_(orders){
 async function buildPendingDoorsExcel_(orders){
   const data = buildPendingDoorsData_(orders);
   if(!data.length){ toast('مفيش طلبات معلّقة'); return; }
-  if(typeof ExcelJS==='undefined'){ toast('محتاج نت أول مرة عشان يجهّز الإكسيل'); return; }
+  if(!await needLibs_('exceljs')) return;
 
   const NAVY='FF002050', WHITE='FFFFFFFF', ZEBRA='FFF6F8FA', BORDER_CLR='FFDCE4EC';
   const thin = {style:'thin', color:{argb:BORDER_CLR}};
@@ -2961,7 +3099,7 @@ function buildAdminOrdersDetail_(orders){
 
 async function buildAdminOrdersExcel_(orders){
   if(!orders.length){ toast('مفيش طلبات'); return; }
-  if(typeof ExcelJS==='undefined'){ toast('محتاج نت أول مرة عشان يجهّز الإكسيل'); return; }
+  if(!await needLibs_('exceljs')) return;
 
   // أبواب بس — زي الـ PDF بالظبط: بنشيل الإكسسوارات والحلق/البرور المنفصلين،
   // وأي طلب مابقاش فيه ولا باب بيتشال بالكامل من التلات شيتات.
@@ -3203,12 +3341,16 @@ let adminPollTimer = null;
 function startAdminPolling(){
   if(adminPollTimer || !APPS_SCRIPT_URL) return;
   adminPollTimer = setInterval(()=>adminPoll(), 90000);   // فحص خلفي كل ٩٠ ثانية طول ما الشاشة مفتوحة
+  // لما المستخدم يرجّع التطبيق قدامه بنفحص فورًا بدل ما يستنى دورة كاملة (لحد ٩٠ ثانية انتظار)
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) adminPoll(); });
 }
 
 // فحص خلفي: بيقارن آخر حالة معروفة لكل طلب بالحالة الجديدة —
 // طلب جديد خالص → يزوّد عداد "معلق" فوق تبويب 🏭. طلب اتغيّرت حالته → إشعار فوري.
 async function adminPoll(){
   if(!APPS_SCRIPT_URL || !state.admin.pw) return;
+  // التطبيق في الخلفية (الشاشة مقفولة أو المستخدم في تطبيق تاني)؟ مافيش داعي نستهلك نت وبطارية
+  if(document.hidden) return;
   try{
     const d = await jsonp(APPS_SCRIPT_URL + '?action=list&pw=' + encodeURIComponent(state.admin.pw));
     if(!d || !d.ok) return;
@@ -3230,7 +3372,14 @@ async function adminPoll(){
     state.admin.pendingCount = pending;
     updateAdmBadge();
     // لو شاشة متابعة المصنع مفتوحة فعلًا قدام المستخدم، حدّث القايمة المعروضة كمان
-    if(state.admin.open && state.tab==='admin'){ state.admin.rows = rows; render(); }
+    if(state.admin.open && state.tab==='admin'){
+      state.admin.rows = rows;
+      // لو المستخدم واقف بيكتب في خانة (كمية/اسم عميل/تاريخ) مانعيدش الرسم دلوقتي
+      // عشان مانضيّعش اللي بيكتبه — هيتحدّث في أقرب رسم جاي أو لما يخلص.
+      const ae = document.activeElement;
+      const typing = ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName);
+      if(!typing) render();
+    }
   }catch(err){ /* أعطال الشبكة في الفحص الخلفي بنتجاهلها بصمت */ }
 }
 
@@ -4327,10 +4476,7 @@ function downloadBlob(blob,name){
 // العميل يختار هو المستلم بنفسه (واتساب أو أي حد)، زي تطبيق القطاعات بالظبط.
 // لو الجهاز مبيدعمش المشاركة (كمبيوتر مثلًا)، بننزّل الصورة ويبعتها العميل يدويًا.
 async function shareOrderImage(o){
-  if(typeof html2canvas==='undefined'){
-    toast('محتاج نت أول مرة عشان يجهّز الصورة');
-    return;
-  }
+  if(!await needLibs_('html2canvas')) return;
 
   busy(true,'جارٍ تجهيز صورة الطلب…');
   try{
@@ -4439,7 +4585,10 @@ function submitOrder(){
     state.orders = state.orders.filter(x=>String(x.id)!==String(prevId));
   }
   state.orders.unshift(o);
-  save(LS_ORDERS,state.orders.slice(0,80));
+  // كانت الذاكرة بتحتفظ بكل الطلبات والمحفوظ 80 بس — فبعد أي إعادة فتح الأرقام
+  // بتختلف عن اللي كان ظاهر. بنقصّ الاتنين على نفس الحد.
+  state.orders = state.orders.slice(0,80);
+  save(LS_ORDERS,state.orders);
   const wasAdminEdit = !!state.editingMeta;
   state.cart=[]; save(LS_CART,state.cart); state.touched=false;
   state.editingId=null; state.editingMeta=null; state.editingDate=null;
@@ -4674,7 +4823,7 @@ function docHTML(o,mode,priced){
 
 async function makeDoc(o,mode,priced){
   if(!o.items || !o.items.length){toast('مفيش أصناف');return;}
-  if(typeof html2canvas==='undefined' || !window.jspdf){toast('محتاج نت أول مرة عشان يجهّز الـ PDF');return;}
+  if(!await needLibs_('html2canvas','jspdf')) return;
   busy(true,'جارٍ تجهيز المستند…');
   try{
     const {canvas} = await renderPaper_(docHTML(o,mode,priced));
@@ -4686,21 +4835,26 @@ async function makeDoc(o,mode,priced){
 /* ============================================================
    تصدير إكسيل
    ============================================================ */
-function exportExcel(orders,fname){
-  if(typeof XLSX==='undefined'){toast('محتاج نت أول مرة عشان يجهّز الإكسيل');return;}
+// اتحوّل من مكتبة xlsx لـ ExcelJS — كانت المكتبتين محمّلين مع بعض وبيعملوا نفس الشغل
+// (زيادة ~900 كيلوبايت على كل فتحة من غير أي فايدة). دلوقتي مكتبة واحدة بس، وبتتحمّل
+// وقت الطلب فعلاً، والملف الناتج بقى فيه رأس أعمدة مثبّت وعرض أعمدة مظبوط.
+async function exportExcel(orders,fname){
   if(!orders.length){toast('مفيش طلبات');return;}
+  if(!await needLibs_('exceljs')) return;
   const priced=pricesVisible();
   busy(true,'جارٍ تجهيز الإكسيل…');
   try{
-    const sum=[['Order No','Date','Distributor','Phone','Region','Warehouse','Status','Lines'].concat(priced?['Total']:[])];
-    const det=[['Order No','Date','Distributor','Phone','Region','Status','Type','Item','Colour','Size','Door Height (cm)','Frame (cm)','Frame Height (cm)','Bror','Milling','Unit','Qty','Produced','Remaining','Available'].concat(priced?['Unit Price','Line Total']:[])];
+    const sumHead=['Order No','Date','Distributor','Phone','Region','Warehouse','Status','Lines'].concat(priced?['Total']:[]);
+    const detHead=['Order No','Date','Distributor','Phone','Region','Status','Type','Item','Colour','Size','Door Height (cm)','Frame (cm)','Frame Height (cm)','Bror','Milling','Unit','Qty','Produced','Remaining','Available'].concat(priced?['Unit Price','Line Total']:[]);
+    const sum=[], det=[];
 
     orders.forEach(o=>{
-      const sumRow=[o.id, dateStr(o.ts), o.name||'', String(o.phone||''), o.region||'', o.warehouse||WAREHOUSE, o.status||'', o.items.length];
+      const sumRow=[o.id, dateStr(o.ts), o.name||'', String(o.phone||''), o.region||'', o.warehouse||WAREHOUSE, o.status||'', (o.items||[]).length];
       if(priced) sumRow.push(Number(o.total)||0);
       sum.push(sumRow);
-      o.items.forEach(it=>{
+      (o.items||[]).forEach(it=>{
         const isDoor=it.kind==='door', isRod=it.kind==='frame'||it.kind==='bror';
+        const pp=itemProdPending_(it);
         const row=[
           o.id, dateStr(o.ts), o.name||'', String(o.phone||''), o.region||'', o.status||'',
           isDoor?'Door':(it.kind==='frame'?'Frame':it.kind==='bror'?'Bror':it.kind==='panel'?'Panel':'Accessory'),
@@ -4712,9 +4866,7 @@ function exportExcel(orders,fname){
           isDoor?(it.dbror||''):'',
           isDoor?(it.millEn||''):'',
           isDoor?'door':(it.isSet?'set':(isRod?('rod '+(it.rodCm||220)+'cm'):(it.unit||'pc'))),
-          Number(it.qty)||0,
-          itemProdPending_(it).produced,
-          itemProdPending_(it).pending,
+          Number(it.qty)||0, pp.produced, pp.pending,
           it.avail===false?'N':'Y'
         ];
         if(priced) row.push(Number(isDoor?it.unitPrice:it.price)||0, Number(linePrice(it))||0);
@@ -4722,10 +4874,30 @@ function exportExcel(orders,fname){
       });
     });
 
-    const wb=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sum), 'Orders');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(det), 'Order_Items');
-    XLSX.writeFile(wb, fname+'.xlsx');
+    const wb = new ExcelJS.Workbook();
+    wb.creator = COMPANY;
+    const fill = (ws, head, rows) => {
+      ws.views = [{ state:'frozen', ySplit:1, rightToLeft:false }];
+      const hr = ws.addRow(head);
+      hr.eachCell(c=>{
+        c.font = { bold:true, color:{argb:'FFFFFFFF'}, size:11 };
+        c.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF002050'} };
+        c.alignment = { horizontal:'center', vertical:'middle' };
+      });
+      hr.height = 22;
+      rows.forEach(r=>ws.addRow(r));
+      ws.autoFilter = { from:{row:1,column:1}, to:{row:1,column:head.length} };
+      head.forEach((h,i)=>{
+        let w = String(h).length + 2;
+        rows.forEach(r=>{ const v=r[i]==null?'':String(r[i]); if(v.length+2>w) w=v.length+2; });
+        ws.getColumn(i+1).width = Math.min(38, Math.max(9, w));
+      });
+    };
+    fill(wb.addWorksheet('Orders'), sumHead, sum);
+    fill(wb.addWorksheet('Order_Items'), detHead, det);
+
+    const buf = await wb.xlsx.writeBuffer();
+    downloadBlob(new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), fname+'.xlsx');
   }catch(err){ toast('تعذّر التصدير: '+(err&&err.message?err.message:err)); }
   busy(false);
 }
@@ -4882,7 +5054,7 @@ document.addEventListener('focusin', e => {
   if(e.target.matches('input[type="number"]')) e.target.select();
 });
 
-render();
+renderNow();
 loadStock();   // أرصدة المخزن بتتحمّل في الخلفية من غير ما تعطّل فتح التطبيق
 preloadDoorImages_();   // نبدأ تحميل صور الأبواب بدري عشان تبقى جاهزة وقت التصدير
 retryPendingOrders_();   // لو فيه طلبات اتسجلت على الجهاز بس ما وصلتش المصنع، نحاول تاني
@@ -4917,7 +5089,10 @@ if('serviceWorker' in navigator){
    والسيرفر عليه جديدة، والكاش بيخفي الفرق. لو لقى فرق، بينبّه بوضوح. */
 async function checkServerVersion(){
   try{
-    const res = await fetch('index.html?_v=' + Date.now(), { cache:'no-store' });
+    // بنطلب أول 40 كيلوبايت بس (رقم الإصدار في أول الملف) بدل ما ننزّل الملف كامل
+    // كل فتحة — ده كان بيستهلك باقة المستخدم ويبطّأ التشغيل من غير أي داعي.
+    let res = await fetch('index.html?_v=' + Date.now(), { cache:'no-store', headers:{ Range:'bytes=0-40000' } });
+    if(!res || !res.ok) res = await fetch('index.html?_v=' + Date.now(), { cache:'no-store' });
     if(!res || !res.ok) return;
     const txt = await res.text();
     const m = /const APP_BUILD\s*=\s*'([^']+)'/.exec(txt);
