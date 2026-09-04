@@ -808,7 +808,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v123';
+const APP_BUILD   = 'v124';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1155,7 +1155,7 @@ async function exportStockPdf_(){
     await loadStock(true);
     await loadReserved(true);
     const {canvas} = await renderPaper_(stockReportHTML_());
-    await canvasToPdf_(canvas, 'أرصدة_المخزن_'+new Date().toISOString().slice(0,10)+'.pdf', {share:true});
+    await canvasToPdf_(canvas, 'أرصدة_المخزن_'+isoLocal_()+'.pdf', {share:true});
   }catch(err){
     toast('تعذّر تجهيز الـ PDF: ' + (err.message || err));
   }
@@ -1299,6 +1299,14 @@ function busy(on,txt){
   if(txt){ document.getElementById('busyTxt').textContent=txt; _busyTxt=txt; }
   _busyOn = !!on;
   b.classList.toggle('on',!!on);
+}
+// التاريخ المحلي بصيغة yyyy-mm-dd. مش toISOString() لأنها بتدّي التوقيت العالمي،
+// ومصر UTC+2/+3 — فأي شغل بعد نص الليل كان بيتسجّل بتاريخ اليوم اللي فات.
+function isoLocal_(ts){
+  const d = (ts===undefined||ts===null) ? new Date() : new Date(ts);
+  if(isNaN(d.getTime())) return '';
+  const p = n => String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
 }
 function dateStr(ts){return new Date(ts).toLocaleDateString('ar-EG',{day:'2-digit',month:'2-digit',year:'numeric'});}
 // نفس الفكرة بس بأرقام إنجليزية وشكل يوم/شهر/سنة ثابت — مستخدمة في صيغة "طلب أوردر رقم (...) بتاريخ ..." في المستند المطبوع
@@ -2978,7 +2986,7 @@ function reportHTML(orders){
 async function buildFullReportPdf_(orders){
   if(!await needLibs_('html2canvas','jspdf')) return;
   const {canvas, breaksPx} = await renderPaper_(reportHTML(orders), { breakSelector: '.rpt-order-block' });
-  await canvasToPdf_(canvas, 'تقرير_الأبواب_'+new Date().toISOString().slice(0,10)+'.pdf', { hardBreaksPx: breaksPx });
+  await canvasToPdf_(canvas, 'تقرير_الأبواب_'+isoLocal_()+'.pdf', { hardBreaksPx: breaksPx });
 }
 
 // التقرير الكامل: كل الطلبات النشطة بتفاصيلها، كل طلب في صفحة لوحده.
@@ -3191,7 +3199,7 @@ async function buildPendingDoorsPdf_(orders){
   if(!data.length){ toast('مفيش طلبات معلّقة'); return; }
   if(!await needLibs_('html2canvas','jspdf')) return;
   const {canvas, breaksPx} = await renderPaper_(pendingDoorsHTML(data), { breakSelector: '.rpt-cust-block' });
-  await canvasToPdf_(canvas, 'تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.pdf', {share:true, hardBreaksPx: breaksPx});
+  await canvasToPdf_(canvas, 'تقرير_الأبواب_المعلقة_'+isoLocal_()+'.pdf', {share:true, hardBreaksPx: breaksPx});
 }
 
 async function buildPendingDoorsExcel_(orders){
@@ -3317,7 +3325,7 @@ async function buildPendingDoorsExcel_(orders){
 
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-  const fname = 'تقرير_الأبواب_المعلقة_'+new Date().toISOString().slice(0,10)+'.xlsx';
+  const fname = 'تقرير_الأبواب_المعلقة_'+isoLocal_()+'.xlsx';
   await shareOrDownload_(blob, fname, fname);
 }
 
@@ -3708,7 +3716,7 @@ async function buildAdminOrdersExcel_(orders){
 
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-  downloadBlob(blob, 'تقرير_الأبواب_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  downloadBlob(blob, 'تقرير_الأبواب_'+isoLocal_()+'.xlsx');
   busy(false);
 }
 
@@ -4297,7 +4305,7 @@ document.addEventListener('click',e=>{
       state.cart = JSON.parse(JSON.stringify(o.items));
       save(LS_CART,state.cart);
       state.editingId = o.id;
-      state.editingDate = new Date(o.ts).toISOString().slice(0,10);
+      state.editingDate = isoLocal_(o.ts);
       state.editingDisplayNo = o.displayNo || '';
       state.editingEditCount = Number(o.editCount)||0;
       state.tab='cart'; render(); window.scrollTo({top:0,behavior:'smooth'});
@@ -4936,7 +4944,7 @@ async function adminEditOrder(o){
 
   state.editingId = o.id;
   state.editingMeta = { name:o.dist||'', phone:o.phone||'', region:o.region||'', customer:o.customer||'', customerPhone:o.customerPhone||'' };
-  state.editingDate = o.date || new Date().toISOString().slice(0,10);
+  state.editingDate = o.date || isoLocal_();
   state.editingDisplayNo = o.displayNo || '';
   state.editingEditCount = Number(o.editCount)||0;
   state.tab='cart'; render(); window.scrollTo({top:0,behavior:'smooth'});
@@ -4967,7 +4975,7 @@ function draftOrder(){
     // تاريخ التعديل نفسه. الطلب المعدّل بياخد تاريخ الطلب الأصلي عن قصد (عشان
     // يفضل محتفظ بتاريخه)، فتاريخ التعديل مكانش متسجّل في أي مكان. بنسجّله هنا
     // عشان يبان جنب رقم التعديل في المستند: «معدّل 52/1 — بتاريخ ...»
-    editedAt: state.editingId ? new Date().toISOString().slice(0,10) : ''
+    editedAt: state.editingId ? isoLocal_() : ''
   };
 }
 
