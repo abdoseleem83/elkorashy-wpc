@@ -4,7 +4,7 @@ const ctx = await b.newContext({acceptDownloads:true, serviceWorkers:'block'}); 
 const pg = await ctx.newPage();
 const errs=[]; pg.on('pageerror',e=>errs.push(e.message));
 await pg.route('**/cdn/*.js', r=>r.fulfill({status:200, contentType:'text/html', body:'<html>Login required</html>'}));
-await pg.goto('http://localhost:8100/index.html',{waitUntil:'domcontentloaded'});
+await pg.goto(process.env.APP_URL || 'http://localhost:8100/index.html',{waitUntil:'domcontentloaded'});
 await pg.waitForTimeout(1200);
 const s=await pg.$('.gateskip'); if(s){await s.click(); await pg.waitForTimeout(300);}
 const r = await pg.evaluate(async()=>{
