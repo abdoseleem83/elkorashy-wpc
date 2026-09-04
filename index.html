@@ -808,7 +808,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v124';
+const APP_BUILD   = 'v125';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -5108,7 +5108,13 @@ async function retryPendingOrders_(){
       const ok = await sendOrderToServer_(o);
       if(ok === false) stillPending.push(id);
     }
-    savePendingSync_(stillPending);
+    // مش savePendingSync_(stillPending) على طول: لو الموزع بعت طلب جديد وهو
+    // مستني الرد هنا، syncOrder_ بتكون ضافته للقايمة — والكتابة فوقها كانت
+    // بتمسحه، فالطلب ده عمره ما يتبعت تاني. بنقرا القايمة تاني ونشيل بس اللي
+    // اتعامل معاه فعلاً.
+    const handled = new Set(pending.map(String));
+    const merged = loadPendingSync_().filter(id => !handled.has(String(id)));
+    savePendingSync_(merged.concat(stillPending));
     if(pending.length && !stillPending.length) toast('✅ اتبعتت كل الطلبات اللي كانت معلّقة للمصنع');
   } finally {
     _retryRunning = false;
