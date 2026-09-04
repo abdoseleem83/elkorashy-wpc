@@ -769,7 +769,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v135';
+const APP_BUILD   = 'v136';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1149,7 +1149,7 @@ async function exportStockPdf_(){
     await loadStock(true);
     await loadReserved(true);
     const {canvas} = await renderPaper_(stockReportHTML_());
-    await canvasToPdf_(canvas, 'أرصدة_المخزن_'+isoLocal_()+'.pdf', {share:true});
+    await canvasToPdf_(canvas, 'أرصدة_المخزن_'+isoLocal_()+'.pdf');
   }catch(err){
     toast('تعذّر تجهيز الـ PDF: ' + (err.message || err));
   }
@@ -2108,7 +2108,11 @@ async function canvasToPdf_(canvas, filename, opts){
       if(pageIdx % 2 === 0) await yield_(0);          // منع تجميد الواجهة من غير ما نبطّأ التقرير
     }
   }
-  if(opts.share){
+  // ⚠️ المشاركة كانت خيار اختياري (opts.share) — واتنين من أربع نداءات نسيوه،
+  // منهم مستند الطلب وعرض السعر نفسهم. النتيجة إن أهم ورقتين بيبعتهم المصنع
+  // كانوا بينزّلوا في مجلد التنزيلات على الموبايل بدل ما تتفتح شاشة المشاركة.
+  // بقت هي الافتراضي: اللي عايز تنزيل مباشر يطلبه صراحة بـ share:false.
+  if(opts.share !== false){
     const blob = pdf.output('blob');
     await shareOrDownload_(blob, filename, filename);
     return;
@@ -3295,7 +3299,7 @@ async function buildPendingDoorsPdf_(orders){
   if(!data.length){ toast('مفيش طلبات معلّقة'); return; }
   if(!await needLibs_('html2canvas','jspdf')) return;
   const {canvas, breaksPx} = await renderPaper_(pendingDoorsHTML(data), { breakSelector: '.rpt-cust-block' });
-  await canvasToPdf_(canvas, 'تقرير_الأبواب_المعلقة_'+isoLocal_()+'.pdf', {share:true, hardBreaksPx: breaksPx});
+  await canvasToPdf_(canvas, 'تقرير_الأبواب_المعلقة_'+isoLocal_()+'.pdf', { hardBreaksPx: breaksPx });
 }
 
 async function buildPendingDoorsExcel_(orders){
@@ -4664,7 +4668,10 @@ function refreshPanelBtn(){
 // زرار البرور بس — الحلق بقى عدادين فبيترسم كامل مع render()
 function refreshRodBtn(act){
   const b=document.querySelector('[data-act="'+act+'"]'); if(!b) return;
-  const r=Number(state.br.rods)||0, s=BRORS.find(x=>x.size===state.br.size)||BRORS[0];
+  // ⚠️ addRod بتقرّب العدد (Math.round) لكن الزرار كان بيعرض الرقم زي ما اتكتب.
+  // يعني «أضف 2.5 عود» وبتتضاف ٣ — الزرار كان بيوعد بحاجة والإضافة تعمل غيرها.
+  // نفس تقريب البروديوم بالظبط.
+  const r=Math.max(0,Math.round(Number(state.br.rods)||0)), s=BRORS.find(x=>x.size===state.br.size)||BRORS[0];
   b.disabled=!(r>0 && state.br.code);
   b.textContent = !state.br.code ? 'اختر كود الباب أولاً'
     : (r>0 ? `أضف ${r} عود برور ${s.size} — ${state.br.code}` : 'اكتب عدد العيدان');
