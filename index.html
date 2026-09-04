@@ -808,7 +808,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v132';
+const APP_BUILD   = 'v133';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1115,6 +1115,13 @@ function showDoorPreview(code){
   document.body.appendChild(ov);
   ov.addEventListener('click', e=>{ if(e.target===ov) ov.remove(); });
   document.getElementById('closeDoorPreview').onclick = () => ov.remove();
+}
+// ⚠️ الشرط ده كان متكتب تلات مرات بتعريفين مختلفين: زرار «أضف» والمعاينة
+// كانوا بيشوفوا العرض والارتفاع بس، والإضافة الفعلية بتشوف الكمية كمان. فلو
+// الموزّع مسح خانة الكمية عشان يكتب رقم تاني وضغط «أضف»، الزرار شغّال
+// والمعاينة بتوريه سعر — والباب الخاص بيتشال في صمت والباقي بيتضاف عادي.
+function customReady_(p){
+  return !!(p.customOn && Number(p.custom.w) > 0 && Number(p.custom.h) > 0 && Number(p.custom.qty) > 0);
 }
 function priceForWidth(w, hafr){const n=Number(w)||0;let p=SIZES[SIZES.length-1].price;for(const s of SIZES) if(n<=s.w){p=s.price;break;}return p+(hafr?HAFR_EXTRA:0);}
 function rodPrice(perMetre, cm){return Math.round(perMetre*((Number(cm)||220)/100)*100)/100;}
@@ -1622,7 +1629,7 @@ function viewNew(){
 
   // ── لوحة تفاصيل الباب — بتتحط تحت الصف اللي فيه الباب المختار ──
   // مفيش حاجة متحددة افتراضيًا: الموزع لازم يختار كل مقاس وحلقه وبروره بنفسه
-  const customReady = p.customOn && Number(p.custom.w)>0 && Number(p.custom.h)>0;
+  const customReady = customReady_(p);
   const sizesConfigured = selWidths.every(w=>p.sizes[w].frame!=null && p.sizes[w].dbror!=null);
   const customConfigured = !p.customOn || (customReady && p.custom.frame!=null && p.custom.dbror!=null);
   const readyToAdd = !!p.code && (selWidths.length>0 || customReady) && sizesConfigured && customConfigured;
@@ -1838,10 +1845,10 @@ function currentSummary(){
   if(!p.code) return '';
   const d=doorByCode(p.code);
   const widths = Object.keys(p.sizes).map(Number).sort((a,b)=>a-b);
-  const customReady = p.customOn && Number(p.custom.w)>0 && Number(p.custom.h)>0;
+  const customReady = customReady_(p);
 
   if(!widths.length && !p.customOn) return 'اختر مقاس واحد على الأقل.';
-  if(p.customOn && !customReady) return 'اكتب العرض والارتفاع للمقاس الخاص.';
+  if(p.customOn && !customReady) return 'اكتب العرض والارتفاع والكمية للمقاس الخاص.';
   for(const w of widths){
     const e=p.sizes[w];
     if(e.frame==null) return `اختر الحلق (أو «بدون حلق») لمقاس ${w} سم.`;
@@ -4704,7 +4711,7 @@ function refreshRodBtn(act){
 function addDoor(){
   const p=state.pick;
   const widths = Object.keys(p.sizes).map(Number).filter(w=>(Number((p.sizes[w]||{}).qty)||0)>0);
-  const customReady = p.customOn && Number(p.custom.w)>0 && Number(p.custom.h)>0 && Number(p.custom.qty)>0;
+  const customReady = customReady_(p);
   if(!p.code || (!widths.length && !customReady)){
     toast('اختر مقاس واحد على الأقل'); return;
   }
