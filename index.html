@@ -598,6 +598,43 @@ input.bad{box-shadow:0 0 0 3px rgba(179,38,30,.1)}
 
 /* شارة السلة: تختفي وهي صفر بدل ما تفضل «0» أحمر على طول */
 .tabs .badge.zero{display:none}
+/* ---------- معاينة التقرير على الشاشة ----------
+   بتعرض نفس اللي بيطلع في الـ PDF بالظبط، من غير ما تشغّل html2canvas ولا jsPDF —
+   فبتفتح فورًا. التقرير مرسوم بعرض A4 ثابت (794px) فبنصغّره بـ transform:scale
+   عشان يدخل في عرض الموبايل من غير تمرير أفقي. */
+.rpv{position:fixed;inset:0;z-index:320;background:rgba(4,14,32,.96);display:flex;flex-direction:column}
+.rpv-bar{
+  display:flex;align-items:center;gap:8px;flex:0 0 auto;
+  padding:calc(10px + env(safe-area-inset-top)) 12px 10px;
+  background:linear-gradient(160deg,var(--navy),var(--navy-2));color:#EAF2FA;
+  box-shadow:0 2px 14px rgba(0,0,0,.35);
+}
+.rpv-bar b{flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rpv-bar button{
+  flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;min-height:38px;
+  border-radius:var(--r-sm);font-size:12px;font-weight:700;padding:0 12px;
+  transition:transform var(--t-fast) var(--ease),background var(--t-fast);
+}
+.rpv-bar button:active{transform:scale(.95)}
+.rpv-pdf{background:linear-gradient(180deg,var(--brand-lt),var(--brand));color:#fff}
+.rpv-x{background:rgba(255,255,255,.14);border:1px solid rgba(159,209,240,.35);color:#EAF2FA;padding:0 10px}
+.rpv-scroll{
+  flex:1;overflow:auto;-webkit-overflow-scrolling:touch;
+  padding:10px 8px calc(14px + env(safe-area-inset-bottom));
+  display:flex;justify-content:center;
+  direction:ltr;   /* التقرير جواه بيحدد اتجاهه بنفسه — ده عشان حساب التصغير يبقى متوقّع */
+}
+/* الغلاف بياخد المقاس بعد التصغير، والصفحة جواه بعرضها الأصلي ومتصغّرة.
+   من غير الغلاف ده، العنصر المصغّر بيفضل واخد مساحته الأصلية (794px) في التخطيط
+   فيظهر تمرير أفقي وفراغ كبير تحت التقرير. */
+.rpv-fit{flex:0 0 auto;overflow:hidden;border-radius:8px;box-shadow:0 12px 40px rgba(0,0,0,.45)}
+.rpv-page{
+  /* نفس عرض #paper بالظبط (794px = A4) عشان المعاينة تطابق الـ PDF شكلاً وتوزيعًا.
+     من غير العرض ده التقرير كان بيتضغط على عرض الموبايل والأعمدة تتلخبط،
+     فالمعاينة تبقى مضلّلة — المصنع يشوف حاجة والملف يطلع حاجة تانية. */
+  width:794px;transform-origin:top left;background:#fff;
+}
+@media (min-width:860px){ .rpv-scroll{padding:20px} }
 </style>
 </head>
 <body>
@@ -724,8 +761,17 @@ function ensureLib_(name){
     const sc = document.createElement('script');
     sc.src = LIB_URLS[name];
     sc.async = true;
-    sc.onload  = () => resolve(true);
-    sc.onerror = () => { delete _libPromises[name]; sc.remove(); reject(new Error(name)); };
+    const fail = () => { delete _libPromises[name]; sc.remove(); reject(new Error(name)); };
+    sc.onload = () => {
+      // ⚠️ onload لوحده مش كفاية. لو الشبكة اعترضت الطلب ورجّعت صفحة HTML بحالة 200
+      // (بوابات الواي فاي العامة والفنادق بتعمل كده كتير)، الوسم بيعتبرها «تحميل ناجح»
+      // والمكتبة مش موجودة أصلًا. ساعتها الكود كان هيكمّل ويقع على html2canvas is not
+      // defined من غير ما المستخدم يشوف أي رسالة — يدوس PDF ومفيش أي رد فعل.
+      // فبنتأكد إن المكتبة عرّفت نفسها فعلاً قبل ما نقول إنها جاهزة.
+      if(LIB_READY[name] && LIB_READY[name]()) resolve(true);
+      else fail();
+    };
+    sc.onerror = fail;
     document.head.appendChild(sc);
   });
   return _libPromises[name];
@@ -762,7 +808,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v113';
+const APP_BUILD   = 'v117';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2405,14 +2451,16 @@ function arabicItemTitle_(it){
     const base = d ? ('باب '+d.code+' '+d.name) : (it.code||it.title||'');
     return base + (String(it.milling||'').trim() ? ' (حفر)' : '') + (it.itemNote ? ' — '+it.itemNote : '');
   }
+  // المقاس محفوظ إنجليزي في الشيت ('10 cm' / '6x9')، والمستند عربي —
+  // arabicSizeText_ بتحوّله لـ '10 سم' وبتسيب اللي مش على الصيغة دي زي ما هو.
   if(it.type==='Frame'){
-    let t = 'حلق '+(it.size||'')+(it.code?' — '+it.code:'');
+    let t = 'حلق '+arabicSizeText_(it.size||'')+(it.code?' — '+it.code:'');
     if(it.forDoorWidth) t += ' — لباب '+it.forDoorWidth+' سم';
     if(it.itemNote) t += ' — '+it.itemNote;
     return t;
   }
   if(it.type==='Bror'){
-    let t = 'برور '+(it.size||'')+(it.code?' — '+it.code:'');
+    let t = 'برور '+arabicSizeText_(it.size||'')+(it.code?' — '+it.code:'');
     if(it.forDoorWidth) t += ' — لباب '+it.forDoorWidth+' سم';
     if(it.itemNote) t += ' — '+it.itemNote;
     return t;
@@ -2437,15 +2485,26 @@ function buildAdminDocOrder_(o, its, tierKey){
     id:o.id, ts:o.date?new Date(o.date).getTime():Date.now(),
     name:o.dist, phone:o.phone, region:o.region, warehouse:'', total:o.total,
     customer:o.customer||'', note:o.ordNote||'',
+    // ⚠️ الحقول دي مكانتش بتتنقل خالص، فمستند المصنع كان بيطبع رقم الطلب الداخلي
+    // الطويل (#2026-xxxx) بدل الرقم التسلسلي اللي العميل شايفه في تطبيقه.
+    // يعني الورقة اللي في المصنع والورقة اللي مع العميل رقمين مختلفين لنفس الطلب.
+    displayNo: o.displayNo || '', editCount: Number(o.editCount)||0, replacesId: o.replacesId || '',
     priceTierLabel: tierKey ? (PRICE_TIERS[tierKey]||PRICE_TIERS.dist).label : '',
     items: its.map(it=>{
-      const sz = it.type==='Door' ? doorSizeText_(arabicSizeText_(it.size), it.doorHeight) : (it.size||'');
+      // المقاس بيتخزّن إنجليزي في الشيت ('10 cm')؛ بنعرّبه لكل الأنواع مش الأبواب بس
+      const sz = it.type==='Door' ? doorSizeText_(arabicSizeText_(it.size), it.doorHeight)
+                                  : arabicSizeText_(it.size||'');
       const kind = it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':(it.type==='Panel'?'panel':'acc')));
       const price = tierKey ? tierPrice(it.unitPrice||0, kind, tierKey, tierKeyFor_(it, kind)) : (it.unitPrice||0);
       return {
         kind, title: (it.avail===false?'⚠️ غير متاح — ':'') + arabicItemTitle_(it),
         code: it.code||'',
         sizeTxt: sz, sizeEn: it.size||'', spec: sz, unit: it.unit||'', qty: it.qty||0,
+        // ⚠️ باج كان هنا: السيرفر بيخزّن وحدة الحلق الكامل كـ 'set'، والمستند بيقرا
+        // it.isSet عشان يكتب «طقم». الحقل ده مكانش بيتنقل خالص، فسطر فيه ٥ أطقم كان
+        // بيتطبع «٥ عود» — والطقم ٣ عيدان، يعني المصنع يقطّع ٥ بدل ١٥.
+        isSet: String(it.unit||'') === 'set',
+        rodCm: (String(it.unit||'').match(/^rod\s+(\d+)/)||[])[1] || '',
         unitPrice: price, price: price,
         frame: it.frame||'', dbror: it.dbror||'', frameHeight: it.frameHeight||'', doorHeight: it.doorHeight||'',
         produced: it.produced
@@ -3195,6 +3254,83 @@ async function fetchPendingOrders_(){
   return orders;
 }
 
+// معاينة طلب العميل على الشاشة — نفس اللي بيطلع في الـ PDF بالظبط، بس من غير
+// html2canvas ولا jsPDF خالص. فبتفتح فورًا (بدل ثواني تجهيز الـ PDF)، والمصنع
+// يقدر يراجع الطلب وياخد قراره، ولو عايز الملف يضغط «تصدير PDF» من جوه المعاينة.
+async function previewCustomerOrder_(name){
+  if(!name) return;
+  const a = state.admin;
+  if(a.groupPreviewBusy) return;
+  a.groupPreviewBusy = name; render();
+  try{
+    await loadStock(true);
+    const all = await fetchPendingOrders_();
+    if(all){
+      const mine = all.filter(o=>(String(o.customer||'').trim() || 'بدون اسم') === name);
+      if(!mine.length) toast('مفيش طلبات معلّقة للعميل ده (يمكن كلها اتسلّمت)');
+      else {
+        // المعاينة بشكل «طلب أوردر» — نفس المستند اللي بيتطبع ويتبعت للعميل بالظبط،
+        // مش تقرير الأبواب المعلّقة. لو العميل عنده أكتر من طلب، بنعرضهم ورا بعض
+        // كل واحد في ورقة لوحده.
+        const html = mine.map(o => docHTML(buildAdminDocOrder_(o, o.items||[]), 'order'))
+                         .join('<div style="height:18px"></div>');
+        showReportPreview_(html, name);
+      }
+    }
+  }catch(err){
+    toast('تعذّر فتح المعاينة: ' + (err.message || err));
+  }
+  a.groupPreviewBusy = null; render();
+}
+
+// بتعرض HTML التقرير في طبقة فوق الشاشة، مصغّر ليدخل في عرض الموبايل.
+// التقرير مرسوم بعرض A4 ثابت (794 بكسل)، فبنعمله scale حسب عرض الشاشة
+// عشان يتقري من غير تمرير أفقي.
+function showReportPreview_(html, title){
+  const old = document.getElementById('reportPreviewOverlay'); if(old) old.remove();
+  const ov = document.createElement('div');
+  ov.id = 'reportPreviewOverlay';
+  ov.className = 'rpv';
+  ov.innerHTML = `
+    <div class="rpv-bar">
+      <b>معاينة — ${esc(title||'')}</b>
+      <button class="rpv-pdf" data-act="rpv-pdf" data-name="${esc(title||'')}">${ico('doc')}تصدير PDF</button>
+      <button class="rpv-x" data-act="rpv-close" aria-label="إغلاق المعاينة">${ico('x')}</button>
+    </div>
+    <div class="rpv-scroll"><div class="rpv-fit"><div class="rpv-page">${html}</div></div></div>`;
+  document.body.appendChild(ov);
+
+  // نظبط التصغير حسب عرض الشاشة
+  const fit = () => {
+    const page = ov.querySelector('.rpv-page');
+    const fitBox = ov.querySelector('.rpv-fit');
+    const wrap = ov.querySelector('.rpv-scroll');
+    if(!page || !fitBox || !wrap) return;
+    const natural = 794;                        // نفس عرض #paper — مثبّت في الـ CSS
+    const avail = Math.max(200, wrap.clientWidth - 16);
+    const k = Math.min(1, avail / natural);
+    page.style.transform = k < 1 ? 'scale(' + k + ')' : 'none';
+    fitBox.style.width  = Math.round(natural * k) + 'px';
+    fitBox.style.height = Math.round(page.offsetHeight * k) + 'px';
+  };
+  requestAnimationFrame(()=>{ fit(); setTimeout(fit, 250); });   // تاني مرة بعد ما الصور تتحمّل
+  ov._fit = fit;
+  window.addEventListener('resize', fit);
+
+  // الضغط في أي مكان فاضي بره الورقة بيقفل — منطقة التمرير بتملى الشاشة،
+  // فلازم نحسبها هي كمان مش الطبقة الخارجية بس.
+  ov.addEventListener('click', e=>{
+    if(e.target===ov || e.target.classList.contains('rpv-scroll')) closeReportPreview_();
+  });
+}
+
+function closeReportPreview_(){
+  const ov = document.getElementById('reportPreviewOverlay');
+  if(!ov) return;
+  if(ov._fit) window.removeEventListener('resize', ov._fit);
+  ov.remove();
+}
+
 async function exportCustomerPdf_(name){
   if(!name) return;
   state.admin.groupPdfBusy = name; render();
@@ -3923,12 +4059,16 @@ function viewAdmin(){
     const totalQty = orders.reduce((s,o)=>s+(Number(o.qty)||0),0);
     const totalMoney = orders.reduce((s,o)=>s+(Number(o.total)||0),0);
     const pdfBusy = a.groupPdfBusy === name;
+    const prevBusy = a.groupPreviewBusy === name;
     return `<div class="ord" style="padding:0;overflow:hidden">
       <div data-act="adm-toggle-group" data-name="${esc(name)}" style="display:flex;align-items:center;gap:8px;padding:13px 14px;cursor:pointer">
         <span style="flex:1;min-width:0">
           <b style="font-size:13.5px;color:#0B2A4A">${esc(name)}</b>
           <div style="font-size:11px;color:#6B7A8C;margin-top:2px">${orders.length} طلب · ${totalQty} قطعة · ${money(totalMoney)} ج</div>
         </span>
+        <button class="btn act-tool sm" data-act="adm-group-preview" data-name="${esc(name)}" ${prevBusy?'disabled':''}
+          title="معاينة الطلب قبل التصدير" aria-label="معاينة طلب ${esc(name)}" style="width:auto;padding:7px 10px">
+          ${ico("search")}${prevBusy?'…':'معاينة'}</button>
         <button class="btn act-report sm" data-act="adm-group-pdf" data-name="${esc(name)}" ${pdfBusy?'disabled':''} style="width:auto;padding:7px 10px">
           ${ico("doc")}${pdfBusy?'…':'PDF'}</button>
         <span style="font-size:18px;color:#8A97A6;transform:rotate(${open?90:0}deg);transition:.15s">‹</span>
@@ -4059,6 +4199,9 @@ document.addEventListener('click',e=>{
     case 'adm-add-items': { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) adminEditOrder(o); } break;
     case 'adm-toggle-group': { const n=el.dataset.name; state.admin.groupOpen[n]=!state.admin.groupOpen[n]; render(); } break;
     case 'adm-group-pdf': exportCustomerPdf_(el.dataset.name); break;
+    case 'adm-group-preview': previewCustomerOrder_(el.dataset.name); break;
+    case 'rpv-close': closeReportPreview_(); break;
+    case 'rpv-pdf': { const n = el.dataset.name; closeReportPreview_(); exportCustomerPdf_(n); break; }
     case 'adm-pdf':     { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) exportAdminOrderPdf(o); } break;
     case 'adm-quote':   { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) showQuoteTierPicker(o); } break;
     case 'adm-share':    { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) shareAdminOrderImage(o); } break;
@@ -4170,6 +4313,7 @@ function mergeProducedFromTrack_(o){
 
 // إنتر في خانة كلمة سر متابعة المصنع يعمل دخول على طول
 document.addEventListener('keydown', e=>{
+  if(e.key==='Escape'){ closeReportPreview_(); return; }
   if(e.key!=='Enter') return;
   const el = e.target.closest('[data-act="adm-pw"]');
   if(!el) return;
@@ -4926,7 +5070,12 @@ function docRowHTML_(it, idx, priced, showFrameHCol){
     unit='باب';
   } else if(it.kind==='frame'||it.kind==='bror'){
     unit = it.isSet ? 'طقم' : 'عود';
-  } else { unit=it.unit||'قطعة'; }
+  } else {
+    // الوحدة ممكن تيجي من السيرفر بالإنجليزي ('pc'/'door'/'rod 220cm') لأن كده
+    // بتتخزّن في الشيت. itemUnitAr_ بتعرّبها، ولو كانت عربي أصلًا بترجّعها زي ما هي.
+    unit = itemUnitAr_(it.unit) || 'قطعة';
+    if(unit==='—') unit='قطعة';
+  }
   const pp = itemProdPending_(it);
   return `<tr>
     <td style="text-align:center">${idx}</td>
@@ -5023,12 +5172,27 @@ function docHTML(o,mode,priced){
           <div style="font-size:12px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} · ${esc(WAREHOUSE)}</div>
         </div>
         <div style="text-align:left">
-          <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:14px;font-weight:700;color:#1080C0">
-            ${(!isQuote && o.displayNo) ? ('طلب اوردر رقم ( '+esc(o.displayNo)+(o.editCount?' معدل '+esc(o.editCount):'')+' )') : ('#'+esc(o.id))}
-          </div>
           <div style="font-size:11.5px;color:#6B7A8C">${(!isQuote && o.displayNo)?'بتاريخ ':''}${esc(dateStrDMY_(o.ts))}</div>
-          ${o.replacesId?`<div style="font-size:11.5px;font-weight:700;color:#B3261E;margin-top:2px">🔁 بدل الطلب #${esc(o.replacesId)}</div>`:''}
+          ${o.replacesId?`<div style="font-size:11.5px;font-weight:700;color:#B3261E;margin-top:2px">بدل الطلب #${esc(o.replacesId)}</div>`:''}
         </div>
+      </div>
+
+      <!-- رقم الأوردر: شريط عريض في نص الصفحة بخط تقيل أحمر.
+           ده الرقم اللي المصنع بيدوّر عليه وهو ماسك ورق كتير قدامه، فبيتحط في
+           أوضح مكان بدل ما يكون سطر صغير في الركن. -->
+      <div style="margin-top:14px;text-align:center;background:#FDECEA;border:2px solid #E8A9A3;
+                  border-radius:12px;padding:11px 14px">
+        <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px;font-weight:700;
+                    color:#8A3A32;letter-spacing:.5px">${isQuote?'رقم عرض السعر':'رقم طلب الأوردر'}</div>
+        <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:38px;font-weight:900;
+                    color:#B3261E;line-height:1.15;margin-top:2px">
+          ${(!isQuote && o.displayNo) ? esc(o.displayNo) : esc(o.id)}
+        </div>
+        ${(!isQuote && o.displayNo && o.editCount)
+          ? `<div style="font-size:12.5px;font-weight:700;color:#8A6512;background:#FFF6E5;
+                         border:1px solid #E8C77A;border-radius:20px;padding:2px 12px;display:inline-block;margin-top:5px">
+               معدّل ${esc(o.editCount)}</div>`
+          : ''}
       </div>
 
       <table style="width:100%;margin-top:16px;font-size:12.5px;border-collapse:collapse">
