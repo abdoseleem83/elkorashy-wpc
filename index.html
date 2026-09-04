@@ -756,7 +756,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v110';
+const APP_BUILD   = 'v111';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1188,7 +1188,7 @@ async function saveStockDrafts(){
     a.stockBusy = k;
     try{
       const d = await jsonp(APPS_SCRIPT_URL
-        + '?action=setStock&pw=' + encodeURIComponent(a.pw)
+        + '?action=setStock' + admParams_()
         + '&code=' + encodeURIComponent(code)
         + '&size=' + encodeURIComponent(w)
         + '&qty='  + encodeURIComponent(Math.max(0, Math.round(Number(a.stockDraft[k])||0))));
@@ -2081,6 +2081,24 @@ function statusPill(v){
     font-weight:600;background:${st.bg};color:${st.fg};display:inline-flex;align-items:center;gap:5px">${ico(st.ic)}${esc(st.ar)}</span>`;
 }
 
+// معرّف ثابت للجهاز — بيتبعت مع نداءات شاشة المصنع عشان السيرفر يقدر يقفل
+// الجهاز اللي بيحاول يخمّن كلمة السر لوحده، بدل ما يقفل الشاشة على كل الموظفين.
+// مش سر ومش وسيلة تحقق — مجرد تفرقة بين الأجهزة.
+function deviceId_(){
+  let d = null;
+  try{ d = localStorage.getItem('wpc_dev'); }catch(e){}
+  if(!d){
+    d = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2,10);
+    try{ localStorage.setItem('wpc_dev', d); }catch(e){}
+  }
+  return d;
+}
+
+// بتزوّد باراميترات شاشة المصنع (كلمة السر + معرّف الجهاز) على أي رابط
+function admParams_(){
+  return '&pw=' + encodeURIComponent(state.admin.pw || '') + '&dev=' + encodeURIComponent(deviceId_());
+}
+
 // بنستخدم JSONP (وسم script) بدل fetch — أضمن مع Apps Script ومفيش مشاكل CORS
 function jsonp(url, timeout){
   return new Promise((res, rej) => {
@@ -2128,7 +2146,7 @@ async function loadTrack(){
 async function adminLoad(){
   state.admin.loading = true; state.admin.err = ''; render();
   try{
-    const d = await jsonp(APPS_SCRIPT_URL + '?action=list&pw=' + encodeURIComponent(state.admin.pw));
+    const d = await jsonp(APPS_SCRIPT_URL + '?action=list' + admParams_());
     if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
     state.admin.rows = d.orders || [];
     state.admin.open = true;
@@ -2149,7 +2167,7 @@ async function setStatus(id, st){
   state.admin.busy = id; render();
   try{
     const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=setStatus&pw=' + encodeURIComponent(state.admin.pw)
+      + '?action=setStatus' + admParams_()
       + '&id=' + encodeURIComponent(id)
       + '&status=' + encodeURIComponent(st));
     if(!d || !d.ok) throw new Error((d && d.error) || 'فشل التحديث');
@@ -2174,7 +2192,7 @@ async function loadArchive(force){
   if(!force && a.archRows) return;   // متحمّلناش تاني لو محمّل خلاص، إلا لو طلب تحديث صريح
   a.archLoading = true; render();
   try{
-    const d = await jsonp(APPS_SCRIPT_URL + '?action=list&pw=' + encodeURIComponent(a.pw) + '&archived=1');
+    const d = await jsonp(APPS_SCRIPT_URL + '?action=list' + admParams_() + '&archived=1');
     if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
     a.archRows = d.orders || [];
   }catch(err){
@@ -2189,7 +2207,7 @@ async function unarchiveOrder(id){
   a.archBusy = id; render();
   try{
     const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=archiveOrder&pw=' + encodeURIComponent(a.pw)
+      + '?action=archiveOrder' + admParams_()
       + '&id=' + encodeURIComponent(id) + '&archived=0');
     if(!d || !d.ok) throw new Error((d && d.error) || 'فشل الإرجاع من الأرشيف');
     const o = (a.archRows||[]).find(x=>String(x.id)===String(id));
@@ -2207,7 +2225,7 @@ async function deleteOrder(id){
   state.admin.delBusy = id; render();
   try{
     const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=deleteOrder&pw=' + encodeURIComponent(state.admin.pw)
+      + '?action=deleteOrder' + admParams_()
       + '&id=' + encodeURIComponent(id));
     if(!d || !d.ok) throw new Error((d && d.error) || 'فشل الحذف');
     state.admin.rows = (state.admin.rows||[]).filter(o=>String(o.id)!==String(id));
@@ -2230,7 +2248,7 @@ async function clearDeliveredOrders(){
   state.admin.archLoading = true; render();
   try{
     const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=deleteDelivered&pw=' + encodeURIComponent(state.admin.pw), 25000);
+      + '?action=deleteDelivered' + admParams_(), 25000);
     if(!d || !d.ok) throw new Error((d && d.error) || 'فشل المسح');
     state.admin.archRows = list.filter(o=>o.status!=='Delivered');
     state.admin.rows = (state.admin.rows||[]).filter(o=>o.status!=='Delivered');
@@ -2265,7 +2283,7 @@ async function setItemAvail(id, idx, avail){
   state.admin.itemBusy = id+':'+idx; render();
   try{
     const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=setItemAvail&pw=' + encodeURIComponent(state.admin.pw)
+      + '?action=setItemAvail' + admParams_()
       + '&id=' + encodeURIComponent(id) + '&idx=' + idx + '&avail=' + (avail?1:0));
     if(!d || !d.ok) throw new Error((d && d.error) || 'فشل التحديث');
     const it = (state.admin.items[id]||[])[idx];
@@ -2282,7 +2300,7 @@ async function saveOrderMeta_(id, customer, date){
   state.admin.metaBusy = id; render();
   try{
     const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=setOrderMeta&pw=' + encodeURIComponent(state.admin.pw)
+      + '?action=setOrderMeta' + admParams_()
       + '&id=' + encodeURIComponent(id)
       + '&customer=' + encodeURIComponent(customer||'')
       + (date ? '&date=' + encodeURIComponent(date) : ''));
@@ -2305,7 +2323,7 @@ async function setItemQty_(id, idx, qty){
   state.admin.qtyBusy = key; render();
   try{
     const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=setItemQty&pw=' + encodeURIComponent(state.admin.pw)
+      + '?action=setItemQty' + admParams_()
       + '&id=' + encodeURIComponent(id) + '&idx=' + idx + '&qty=' + encodeURIComponent(qty));
     if(!d || !d.ok) throw new Error((d && d.error) || 'فشل التحديث');
     const it = (state.admin.items[id]||[])[idx];
@@ -2325,7 +2343,7 @@ async function deleteOrderItem_(id, idx){
   state.admin.itemDelBusy = key; render();
   try{
     const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=deleteOrderItem&pw=' + encodeURIComponent(state.admin.pw)
+      + '?action=deleteOrderItem' + admParams_()
       + '&id=' + encodeURIComponent(id) + '&idx=' + idx);
     if(!d || !d.ok) throw new Error((d && d.error) || 'فشل الحذف');
     if(state.admin.items[id]) state.admin.items[id].splice(idx,1);
@@ -2352,7 +2370,7 @@ async function setItemProduced(id, idx, produced){
   state.admin.prodBusy = key; render();
   try{
     const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=setItemProduced&pw=' + encodeURIComponent(state.admin.pw)
+      + '?action=setItemProduced' + admParams_()
       + '&id=' + encodeURIComponent(id) + '&idx=' + idx + '&produced=' + encodeURIComponent(produced));
     if(!d || !d.ok) throw new Error((d && d.error) || 'فشل التحديث');
     const it = (state.admin.items[id]||[])[idx];
@@ -2568,7 +2586,7 @@ function toggleOrderItemsLoadOnly_(id){
     state.admin.itemsLoading = id; render();
     try{
       const d = await jsonp(APPS_SCRIPT_URL
-        + '?action=orderItems&pw=' + encodeURIComponent(state.admin.pw)
+        + '?action=orderItems' + admParams_()
         + '&id=' + encodeURIComponent(id));
       if(d && d.ok) state.admin.items[id] = d.items || [];
     }catch(err){}
@@ -3158,7 +3176,7 @@ async function buildPendingDoorsExcel_(orders){
 // بيجيب بيانات الطلبات المعلّقة بالتفصيل من السيرفر — مشتركة بين التلات أزرار التصدير
 async function fetchPendingOrders_(){
   if(!APPS_SCRIPT_URL || !state.admin.pw) return null;
-  const d = await jsonp(APPS_SCRIPT_URL + '?action=listWithItems&pw=' + encodeURIComponent(state.admin.pw), 25000);
+  const d = await jsonp(APPS_SCRIPT_URL + '?action=listWithItems' + admParams_(), 25000);
   if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
   const orders = d.orders || [];
   if(!orders.length){ toast('مفيش طلبات لسه'); return null; }
@@ -3524,7 +3542,7 @@ async function adminPoll(){
   // التطبيق في الخلفية (الشاشة مقفولة أو المستخدم في تطبيق تاني)؟ مافيش داعي نستهلك نت وبطارية
   if(document.hidden) return;
   try{
-    const d = await jsonp(APPS_SCRIPT_URL + '?action=list&pw=' + encodeURIComponent(state.admin.pw));
+    const d = await jsonp(APPS_SCRIPT_URL + '?action=list' + admParams_());
     if(!d || !d.ok) return;
     const rows = d.orders || [];
     const seen = loadAdminSeen_();
@@ -4818,7 +4836,7 @@ function submitOrder(){
       const cancelUrl = APPS_SCRIPT_URL + '?action=cancelOrder&id=' + encodeURIComponent(prevId)
         + '&phone=' + encodeURIComponent(o.phone||'')
         + '&newId=' + encodeURIComponent(o.id)
-        + (wasAdminEdit ? '&pw=' + encodeURIComponent(state.admin.pw||'') : '');
+        + (wasAdminEdit ? admParams_() : '');
       jsonp(cancelUrl).then(d=>{
         if(!d || !d.ok){
           // لو السيرفر عرف يحط علامة "معدّل" على الطلب القديم (لأنه دخل التنفيذ ومنقدرش نمسحه)،

@@ -12,7 +12,7 @@
  *  التبويبات بتتعمل لوحدها أول ما يوصل أول طلب — مش محتاج تعملها بإيدك.
  *
  *  عمود Status في تبويب Orders بيتحدّد من شاشة «🔒 المصنع» جوه التطبيق
- *  (كلمة السر ADMIN_PW تحت). القيم:
+ *  (كلمة السر بتتظبط من Script Properties باسم ADMIN_PW — شوف adminPw_ تحت). القيم:
  *      New          → طلب جديد
  *      Received     → تم استلام الطلب
  *      In Progress  → تحت التنفيذ (دخل الإنتاج)
@@ -34,7 +34,27 @@ var SHEET_STOCK  = 'Stock';        // أرصدة المخزن الجاهزة ل�
 var HEAD_STOCK = ['Code', 'Size', 'Qty', 'Updated'];
 var TZ           = 'Africa/Cairo';
 var ROD_LEN      = 2.20;   // الطول الافتراضي — الطول الفعلي بيجي مع كل صنف في it.rodCm
-var ADMIN_PW     = '3184';
+// ⚠️⚠️ كلمة سر شاشة المصنع مابقتش مكتوبة في الكود.
+//
+// السبب: الملف ده متسجّل في مستودع GitHub عام على الإنترنت — يعني أي حد يفتح
+// الرابط كان يشوف كلمة السر مكتوبة صريحة. مافيش تعقيد في كلمة السر بيحمي من ده.
+//
+// دلوقتي بتتقري من Script Properties (إعدادات المشروع في Apps Script نفسه،
+// مش بتتحفظ في أي ملف ولا بتترفع على GitHub).
+//
+// إزاي تظبطها (مرة واحدة بس):
+//   ١) افتح محرر Apps Script بتاع المشروع
+//   ٢) من الشمال: ⚙️ Project Settings
+//   ٣) انزل لـ "Script Properties" → Add script property
+//   ٤) Property = ADMIN_PW   |   Value = كلمة السر اللي تختارها
+//   ٥) Save، وبعدين Deploy → New deployment
+//
+// لو ما ظبطتهاش، شاشة المصنع هترفض الدخول وهتقول لك تظبطها — بدل ما تشتغل
+// بكلمة سر معروفة للعالم كله.
+function adminPw_() {
+  var v = PropertiesService.getScriptProperties().getProperty('ADMIN_PW');
+  return v ? String(v) : '';
+}
 
 // ⚠️ أرقام أعمدة تبويب Orders (تبدأ من ١). لو زوّدت أو رتّبت الأعمدة
 // في HEAD_ORDERS تحت، لازم تظبّط الأرقام دي معاها.
@@ -130,26 +150,68 @@ function nextOrderDisplayNo_(sh) {
   return next;
 }
 
-function checkAdminPw_(pw) {
+// ⚠️ المشكلة اللي كانت في النسخة القديمة: العدّاد والقفل كانوا عامّين على السكريبت
+// كله. يعني أي حد يعمل ١٥ محاولة غلط كان بيقفل شاشة المصنع على الموظفين كلهم ١٥
+// دقيقة — هجمة تعطيل بسيطة جدًا وبتتكرر على طول.
+//
+// النظام الجديد بطبقتين:
+//   • طبقة الجهاز: ٥ محاولات غلط من نفس الجهاز → الجهاز ده يتقفل ١٥ دقيقة.
+//     المهاجم بيتقفل، والموظف على جهازه مش متأثر خالص.
+//   • طبقة عامة: مافيش قفل نهائي أبدًا — بس تأخير بيكبر مع عدد المحاولات الغلط
+//     (لحد ٨ ثواني). يعني التخمين بيبقى بطيء جدًا، والموظف اللي بيكتب كلمة السر
+//     الصح بيدخل على طول من غير ما يستنى.
+// النتيجة: التخمين أصعب من الأول، ومافيش طريقة تقفل الشاشة على المصنع.
+function checkAdminPw_(pw, devId) {
   var cache = CacheService.getScriptCache();
-  var failKey = 'adm_fail_count';
-  var lockKey = 'adm_locked_until';
+  var pwReal = adminPw_();
 
-  var lockedUntil = Number(cache.get(lockKey) || 0);
+  // كلمة السر مش متظبّطة في Script Properties — بلّغ بوضوح بدل ما تقبل أي حاجة
+  if (!pwReal) return false;
+
+  var dev = String(devId || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40) || 'nodev';
+  var devFailKey = 'adm_f_' + dev;
+  var devLockKey = 'adm_l_' + dev;
+  var globFailKey = 'adm_fail_count';
+
+  // الجهاز ده مقفول؟
+  var lockedUntil = Number(cache.get(devLockKey) || 0);
   if (lockedUntil && Date.now() < lockedUntil) return false;
 
-  if (String(pw || '') === ADMIN_PW) {
-    cache.remove(failKey);
+  if (String(pw || '') === pwReal) {
+    cache.remove(devFailKey);
+    cache.remove(devLockKey);
     return true;
   }
 
-  var fails = Number(cache.get(failKey) || 0) + 1;
-  cache.put(failKey, String(fails), 600); // نافذة ١٠ دقايق
-  if (fails >= 15) {
-    cache.put(lockKey, String(Date.now() + 15 * 60000), 1200); // قفل ١٥ دقيقة
+  // فشل: زوّد العدّادين
+  var devFails = Number(cache.get(devFailKey) || 0) + 1;
+  cache.put(devFailKey, String(devFails), 900);              // نافذة ١٥ دقيقة للجهاز
+  if (devFails >= 5) {
+    cache.put(devLockKey, String(Date.now() + 15 * 60000), 1200);   // اقفل الجهاز ده بس
   }
-  Utilities.sleep(Math.min(fails * 300, 4000)); // تأخير متزايد لحد ٤ ثواني
+
+  var globFails = Number(cache.get(globFailKey) || 0) + 1;
+  cache.put(globFailKey, String(globFails), 600);            // نافذة ١٠ دقايق عامة
+  // تأخير عام بيكبر مع المحاولات — بيبطّأ التخمين من غير ما يقفل على حد
+  Utilities.sleep(Math.min(globFails * 400, 8000));
   return false;
+}
+
+// مقارنة صامتة بكلمة السر — من غير عدّادات ولا تأخير.
+// بتتستخدم بس في المسارات اللي المستخدم العادي بيعدي منها كمان (زي «تابع طلبك»
+// وإلغاء الطلب برقم الموبايل)، عشان مانعاقبش الموزع العادي بتأخير 8 ثواني
+// وإحنا أصلًا مش بنطلب منه كلمة سر. لو مفيش كلمة سر مبعوتة بترجّع false على طول.
+function isAdminPwQuiet_(pw) {
+  var real = adminPw_();
+  return !!(real && String(pw || '') === real);
+}
+
+// بيرجّع رسالة الخطأ المناسبة لشاشة المصنع
+function adminPwError_() {
+  if (!adminPw_()) {
+    return 'كلمة سر المصنع مش متظبّطة على السيرفر — افتح Apps Script → Project Settings → Script Properties وضيف ADMIN_PW';
+  }
+  return 'كلمة السر غلط';
 }
 
 /* ============================================================
@@ -210,8 +272,8 @@ function doGet(e) {
 
     // تحديث حالة الطلب — من شاشة المصنع
     if (action === 'setStatus') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lock = LockService.getScriptLock();
       try {
@@ -235,8 +297,8 @@ function doGet(e) {
 
     // أرشفة/إرجاع طلب يدويًا (📦 أرشفة أو ↩️ رجّع من الأرشيف)
     if (action === 'archiveOrder') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lockAR = LockService.getScriptLock();
       try {
@@ -255,10 +317,10 @@ function doGet(e) {
       var isAdmin;
       if (e.parameter.phone) {
         // مستخدم عادي بيجيب طلباته هو برقم موبايله — مفيش داعي لأي تحقق باسورد أو تقييد محاولات
-        isAdmin = String(e.parameter.pw || '') === ADMIN_PW;
+        isAdmin = isAdminPwQuiet_(e.parameter.pw);
       } else {
         // مفيش رقم موبايل = محاولة دخول شاشة المصنع؛ لازم تعدي بوابة الحماية من التخمين
-        if (!checkAdminPw_(e.parameter.pw)) return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+        if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) return reply({ ok: false, error: adminPwError_() }, cb);
         isAdmin = true;
       }
       var phone = isAdmin ? '' : String((e.parameter.phone || '')).replace(/\D/g, '');
@@ -309,8 +371,8 @@ function doGet(e) {
 
     // قايمة أصناف طلب واحد بالتفصيل — لشاشة المصنع بس (لعرض/تعديل التوفر ولتصدير PDF)
     if (action === 'orderItems') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var shOI = sheet_(SHEET_ITEMS, HEAD_ITEMS);
       var idOI = String(e.parameter.id || '');
@@ -349,8 +411,8 @@ function doGet(e) {
 
     // تحديد صنف معيّن جوه طلب كـ"غير متاح" أو رجّعه "متاح" — بالـ idx (ترتيبه جوه الطلب، يبدأ من صفر)
     if (action === 'setItemAvail') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lockIA = LockService.getScriptLock();
       try {
@@ -381,8 +443,8 @@ function doGet(e) {
     // بيحدّث سطر الصنف (الكمية + الإجمالي) وبعدين بيعيد حساب إجماليات الطلب كله (كمية/عيدان/مبلغ)
     // تعديل بيانات الطلب الأساسية (اسم صاحب الأوردر / التاريخ) — يدوي من شاشة المصنع، من غير ما تفتح "طلب جديد"
     if (action === 'setOrderMeta') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lockOM = LockService.getScriptLock();
       try {
@@ -406,8 +468,8 @@ function doGet(e) {
     }
 
     if (action === 'setItemQty') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lockIQ = LockService.getScriptLock();
       try {
@@ -455,8 +517,8 @@ function doGet(e) {
 
     // حذف صنف واحد بس من طلب (يدوي من شاشة المصنع) وإعادة حساب إجماليات الطلب
     if (action === 'deleteOrderItem') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lockDI = LockService.getScriptLock();
       try {
@@ -491,8 +553,8 @@ function doGet(e) {
     }
 
     if (action === 'setItemProduced') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lockIP = LockService.getScriptLock();
       try {
@@ -532,7 +594,7 @@ function doGet(e) {
         var rCO = findRow_(shCO, e.parameter.id);
         if (rCO < 0) return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
 
-        var isAdminCO = String(e.parameter.pw || '') === ADMIN_PW;
+        var isAdminCO = isAdminPwQuiet_(e.parameter.pw);   // المستخدم العادي بيلغي طلبه برقم موبايله، مش بكلمة سر
         if (!isAdminCO) {
           var ownerPhoneCO = String(shCO.getRange(rCO, 5).getValue() || '').replace(/^'/, '').replace(/\D/g, '');
           var reqPhoneCO = String(e.parameter.phone || '').replace(/\D/g, '');
@@ -565,8 +627,8 @@ function doGet(e) {
 
     // حذف طلب بالكامل (السطر الملخّص + كل سطور أصنافه) — من شاشة المصنع
     if (action === 'deleteOrder') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lockDO = LockService.getScriptLock();
       try {
@@ -587,8 +649,8 @@ function doGet(e) {
 
     // مسح كل الطلبات اللي حالتها "تم التسليم" دفعة واحدة (تنظيف دوري) — من زرار "🗑️ مسح المسلّم"
     if (action === 'deleteDelivered') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lockDD = LockService.getScriptLock();
       try {
@@ -616,8 +678,8 @@ function doGet(e) {
 
     // كل الطلبات + أصنافها مرة واحدة — لتقرير الـ PDF الشامل في شاشة المصنع (بدل ما نجيب كل طلب لوحده)
     if (action === 'listWithItems') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var shLW = sheet_(SHEET_ORDERS, HEAD_ORDERS);
       var rowsLW = shLW.getDataRange().getValues();
@@ -697,8 +759,8 @@ function doGet(e) {
 
     // تحديث رصيد صنف واحد (كود + مقاس) — من شاشة المصنع بكلمة السر
     if (action === 'setStock') {
-      if (!checkAdminPw_(e.parameter.pw)) {
-        return reply({ ok: false, error: 'كلمة السر غلط' }, cb);
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var lockSS = LockService.getScriptLock();
       try {
