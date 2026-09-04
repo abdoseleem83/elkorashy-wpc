@@ -30,6 +30,8 @@ var SHEET_ORDERS = 'Orders';
 var SHEET_ITEMS  = 'Order_Items';
 var SHEET_ERRORS = 'Errors';
 var SHEET_STOCK  = 'Stock';        // أرصدة المخزن الجاهزة للتسليم خلال ٤٨ ساعة
+var SHEET_PRICES = 'Prices';       // أسعار الكتالوج — مصدر واحد لكل الأجهزة
+var HEAD_PRICES  = ['Prices JSON', 'Updated At'];
 
 var HEAD_STOCK = ['Code', 'Size', 'Qty', 'Updated'];
 var TZ           = 'Africa/Cairo';
@@ -780,6 +782,51 @@ function doGet(e) {
         });
       }
       return reply({ ok: true, orders: outLW }, cb);
+    }
+
+    /* ---------- أسعار الكتالوج ----------
+       الأسعار كانت متخزّنة في متصفح المصنع بس (localStorage). يعني لما المصنع
+       يعدّل سعر، الموزّعين كلهم يفضلوا شايفين السعر القديم المكتوب جوّه التطبيق
+       لحد ما تترفع نسخة جديدة منه. دلوقتي الشيت هو المصدر الواحد للأسعار:
+       المصنع بيكتب فيه بكلمة السر، وكل الأجهزة بتقرا منه. */
+
+    // القراية مفتوحة من غير كلمة سر — الأسعار أصلًا مكتوبة جوّه التطبيق نفسه
+    if (action === 'prices') {
+      var shPR = sheet_(SHEET_PRICES, HEAD_PRICES);
+      if (shPR.getLastRow() < 2) return reply({ ok: true, prices: null, at: '' }, cb);
+      var rowPR = shPR.getRange(2, 1, 1, 2).getValues()[0];
+      var rawPR = String(rowPR[0] || '').trim();
+      if (!rawPR) return reply({ ok: true, prices: null, at: '' }, cb);
+      var objPR = null;
+      try { objPR = JSON.parse(rawPR); }
+      catch (ePR) { return reply({ ok: false, error: 'الأسعار المتخزّنة مش مقروءة' }, cb); }
+      return reply({ ok: true, prices: objPR, at: fmtDate_(rowPR[1]) }, cb);
+    }
+
+    // الكتابة بكلمة سر المصنع بس
+    if (action === 'setPrices') {
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
+      }
+      var payloadPR = String(e.parameter.payload || '').trim();
+      if (!payloadPR) return reply({ ok: false, error: 'مفيش أسعار مبعوتة' }, cb);
+      // لازم تكون كائن JSON — كده الخانة عمرها ما تبدأ بـ = أو + فتتقري كمعادلة
+      if (payloadPR.charAt(0) !== '{') return reply({ ok: false, error: 'شكل الأسعار مش صحيح' }, cb);
+      // نتأكد إنها JSON صالح قبل ما نكتبها — عشان مانخزّنش حاجة تكسر كل الأجهزة
+      try { JSON.parse(payloadPR); }
+      catch (eSP) { return reply({ ok: false, error: 'شكل الأسعار مش صحيح' }, cb); }
+
+      var lockPR = LockService.getScriptLock();
+      try {
+        lockPR.waitLock(15000);
+        var shSP = sheet_(SHEET_PRICES, HEAD_PRICES);
+        // صف واحد بس — الأسعار الحالية. القديم بيتكتب فوقه.
+        if (shSP.getLastRow() < 2) shSP.appendRow([payloadPR, new Date()]);
+        else shSP.getRange(2, 1, 1, 2).setValues([[payloadPR, new Date()]]);
+        return reply({ ok: true }, cb);
+      } finally {
+        try { lockPR.releaseLock(); } catch (ePR2) {}
+      }
     }
 
     // أرصدة المخزن — متاحة للعميل من غير كلمة سر عشان يشوف المتوفر

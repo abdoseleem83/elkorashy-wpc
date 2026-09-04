@@ -808,7 +808,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v129';
+const APP_BUILD   = 'v130';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -925,7 +925,7 @@ const ACCESSORIES = [
   {id:'h8', name:'جوان',                          en:'Gasket',                               price:6,    unit:'متر'}
 ];
 
-const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders', LS_TAB = 'wpc_tab', LS_SECTION = 'wpc_section', LS_PRICES = 'wpc_prices', LS_PENDING = 'wpc_pending_sync', LS_PENDING_CANCEL = 'wpc_pending_cancel';
+const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders', LS_TAB = 'wpc_tab', LS_SECTION = 'wpc_section', LS_PRICES = 'wpc_prices', LS_PENDING = 'wpc_pending_sync', LS_PENDING_CANCEL = 'wpc_pending_cancel', LS_PRICES_DIRTY = 'wpc_prices_dirty';
 
 // مستويات السعر: السعر الأساسي المتخزّن في الكتالوج هو "سعر موزع"، ومنه بتتحسب المستويات التانية بزيادة ثابتة.
 // الزيادة بتتطبّق وقت طباعة عرض السعر بس — من غير ما تغيّر الأسعار المتخزّنة نفسها.
@@ -989,6 +989,33 @@ function applyPriceOverrides(){
   });
 }
 applyPriceOverrides();
+
+/* ---------- مزامنة الأسعار مع السيرفر ----------
+   الأسعار كانت متخزّنة على جهاز المصنع بس، فلما المصنع يعدّل سعر كان الموزّعين
+   كلهم يفضلوا شايفين السعر القديم المكتوب جوّه التطبيق لحد ما تترفع نسخة جديدة.
+   دلوقتي الشيت هو المصدر الواحد. بنقرا منه عند فتح التطبيق، وبنفضل شغّالين
+   بآخر نسخة محفوظة على الجهاز لو النت مش موجود. */
+let _pricesSyncedAt = '';
+async function syncPricesFromServer_(){
+  if(!APPS_SCRIPT_URL) return;
+  // ⚠️ لو المصنع عدّل الأسعار وهو مش متصل، التعديل لسه على جهازه بس. لو قرينا
+  // من السيرفر دلوقتي هنمسح تعديله بالأسعار القديمة. فبنحاول نرفع الأول،
+  // ومانقراش خالص طالما لسه فيه تعديل ما اترفعش.
+  if(load(LS_PRICES_DIRTY, false)){
+    const pushed = await pushPricesToServer_(loadPriceOverrides_(), true);
+    if(!pushed) return;
+  }
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL + '?action=prices', 12000);
+    if(!d || !d.ok || !d.prices) return;
+    const incoming = JSON.stringify(d.prices);
+    if(incoming === JSON.stringify(loadPriceOverrides_())) return;   // نفس اللي عندنا
+    save(LS_PRICES, d.prices);
+    applyPriceOverrides();
+    _pricesSyncedAt = d.at || '';
+    render();
+  }catch(err){ /* مفيش نت — بنكمّل بآخر أسعار محفوظة على الجهاز */ }
+}
 
 /* ============================================================
    الحالة
@@ -2668,10 +2695,44 @@ function saveAdminPrices(){
   TIER_OVERRIDES.showroom = { sizes:{...out.showroom.sizes}, customExtra:out.showroom.customExtra, hafrExtra:out.showroom.hafrExtra, frames:{...out.showroom.frames}, brors:{...out.showroom.brors}, acc:{...out.showroom.acc}, panel:{...out.showroom.panel} };
   TIER_OVERRIDES.customer = { sizes:{...out.customer.sizes}, customExtra:out.customer.customExtra, hafrExtra:out.customer.hafrExtra, frames:{...out.customer.frames}, brors:{...out.customer.brors}, acc:{...out.customer.acc}, panel:{...out.customer.panel} };
   state.admin.pricesOpen=false; state.admin.priceEdit=null;
-  toast(pricesSaved
-    ? 'اتحفظت الأسعار الجديدة'
-    : '⚠️ الأسعار شغّالة دلوقتي بس ما اتحفظتش على الجهاز (المساحة مليانة) — هترجع القديمة لو قفلت التطبيق', 5200);
   render();
+
+  if(!pricesSaved){
+    toast('⚠️ الأسعار شغّالة دلوقتي بس ما اتحفظتش على الجهاز (المساحة مليانة) — هترجع القديمة لو قفلت التطبيق', 5200);
+    return;
+  }
+  // ودلوقتي للسيرفر عشان توصل الموزّعين كلهم، مش الجهاز ده بس
+  pushPricesToServer_(out);
+}
+
+// بيرفع الأسعار للشيت عشان كل الأجهزة تشوفها. لو فشل، المصنع لازم يعرف إن
+// التعديل شغّال على جهازه هو بس — عشان مايفتكرش إن الموزّعين شايفين الجديد.
+async function pushPricesToServer_(out, quiet){
+  if(!APPS_SCRIPT_URL){
+    if(!quiet) toast('اتحفظت الأسعار على الجهاز — مفيش رابط سيرفر عشان توصل للموزّعين');
+    return false;
+  }
+  if(!state.admin.pw){ return false; }        // مش المصنع — مالوش يرفع أسعار
+  if(!quiet) busy(true,'جارٍ نشر الأسعار للموزّعين…');
+  let ok = false;
+  try{
+    const payload = JSON.stringify(out);
+    const url = APPS_SCRIPT_URL + '?action=setPrices' + admParams_() + '&payload=' + encodeURIComponent(payload);
+    if(url.length > 7500) throw new Error('الأسعار أطول من اللي الرابط بيستحمله');
+    const d = await jsonp(url, 20000);
+    if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
+    ok = true;
+    save(LS_PRICES_DIRTY, false);
+    toast(quiet ? '✅ الأسعار اللي عدّلتها قبل كده وصلت للموزّعين دلوقتي'
+                : '✅ اتحفظت الأسعار الجديدة ووصلت للموزّعين كلهم');
+  }catch(err){
+    // العلامة دي بتمنع القراية من السيرفر إنها تمسح تعديل لسه ما اترفعش
+    save(LS_PRICES_DIRTY, true);
+    if(!quiet) toast('⚠️ الأسعار اتحفظت على جهازك بس ما وصلتش للموزّعين: '
+      + (err.message || err) + ' — هنحاول تاني تلقائي أول ما يرجع النت', 6000);
+  }
+  if(!quiet) busy(false);
+  return ok;
 }
 
 async function exportAdminOrderPdf(o){
@@ -3887,7 +3948,11 @@ function viewAdminPrices(){
   return `
   <section class="card">
     <div class="step"><span class="n">${ico("money","lg")}</span><h2>تعديل الأسعار</h2></div>
-    <div class="note" style="margin-top:0">التعديل بيتحفظ على الجهاز ده بس، وبيتطبّق فورًا على أي طلب جديد وأي مستند PDF بعد كده.</div>
+    <div class="note" style="margin-top:0">التعديل بيتنشر على <b>كل الأجهزة</b> — الموزّعين هيشوفوا الأسعار الجديدة أول ما يفتحوا التطبيق. وبيتطبّق فورًا على أي طلب جديد وأي مستند PDF بعد كده.${
+      load(LS_PRICES_DIRTY,false)
+        ? ' <span style="color:#B3261E;font-weight:700">⚠️ آخر تعديل لسه ما وصلش للموزّعين — هيترفع تلقائي أول ما النت يرجع.</span>'
+        : (_pricesSyncedAt ? ' <span style="color:#6B7A8C">(آخر تحديث من السيرفر: '+esc(_pricesSyncedAt)+')</span>' : '')
+    }</div>
     <div class="note" style="background:#EAF2FA;color:#0B4A7A;border-radius:8px;padding:9px 12px">
       عمود <b>${esc(PRICE_TIERS.dist.label)}</b> هو الأساسي وهو اللي بيتحسب بيه الأوردر الفعلي. عمودَي <b>${esc(PRICE_TIERS.showroom.label)}</b> و<b>${esc(PRICE_TIERS.customer.label)}</b> بتقدر تعدّلهم بحرية لكل صنف، وبيُستخدموا لما تعمل عرض سعر وتختار المستوى المناسب.
     </div>
@@ -5748,7 +5813,9 @@ renderNow();
 loadStock();   // أرصدة المخزن بتتحمّل في الخلفية من غير ما تعطّل فتح التطبيق
 preloadDoorImages_();   // نبدأ تحميل صور الأبواب بدري عشان تبقى جاهزة وقت التصدير
 retryPendingOrders_();   // لو فيه طلبات اتسجلت على الجهاز بس ما وصلتش المصنع، نحاول تاني
+syncPricesFromServer_(); // أحدث أسعار من المصنع — بتشتغل في الخلفية ومابتوقفش حاجة
 window.addEventListener('online', retryPendingOrders_);
+window.addEventListener('online', ()=>{ if(load(LS_PRICES_DIRTY,false)) syncPricesFromServer_(); });
 // التطبيق اتقفل أو راح للخلفية وفيه صنف مسحوب للتعديل؟ نرجّعه للسلة قبل ما يضيع
 window.addEventListener('pagehide', ()=>restorePulledLine_(true));
 document.addEventListener('visibilitychange', ()=>{ if(document.hidden) restorePulledLine_(true); });
