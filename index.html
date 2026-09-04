@@ -769,7 +769,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v134';
+const APP_BUILD   = 'v135';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2437,79 +2437,79 @@ function toggleQtyEditMode_(o){
 }
 
 async function setItemAvail(id, idx, avail){
-  state.admin.itemBusy = id+':'+idx; render();
-  try{
-    const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=setItemAvail' + admParams_()
-      + '&id=' + encodeURIComponent(id) + '&idx=' + idx + '&avail=' + (avail?1:0));
-    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل التحديث');
-    const it = (state.admin.items[id]||[])[idx];
-    if(it) it.avail = avail;
-    toast(avail?'اتعلّم الصنف متاح':'اتعلّم الصنف غير متاح');
-  }catch(err){
-    toast('تعذّر التحديث: ' + (err.message || err));
-  }
-  state.admin.itemBusy = null; render();
+  return adminAction_({
+    busyField:'itemBusy', busyKey:id+':'+idx, action:'setItemAvail',
+    params:'&id=' + encodeURIComponent(id) + '&idx=' + idx + '&avail=' + (avail?1:0),
+    onOk(){
+      const it = (state.admin.items[id]||[])[idx];
+      if(it) it.avail = avail;
+    },
+    okMsg: avail?'اتعلّم الصنف متاح':'اتعلّم الصنف غير متاح'
+  });
 }
 
 // بيحدّث اسم صاحب الأوردر و/أو تاريخ الطلب يدويًا من شاشة المصنع
 async function saveOrderMeta_(id, customer, date){
-  state.admin.metaBusy = id; render();
-  try{
-    const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=setOrderMeta' + admParams_()
-      + '&id=' + encodeURIComponent(id)
-      + '&customer=' + encodeURIComponent(customer||'')
-      + (date ? '&date=' + encodeURIComponent(date) : ''));
-    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل التحديث');
-    [state.admin.rows, state.admin.archRows].forEach(list=>{
-      const o = (list||[]).find(x=>String(x.id)===String(id));
+  return adminAction_({
+    busyField:'metaBusy', busyKey:id, action:'setOrderMeta',
+    params:'&id=' + encodeURIComponent(id)
+         + '&customer=' + encodeURIComponent(customer||'')
+         + (date ? '&date=' + encodeURIComponent(date) : ''),
+    onOk(d){
+      const o = adminOrderById_(id);
       if(o){ o.customer = d.customer||''; if(d.date) o.date = d.date; }
-    });
-    delete state.admin.metaEdit[id];
-    toast('اتحدّثت بيانات الطلب');
-  }catch(err){
-    toast('تعذّر التحديث: ' + (err.message || err));
-  }
-  state.admin.metaBusy = null; render();
+      delete state.admin.metaEdit[id];
+    },
+    okMsg:'اتحدّثت بيانات الطلب'
+  });
 }
 
 // بيحدّث الكمية المطلوبة لصنف معيّن جوه طلب (تعديل يدوي من شاشة المصنع) وبيحدّث إجماليات الطلب في القايمة
 async function setItemQty_(id, idx, qty){
   const key = id+':'+idx;
-  state.admin.qtyBusy = key; render();
-  try{
-    const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=setItemQty' + admParams_()
-      + '&id=' + encodeURIComponent(id) + '&idx=' + idx + '&qty=' + encodeURIComponent(qty));
-    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل التحديث');
-    const it = (state.admin.items[id]||[])[idx];
-    if(it){ it.qty = d.qty; it.produced = d.produced; }
-    applyOrderTotals_(id, d.totals);
-    delete state.admin.qtyEdit[key];
-    toast('اتحدّثت الكمية');
-  }catch(err){
-    toast('تعذّر التحديث: ' + (err.message || err));
-  }
-  state.admin.qtyBusy = null; render();
+  return adminAction_({
+    busyField:'qtyBusy', busyKey:key, action:'setItemQty',
+    params:'&id=' + encodeURIComponent(id) + '&idx=' + idx + '&qty=' + encodeURIComponent(qty),
+    onOk(d){
+      const it = (state.admin.items[id]||[])[idx];
+      if(it){ it.qty = d.qty; it.produced = d.produced; }
+      applyOrderTotals_(id, d.totals);
+      delete state.admin.qtyEdit[key];
+    },
+    okMsg:'اتحدّثت الكمية'
+  });
 }
 
 // بيحذف صنف واحد من طلب وبيحدّث إجماليات الطلب في القايمة
 async function deleteOrderItem_(id, idx){
-  const key = id+':'+idx;
-  state.admin.itemDelBusy = key; render();
+  return adminAction_({
+    busyField:'itemDelBusy', busyKey:id+':'+idx, action:'deleteOrderItem',
+    params:'&id=' + encodeURIComponent(id) + '&idx=' + idx,
+    failMsg:'فشل الحذف', errPrefix:'تعذّر الحذف: ',
+    onOk(d){
+      if(state.admin.items[id]) state.admin.items[id].splice(idx,1);
+      applyOrderTotals_(id, d.totals);
+    },
+    okMsg:'اتحذف الصنف'
+  });
+}
+
+/* ---------- نداء موحّد لعمليات المصنع ----------
+   ⚠️ خمس دوال كانوا بيكرروا نفس الهيكل حرف بحرف: علّم «مشغول» → أعِد الرسم →
+   نادِ السيرفر → اتأكد من الرد → طبّق النتيجة → رسالة → صفّر «مشغول» → أعِد
+   الرسم، وكل واحدة بتكتب معالجة الخطأ من أول وجديد. أي تعديل على المعالجة كان
+   لازم يتعمل ٥ مرات، ونسيان واحدة معناها إن الصف يفضل معطّل للأبد بعد أي خطأ. */
+async function adminAction_(o){
+  state.admin[o.busyField] = o.busyKey; render();
   try{
-    const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=deleteOrderItem' + admParams_()
-      + '&id=' + encodeURIComponent(id) + '&idx=' + idx);
-    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل الحذف');
-    if(state.admin.items[id]) state.admin.items[id].splice(idx,1);
-    applyOrderTotals_(id, d.totals);
-    toast('اتحذف الصنف');
+    const d = await jsonp(APPS_SCRIPT_URL + '?action=' + o.action + admParams_() + (o.params || ''));
+    if(!d || !d.ok) throw new Error((d && d.error) || o.failMsg || 'فشل التحديث');
+    if(o.onOk) o.onOk(d);
+    toast(typeof o.okMsg === 'function' ? o.okMsg(d) : o.okMsg);
   }catch(err){
-    toast('تعذّر الحذف: ' + (err.message || err));
+    toast((o.errPrefix || 'تعذّر التحديث: ') + (err.message || err));
   }
-  state.admin.itemDelBusy = null; render();
+  state.admin[o.busyField] = null; render();
 }
 
 // بيحدّث qty/rods/total لسطر الطلب في state.admin.rows/archRows بعد أي تعديل يدوي على أصنافه
@@ -2524,20 +2524,16 @@ function applyOrderTotals_(id, totals){
 // بيحدّث الكمية المنتجة فعليًا لصنف معيّن جوه طلب (تتبّع الإنتاج الجزئي — عميل طلب 5 مثلًا واتنتج 3 لسه)
 async function setItemProduced(id, idx, produced){
   const key = id+':'+idx;
-  state.admin.prodBusy = key; render();
-  try{
-    const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=setItemProduced' + admParams_()
-      + '&id=' + encodeURIComponent(id) + '&idx=' + idx + '&produced=' + encodeURIComponent(produced));
-    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل التحديث');
-    const it = (state.admin.items[id]||[])[idx];
-    if(it) it.produced = d.produced;
-    delete state.admin.prodEdit[key];
-    toast('اتحدّثت الكمية الجاهزة');
-  }catch(err){
-    toast('تعذّر التحديث: ' + (err.message || err));
-  }
-  state.admin.prodBusy = null; render();
+  return adminAction_({
+    busyField:'prodBusy', busyKey:key, action:'setItemProduced',
+    params:'&id=' + encodeURIComponent(id) + '&idx=' + idx + '&produced=' + encodeURIComponent(produced),
+    onOk(d){
+      const it = (state.admin.items[id]||[])[idx];
+      if(it) it.produced = d.produced;
+      delete state.admin.prodEdit[key];
+    },
+    okMsg:'اتحدّثت الكمية الجاهزة'
+  });
 }
 
 // بيبني order object موحّد من بيانات شاشة المصنع (list + orderItems) — مستخدم في تصدير الـ PDF وفي مشاركة الصورة
@@ -2717,20 +2713,41 @@ async function pushPricesToServer_(out, quiet){
   return ok;
 }
 
-async function exportAdminOrderPdf(o){
-  await toggleOrderItemsLoadOnly_(o.id);
+/* ---------- غلافين بيتكرروا في كل مكان ---------- */
+
+// غلاف شاشة الانتظار: شغّلها → اعمل الشغل → لو فشل قول السبب → اقفلها.
+// ⚠️ كان مكتوب حرف بحرف في أربع دوال تصدير. نسيان busy(false) في واحدة معناها
+// إن شاشة الانتظار تفضل مغطية التطبيق للأبد بعد أي خطأ.
+async function withBusy_(msg, errPrefix, work){
+  busy(true, msg);
+  try{ await work(); }
+  catch(err){ toast(errPrefix + (err.message || err)); }
+  busy(false);
+}
+
+// بيحمّل أصناف الطلب من السيرفر (لو مش محمّلة) وبعدين ينفّذ الشغل عليها.
+// ⚠️ كانت مكتوبة أربع مرات، وفي كل مرة نفس فحص «مفيش أصناف» — بس برسالتين
+// مختلفتين. لو حد نسي الفحص، المستند بيتبني فاضي من غير ما حد يعرف ليه.
+async function withOrderItems_(o, work){
+  const err = await toggleOrderItemsLoadOnly_(o.id);
   const its = state.admin.items[o.id] || [];
-  if(!its.length){ toast('مفيش أصناف لهذا الطلب'); return; }
-  makeDoc(buildAdminDocOrder_(o, its),'order');
+  if(!its.length){
+    // نفرّق بين «الطلب فاضي فعلاً» و«ما قدرناش نجيب أصنافه» — الرسالتين مختلفتين تمامًا
+    toast(err ? ('تعذّر تحميل أصناف الطلب: ' + (err.message || err)) : 'مفيش أصناف في الطلب ده', err ? 4200 : undefined);
+    return false;
+  }
+  await work(its);
+  return true;
+}
+
+async function exportAdminOrderPdf(o){
+  await withOrderItems_(o, its => makeDoc(buildAdminDocOrder_(o, its),'order'));
 }
 
 // عرض سعر بالمبالغ — نفس مستند الطلب بالظبط بس بالأسعار ظاهرة على مستوى السعر المختار،
 // من غير ما نأثّر على باقي التطبيق أو الأسعار المتخزّنة (pricesVisible() فاضلة false زي ما هي)
 async function exportAdminOrderQuote(o, tierKey){
-  await toggleOrderItemsLoadOnly_(o.id);
-  const its = state.admin.items[o.id] || [];
-  if(!its.length){ toast('مفيش أصناف لهذا الطلب'); return; }
-  makeDoc(buildAdminDocOrder_(o, its, tierKey||'dist'),'quote',true);
+  await withOrderItems_(o, its => makeDoc(buildAdminDocOrder_(o, its, tierKey||'dist'),'quote',true));
 }
 
 // بيفتح نافذة صغيرة تسأل: عرض السعر يكون بسعر مين — موزع / معرض / عميل
@@ -2765,9 +2782,9 @@ function openWhatsAppFree(text){
 
 // بيجهّز صورة الطلب من شاشة المصنع ويسيب المصنع يختار المستلم بنفسه (زرار "📤 إرسال" في كل كارت)
 async function shareAdminOrderImage(o){
-  await toggleOrderItemsLoadOnly_(o.id);
-  const its = state.admin.items[o.id] || [];
-  if(!its.length){ toast('مفيش أصناف لهذا الطلب'); return; }
+  await withOrderItems_(o, its => shareAdminOrderImageWith_(o, its));
+}
+async function shareAdminOrderImageWith_(o, its){
   const doc = buildAdminDocOrder_(o, its);
   const caption = 'طلب أوردر #'+o.id+' — '+(o.dist||'');
 
@@ -2801,11 +2818,16 @@ async function shareAdminOrderImage(o){
 
 function toggleOrderItemsLoadOnly_(id){
   // زي toggleOrderItems بس من غير ما يقفل القايمة لو مفتوحة أصلًا — مستخدمة قبل تصدير الـ PDF
+  // ⚠️ الـcatch كان بيبلع الخطأ في صمت، فالمصنع كان بيتقاله «مفيش أصناف في الطلب
+  // ده» وهو أصلًا النت اللي قطع — رسالة غلط بتخليه يفتكر إن الطلب فاضي فعلاً.
+  // بنرجّع الخطأ عشان اللي نداها يقول السبب الحقيقي.
   return (async()=>{
-    if(state.admin.items[id]) return;
+    if(state.admin.items[id]) return null;
     state.admin.itemsLoading = id; render();
-    try{ await loadOrderItems_(id); }catch(err){}
+    let err = null;
+    try{ await loadOrderItems_(id); }catch(e){ err = e; }
     state.admin.itemsLoading = null; render();
+    return err;
   })();
 }
 
@@ -3070,14 +3092,10 @@ async function buildFullReportPdf_(orders){
 // التقرير الكامل: كل الطلبات النشطة بتفاصيلها، كل طلب في صفحة لوحده.
 // (كان مكتوب وشغّال بس مالوش زرار في الشاشة خالص — اترجع في شريط أدوات المصنع.)
 async function exportAdminFullReport(){
-  busy(true,'جارٍ تجهيز التقرير…');
-  try{
+  return withBusy_('جارٍ تجهيز التقرير…', 'تعذّر تجهيز التقرير: ', async ()=>{
     const orders = await fetchPendingOrders_();
     if(orders) await buildFullReportPdf_(orders);
-  }catch(err){
-    toast('تعذّر تجهيز التقرير: ' + (err.message || err));
-  }
-  busy(false);
+  });
 }
 
 // ============================================================
@@ -3539,27 +3557,19 @@ async function exportCustomerPdf_(name){
 }
 
 async function exportPendingDoorsPdf_(){
-  busy(true,'جارٍ تجهيز تقرير الأبواب المعلّقة (PDF)…');
-  try{
+  return withBusy_('جارٍ تجهيز تقرير الأبواب المعلّقة (PDF)…', 'تعذّر تجهيز الـ PDF: ', async ()=>{
     await loadStock(true);
     const orders = await fetchPendingOrders_();
     if(orders) await buildPendingDoorsPdf_(orders);
-  }catch(err){
-    toast('تعذّر تجهيز الـ PDF: ' + (err.message || err));
-  }
-  busy(false);
+  });
 }
 
 async function exportPendingDoorsExcel_(){
-  busy(true,'جارٍ تجهيز تقرير الأبواب المعلّقة (إكسيل)…');
-  try{
+  return withBusy_('جارٍ تجهيز تقرير الأبواب المعلّقة (إكسيل)…', 'تعذّر تجهيز الإكسيل: ', async ()=>{
     await loadStock(true);
     const orders = await fetchPendingOrders_();
     if(orders) await buildPendingDoorsExcel_(orders);
-  }catch(err){
-    toast('تعذّر تجهيز الإكسيل: ' + (err.message || err));
-  }
-  busy(false);
+  });
 }
 
 // ============================================================
@@ -3815,14 +3825,10 @@ function dateStr2_(d){
 // ⚠️ وكان فيه باج: busy(false) كانت مكتوبة في حالة الخطأ بس، فلو التصدير نجح
 // شاشة «جارٍ التحميل» كانت بتفضل شغّالة للأبد والتطبيق يبان متعلّق.
 async function exportAdminExcel(){
-  busy(true,'جارٍ تحميل بيانات الطلبات…');
-  try{
+  return withBusy_('جارٍ تحميل بيانات الطلبات…', 'تعذّر تجهيز الإكسيل: ', async ()=>{
     const orders = await fetchPendingOrders_();
     if(orders) await buildAdminOrdersExcel_(orders);
-  }catch(err){
-    toast('تعذّر تجهيز الإكسيل: ' + (err.message || err));
-  }
-  busy(false);
+  });
 }
 
 
@@ -4993,11 +4999,12 @@ function newOrderId(){
 // وبيحتفظ ببيانات صاحب الطلب الأصلي (اسم/موبايل/منطقة) عشان الحفظ ما يغيّرهاش لبيانات المصنع.
 async function adminEditOrder(o){
   busy(true,'جارٍ تحميل أصناف الطلب…');
-  await toggleOrderItemsLoadOnly_(o.id);
-  const its = state.admin.items[o.id] || [];
-  busy(false);
-  if(!its.length){ toast('مفيش أصناف في الطلب ده'); return; }
-
+  let loaded;
+  try{ loaded = await withOrderItems_(o, its => adminEditOrderWith_(o, its)); }
+  finally{ busy(false); }
+  return loaded;
+}
+function adminEditOrderWith_(o, its){
   state.cart = its.map(it=>{
     const qty = Number(it.qty)||0;
     const price = Number(it.unitPrice)||0;
