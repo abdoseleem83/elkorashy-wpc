@@ -112,6 +112,35 @@ const r6 = await pg.evaluate(async()=>{
 });
 check('الموزّع العادي مايقدرش يرفع أسعار', r6.اتبعت===null && r6.رجّع===false, String(r6.اتبعت));
 
+// ٧) المصنع عدّل أوفلاين وقفل التطبيق: كلمة السر بتضيع من sessionStorage.
+//    الدخول تاني لازم يشغّل الرفع، مش يفضل واقف للأبد.
+const r7 = await pg.evaluate(async()=>{
+  window.toast=()=>{};
+  save('wpc_prices_dirty', true);
+  state.admin.pw=''; state.admin.open=false;
+  // من غير كلمة سر: الرفع مايشتغلش والقراية متوقّفة (تعديل المصنع محفوظ)
+  let calls=[]; window.jsonp=(u)=>{ calls.push(String(u).includes('setPrices')?'push':'pull');
+    return Promise.resolve({ok:true, prices:{dist:{sizes:{[SIZES[0].w]: 1}}}}); };
+  await syncPricesFromServer_();
+  const بدون_دخول = calls.slice();
+  // المصنع دخل — adminLoad بينده syncPricesFromServer_ في آخرها
+  calls=[]; state.admin.pw='secret';
+  await syncPricesFromServer_();
+  return { بدون_دخول, بعد_الدخول: calls,
+           دِرتي: JSON.parse(localStorage.getItem('wpc_prices_dirty')||'false') };
+});
+check('من غير كلمة سر: مفيش رفع والقراية متوقّفة (التعديل محفوظ)',
+  r7.بدون_دخول.length===0, JSON.stringify(r7.بدون_دخول));
+check('بعد الدخول: الرفع بيشتغل والعلامة بتتشال',
+  r7.بعد_الدخول[0]==='push' && r7.دِرتي===false, JSON.stringify(r7.بعد_الدخول)+' دِرتي='+r7.دِرتي);
+
+// وإن الدخول فعلاً بينده المزامنة (مش بس إن الدالة شغّالة)
+const wired = await pg.evaluate(()=>{
+  const src = String(adminLoad);
+  return /startAdminPolling\(\);[\s\S]{0,400}syncPricesFromServer_\(\)/.test(src);
+});
+check('الدخول لشاشة المصنع بينده مزامنة الأسعار', wired);
+
 check('مفيش أخطاء', errs.length===0, errs.join(' | '));
 console.log(`\nالنتيجة: ${pass} نجحت، ${fail} فشلت`);
 await b.close();

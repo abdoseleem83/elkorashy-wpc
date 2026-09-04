@@ -327,6 +327,18 @@ function doGet(e) {
         if (VALID_STATUSES.indexOf(newStatus) < 0) {
           return reply({ ok: false, error: 'حالة غير معروفة: ' + newStatus }, cb);
         }
+        // ⚠️ الإلغاء عن طريق cancelOrder/deleteOrder كان بيرجّع الرصيد، لكن تغيير
+        // الحالة لـ Cancelled من هنا مكانش بيرجّعه — فالرصيد يفضل مخصوم لطلب
+        // ملغي. بنمشي على نفس القاعدة: الملغي بيرجّع رصيده، والراجع من الإلغاء
+        // لحالة نشطة بيتخصم تاني. المُسلَّم فعليًا مالوش رصيد يرجع.
+        var oldStatus = String(shS.getRange(r, COL_STATUS).getValue() || '');
+        if (newStatus !== oldStatus) {
+          if (newStatus === 'Cancelled' && oldStatus !== 'Delivered') {
+            adjustStockForOrderId_(e.parameter.id, +1);
+          } else if (oldStatus === 'Cancelled' && newStatus !== 'Cancelled') {
+            adjustStockForOrderId_(e.parameter.id, -1);
+          }
+        }
         shS.getRange(r, COL_STATUS).setValue(newStatus);
         shS.getRange(r, COL_UPDATED).setValue(new Date());
         var archivedNow = false;
@@ -1082,7 +1094,11 @@ function stockItemFromRow_(sh, row){
   return { kind: 'door', code: code, w: w, qty: Number(vals[10]) || 0 };
 }
 
-function restoreStockForOrderId_(id){
+function restoreStockForOrderId_(id){ adjustStockForOrderId_(id, +1); }
+
+// بيرجّع (+1) أو يخصم (-1) رصيد كل أبواب الطلب. الاتنين محتاجين نفس القراية،
+// فالدالة واحدة — إلغاء الطلب بيرجّع، والرجوع من الإلغاء لحالة نشطة بيخصم تاني.
+function adjustStockForOrderId_(id, dir){
   var shRS = sheet_(SHEET_ITEMS, HEAD_ITEMS);
   var lastRS = shRS.getLastRow();
   if (lastRS < 2) return;
@@ -1098,7 +1114,7 @@ function restoreStockForOrderId_(id){
       qty: valsRS[iRS][10] || 0
     });
   }
-  adjustStockForItems_(itemsRS, +1);
+  adjustStockForItems_(itemsRS, dir);
 }
 
 // بيزوّد أو بيخصم من رصيد المخزون حسب أصناف الطلب (الأبواب اللي ليها مقاس قياسي بس — مقاس خاص مش متتبّع)
