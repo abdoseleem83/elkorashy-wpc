@@ -756,7 +756,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v111';
+const APP_BUILD   = 'v112';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -4484,13 +4484,34 @@ function addAccessories(){
 // ما ياخد باله. دلوقتي بنمسك نسخة منه، وبنرجّعها تلقائي لو ساب الشاشة من غير ما يضيف.
 let _pulledLine = null;
 
+// بيصفّر شاشة الاختيار اللي editCartLine ملّتها ببيانات الصنف.
+// ⚠️ لازم تتنده مع أي رجوع للصنف: من غيرها الصنف بيرجع للسلة والشاشة تفضل مليانة
+// ببياناته، فأول ضغطة على «أضف» بتحطّه تاني — يعني نسختين من نفس الصنف.
+function resetPickerFor_(kind){
+  if(kind==='door'){
+    state.pick = {code:'', sizes:{}, customOn:false,
+      custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,
+              frameKind:null,frameRodQty:'',frameForDoors:''}};
+  } else if(kind==='frame'){
+    state.fr = {cm:10, code:'', doorW:'', kind:'full', qty:1, nonStd:false,
+                jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:''};
+  } else if(kind==='bror'){
+    state.br = {size:'6×9', code:'', rods:1, lenM:BROR_ROD_M_DEFAULT};
+  } else if(kind==='panel'){
+    state.pd = {code:'', qty:1};
+  } else if(kind==='acc'){
+    state.acc = {};
+  }
+}
+
 // بيرجّع الصنف اللي اتسحب للتعديل لو المستخدم ما كمّلش التعديل
 function restorePulledLine_(silent){
   if(!_pulledLine) return false;
-  const { item, index } = _pulledLine;
+  const { item, index, kind } = _pulledLine;
   _pulledLine = null;
   state.cart.splice(Math.min(index, state.cart.length), 0, item);
   save(LS_CART, state.cart);
+  resetPickerFor_(kind);          // لازم تتصفّر مع الرجوع، وإلا الصنف بيتكرر
   if(!silent) toast('رجّعنا «'+(item.title||'الصنف')+'» للسلة — التعديل ما اتكملش');
   return true;
 }
@@ -4501,7 +4522,7 @@ function editCartLine(i){
   const it = state.cart[i];
   if(!it) return;
   restorePulledLine_(true);                      // لو فيه تعديل سابق ما اتكملش، رجّعه الأول
-  _pulledLine = { item: JSON.parse(JSON.stringify(it)), index: i };
+  _pulledLine = { item: JSON.parse(JSON.stringify(it)), index: i, kind: it.kind };
   state.cart.splice(i,1);
   save(LS_CART,state.cart);
 
