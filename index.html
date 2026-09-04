@@ -76,27 +76,6 @@ button{cursor:pointer;border:0;background:none}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 /* ============ بوابة التثبيت — شاشة كاملة قبل أي حاجة تانية ============ */
-#installGate{
-  position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:linear-gradient(170deg,var(--navy),var(--navy-2));color:#EAF2FA;
-  padding:32px 24px calc(28px + env(safe-area-inset-bottom));text-align:center;
-}
-#installGate.hidden{display:none}
-#installGate img.gatelogo{width:96px;height:96px;border-radius:20px;background:#fff;padding:10px;object-fit:contain;margin-bottom:20px;box-shadow:0 8px 26px rgba(0,0,0,.3)}
-#installGate h1{font-size:19px;margin:0 0 10px;line-height:1.4}
-#installGate .gatesub{font-size:13.5px;color:#B9CBDD;line-height:1.75;max-width:320px;margin:0 0 26px}
-.gatebtn{
-  display:block;width:100%;max-width:320px;padding:15px;border-radius:14px;
-  background:linear-gradient(180deg,var(--gold-lt,#E4C766),var(--gold,#C9A227));
-  color:#2A1F18;font-family:Arial,'Helvetica Neue',sans-serif;font-size:15.5px;font-weight:700;
-  box-shadow:0 6px 20px rgba(201,162,39,.35);
-}
-.gatehint{font-size:11.5px;color:#8FA3BC;margin-top:12px;max-width:300px;line-height:1.6}
-.gatesteps{background:rgba(255,255,255,.07);border-radius:12px;padding:14px;max-width:320px;margin-bottom:18px;text-align:right}
-.gatestep{font-size:12.5px;line-height:1.7;color:#DCE7F2;display:flex;gap:8px;margin-bottom:9px}
-.gatestep:last-child{margin-bottom:0}
-.gatestep b{flex:0 0 auto;width:20px;height:20px;border-radius:50%;background:var(--brand);color:#fff;font-size:11px;display:grid;place-items:center}
-.gateskip{margin-top:20px;font-size:12.5px;color:#9CB6D2;text-decoration:underline;background:none}
 
 /* ============ الهيدر ============ */
 #appbar{position:sticky;top:0;z-index:40}
@@ -153,7 +132,6 @@ button{cursor:pointer;border:0;background:none}
 /* لوحة تفاصيل الباب — بتظهر تحت صف الباب المختار جوه نفس الشبكة */
 .doorpanel{grid-column:1/-1;background:#F7FAFD;border:1px dashed var(--brand);border-radius:12px;padding:12px;margin:2px 0 4px}
 /* المقاس / الحلق / البرور — أعمدة جنب بعض تحت الباب المختار */
-.specgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px}
 .specol{display:flex;flex-direction:column;gap:5px;min-width:0}
 .specol .sol-h{font-size:10px;color:var(--muted);text-align:center;font-weight:600}
 .specol .colchip{
@@ -170,13 +148,6 @@ button{cursor:pointer;border:0;background:none}
 .doorpanel .grp{font-size:11.5px;color:var(--muted);margin:11px 0 6px}
 .doorpanel .dphead + .grp{margin-top:0}
 .grp{font-size:12px;font-weight:700;color:var(--wood);margin:11px 0 6px}
-.prow{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)}
-.prow:last-of-type{border-bottom:0}
-.prow span{flex:1;font-size:12.5px;color:var(--ink)}
-.prow small{color:var(--muted)}
-.prow input{width:84px;flex:0 0 auto;text-align:center;border:1px solid var(--line);border-radius:8px;padding:6px 4px;font-size:13px}
-.prow input:focus{border-color:var(--wood);outline:none}
-.prow .u{flex:0 0 auto;width:auto;font-size:12px;color:var(--muted)}
 .prow3{display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .prow3:last-of-type{border-bottom:0}
 .prow3 .lbl{flex:1 1 100%;font-size:12.5px;color:var(--ink);margin-bottom:2px}
@@ -288,13 +259,6 @@ input::placeholder{color:#A8B4C2}
   padding:9px 6px;text-align:center;font-size:16px;font-weight:700;color:var(--ink)}
 .rodbox input:focus{border-color:var(--wood);outline:none}
 .rodbox .rp{margin-top:5px;font-size:10.5px;color:var(--muted)}
-.whoswitch{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.whoswitch .who{display:flex;align-items:center;gap:8px;padding:11px 12px;border:1.5px solid var(--line);
-  border-radius:11px;background:#fff;text-align:right;color:var(--muted);transition:.15s}
-.whoswitch .who span{display:block;font-size:12.5px;font-weight:700;line-height:1.35}
-.whoswitch .who small{display:block;font-size:10.5px;font-weight:400;color:var(--muted)}
-.whoswitch .who.on{border-color:var(--brand);background:#EAF2FA;color:var(--navy)}
-.whoswitch .who.on .i{color:var(--brand)}
 .fld textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 11px;
   font-family:inherit;font-size:14px;font-weight:700;resize:vertical;background:#fff;color:var(--ink)}
 .fld textarea:focus{border-color:var(--brand);outline:none}
@@ -330,7 +294,6 @@ input::placeholder{color:#A8B4C2}
 .chip.on .sub{color:#9CB6D2}
 .chip .ic{display:block;font-size:20px;line-height:1.2;margin-bottom:1px}
 
-.box{margin-top:11px;padding:11px;background:#F7FAFD;border:1px dashed var(--brand);border-radius:11px}
 .note{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.55}
 .note b{color:var(--brand)}
 /* ============ العداد ============ */
@@ -447,7 +410,6 @@ input::placeholder{color:#A8B4C2}
 .bar .sum span{font-size:11px;color:var(--muted)}
 .bar .btn{flex:1;width:auto}
 
-.foot{text-align:center;font-size:11px;color:var(--muted);padding:8px 0 4px}
 
 /* ============ المستند (عرض سعر / طلب) ============ */
 #paper{position:fixed;top:-10000px;left:-10000px;width:794px;background:#fff}
@@ -639,7 +601,6 @@ input.bad{box-shadow:0 0 0 3px rgba(179,38,30,.1)}
 </head>
 <body>
 
-<div id="installGate" class="hidden"></div>
 
 <div id="appbar">
 <header class="top">
@@ -808,7 +769,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v133';
+const APP_BUILD   = 'v134';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1022,7 +983,6 @@ async function syncPricesFromServer_(){
    ============================================================ */
 const state = {
   tab: load(LS_TAB, 'new'),
-  gateBypassed:false,   // تثبيت التطبيق — بيرجع يظهر تاني في أي تحميل جديد للصفحة
   track:{loading:false, rows:null, err:'', at:0},
   stock:{rows:null, at:0, loading:false},   // أرصدة المخزن — الجاهز للتسليم خلال ٤٨ ساعة
   admin:{open:false, pw:'', loading:false, rows:null, err:'', busy:null,
@@ -1426,7 +1386,6 @@ function render(){
 
 function renderNow(){
   _renderQueued = false;
-  updateInstallGate();
 
   const nav=document.getElementById('tabs');
   const bar=document.getElementById('bar');
@@ -2860,6 +2819,35 @@ function doorWidthGroup_(sizeStr){
 }
 
 
+// تجميع أصناف كل الطلبات حسب النوع والكود — مرتّبة بالكمية تنازليًا.
+// ⚠️ الكتلة دي كانت مكتوبة مرتين حرف بحرف: مرة في تقرير الـPDF ومرة في تقرير
+// الإكسيل. أي تعديل على واحدة كان هيخلي التقريرين يدّوا أرقام مختلفة لنفس
+// البيانات — والمصنع بيقارن بينهم.
+function groupItemsByCode_(orders){
+  const grand = {};
+  (orders||[]).forEach(o=>(o.items||[]).forEach(it=>{
+    const key = it.type+'|'+(it.code||it.title||'')+(it.isSet?'|set':'');
+    if(!grand[key]) grand[key] = { type:it.type, code:it.code||'', name:itemNameAr_(it), qty:0, produced:0, orderIds:new Set() };
+    grand[key].qty += Number(it.qty)||0;
+    grand[key].produced += itemProdPending_(it).produced;
+    grand[key].orderIds.add(o.id);
+  }));
+  return Object.values(grand).sort((a,b)=>b.qty-a.qty);
+}
+
+// مواصفات الصنف زي ما بتتعرض في التقارير (عرض/ارتفاع الفتحة، الحلق، البرور).
+// ⚠️ كانت مكتوبة مرتين حرف بحرف — في تقرير الـPDF وفي تقرير الإكسيل — فأي
+// تعديل على واحدة كان بيخلي التقريرين يوصفوا نفس الصنف بشكلين مختلفين.
+function itemSpecCells_(it){
+  const wh = doorWH_(it.size, it.doorHeight);
+  return {
+    w: wh.w, h: wh.h,
+    frameW: it.frame ? it.frame : '—',
+    frameH: it.frame ? (it.frameHeight ? it.frameHeight : 'استاندر') : '—',
+    bror:   it.dbror ? it.dbror : '—'
+  };
+}
+
 // تقرير الطلبات الشامل (PDF) — بنفس تقسيمة ملف الإكسيل بالظبط:
 // ١) ملخص الطلبات  ٢) تفاصيل حسب العميل  ٣) إجمالي الأصناف
 function reportHTML(orders){
@@ -2933,10 +2921,8 @@ function reportHTML(orders){
     const ordBlocks = cust.orders.map(o=>{
       const st = STATUS[o.status] || {ar:o.status||'—'};
       const itemRows = (o.items||[]).map(it=>{
-        const wh = doorWH_(it.size, it.doorHeight);
-        const frameW = it.frame ? it.frame : '—';
-        const frameH = it.frame ? (it.frameHeight ? it.frameHeight : 'استاندر') : '—';
-        const brorTxt = it.dbror ? it.dbror : '—';
+        const sp = itemSpecCells_(it);
+        const wh = {w:sp.w, h:sp.h}, frameW = sp.frameW, frameH = sp.frameH, brorTxt = sp.bror;
         const unavail = it.avail===false;
         const pp = itemProdPending_(it);
         return `<tr>
@@ -3022,16 +3008,8 @@ function reportHTML(orders){
   </div>`;
 
   // ---------- ٣) إجمالي الأصناف (كل العملاء) ----------
-  const grand = {};
-  orders.forEach(o=>(o.items||[]).forEach(it=>{
-    const key = it.type+'|'+(it.code||it.title||'')+(it.isSet?'|set':'');
-    if(!grand[key]) grand[key] = { type:it.type, code:it.code||'', name:itemNameAr_(it), qty:0, produced:0, orderIds:new Set() };
-    grand[key].qty += Number(it.qty)||0;
-    grand[key].produced += itemProdPending_(it).produced;
-    grand[key].orderIds.add(o.id);
-  }));
   let grandProduced = 0;
-  const grandRows = Object.values(grand).sort((a,b)=>b.qty-a.qty).map((g,idx)=>{
+  const grandRows = groupItemsByCode_(orders).map((g,idx)=>{
     grandProduced += g.produced;
     const pending = g.qty-g.produced;
     const bg = idx%2 ? `background:${ZEBRA};` : '';
@@ -3742,10 +3720,8 @@ async function buildAdminOrdersExcel_(orders){
       hdr.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}}; c.font={bold:true,color:{argb:NAVY},name:FONT,size:10}; c.alignment={horizontal:'center'}; c.border=border; });
 
       (o.items||[]).forEach(it=>{
-        const wh = doorWH_(it.size, it.doorHeight);
-        const frameW = it.frame ? it.frame : '—';
-        const frameH = it.frame ? (it.frameHeight ? it.frameHeight : 'استاندر') : '—';
-        const brorTxt = it.dbror ? it.dbror : '—';
+        const sp = itemSpecCells_(it);
+        const wh = {w:sp.w, h:sp.h}, frameW = sp.frameW, frameH = sp.frameH, brorTxt = sp.bror;
         const pp = itemProdPending_(it);
         const cells = ['', itemTypeAr_(it.type), it.code||'—', itemNameAr_(it), wh.w||'—', wh.h||'—', frameW]
           .concat(showFrameHCol?[frameH]:[]).concat([brorTxt, itemUnitAr_(it.unit), Number(it.qty)||0, pp.produced, pp.pending, it.avail===false?'غير متاح':'متاح']);
@@ -3787,15 +3763,7 @@ async function buildAdminOrdersExcel_(orders){
   hdrCodes.height=22;
   wsCodes.views = [{ rightToLeft:true, state:'frozen', ySplit:hdrCodes.number }];
 
-  const grand = {};
-  orders.forEach(o=>(o.items||[]).forEach(it=>{
-    const key = it.type+'|'+(it.code||it.title||'')+(it.isSet?'|set':'');
-    if(!grand[key]) grand[key] = { type:it.type, code:it.code||'', name:itemNameAr_(it), qty:0, produced:0, orderIds:new Set() };
-    grand[key].qty += Number(it.qty)||0;
-    grand[key].produced += itemProdPending_(it).produced;
-    grand[key].orderIds.add(o.id);
-  }));
-  const grandList = Object.values(grand).sort((a,b)=>b.qty-a.qty);
+  const grandList = groupItemsByCode_(orders);
   let grandProducedX = 0;
   grandList.forEach((g,idx)=>{
     grandProducedX += g.produced;
@@ -4422,12 +4390,7 @@ document.addEventListener('click',e=>{
       if(isOrderLocked_(live)){ toast('الطلب دخل التنفيذ في المصنع، مينفعش يتعدّل دلوقتي'); return; }
       state.cart = JSON.parse(JSON.stringify(o.items));
       save(LS_CART,state.cart);
-      state.editingId = o.id;
-      state.editingDate = isoLocal_(o.ts);
-      state.editingDisplayNo = o.displayNo || '';
-      state.editingEditCount = Number(o.editCount)||0;
-      state.tab='cart'; render(); window.scrollTo({top:0,behavior:'smooth'});
-      toast('بتعدّل الطلب #'+o.id+' — عدّل السلة واضغط «حفظ التعديل»');
+      enterEditMode_(o);
     }); break;
     case 'ord-del': {
       const o = state.orders.find(x=>x.id===el.dataset.id);
@@ -4454,18 +4417,17 @@ document.addEventListener('click',e=>{
     case 'adm-login':  adminLoad(); break;
     case 'adm-reload': state.admin.viewArchive ? loadArchive(true) : adminLoad(); break;
     case 'adm-set':    setStatus(el.dataset.id, el.dataset.st); break;
-    case 'adm-toggle-items': { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) toggleOrderItemsPreview(o); } break;
-    case 'adm-toggle-qtymode': { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) toggleQtyEditMode_(o); } break;
-    case 'adm-add-items': { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) adminEditOrder(o); } break;
+    case 'adm-toggle-items': { const o=adminOrderById_(el.dataset.id); if(o) toggleOrderItemsPreview(o); } break;
+    case 'adm-toggle-qtymode': { const o=adminOrderById_(el.dataset.id); if(o) toggleQtyEditMode_(o); } break;
+    case 'adm-add-items': { const o=adminOrderById_(el.dataset.id); if(o) adminEditOrder(o); } break;
     case 'adm-toggle-group': { const n=el.dataset.name; state.admin.groupOpen[n]=!state.admin.groupOpen[n]; render(); } break;
     case 'adm-group-pdf': exportCustomerPdf_(el.dataset.name); break;
     case 'adm-group-preview': previewCustomerOrder_(el.dataset.name); break;
     case 'rpv-close': closeReportPreview_(); break;
     case 'rpv-pdf': { const n = el.dataset.name; closeReportPreview_(); exportCustomerPdf_(n); break; }
-    case 'adm-pdf':     { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) exportAdminOrderPdf(o); } break;
-    case 'adm-quote':   { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) showQuoteTierPicker(o); } break;
-    case 'adm-share':    { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) shareAdminOrderImage(o); } break;
-    case 'adm-edit':     { const o=(state.admin.rows||[]).find(x=>String(x.id)===String(el.dataset.id)); if(o) adminEditOrder(o); } break;
+    case 'adm-pdf':     { const o=adminOrderById_(el.dataset.id); if(o) exportAdminOrderPdf(o); } break;
+    case 'adm-quote':   { const o=adminOrderById_(el.dataset.id); if(o) showQuoteTierPicker(o); } break;
+    case 'adm-share':    { const o=adminOrderById_(el.dataset.id); if(o) shareAdminOrderImage(o); } break;
     case 'adm-prices-open':   openAdminPrices(); break;
     case 'adm-prices-save':   saveAdminPrices(); break;
     case 'adm-prices-cancel': state.admin.pricesOpen=false; state.admin.priceEdit=null; render(); break;
@@ -4539,7 +4501,7 @@ document.addEventListener('click',e=>{
     }
     case 'adm-meta-save': {
       const id = el.dataset.id;
-      const o=((state.admin.rows||[]).concat(state.admin.archRows||[])).find(x=>String(x.id)===String(id));
+      const o=adminOrderById_(id);
       const meta = state.admin.metaEdit[id] || {customer:(o&&o.customer)||'', date:(o&&o.date)||''};
       saveOrderMeta_(id, meta.customer, meta.date);
       break;
@@ -4559,9 +4521,6 @@ document.addEventListener('click',e=>{
       updateAdmBadge(); render(); break;
     case 'update': doUpdate(); break;
     case 'install': doInstall(); break;
-    case 'gate-install': gateInstall(); break;
-    case 'gate-copy': gateCopyLink(); break;
-    case 'gate-skip': state.gateBypassed=true; updateInstallGate(); break;
   }
 });
 
@@ -4658,7 +4617,7 @@ document.addEventListener('input',e=>{
   if(a==='meta-customer'){
     const id = el.dataset.id;
     if(!state.admin.metaEdit[id]){
-      const o=((state.admin.rows||[]).concat(state.admin.archRows||[])).find(x=>String(x.id)===String(id));
+      const o=adminOrderById_(id);
       state.admin.metaEdit[id] = {customer:(o&&o.customer)||'', date:(o&&o.date)||''};
     }
     state.admin.metaEdit[id].customer = el.value;
@@ -4667,7 +4626,7 @@ document.addEventListener('input',e=>{
   if(a==='meta-date'){
     const id = el.dataset.id;
     if(!state.admin.metaEdit[id]){
-      const o=((state.admin.rows||[]).concat(state.admin.archRows||[])).find(x=>String(x.id)===String(id));
+      const o=adminOrderById_(id);
       state.admin.metaEdit[id] = {customer:(o&&o.customer)||'', date:(o&&o.date)||''};
     }
     state.admin.metaEdit[id].date = el.value;
@@ -5068,12 +5027,35 @@ async function adminEditOrder(o){
   });
   save(LS_CART,state.cart);
 
+  enterEditMode_(o, {
+    date: o.date || isoLocal_(),
+    meta: { name:o.dist||'', phone:o.phone||'', region:o.region||'', customer:o.customer||'', customerPhone:o.customerPhone||'' }
+  });
+}
+
+// الدخول في وضع تعديل الطلب. المسارين (الموزّع من «تابع طلبك»، والمصنع من
+// شاشته) كانوا بيظبّطوا نفس الحقول الخمسة كل واحد لوحده — ودي بالظبط الحقول
+// اللي لو واحد نسي حقل فيها، رقم الطلب أو تاريخه يطلع غلط في المستند.
+// بيدوّر على الطلب في القايمة النشطة والأرشيف مع بعض.
+// ⚠️ باج كان هنا: سبع أزرار في كارت الطلب (PDF/سعر/إرسال/الأصناف/تعديل/…) كانت
+// بتدوّر في state.admin.rows بس. الأرشيف بيعرض نفس الأزرار، والطلب المؤرشف مش
+// في القايمة دي — فالزرار كان بيتضغط ومفيش أي حاجة تحصل ولا رسالة تظهر.
+// تلات أزرار بس كانوا بيدوّروا في الاتنين. بقى نداء واحد للكل.
+function adminOrderById_(id){
+  const key = String(id);
+  return (state.admin.rows||[]).find(x=>String(x.id)===key)
+      || (state.admin.archRows||[]).find(x=>String(x.id)===key)
+      || null;
+}
+
+function enterEditMode_(o, opts){
+  opts = opts || {};
   state.editingId = o.id;
-  state.editingMeta = { name:o.dist||'', phone:o.phone||'', region:o.region||'', customer:o.customer||'', customerPhone:o.customerPhone||'' };
-  state.editingDate = o.date || isoLocal_();
+  state.editingMeta = opts.meta || null;
+  state.editingDate = opts.date || isoLocal_(o.ts);
   state.editingDisplayNo = o.displayNo || '';
-  state.editingEditCount = Number(o.editCount)||0;
-  state.tab='cart'; render(); window.scrollTo({top:0,behavior:'smooth'});
+  state.editingEditCount = Number(o.editCount) || 0;
+  state.tab = 'cart'; render(); window.scrollTo({top:0, behavior:'smooth'});
   toast('بتعدّل الطلب #'+o.id+' — عدّل السلة واضغط «حفظ التعديل»');
 }
 
@@ -5726,39 +5708,12 @@ function syncInstallBtn(){
 
 // بوابة التثبيت اتشالت — بنعتمد دلوقتي على أيقونة التثبيت بتاعة المتصفح نفسه
 // (جنب النجمة في شريط العنوان) بدل شاشة كاملة قبل أي حاجة تانية.
-function updateInstallGate(){
-  const g=document.getElementById('installGate');
-  g.classList.add('hidden'); g.innerHTML='';
-}
-
-
-async function gateInstall(){
-  if(deferredPrompt){
-    try{
-      deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
-    }catch(e){}
-    deferredPrompt=null;
-    return;
-  }
-  // مفيش دعوة تثبيت جاهزة من المتصفح (شائع خارج كروم/إدج، أو لو المتصفح لسه ما قرّرش)
-  // — الخطوات اليدوية ظاهرة تحت الزرار بالفعل، فبس بننبّه بتوست كمان.
-  toast('استخدم الخطوات تحت الزرار للتثبيت اليدوي');
-}
-
-function gateCopyLink(){
-  const url=location.href;
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(url).then(()=>toast('اتنسخ اللينك — افتحه في Safari')).catch(()=>toast(url));
-  } else { toast(url); }
-}
-
 // أندرويد/كروم: بيدّينا الحدث ده لما التطبيق يبقى قابل للتثبيت الفوري (تاب واحد)
 window.addEventListener('beforeinstallprompt',e=>{
-  e.preventDefault(); deferredPrompt=e; syncInstallBtn(); updateInstallGate();
+  e.preventDefault(); deferredPrompt=e; syncInstallBtn();
 });
 window.addEventListener('appinstalled',()=>{
-  deferredPrompt=null; syncInstallBtn(); updateInstallGate(); toast('التطبيق اتثبّت ✅');
+  deferredPrompt=null; syncInstallBtn(); toast('التطبيق اتثبّت ✅');
 });
 syncInstallBtn();
 
