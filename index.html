@@ -808,7 +808,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v116';
+const APP_BUILD   = 'v117';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2485,6 +2485,10 @@ function buildAdminDocOrder_(o, its, tierKey){
     id:o.id, ts:o.date?new Date(o.date).getTime():Date.now(),
     name:o.dist, phone:o.phone, region:o.region, warehouse:'', total:o.total,
     customer:o.customer||'', note:o.ordNote||'',
+    // ⚠️ الحقول دي مكانتش بتتنقل خالص، فمستند المصنع كان بيطبع رقم الطلب الداخلي
+    // الطويل (#2026-xxxx) بدل الرقم التسلسلي اللي العميل شايفه في تطبيقه.
+    // يعني الورقة اللي في المصنع والورقة اللي مع العميل رقمين مختلفين لنفس الطلب.
+    displayNo: o.displayNo || '', editCount: Number(o.editCount)||0, replacesId: o.replacesId || '',
     priceTierLabel: tierKey ? (PRICE_TIERS[tierKey]||PRICE_TIERS.dist).label : '',
     items: its.map(it=>{
       // المقاس بيتخزّن إنجليزي في الشيت ('10 cm')؛ بنعرّبه لكل الأنواع مش الأبواب بس
@@ -3265,9 +3269,12 @@ async function previewCustomerOrder_(name){
       const mine = all.filter(o=>(String(o.customer||'').trim() || 'بدون اسم') === name);
       if(!mine.length) toast('مفيش طلبات معلّقة للعميل ده (يمكن كلها اتسلّمت)');
       else {
-        const data = buildPendingDoorsData_(mine);
-        if(!data.length) toast('مفيش أبواب معلّقة في طلبات العميل ده');
-        else showReportPreview_(pendingDoorsHTML(data), name);
+        // المعاينة بشكل «طلب أوردر» — نفس المستند اللي بيتطبع ويتبعت للعميل بالظبط،
+        // مش تقرير الأبواب المعلّقة. لو العميل عنده أكتر من طلب، بنعرضهم ورا بعض
+        // كل واحد في ورقة لوحده.
+        const html = mine.map(o => docHTML(buildAdminDocOrder_(o, o.items||[]), 'order'))
+                         .join('<div style="height:18px"></div>');
+        showReportPreview_(html, name);
       }
     }
   }catch(err){
@@ -5165,12 +5172,27 @@ function docHTML(o,mode,priced){
           <div style="font-size:12px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} · ${esc(WAREHOUSE)}</div>
         </div>
         <div style="text-align:left">
-          <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:14px;font-weight:700;color:#1080C0">
-            ${(!isQuote && o.displayNo) ? ('طلب اوردر رقم ( '+esc(o.displayNo)+(o.editCount?' معدل '+esc(o.editCount):'')+' )') : ('#'+esc(o.id))}
-          </div>
           <div style="font-size:11.5px;color:#6B7A8C">${(!isQuote && o.displayNo)?'بتاريخ ':''}${esc(dateStrDMY_(o.ts))}</div>
-          ${o.replacesId?`<div style="font-size:11.5px;font-weight:700;color:#B3261E;margin-top:2px">🔁 بدل الطلب #${esc(o.replacesId)}</div>`:''}
+          ${o.replacesId?`<div style="font-size:11.5px;font-weight:700;color:#B3261E;margin-top:2px">بدل الطلب #${esc(o.replacesId)}</div>`:''}
         </div>
+      </div>
+
+      <!-- رقم الأوردر: شريط عريض في نص الصفحة بخط تقيل أحمر.
+           ده الرقم اللي المصنع بيدوّر عليه وهو ماسك ورق كتير قدامه، فبيتحط في
+           أوضح مكان بدل ما يكون سطر صغير في الركن. -->
+      <div style="margin-top:14px;text-align:center;background:#FDECEA;border:2px solid #E8A9A3;
+                  border-radius:12px;padding:11px 14px">
+        <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px;font-weight:700;
+                    color:#8A3A32;letter-spacing:.5px">${isQuote?'رقم عرض السعر':'رقم طلب الأوردر'}</div>
+        <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:38px;font-weight:900;
+                    color:#B3261E;line-height:1.15;margin-top:2px">
+          ${(!isQuote && o.displayNo) ? esc(o.displayNo) : esc(o.id)}
+        </div>
+        ${(!isQuote && o.displayNo && o.editCount)
+          ? `<div style="font-size:12.5px;font-weight:700;color:#8A6512;background:#FFF6E5;
+                         border:1px solid #E8C77A;border-radius:20px;padding:2px 12px;display:inline-block;margin-top:5px">
+               معدّل ${esc(o.editCount)}</div>`
+          : ''}
       </div>
 
       <table style="width:100%;margin-top:16px;font-size:12.5px;border-collapse:collapse">
