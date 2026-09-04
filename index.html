@@ -808,7 +808,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v126';
+const APP_BUILD   = 'v127';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -925,7 +925,7 @@ const ACCESSORIES = [
   {id:'h8', name:'جوان',                          en:'Gasket',                               price:6,    unit:'متر'}
 ];
 
-const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders', LS_TAB = 'wpc_tab', LS_SECTION = 'wpc_section', LS_PRICES = 'wpc_prices', LS_PENDING = 'wpc_pending_sync';
+const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders', LS_TAB = 'wpc_tab', LS_SECTION = 'wpc_section', LS_PRICES = 'wpc_prices', LS_PENDING = 'wpc_pending_sync', LS_PENDING_CANCEL = 'wpc_pending_cancel';
 
 // مستويات السعر: السعر الأساسي المتخزّن في الكتالوج هو "سعر موزع"، ومنه بتتحسب المستويات التانية بزيادة ثابتة.
 // الزيادة بتتطبّق وقت طباعة عرض السعر بس — من غير ما تغيّر الأسعار المتخزّنة نفسها.
@@ -5102,6 +5102,47 @@ async function syncOrder_(o){
     if(!pending.includes(o.id)){ pending.push(o.id); savePendingSync_(pending); }
     toast('⚠️ الطلب #'+o.id+' اتسجّل على جهازك بس لسه ما وصلش المصنع — هنحاول تاني تلقائي أول ما يرجع النت', 4200);
   }
+  return ok;
+}
+
+/* ---------- حذف الطلب القديم بعد التعديل ----------
+   ⚠️ قبل كده كان أمر حذف الطلب القديم بيتبعت في نفس اللحظة مع إرسال الطلب
+   الجديد، من غير ما نستنى. لو الجديد فشل يوصل (النت قطع)، القديم بيكون
+   اتمسح خلاص والجديد لسه على الجهاز بس — يعني المصنع مايشوفش الطلب خالص.
+   دلوقتي القديم مايتمسحش غير لما الجديد يتأكد إنه وصل، ولو الجديد لسه معلّق
+   بنسجّل نية الحذف وننفّذها أول ما يوصل. طلب قديم أحسن من ولا طلب. */
+function loadPendingCancels_(){ return load(LS_PENDING_CANCEL, []); }
+function savePendingCancel_(info){
+  const list = loadPendingCancels_().filter(c=>String(c.newId)!==String(info.newId));
+  list.push(info); save(LS_PENDING_CANCEL, list);
+}
+async function cancelOldOrder_(info){
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL + '?action=cancelOrder&id=' + encodeURIComponent(info.prevId)
+      + '&phone=' + encodeURIComponent(info.phone||'')
+      + '&newId=' + encodeURIComponent(info.newId)
+      + (info.admin ? admParams_() : ''));
+    if(d && d.ok) return true;
+    // السيرفر عرف يحط علامة "معدّل" على القديم (دخل التنفيذ ومنقدرش نمسحه) — ده كافي
+    if(d && d.marked){
+      toast('✅ الطلب الجديد #'+info.newId+' اتسجّل — والقديم #'+info.prevId+' اتحطت عليه علامة "معدّل" عشان المصنع يحذفه', 5500);
+      return true;
+    }
+    toast('⚠️ الطلب الجديد #'+info.newId+' اتسجّل، بس القديم #'+info.prevId+' لسه موجود عند المصنع: '+((d&&d.error)||'خطأ غير معروف'), 5500);
+    return false;
+  }catch(err){
+    toast('⚠️ الطلب الجديد #'+info.newId+' اتسجّل، بس تعذّر حذف القديم #'+info.prevId+' — النت اتقطع', 5500);
+    return false;
+  }
+}
+// بيتنادى بعد ما طلب معلّق يوصل المصنع بنجاح: دلوقتي بس ينفع نمسح القديم
+async function runPendingCancelFor_(newId){
+  const list = loadPendingCancels_();
+  const hit = list.find(c=>String(c.newId)===String(newId));
+  if(!hit) return;
+  if(await cancelOldOrder_(hit)){
+    save(LS_PENDING_CANCEL, loadPendingCancels_().filter(c=>String(c.newId)!==String(newId)));
+  }
 }
 
 // بيحاول يبعت أي طلبات فشل إرسالها قبل كده — بيتنادى عند فتح التطبيق وعند رجوع النت
@@ -5122,6 +5163,7 @@ async function retryPendingOrders_(){
       if(!o) continue;   // اتشال من عندنا لأي سبب — متبقاش نحاول تاني
       const ok = await sendOrderToServer_(o);
       if(ok === false) stillPending.push(id);
+      else await runPendingCancelFor_(id);   // وصل — دلوقتي بس ينفع نمسح القديم
     }
     // مش savePendingSync_(stillPending) على طول: لو الموزع بعت طلب جديد وهو
     // مستني الرد هنا، syncOrder_ بتكون ضافته للقايمة — والكتابة فوقها كانت
@@ -5180,25 +5222,19 @@ function submitOrder(){
   state.customer={name:'',phone:''}; state.orderNote='';   // تصفير بيانات صاحب الأوردر للطلب الجاي
 
   if(APPS_SCRIPT_URL){
-    if(wasEditing && prevId){
-      // الطلب القديم لازم يتمسح نهائيًا من عند المصنع — لو المصنع هو اللي بيعدّل بنبعت كلمة سره
-      // عشان يقدر يمسحه حتى لو دخل التنفيذ فعليًا، وبنستنى الرد عشان نعرف لو فشل الحذف ونبلّغ بدل ما نسكت.
-      const cancelUrl = APPS_SCRIPT_URL + '?action=cancelOrder&id=' + encodeURIComponent(prevId)
-        + '&phone=' + encodeURIComponent(o.phone||'')
-        + '&newId=' + encodeURIComponent(o.id)
-        + (wasAdminEdit ? admParams_() : '');
-      jsonp(cancelUrl).then(d=>{
-        if(!d || !d.ok){
-          // لو السيرفر عرف يحط علامة "معدّل" على الطلب القديم (لأنه دخل التنفيذ ومنقدرش نمسحه)،
-          // ده كافي والمصنع هيشوفه في الشيت — نطمّن المستخدم بدل توتير من رسالة "خطأ"
-          if(d && d.marked) toast('✅ اتسجّل الطلب الجديد #'+o.id+' — والقديم #'+prevId+' اتحطت عليه علامة "معدّل" عشان المصنع يحذفه', 5500);
-          else toast('⚠️ الطلب الجديد #'+o.id+' اتسجّل، بس القديم #'+prevId+' لسه موجود عند المصنع: '+((d&&d.error)||'خطأ غير معروف'), 5500);
-        }
-      }).catch(()=>{
-        toast('⚠️ الطلب الجديد #'+o.id+' اتسجّل، بس تعذّر حذف القديم #'+prevId+' من عند المصنع — النت اتقطع', 5500);
-      });
-    }
-    syncOrder_(o);
+    // الطلب القديم لازم يتمسح من عند المصنع — لو المصنع هو اللي بيعدّل بنبعت كلمة سره
+    // عشان يقدر يمسحه حتى لو دخل التنفيذ فعليًا.
+    // ⚠️ الترتيب مهم: بنبعت الجديد الأول وبنستنى، ومانمسحش القديم غير لما الجديد
+    // يتأكد إنه وصل. لو بعتنا الاتنين مع بعض والجديد فشل، المصنع بيفضل من غير
+    // أي نسخة من الطلب خالص.
+    const cancelInfo = (wasEditing && prevId)
+      ? { prevId, phone:o.phone||'', newId:o.id, admin:wasAdminEdit } : null;
+    (async ()=>{
+      const sent = await syncOrder_(o);
+      if(!cancelInfo) return;
+      if(sent === false){ savePendingCancel_(cancelInfo); return; }   // لسه ما وصلش — سيب القديم
+      await cancelOldOrder_(cancelInfo);
+    })();
   }
   if(wasAdminEdit){
     // المصنع رجع لشاشته، والقايمة بتتحدّث من السيرفر عشان تبان بالأصناف الجديدة
