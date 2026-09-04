@@ -771,7 +771,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v114';
+const APP_BUILD   = 'v115';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2414,14 +2414,16 @@ function arabicItemTitle_(it){
     const base = d ? ('باب '+d.code+' '+d.name) : (it.code||it.title||'');
     return base + (String(it.milling||'').trim() ? ' (حفر)' : '') + (it.itemNote ? ' — '+it.itemNote : '');
   }
+  // المقاس محفوظ إنجليزي في الشيت ('10 cm' / '6x9')، والمستند عربي —
+  // arabicSizeText_ بتحوّله لـ '10 سم' وبتسيب اللي مش على الصيغة دي زي ما هو.
   if(it.type==='Frame'){
-    let t = 'حلق '+(it.size||'')+(it.code?' — '+it.code:'');
+    let t = 'حلق '+arabicSizeText_(it.size||'')+(it.code?' — '+it.code:'');
     if(it.forDoorWidth) t += ' — لباب '+it.forDoorWidth+' سم';
     if(it.itemNote) t += ' — '+it.itemNote;
     return t;
   }
   if(it.type==='Bror'){
-    let t = 'برور '+(it.size||'')+(it.code?' — '+it.code:'');
+    let t = 'برور '+arabicSizeText_(it.size||'')+(it.code?' — '+it.code:'');
     if(it.forDoorWidth) t += ' — لباب '+it.forDoorWidth+' سم';
     if(it.itemNote) t += ' — '+it.itemNote;
     return t;
@@ -2448,13 +2450,20 @@ function buildAdminDocOrder_(o, its, tierKey){
     customer:o.customer||'', note:o.ordNote||'',
     priceTierLabel: tierKey ? (PRICE_TIERS[tierKey]||PRICE_TIERS.dist).label : '',
     items: its.map(it=>{
-      const sz = it.type==='Door' ? doorSizeText_(arabicSizeText_(it.size), it.doorHeight) : (it.size||'');
+      // المقاس بيتخزّن إنجليزي في الشيت ('10 cm')؛ بنعرّبه لكل الأنواع مش الأبواب بس
+      const sz = it.type==='Door' ? doorSizeText_(arabicSizeText_(it.size), it.doorHeight)
+                                  : arabicSizeText_(it.size||'');
       const kind = it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':(it.type==='Panel'?'panel':'acc')));
       const price = tierKey ? tierPrice(it.unitPrice||0, kind, tierKey, tierKeyFor_(it, kind)) : (it.unitPrice||0);
       return {
         kind, title: (it.avail===false?'⚠️ غير متاح — ':'') + arabicItemTitle_(it),
         code: it.code||'',
         sizeTxt: sz, sizeEn: it.size||'', spec: sz, unit: it.unit||'', qty: it.qty||0,
+        // ⚠️ باج كان هنا: السيرفر بيخزّن وحدة الحلق الكامل كـ 'set'، والمستند بيقرا
+        // it.isSet عشان يكتب «طقم». الحقل ده مكانش بيتنقل خالص، فسطر فيه ٥ أطقم كان
+        // بيتطبع «٥ عود» — والطقم ٣ عيدان، يعني المصنع يقطّع ٥ بدل ١٥.
+        isSet: String(it.unit||'') === 'set',
+        rodCm: (String(it.unit||'').match(/^rod\s+(\d+)/)||[])[1] || '',
         unitPrice: price, price: price,
         frame: it.frame||'', dbror: it.dbror||'', frameHeight: it.frameHeight||'', doorHeight: it.doorHeight||'',
         produced: it.produced
@@ -4935,7 +4944,12 @@ function docRowHTML_(it, idx, priced, showFrameHCol){
     unit='باب';
   } else if(it.kind==='frame'||it.kind==='bror'){
     unit = it.isSet ? 'طقم' : 'عود';
-  } else { unit=it.unit||'قطعة'; }
+  } else {
+    // الوحدة ممكن تيجي من السيرفر بالإنجليزي ('pc'/'door'/'rod 220cm') لأن كده
+    // بتتخزّن في الشيت. itemUnitAr_ بتعرّبها، ولو كانت عربي أصلًا بترجّعها زي ما هي.
+    unit = itemUnitAr_(it.unit) || 'قطعة';
+    if(unit==='—') unit='قطعة';
+  }
   const pp = itemProdPending_(it);
   return `<tr>
     <td style="text-align:center">${idx}</td>
