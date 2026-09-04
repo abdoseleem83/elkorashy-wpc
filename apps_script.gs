@@ -122,6 +122,17 @@ function fmtDate_(v) {
   } catch (err) { return ''; }
 }
 
+// الكيبورد العربي بيكتب أرقام هندية (٠١٢٣٤٥٦٧٨٩). لو رقم موبايل اتسجّل كده،
+// الشطر بـ /\D/g كان بيمسحه بالكامل (لأنها مش أرقام لاتينية) فيفضل فاضي —
+// والموزع ده مايلاقيش طلباته أبدًا ولا يقدر يلغي طلب.
+// بنحوّلها للاتينية الأول، فالسجلات القديمة بترجع تشتغل من غير ما نلمس الشيت.
+function digitsOnly_(v) {
+  return String(v == null ? '' : v)
+    .replace(/[\u0660-\u0669]/g, function (d) { return String(d.charCodeAt(0) - 0x0660); })
+    .replace(/[\u06F0-\u06F9]/g, function (d) { return String(d.charCodeAt(0) - 0x06F0); })
+    .replace(/\D/g, '');
+}
+
 function sanitizeCell_(s) {
   s = String(s == null ? '' : s);
   // بنضيف \t و\r كمان: جوجل شيت بيتجاهل المسافات في أول الخانة، فـ "\t=CMD" لسه
@@ -338,13 +349,13 @@ function doGet(e) {
         if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) return reply({ ok: false, error: adminPwError_() }, cb);
         isAdmin = true;
       }
-      var phone = isAdmin ? '' : String((e.parameter.phone || '')).replace(/\D/g, '');
+      var phone = isAdmin ? '' : digitsOnly_((e.parameter.phone || ''));
       var sh = sheet_(SHEET_ORDERS, HEAD_ORDERS);
       var rows = readOrderRows_(sh);   // بيتخطى أعمدة Message وPricing Terms التقيلة
       var out = [];
 
       for (var i = 0; i < rows.length; i++) {
-        var rowPhone = String(rows[i][4] || '').replace(/\D/g, '');
+        var rowPhone = digitsOnly_(rows[i][4] || '');
 
         // لو التطبيق بعت رقم، بنرجّع طلبات الرقم ده بس.
         // بنقارن بآخر ٩ أرقام عشان الصفر البادئ وكود الدولة ما يفرقوش.
@@ -612,8 +623,8 @@ function doGet(e) {
 
         var isAdminCO = isAdminPwQuiet_(e.parameter.pw);   // المستخدم العادي بيلغي طلبه برقم موبايله، مش بكلمة سر
         if (!isAdminCO) {
-          var ownerPhoneCO = String(shCO.getRange(rCO, 5).getValue() || '').replace(/^'/, '').replace(/\D/g, '');
-          var reqPhoneCO = String(e.parameter.phone || '').replace(/\D/g, '');
+          var ownerPhoneCO = digitsOnly_(shCO.getRange(rCO, 5).getValue() || '');   // digitsOnly_ بتشيل الفاصلة العليا كمان
+          var reqPhoneCO = digitsOnly_(e.parameter.phone || '');
           if (!reqPhoneCO || reqPhoneCO.slice(-9) !== ownerPhoneCO.slice(-9)) {
             return reply({ ok: false, error: 'مش مسموح تلغي الطلب ده' }, cb);
           }

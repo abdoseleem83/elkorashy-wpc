@@ -808,7 +808,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v122';
+const APP_BUILD   = 'v123';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1094,7 +1094,20 @@ function rodPrice(perMetre, cm){return Math.round(perMetre*((Number(cm)||220)/10
 function linePrice(it){return (it.kind==='door'?it.unitPrice:it.price)*it.qty;}
 function cartTotal(){return state.cart.reduce((s,it)=>s+linePrice(it),0);}
 function cartCount(){return state.cart.length;}
-function phoneOk(p){return /^0?1[0-9]{9}$/.test(String(p).replace(/\s/g,''));}
+// ⚠️ الكيبورد العربي على الموبايل بيكتب أرقام هندية (٠١٢٣٤٥٦٧٨٩) مش لاتينية.
+// الموزع بيكتب رقمه ٠١٠١٢٣٤٥٦٧٨ — رقم صح تمامًا — والتطبيق كان بيقوله «رقم غلط»
+// من غير ما يقوله ليه، ويمنعه من إرسال الطلب.
+// وأخطر من كده: لو الرقم اتسجّل بالعربي، السيرفر بيشيل «كل اللي مش رقم» فبيمسح
+// الرقم كله ويفضل فاضي — يعني الموزع ده مش هيلاقي طلباته أبدًا في «تابع طلبك»،
+// ولا يقدر يلغي طلب.
+// بنحوّل الأرقام الهندية (العربية والفارسية) للاتينية في أي مكان بنقرا فيه رقم.
+function toLatinDigits_(v){
+  return String(v == null ? '' : v)
+    .replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0) - 0x0660))   // ٠-٩ عربي
+    .replace(/[\u06F0-\u06F9]/g, d => String(d.charCodeAt(0) - 0x06F0));  // ۰-۹ فارسي
+}
+
+function phoneOk(p){return /^0?1[0-9]{9}$/.test(toLatinDigits_(p).replace(/\s/g,''));}
 /* ============================================================
    أرصدة المخزن — الأصناف الجاهزة تتسلّم خلال ٤٨ ساعة
    ============================================================ */
@@ -4448,13 +4461,18 @@ document.addEventListener('input',e=>{
   const el=e.target.closest('[data-act]'); if(!el) return;
   const a=el.dataset.act;
   if(a==='adm-pw'){ state.admin.pw=el.value; const b=document.querySelector('[data-act="adm-login"]'); if(b) b.disabled=!el.value; return; }
-  if(a==='prof'){ state.profile[el.dataset.k]=el.value; save(LS_PROFILE,state.profile); return; }
+  if(a==='prof'){
+    // الموبايل بيتخزّن بأرقام لاتينية دايمًا — لو الموزع كتبه بالعربي بنحوّله
+    // على طول عشان يتقبل هنا ويتطابق مع السيرفر بعدين.
+    state.profile[el.dataset.k] = (el.dataset.k==='phone') ? toLatinDigits_(el.value) : el.value;
+    save(LS_PROFILE,state.profile); return;
+  }
   if(a==='cust'){ state.pick.custom[el.dataset.k]=el.value; refreshSummary(); return; }
   if(a==='cust-name'){ state.customer.name=el.value; return; }
-  if(a==='cust-phone'){ state.customer.phone=el.value; return; }
+  if(a==='cust-phone'){ state.customer.phone=toLatinDigits_(el.value); return; }
   if(a==='edit-date'){ state.editingDate=el.value; return; }
   if(a==='edit-meta-customer'){ if(state.editingMeta) state.editingMeta.customer=el.value; return; }
-  if(a==='edit-meta-phone'){ if(state.editingMeta) state.editingMeta.customerPhone=el.value; return; }
+  if(a==='edit-meta-phone'){ if(state.editingMeta) state.editingMeta.customerPhone=toLatinDigits_(el.value); return; }
   if(a==='stock-in'){
     state.admin.stockDraft[el.dataset.code+'|'+el.dataset.w] = el.value;
     el.classList.add('dirty');
