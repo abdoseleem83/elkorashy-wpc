@@ -808,7 +808,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v128';
+const APP_BUILD   = 'v129';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2662,11 +2662,15 @@ function saveAdminPrices(){
       panel: pickGroup(pe.panel, tier)
     };
   });
-  save(LS_PRICES, out);
+  // ⚠️ لو مساحة الجهاز مليانة، الحفظ بيفشل. من غير الفحص ده الرسالة كانت بتقول
+  // «اتحفظت الأسعار الجديدة» والأسعار ترجع القديمة أول ما يقفل التطبيق.
+  const pricesSaved = save(LS_PRICES, out);
   TIER_OVERRIDES.showroom = { sizes:{...out.showroom.sizes}, customExtra:out.showroom.customExtra, hafrExtra:out.showroom.hafrExtra, frames:{...out.showroom.frames}, brors:{...out.showroom.brors}, acc:{...out.showroom.acc}, panel:{...out.showroom.panel} };
   TIER_OVERRIDES.customer = { sizes:{...out.customer.sizes}, customExtra:out.customer.customExtra, hafrExtra:out.customer.hafrExtra, frames:{...out.customer.frames}, brors:{...out.customer.brors}, acc:{...out.customer.acc}, panel:{...out.customer.panel} };
   state.admin.pricesOpen=false; state.admin.priceEdit=null;
-  toast('اتحفظت الأسعار الجديدة');
+  toast(pricesSaved
+    ? 'اتحفظت الأسعار الجديدة'
+    : '⚠️ الأسعار شغّالة دلوقتي بس ما اتحفظتش على الجهاز (المساحة مليانة) — هترجع القديمة لو قفلت التطبيق', 5200);
   render();
 }
 
@@ -3801,19 +3805,29 @@ function notifyAdmin_(title, body){
 }
 
 let adminPollTimer = null;
+// ⚠️ باج كان هنا: المستمع ده كان بيتسجّل جوّه startAdminPolling. الخروج من شاشة
+// المصنع بيوقّف المؤقّت بس مابيشيلش المستمع، فكل دخول جديد كان بيضيف واحد
+// كمان — وكل مرة المصنع يرجّع التطبيق قدامه كان بيتبعت فحص كامل للشيت مرة
+// لكل دخول عمله في الجلسة. الشاشة اللي أصلاً بطيئة كانت بتبطّأ أكتر وأكتر.
+// دلوقتي بيتسجّل مرة واحدة، وبيشوف بنفسه لو المؤقّت شغّال ولا لأ.
+document.addEventListener('visibilitychange', ()=>{
+  if(!document.hidden && adminPollTimer) adminPoll();
+});
 function startAdminPolling(){
   if(adminPollTimer || !APPS_SCRIPT_URL) return;
   adminPollTimer = setInterval(()=>adminPoll(), 90000);   // فحص خلفي كل ٩٠ ثانية طول ما الشاشة مفتوحة
-  // لما المستخدم يرجّع التطبيق قدامه بنفحص فورًا بدل ما يستنى دورة كاملة (لحد ٩٠ ثانية انتظار)
-  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) adminPoll(); });
 }
 
 // فحص خلفي: بيقارن آخر حالة معروفة لكل طلب بالحالة الجديدة —
 // طلب جديد خالص → يزوّد عداد "معلق" فوق تبويب 🏭. طلب اتغيّرت حالته → إشعار فوري.
+let _adminPollRunning = false;
 async function adminPoll(){
   if(!APPS_SCRIPT_URL || !state.admin.pw) return;
   // التطبيق في الخلفية (الشاشة مقفولة أو المستخدم في تطبيق تاني)؟ مافيش داعي نستهلك نت وبطارية
   if(document.hidden) return;
+  // نداء لسه شغّال؟ كل نداء بيقرا الشيت كله — منعملش اتنين مع بعض
+  if(_adminPollRunning) return;
+  _adminPollRunning = true;
   try{
     const d = await jsonp(APPS_SCRIPT_URL + '?action=list' + admParams_());
     if(!d || !d.ok) return;
@@ -3846,6 +3860,7 @@ async function adminPoll(){
       if(!typing) render();
     }
   }catch(err){ /* أعطال الشبكة في الفحص الخلفي بنتجاهلها بصمت */ }
+  finally{ _adminPollRunning = false; }
 }
 
 
@@ -4410,14 +4425,22 @@ document.addEventListener('click',e=>{
     case 'adm-prod-save': {
       const key = el.dataset.id+':'+el.dataset.idx;
       const draft = state.admin.prodEdit[key];
-      setItemProduced(el.dataset.id, Number(el.dataset.idx), Math.max(0, parseInt(draft,10)||0));
+      const it = (state.admin.items[el.dataset.id]||[])[Number(el.dataset.idx)];
+      const p = parseInt(toLatinDigits_(draft), 10);
+      if(!isFinite(p) || p < 0){ toast('اكتب رقم صحيح للكمية الجاهزة'); break; }
+      // الجاهز مايزيدش عن المطلوب — السيرفر بيقصّه برضه، بس الأحسن نقوله هنا
+      const maxQ = Number(it && it.qty) || 0;
+      if(maxQ && p > maxQ){ toast('الجاهز مايزيدش عن المطلوب ('+maxQ+')'); break; }
+      setItemProduced(el.dataset.id, Number(el.dataset.idx), p);
       break;
     }
     case 'adm-qty-save': {
       const key = el.dataset.id+':'+el.dataset.idx;
       const draft = state.admin.qtyEdit[key];
-      const q = Math.max(1, parseInt(draft,10)||0);
-      if(!q){ toast('اكتب كمية أكبر من صفر'); break; }
+      // ⚠️ كان Math.max(1, …) قبل الفحص، يعني الفحص عمره ما بيشتغل: لو المصنع
+      // كتب صفر أو حرف، الكمية كانت بتبقى ١ في صمت بدل ما يتقاله إن اللي كتبه غلط.
+      const q = parseInt(toLatinDigits_(draft), 10);
+      if(!isFinite(q) || q < 1){ toast('اكتب كمية أكبر من صفر — للحذف استخدم زرار حذف الصنف'); break; }
       setItemQty_(el.dataset.id, Number(el.dataset.idx), q);
       break;
     }
