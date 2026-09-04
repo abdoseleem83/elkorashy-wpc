@@ -329,10 +329,10 @@ function doGet(e) {
       }
       var phone = isAdmin ? '' : String((e.parameter.phone || '')).replace(/\D/g, '');
       var sh = sheet_(SHEET_ORDERS, HEAD_ORDERS);
-      var rows = sh.getDataRange().getValues();
+      var rows = readOrderRows_(sh);   // بيتخطى أعمدة Message وPricing Terms التقيلة
       var out = [];
 
-      for (var i = 1; i < rows.length; i++) {
+      for (var i = 0; i < rows.length; i++) {
         var rowPhone = String(rows[i][4] || '').replace(/\D/g, '');
 
         // لو التطبيق بعت رقم، بنرجّع طلبات الرقم ده بس.
@@ -687,7 +687,7 @@ function doGet(e) {
         return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var shLW = sheet_(SHEET_ORDERS, HEAD_ORDERS);
-      var rowsLW = shLW.getDataRange().getValues();
+      var rowsLW = readOrderRows_(shLW);   // نفس الحكاية — من غير الأعمدة التقيلة
       var shILW = sheet_(SHEET_ITEMS, HEAD_ITEMS);
       var lastILW = shILW.getLastRow();
       var itemsByIdLW = {};
@@ -718,7 +718,7 @@ function doGet(e) {
         }
       }
       var outLW = [];
-      for (var jLW = 1; jLW < rowsLW.length; jLW++) {
+      for (var jLW = 0; jLW < rowsLW.length; jLW++) {
         var isArchLW = String(rowsLW[jLW][COL_ARCHIVED - 1] || '') === 'Y';
         if (isArchLW && String(e.parameter.archived || '') !== '1') continue;   // المؤرشف مايظهرش في التقارير افتراضيًا
         var idLW = String(rowsLW[jLW][0]);
@@ -1104,6 +1104,28 @@ function sheet_(name, headers) {
       .setFontColor('#F3EDE4');
   }
   return sh;
+}
+
+// بيقرا صفوف شيت Orders من غير الأعمدة التقيلة اللي محدش بيستخدمها في القراءة:
+//   عمود 13 (Pricing Terms) · عمود 14 (Message) · عمود 15 (Status Updated)
+// عمود Message فيه نص رسالة الواتساب كاملة (~600 حرف للطلب الواحد)، وgetDataRange
+// كان بيقراه لكل صف في كل نداء ويرميه. مع 500 طلب ده ~300 كيلوبايت بتتقري على
+// الفاضي في كل فتحة لشاشة المصنع وكل فحص خلفي (كل 90 ثانية).
+//
+// بنرجّع الصفوف بنفس ترتيب الأعمدة الأصلي بالظبط، والتلاتة اللي مقريناهمش بيبقوا
+// نص فاضي في مكانهم — كده كل الكود اللي بيقرا rows[i][N] يفضل شغّال زي ما هو
+// من غير أي تغيير في الأرقام.
+function readOrderRows_(sh) {
+  var last = sh.getLastRow();
+  if (last < 2) return [];
+  var n = last - 1;
+  var head = sh.getRange(2, 1, n, 12).getValues();          // أعمدة 1..12  → مؤشرات 0..11
+  var tail = sh.getRange(2, 16, n, HEAD_ORDERS.length - 15).getValues();  // 16..24 → 15..23
+  var out = [];
+  for (var i = 0; i < n; i++) {
+    out.push(head[i].concat(['', '', ''], tail[i]));        // الفجوة: مؤشرات 12,13,14
+  }
+  return out;
 }
 
 function findRow_(sh, id) {
