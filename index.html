@@ -808,7 +808,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v125';
+const APP_BUILD   = 'v126';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1270,24 +1270,36 @@ async function saveStockDrafts(){
   });
   if(!keys.length){ toast('مفيش تعديلات'); return; }
   busy(true,'جارٍ حفظ الأرصدة…');
-  let done=0, failed=0;
+  let done=0;
+  const kept = {}, failedNames = [];
   for(const k of keys){
     const [code, w] = k.split('|');
     a.stockBusy = k;
+    let ok = false;
     try{
       const d = await jsonp(APPS_SCRIPT_URL
         + '?action=setStock' + admParams_()
         + '&code=' + encodeURIComponent(code)
         + '&size=' + encodeURIComponent(w)
         + '&qty='  + encodeURIComponent(Math.max(0, Math.round(Number(a.stockDraft[k])||0))));
-      if(d && d.ok) done++; else failed++;
-    }catch(err){ failed++; }
+      ok = !!(d && d.ok);
+    }catch(err){ ok = false; }
+    if(ok) done++;
+    else {
+      // ⚠️ قبل كده كنا بنمسح المسوّدات كلها في الآخر، فالرقم اللي المصنع كتبه
+      // وفشل حفظه كان بيختفي من الشاشة من غير ما حد يعرف أنهي صنف. بنسيبه
+      // مكتوب عشان يشوفه ويحاول تاني.
+      kept[k] = a.stockDraft[k];
+      failedNames.push(code + ' / ' + w + ' سم');
+    }
   }
   a.stockBusy = null;
-  a.stockDraft = {};
+  a.stockDraft = kept;
   await loadStock(true);          // نرجّع الأرصدة من السيرفر عشان الشاشة تطابقه
   busy(false);
-  toast(failed ? ('اتحفظ '+done+' وفشل '+failed) : ('اتحفظت '+done+' أرصدة'));
+  toast(failedNames.length
+    ? ('اتحفظ '+done+' — فشل: '+failedNames.join('، ')+' (الأرقام لسه مكتوبة، جرّب تاني)')
+    : ('اتحفظت '+done+' أرصدة'), failedNames.length ? 5200 : undefined);
 }
 
 function profileOk(){return !!state.profile.name.trim() && phoneOk(state.profile.phone) && !!state.customer.name.trim();}
@@ -3716,7 +3728,10 @@ async function buildAdminOrdersExcel_(orders){
 
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-  downloadBlob(blob, 'تقرير_الأبواب_'+isoLocal_()+'.xlsx');
+  // نفس معاملة تقارير الـPDF: شاشة المشاركة الأصلية على الموبايل (واتساب/درايف)،
+  // وتنزيل عادي على الكمبيوتر. downloadBlob لوحدها كانت بترمي الملف في مجلد
+  // التنزيلات على التليفون والمصنع يدوّر عليه.
+  await shareOrDownload_(blob, 'تقرير_الأبواب_'+isoLocal_()+'.xlsx', 'تقرير الأبواب');
   busy(false);
 }
 
@@ -5503,7 +5518,9 @@ async function exportExcel(orders,fname){
     fill(wb.addWorksheet('Order_Items'), detHead, det);
 
     const buf = await wb.xlsx.writeBuffer();
-    downloadBlob(new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), fname+'.xlsx');
+    await shareOrDownload_(
+      new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),
+      fname+'.xlsx', fname);
   }catch(err){ toast('تعذّر التصدير: '+(err&&err.message?err.message:err)); }
   busy(false);
 }
