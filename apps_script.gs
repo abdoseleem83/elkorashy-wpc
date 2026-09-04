@@ -33,6 +33,14 @@ var SHEET_STOCK  = 'Stock';        // أرصدة المخزن الجاهزة ل�
 
 var HEAD_STOCK = ['Code', 'Size', 'Qty', 'Updated'];
 var TZ           = 'Africa/Cairo';
+
+// الحالات المسموحة — أي حاجة غيرها بتترفض.
+// ⚠️ قبل كده كانت e.parameter.status بتتكتب في الشيت زي ما هي من غير أي تحقق.
+// يعني طلب فيه غلطة إملائية أو نداء متعمّد كان يقدر يكتب أي نص في عمود الحالة،
+// وساعتها التطبيق مش هيعرف الحالة دي: البادج بيطلع بالنص الخام، وقفل التعديل
+// (LOCKED_EDIT_STATUSES) مش هيشتغل، والأرشفة الأوتوماتيك عند «Delivered» مش
+// هتحصل — فالطلب يفضل معلّق في حالة ملهاش معنى ومحدش واخد باله.
+var VALID_STATUSES = ['New', 'Received', 'In Progress', 'Ready', 'Delivered', 'Cancelled'];
 var ROD_LEN      = 2.20;   // الطول الافتراضي — الطول الفعلي بيجي مع كل صنف في it.rodCm
 // ⚠️⚠️ كلمة سر شاشة المصنع مابقتش مكتوبة في الكود.
 //
@@ -286,6 +294,9 @@ function doGet(e) {
         var r = findRow_(shS, e.parameter.id);
         if (r < 0) return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
         var newStatus = String(e.parameter.status || '');
+        if (VALID_STATUSES.indexOf(newStatus) < 0) {
+          return reply({ ok: false, error: 'حالة غير معروفة: ' + newStatus }, cb);
+        }
         shS.getRange(r, COL_STATUS).setValue(newStatus);
         shS.getRange(r, COL_UPDATED).setValue(new Date());
         var archivedNow = false;

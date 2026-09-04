@@ -808,7 +808,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v120';
+const APP_BUILD   = 'v121';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3319,8 +3319,13 @@ async function previewCustomerOrder_(name){
 
   a.groupPreviewBusy = name; render();
   try{
-    // نجيب أصناف الطلبات اللي لسه ماتحمّلتش بس، وبالتوازي
-    await Promise.all(mine.filter(o => !a.items[o.id]).map(o => loadOrderItems_(o.id)));
+    // نجيب أصناف الطلبات اللي لسه ماتحمّلتش بس. بالتوازي عشان السرعة، بس على دفعات
+    // من 4 — عميل عنده 15 طلب معلّق كان هيبعت 15 نداء لـ Apps Script في نفس اللحظة،
+    // وده بيقرّب من حد التنفيذ المتوازي عنده وممكن بعض النداءات ترجع فاضية.
+    const need = mine.filter(o => !a.items[o.id]);
+    for(let i = 0; i < need.length; i += 4){
+      await Promise.all(need.slice(i, i+4).map(o => loadOrderItems_(o.id).catch(()=>null)));
+    }
 
     const html = mine.map(o => {
       const its = a.items[o.id] || [];
