@@ -808,7 +808,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v131';
+const APP_BUILD   = 'v132';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2614,9 +2614,17 @@ function arabicSizeText_(sizeEn){
 }
 
 function buildAdminDocOrder_(o, its, tierKey){
+  const items = (its||[]).map(it=>adminDocItem_(it, tierKey));
+  // ⚠️ باج كان هنا: الإجمالي كان بيتاخد من o.total زي ما هو — وده دايمًا إجمالي
+  // الجملة. لكن السطور بتتسعّر بالمستوى المختار (معرض/عميل). يعني عرض السعر
+  // اللي بيروح للعميل سطوره مابتجمعش على الإجمالي المكتوب تحتها، والإجمالي أقل
+  // من مجموعها. بنحسبه من نفس السطور اللي اتطبعت.
+  const total = tierKey && tierKey !== 'dist'
+    ? items.reduce((sum,it)=>sum + (Number(it.unitPrice)||0) * (Number(it.qty)||0), 0)
+    : o.total;
   return {
     id:o.id, ts:o.date?new Date(o.date).getTime():Date.now(),
-    name:o.dist, phone:o.phone, region:o.region, warehouse:'', total:o.total,
+    name:o.dist, phone:o.phone, region:o.region, warehouse:'', total,
     customer:o.customer||'', note:o.ordNote||'',
     // ⚠️ الحقول دي مكانتش بتتنقل خالص، فمستند المصنع كان بيطبع رقم الطلب الداخلي
     // الطويل (#2026-xxxx) بدل الرقم التسلسلي اللي العميل شايفه في تطبيقه.
@@ -2624,26 +2632,29 @@ function buildAdminDocOrder_(o, its, tierKey){
     displayNo: o.displayNo || '', editCount: Number(o.editCount)||0, replacesId: o.replacesId || '',
     editedAt: o.editedAt || '',
     priceTierLabel: tierKey ? (PRICE_TIERS[tierKey]||PRICE_TIERS.dist).label : '',
-    items: its.map(it=>{
-      // المقاس بيتخزّن إنجليزي في الشيت ('10 cm')؛ بنعرّبه لكل الأنواع مش الأبواب بس
-      const sz = it.type==='Door' ? doorSizeText_(arabicSizeText_(it.size), it.doorHeight)
-                                  : arabicSizeText_(it.size||'');
-      const kind = it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':(it.type==='Panel'?'panel':'acc')));
-      const price = tierKey ? tierPrice(it.unitPrice||0, kind, tierKey, tierKeyFor_(it, kind)) : (it.unitPrice||0);
-      return {
-        kind, title: (it.avail===false?'⚠️ غير متاح — ':'') + arabicItemTitle_(it),
-        code: it.code||'',
-        sizeTxt: sz, sizeEn: it.size||'', spec: sz, unit: it.unit||'', qty: it.qty||0,
-        // ⚠️ باج كان هنا: السيرفر بيخزّن وحدة الحلق الكامل كـ 'set'، والمستند بيقرا
-        // it.isSet عشان يكتب «طقم». الحقل ده مكانش بيتنقل خالص، فسطر فيه ٥ أطقم كان
-        // بيتطبع «٥ عود» — والطقم ٣ عيدان، يعني المصنع يقطّع ٥ بدل ١٥.
-        isSet: String(it.unit||'') === 'set',
-        rodCm: (String(it.unit||'').match(/^rod\s+(\d+)/)||[])[1] || '',
-        unitPrice: price, price: price,
-        frame: it.frame||'', dbror: it.dbror||'', frameHeight: it.frameHeight||'', doorHeight: it.doorHeight||'',
-        produced: it.produced
-      };
-    })
+    items
+  };
+}
+
+// بيحوّل صنف من شكل السيرفر لشكل المستند، وبيسعّره على المستوى المختار
+function adminDocItem_(it, tierKey){
+  // المقاس بيتخزّن إنجليزي في الشيت ('10 cm')؛ بنعرّبه لكل الأنواع مش الأبواب بس
+  const sz = it.type==='Door' ? doorSizeText_(arabicSizeText_(it.size), it.doorHeight)
+                              : arabicSizeText_(it.size||'');
+  const kind = it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':(it.type==='Panel'?'panel':'acc')));
+  const price = tierKey ? tierPrice(it.unitPrice||0, kind, tierKey, tierKeyFor_(it, kind)) : (it.unitPrice||0);
+  return {
+    kind, title: (it.avail===false?'⚠️ غير متاح — ':'') + arabicItemTitle_(it),
+    code: it.code||'',
+    sizeTxt: sz, sizeEn: it.size||'', spec: sz, unit: it.unit||'', qty: it.qty||0,
+    // ⚠️ باج كان هنا: السيرفر بيخزّن وحدة الحلق الكامل كـ 'set'، والمستند بيقرا
+    // it.isSet عشان يكتب «طقم». الحقل ده مكانش بيتنقل خالص، فسطر فيه ٥ أطقم كان
+    // بيتطبع «٥ عود» — والطقم ٣ عيدان، يعني المصنع يقطّع ٥ بدل ١٥.
+    isSet: String(it.unit||'') === 'set',
+    rodCm: (String(it.unit||'').match(/^rod\s+(\d+)/)||[])[1] || '',
+    unitPrice: price, price: price,
+    frame: it.frame||'', dbror: it.dbror||'', frameHeight: it.frameHeight||'', doorHeight: it.doorHeight||'',
+    produced: it.produced
   };
 }
 
