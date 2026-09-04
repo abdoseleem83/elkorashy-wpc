@@ -808,7 +808,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v119';
+const APP_BUILD   = 'v120';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3899,12 +3899,23 @@ function prodTableHTML_(oid, its, a, qtyMode){
         </div>`
       : `<b style="color:${pending>0?'#B3261E':'#6B7A8C'}">${pending}</b>`;
 
-    return `<tr data-act="${editing?'':'adm-prod-edit-open'}" data-id="${esc(oid)}" data-idx="${idx}" style="cursor:${editing?'default':'pointer'}">
-      <td style="padding:6px 7px;text-align:right;font-size:11px">${title}</td>
+    // ⚠️ علامة «غير متاح» بتتطبع في مستند الطلب (شوف buildAdminDocOrder_) بس مكانش
+    // فيه أي طريقة المصنع يعلّمها بيها — الدالة setItemAvail والمعالج موجودين من
+    // غير زرار. الزرار ده بيقفل الدايرة: ضغطة بتقلب الحالة، والعميل يشوفها في ورقته.
+    const avail = it.avail !== false;
+    const availBusy = a.itemBusy === (oid+':'+idx);
+    const availBtn = `<button class="btn ${avail?'act-send':'act-del'} sm"
+        data-act="adm-item-avail" data-id="${esc(oid)}" data-idx="${idx}" data-avail="${avail?0:1}"
+        ${availBusy?'disabled':''} title="${avail?'اضغط لتعليمه «غير متاح»':'اضغط لتعليمه «متاح»'}"
+        style="font-size:9.5px;padding:3px 5px;min-height:0;width:auto">${availBusy?'…':(avail?ico('check'):ico('warn'))}</button>`;
+
+    return `<tr data-act="${editing?'':'adm-prod-edit-open'}" data-id="${esc(oid)}" data-idx="${idx}" style="cursor:${editing?'default':'pointer'};${avail?'':'background:#FDECEA'}">
+      <td style="padding:6px 7px;text-align:right;font-size:11px">${avail?'':'<span style="color:#B3261E;font-weight:700">غير متاح — </span>'}${title}</td>
       <td style="padding:6px 5px;text-align:center;font-size:11px;color:#4B5A6B;white-space:nowrap">${esc(sizeText_(it))}</td>
       <td style="padding:6px 5px;text-align:center;font-size:11.5px">${qty}</td>
       <td style="padding:6px 5px;text-align:center;font-size:11.5px">${readyCell}</td>
       <td style="padding:6px 5px;text-align:center;font-size:11.5px">${lastCell}</td>
+      <td style="padding:6px 3px;text-align:center">${availBtn}</td>
     </tr>`;
   }).join('');
 
@@ -3913,7 +3924,7 @@ function prodTableHTML_(oid, its, a, qtyMode){
       <thead><tr>
         ${qtyMode
           ? `<th style="text-align:right">الصنف</th><th>المقاس</th><th colspan="2">الكمية</th><th>حذف</th>`
-          : `<th style="text-align:right">الصنف</th><th>المقاس</th><th>مطلوب</th><th>جاهز</th><th>متبقي</th>`}
+          : `<th style="text-align:right">الصنف</th><th>المقاس</th><th>مطلوب</th><th>جاهز</th><th>متبقي</th><th>متاح</th>`}
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
@@ -4101,7 +4112,11 @@ function viewAdmin(){
       }
     }
 
+    // ⚠️ زرار PDF للطلب الواحد كان مفقود من الكارت — الدالة exportAdminOrderPdf
+    // موجودة وشغّالة والمعالج موجود، بس مفيش زرار بينده عليهم. فالمصنع كان يقدر
+    // يصدّر PDF لكل طلبات العميل مع بعض بس، مش طلب واحد.
     const actionBtns = `<button class="btn ${itemsOpen?'brand':'act-edit'} sm" data-act="adm-toggle-items" data-id="${esc(o.id)}">${ico("box")}${itemsOpen?'إخفاء':'الأصناف'}</button>
+         <button class="btn act-report sm" data-act="adm-pdf" data-id="${esc(o.id)}">${ico("doc")}PDF</button>
          <button class="btn ${qtyMode?'brand':'act-edit'} sm" data-act="adm-toggle-qtymode" data-id="${esc(o.id)}">${ico("edit")}تعديل</button>
          <button class="btn act-edit sm" data-act="adm-add-items" data-id="${esc(o.id)}">${ico("plus")}إضافة</button>
          <button class="btn act-send sm" data-act="adm-share" data-id="${esc(o.id)}">${ico("send")}إرسال</button>
