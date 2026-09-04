@@ -413,6 +413,18 @@ function doGet(e) {
         var unitPriceIQ = Number(shIQ.getRange(foundIQ, 12).getValue()) || 0;   // عمود Unit Price
         var producedIQ = Number(shIQ.getRange(foundIQ, COL_ITEM_PRODUCED).getValue()) || 0;
         if (producedIQ > newQtyIQ) producedIQ = newQtyIQ;   // ميفضلش "جاهز" أكبر من "مطلوب" بعد التعديل
+
+        // ⚠️ باج كان هنا: الكمية بتتغيّر والرصيد ما بيتعدّلش خالص. يعني لو المصنع
+        // عدّل صنف من 5 أبواب لـ 2، التلاتة الباقيين بيفضلوا مخصومين من المخزن
+        // للأبد (الرصيد يبان أقل من الحقيقة). والعكس لو زوّد الكمية.
+        // بنعدّل الرصيد بالفرق: القديم ناقص الجديد.
+        var stkIQ = stockItemFromRow_(shIQ, foundIQ);
+        if (stkIQ && orderStatus_(idIQ) !== 'Delivered') {
+          var diffIQ = stkIQ.qty - newQtyIQ;          // موجب = نرجّع للمخزن، سالب = نخصم زيادة
+          if (diffIQ) adjustStockForItems_([{ kind:'door', code:stkIQ.code, w:stkIQ.w, qty:Math.abs(diffIQ) }],
+                                           diffIQ > 0 ? +1 : -1);
+        }
+
         shIQ.getRange(foundIQ, 11).setValue(newQtyIQ);                    // Qty
         shIQ.getRange(foundIQ, 13).setValue(unitPriceIQ * newQtyIQ);      // Line Total
         shIQ.getRange(foundIQ, COL_ITEM_PRODUCED).setValue(producedIQ);
@@ -445,6 +457,13 @@ function doGet(e) {
           }
         }
         if (foundDI < 0) return reply({ ok: false, error: 'الصنف مش موجود' }, cb);
+
+        // ⚠️ باج كان هنا: الصنف بيتحذف والرصيد ما بيرجعش. يعني حذف صنف فيه 5 أبواب
+        // كان بيسيبهم مخصومين من المخزن للأبد. بنرجّعهم قبل ما نمسح الصف.
+        // (زي حذف الطلب كله بالظبط — المُسلَّم فعليًا ميترجّعش رصيده)
+        var stkDI = stockItemFromRow_(shDI, foundDI);
+        if (stkDI && orderStatus_(idDI) !== 'Delivered') adjustStockForItems_([stkDI], +1);
+
         shDI.deleteRow(foundDI);
         var totalsDI = recomputeOrderTotals_(idDI);
         return reply({ ok: true, totals: totalsDI }, cb);
@@ -865,6 +884,25 @@ function recomputeOrderTotals_(id) {
   return { qty: qty, rods: rods, total: total };
 }
 
+// بيرجّع حالة الطلب من شيت Orders (نص فاضي لو مش موجود)
+function orderStatus_(id){
+  var sh = sheet_(SHEET_ORDERS, HEAD_ORDERS);
+  var r = findRow_(sh, id);
+  if (r < 0) return '';
+  return String(sh.getRange(r, COL_STATUS).getValue() || '');
+}
+
+// بيقرا بيانات المخزون بتاعة صف صنف واحد (كود/عرض/كمية) — بيرجّع null لو مش باب
+// أو مش متتبّع في المخزون (مقاس خاص/بدون كود).
+function stockItemFromRow_(sh, row){
+  var vals = sh.getRange(row, 1, 1, HEAD_ITEMS.length).getValues()[0];
+  if (String(vals[3]) !== 'Door') return null;
+  var code = String(vals[5] || '').trim();
+  var w    = String(vals[COL_ITEM_WIDTH - 1] || '').trim();
+  if (!code || !w) return null;
+  return { kind: 'door', code: code, w: w, qty: Number(vals[10]) || 0 };
+}
+
 function restoreStockForOrderId_(id){
   var shRS = sheet_(SHEET_ITEMS, HEAD_ITEMS);
   var lastRS = shRS.getLastRow();
@@ -886,28 +924,55 @@ function restoreStockForOrderId_(id){
 
 // بيزوّد أو بيخصم من رصيد المخزون حسب أصناف الطلب (الأبواب اللي ليها مقاس قياسي بس — مقاس خاص مش متتبّع)
 // dir: -1 للخصم (طلب جديد) أو +1 للرجوع (إلغاء/حذف طلب)
+// ⚠️ كان فيه باجين هنا:
+//
+// ١) خصم ضايع لو الطلب فيه سطرين بنفس الكود والمقاس (وده بيحصل عادي — مثلاً باب
+//    A01 مقاس 70 عادي + نفس الباب والمقاس نسخة حفر، أو الموزع ضاف نفس المقاس
+//    مرتين). الكود كان بيقرا الأرصدة مرة واحدة في rowsAS قبل اللوب، وبعدين لكل
+//    صنف يحسب "الرصيد القديم - الكمية" ويكتبه. فالسطر التاني كان بيقرا نفس الرصيد
+//    القديم من الذاكرة (مش المحدَّث) ويكتب فوق خصم السطر الأول فيلغيه.
+//    مثال حقيقي: رصيد 10، طلب فيه 3 + 2 → المفروض يبقى 5، وكان بيطلع 8.
+//    الحل: نجمّع كل الكميات لكل (كود|مقاس) الأول، وبعدين نخصم مرة واحدة.
+//
+// ٢) بطء: كان بيعمل setValue مرتين لكل صنف جوه لوب — كل واحدة نداء منفصل لـ Sheets.
+//    طلب فيه 10 أصناف = 20 نداء (ثواني بتتضاف على كل إرسال طلب). دلوقتي كتابة
+//    واحدة مجمّعة على المدى كله.
 function adjustStockForItems_(items, dir){
   if (!items || !items.length) return;
   var shAS = sheet_(SHEET_STOCK, HEAD_STOCK);
   var lastAS = shAS.getLastRow();
   if (lastAS < 2) return;   // مفيش أرصدة متسجّلة أصلًا
-  var rowsAS = shAS.getRange(2, 1, lastAS - 1, 3).getValues();
+
+  // ١) نجمّع المطلوب خصمه/رجوعه لكل (كود|مقاس)
+  var deltas = {};
   for (var iAS = 0; iAS < items.length; iAS++) {
     var itAS = items[iAS];
     if (itAS.kind !== 'door') continue;
     var codeAS = String(itAS.code || '').trim();
-    var wAS = String(itAS.w || '').trim();
-    var qtyAS = Number(itAS.qty) || 0;
+    var wAS    = String(itAS.w || '').trim();
+    var qtyAS  = Number(itAS.qty) || 0;
     if (!codeAS || !wAS || !qtyAS) continue;   // مقاس خاص أو بدون كود = مش متتبّع في المخزون
-    for (var jAS = 0; jAS < rowsAS.length; jAS++) {
-      if (String(rowsAS[jAS][0]).trim() === codeAS && String(rowsAS[jAS][1]).trim() === wAS) {
-        var newQty = (Number(rowsAS[jAS][2]) || 0) + (dir * qtyAS);
-        shAS.getRange(jAS + 2, 3).setValue(newQty);
-        shAS.getRange(jAS + 2, 4).setValue(new Date());
-        break;   // صف الرصيد ده متسجّل، اتحدّث — لو مش موجود أصلًا، متتبّعش (مش هننشئ صف جديد من غير ما يكون معروف)
-      }
-    }
+    var keyAS = codeAS + '|' + wAS;
+    deltas[keyAS] = (deltas[keyAS] || 0) + (dir * qtyAS);
   }
+  var keys = Object.keys(deltas);
+  if (!keys.length) return;
+
+  // ٢) نطبّقهم على نسخة واحدة من الأرصدة
+  var rng    = shAS.getRange(2, 1, lastAS - 1, 4);
+  var rowsAS = rng.getValues();
+  var now = new Date();
+  var touched = false;
+  for (var jAS = 0; jAS < rowsAS.length; jAS++) {
+    var k = String(rowsAS[jAS][0]).trim() + '|' + String(rowsAS[jAS][1]).trim();
+    if (!(k in deltas)) continue;              // الصف ده مش متتبّع في الطلب
+    rowsAS[jAS][2] = (Number(rowsAS[jAS][2]) || 0) + deltas[k];
+    rowsAS[jAS][3] = now;
+    touched = true;
+  }
+
+  // ٣) كتابة واحدة بدل نداءين لكل صنف
+  if (touched) rng.setValues(rowsAS);
 }
 
 /* ============================================================
