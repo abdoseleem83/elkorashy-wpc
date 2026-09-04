@@ -808,7 +808,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v127';
+const APP_BUILD   = 'v128';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -5095,12 +5095,24 @@ async function sendOrderToServer_(o){
 function loadPendingSync_(){ return load(LS_PENDING, []); }
 function savePendingSync_(list){ save(LS_PENDING, list); }
 
+// الطلبات اللي لسه بتتبعت دلوقتي — عشان إعادة المحاولة ماتبعتهاش تاني في نفس الوقت
+const _sendingNow = new Set();
+
 async function syncOrder_(o){
-  const ok = await sendOrderToServer_(o);
+  // ⚠️ بنسجّله «معلّق» قبل ما نبعت، مش بعد ما يفشل. لو التطبيق اتقفل أو الصفحة
+  // اتحدّثت وسط الإرسال (نسخة جديدة اتنشرت، التليفون نام، المتصفح قفل التاب)،
+  // مكانش فيه أي أثر إن الطلب ما وصلش — فكان بيفضل على الجهاز للأبد من غير ما
+  // يتبعت تاني ومن غير ما حد يعرف.
+  const pending = loadPendingSync_();
+  if(!pending.includes(o.id)){ pending.push(o.id); savePendingSync_(pending); }
+  _sendingNow.add(String(o.id));
+  let ok;
+  try{ ok = await sendOrderToServer_(o); }
+  finally{ _sendingNow.delete(String(o.id)); }
   if(ok === false){
-    const pending = loadPendingSync_();
-    if(!pending.includes(o.id)){ pending.push(o.id); savePendingSync_(pending); }
     toast('⚠️ الطلب #'+o.id+' اتسجّل على جهازك بس لسه ما وصلش المصنع — هنحاول تاني تلقائي أول ما يرجع النت', 4200);
+  } else {
+    savePendingSync_(loadPendingSync_().filter(id=>String(id)!==String(o.id)));
   }
   return ok;
 }
@@ -5161,6 +5173,8 @@ async function retryPendingOrders_(){
     for(const id of pending){
       const o = state.orders.find(x=>String(x.id)===String(id));
       if(!o) continue;   // اتشال من عندنا لأي سبب — متبقاش نحاول تاني
+      // بيتبعت دلوقتي من syncOrder_ — سيبه له عشان مايوصلش المصنع مرتين
+      if(_sendingNow.has(String(id))){ stillPending.push(id); continue; }
       const ok = await sendOrderToServer_(o);
       if(ok === false) stillPending.push(id);
       else await runPendingCancelFor_(id);   // وصل — دلوقتي بس ينفع نمسح القديم

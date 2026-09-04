@@ -165,12 +165,29 @@ function nextOrderDisplayNo_(sh) {
   var props = PropertiesService.getScriptProperties();
   var cur = props.getProperty('ORDER_DISPLAY_NO_SEQ');
   if (cur === null) {
-    var last = sh.getLastRow();
-    cur = String(Math.max(0, last - 1));
+    // ⚠️ كان بياخد أول رقم من عدد صفوف الشيت (last - 1). لكن تعديل الطلب بيمسح
+    // صف الطلب القديم، فعدد الصفوف دايمًا أقل من أكبر رقم اتصرف فعلاً. يعني لو
+    // العدّاد اتصفّر (نسخة جديدة من السكريبت أو مسح خصائصه) الترقيم كان بيرجع
+    // لورا وطلبين مختلفين ياخدوا نفس الرقم. بنقرا أكبر رقم موجود بجد بدل كده.
+    cur = String(maxOrderDisplayNo_(sh));
   }
   var next = Number(cur) + 1;
   props.setProperty('ORDER_DISPLAY_NO_SEQ', String(next));
   return next;
+}
+
+// أكبر رقم طلب متصرّف فعلاً في الشيت. بتتنادى مرة واحدة بس (أول مرة يتظبط
+// فيها العدّاد)، فقراية العمود كله هنا مش بتكلّف حاجة على الطلبات العادية.
+function maxOrderDisplayNo_(sh) {
+  var last = sh.getLastRow();
+  if (last < 2) return 0;
+  var vals = sh.getRange(2, COL_DISPLAY_NO, last - 1, 1).getValues();
+  var mx = 0;
+  for (var i = 0; i < vals.length; i++) {
+    var n = Number(vals[i][0]);
+    if (isFinite(n) && n > mx) mx = n;
+  }
+  return mx;
 }
 
 // ⚠️ المشكلة اللي كانت في النسخة القديمة: العدّاد والقفل كانوا عامّين على السكريبت
