@@ -27,8 +27,10 @@ await pg.evaluate(() => {
       {type:'Accessory', title:'WPC Door Hinge', code:'', size:'', unit:'pc', qty:12, unitPrice:35, produced:0}
     ]
   }];
-  window.fetchPendingOrders_ = async () => window.__orders;
-  window.loadStock = async () => {};
+  // المعاينة بقت بتقرا من بيانات الشاشة مباشرة (مش من السيرفر)، فبنحطّها هناك
+  state.admin.open = true;
+  state.admin.rows = window.__orders;
+  window.__orders.forEach(o => { state.admin.items[o.id] = o.items; });
 });
 
 // المكتبات التقيلة لازم تفضل غير محمّلة — دي أهم فايدة في المعاينة
@@ -53,12 +55,13 @@ const info = await pg.evaluate(() => {
     isOrderDoc: o.textContent.includes('طلب أوردر') && !o.textContent.includes('تقرير الأبواب المعلّقة'),
     // شريط رقم الأوردر: في النص، أحمر، تقيل، وكبير
     band: (() => {
-      const el = [...o.querySelectorAll('div')].find(d => d.textContent.trim() === '417');
+      // الطلب معدّل مرتين، فالرقم بيبان مركّب: «417/2»
+      const el = [...o.querySelectorAll('div')].find(d => d.textContent.trim() === '417/2');
       if (!el) return null;
       const cs = getComputedStyle(el);
       return { color: cs.color, size: parseFloat(cs.fontSize), weight: cs.fontWeight, align: cs.textAlign };
     })(),
-    hasEditBadge: o.textContent.includes('معدّل 2'),
+    hasEditBadge: o.textContent.includes('التعديل رقم 2 — بتاريخ'),
     // التعريب اللي اتصلّح قبل كده لازم يفضل شغّال في المعاينة
     setUnitAr: o.textContent.includes('4 طقم'),
     accNameAr: o.textContent.includes('مفصلة') && !o.textContent.includes('WPC Door Hinge')
@@ -70,11 +73,11 @@ check('مفيش تمرير أفقي', info && !info.hScroll);
 check('محتوى التقرير ظاهر', info && info.hasCustomer);
 check('فيها زرار «تصدير PDF»', info && info.hasPdfBtn);
 check('بشكل مستند «طلب أوردر»', info && info.isOrderDoc);
-check('رقم الأوردر ظاهر في النص', info && info.band && info.band.align === 'center');
+check('رقم الأوردر «417/2» ظاهر في النص', info && info.band && info.band.align === 'center');
 check('رقم الأوردر أحمر', info && info.band && info.band.color === 'rgb(179, 38, 30)', info && info.band && info.band.color);
 check('رقم الأوردر تقيل (900)', info && info.band && info.band.weight === '900', info && info.band && info.band.weight);
 check('رقم الأوردر كبير (≥32px)', info && info.band && info.band.size >= 32, info && info.band && info.band.size + 'px');
-check('علامة «معدّل» ظاهرة', info && info.hasEditBadge);
+check('سطر «التعديل رقم N — بتاريخ» ظاهر', info && info.hasEditBadge);
 check('الحلق الكامل «طقم» مش «عود»', info && info.setUnitAr);
 check('اسم الإكسسوار متعرّب', info && info.accNameAr);
 check('المكتبات التقيلة ما اتحمّلتش',
