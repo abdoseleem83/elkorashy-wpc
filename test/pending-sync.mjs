@@ -49,6 +49,48 @@ const r3 = await pg.evaluate(async()=>{
 });
 check('طلب مش موجود على الجهاز بيتشال من القايمة', r3.length===0, JSON.stringify(r3));
 
+// ٤) الصفحة اتقفلت وسط الإرسال — الطلب لازم يفضل مسجّل معلّق
+const r4 = await pg.evaluate(async()=>{
+  const mk = id => ({id, ts:Date.now(), name:'م', phone:'01012345678', region:'ط',
+    items:[{kind:'door',title:'باب',qty:1}], total:1});
+  state.orders = [mk('MID1')];
+  savePendingSync_([]);
+  window.jsonp = () => new Promise(()=>{});          // الرد عمره ما بيجي (النت علّق / الصفحة اتقفلت)
+  syncOrder_(state.orders[0]);                        // من غير await
+  await new Promise(r=>setTimeout(r,150));
+  return loadPendingSync_();                          // في اللحظة دي بالظبط
+});
+check('الطلب مسجّل معلّق وهو لسه بيتبعت', r4.includes('MID1'), JSON.stringify(r4));
+
+// ٥) الإرسال نجح → بيتشال من المعلّق
+const r5 = await pg.evaluate(async()=>{
+  const mk = id => ({id, ts:Date.now(), name:'م', phone:'01012345678', region:'ط',
+    items:[{kind:'door',title:'باب',qty:1}], total:1});
+  state.orders = [mk('OK1')]; savePendingSync_([]);
+  window.toast = ()=>{};
+  window.jsonp = () => Promise.resolve({ok:true, displayNo:3});
+  await syncOrder_(state.orders[0]);
+  return loadPendingSync_();
+});
+check('لما يوصل بيتشال من المعلّق', r5.length===0, JSON.stringify(r5));
+
+// ٦) إعادة المحاولة ما بتبعتش طلب لسه بيتبعت (مفيش نسخة مكررة عند المصنع)
+const r6 = await pg.evaluate(async()=>{
+  const mk = id => ({id, ts:Date.now(), name:'م', phone:'01012345678', region:'ط',
+    items:[{kind:'door',title:'باب',qty:1}], total:1});
+  state.orders = [mk('DUP1')]; savePendingSync_([]);
+  window.toast = ()=>{};
+  let sends = 0;
+  window.jsonp = () => { sends++; return new Promise(res=>setTimeout(()=>res({ok:true, displayNo:4}), 300)); };
+  const p = syncOrder_(state.orders[0]);
+  await new Promise(r=>setTimeout(r,60));
+  await retryPendingOrders_();                        // بتلاقيه في القايمة
+  await p;
+  return { مرات_الإرسال: sends, معلّق: loadPendingSync_() };
+});
+check('الطلب اتبعت مرة واحدة مش مرتين', r6.مرات_الإرسال===1, String(r6.مرات_الإرسال));
+check('واتشال من المعلّق في الآخر', r6.معلّق.length===0, JSON.stringify(r6.معلّق));
+
 check('مفيش أخطاء', errs.length===0, errs.join(' | '));
 console.log(`\nالنتيجة: ${pass} نجحت، ${fail} فشلت`);
 await b.close();
