@@ -808,7 +808,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v121';
+const APP_BUILD   = 'v122';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1026,7 +1026,30 @@ const state = {
 };
 
 function load(k,d){ try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;} }
-function save(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){} }
+// ⚠️ دي كانت بتبتلع أي خطأ في صمت. لما مساحة التخزين تمتلي (أو المتصفح يمنع
+// التخزين — بيحصل في وضع التصفح الخاص وعلى iOS لما المساحة تقل)، الطلب كان
+// بيتحط في الذاكرة والمستخدم يشوف «✅ اتسجّل الطلب»، وأول ما يقفل التطبيق يلاقيه
+// اختفى من «تابع طلبك» من غير ما حد يقوله ليه.
+// دلوقتي بترجّع true/false، وبتحاول تفضّي مساحة قبل ما تستسلم.
+function save(k,v){
+  try{ localStorage.setItem(k,JSON.stringify(v)); return true; }
+  catch(e){
+    // المساحة اتملت؟ نجرّب نقصّ الطلبات القديمة ونعيد المحاولة — أحسن من إننا
+    // نضيّع الطلب الجديد عشان طلبات من شهور.
+    try{
+      if(k===LS_ORDERS && Array.isArray(v) && v.length>12){
+        const trimmed = v.slice(0, Math.max(12, Math.floor(v.length/2)));
+        localStorage.setItem(k, JSON.stringify(trimmed));
+        if(Array.isArray(state.orders)) state.orders = trimmed;
+        return true;
+      }
+      // مش قايمة الطلبات؟ نفضّي كاش شاشة المصنع (أقل حاجة أهمية) ونعيد
+      localStorage.removeItem('wpc_adm_rows');
+      localStorage.setItem(k, JSON.stringify(v));
+      return true;
+    }catch(e2){ return false; }
+  }
+}
 
 /* ============================================================
    مساعدات
@@ -5102,7 +5125,7 @@ function submitOrder(){
   // كانت الذاكرة بتحتفظ بكل الطلبات والمحفوظ 80 بس — فبعد أي إعادة فتح الأرقام
   // بتختلف عن اللي كان ظاهر. بنقصّ الاتنين على نفس الحد.
   state.orders = state.orders.slice(0,80);
-  save(LS_ORDERS,state.orders);
+  const savedLocally = save(LS_ORDERS,state.orders);
   const wasAdminEdit = !!state.editingMeta;
   state.cart=[]; save(LS_CART,state.cart); state.touched=false;
   state.editingId=null; state.editingMeta=null; state.editingDate=null;
@@ -5138,7 +5161,14 @@ function submitOrder(){
     return;
   }
   state.tab='orders'; render();
-  toast(wasEditing?'✅ اتحدّث الطلب #'+o.id:'اتسجّل طلب الأوردر #'+o.id);
+  if(savedLocally){
+    toast(wasEditing?'✅ اتحدّث الطلب #'+o.id:'اتسجّل طلب الأوردر #'+o.id);
+  } else {
+    // الطلب اتبعت للمصنع بس مقدرناش نحفظه على الجهاز — لازم المستخدم يعرف،
+    // لأنه هيختفي من «تابع طلبك» أول ما يقفل التطبيق.
+    toast('⚠️ الطلب اتبعت للمصنع، بس مساحة جهازك مليانة فمقدرناش نحفظه هنا — '
+        + 'صوّر الشاشة أو ابعت الصورة لنفسك، وفضّي مساحة من إعدادات المتصفح', 8000);
+  }
   shareOrderImage(o);
 }
 
