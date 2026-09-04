@@ -66,7 +66,7 @@ var PRICE_NOTE   = 'الأسعار بعاليه حسب وقت التسعير و�
 var HEAD_ORDERS = [
   'Order No', 'Date', 'Time', 'Distributor', 'Phone', 'Region',
   'Warehouse', 'Total Qty', 'Total Rods', 'Total Amount', 'Status', 'Note to Distributor', 'Pricing Terms', 'Message', 'Status Updated',
-  'Archived', 'Customer', 'Order Note', 'Customer Phone', 'Superseded', 'Replaces Order', 'Display No', 'Edit Count'
+  'Archived', 'Customer', 'Order Note', 'Customer Phone', 'Superseded', 'Replaces Order', 'Display No', 'Edit Count', 'Edited At'
 ];
 var COL_ARCHIVED = 16;
 var COL_CUSTOMER = 17;   // اسم صاحب الأوردر لو مختلف عن صاحب الجهاز
@@ -75,7 +75,11 @@ var COL_CUST_PHONE = 19; // رقم تليفون صاحب الأوردر لو م�
 var COL_SUPERSEDED = 20; // علامة "الطلب ده اتعدّل وعنده نسخة جديدة" — بتتحط لما نقدرش نمسح الطلب القديم أوتوماتيك (لسه دخل التنفيذ)
 var COL_REPLACES = 21;   // لو الطلب ده جه بدل تعديل طلب قديم، بيتحط هنا رقم الطلب القديم — عشان المصنع يعرف إنه تعديل مش طلب جديد مستقل
 var COL_DISPLAY_NO = 22; // رقم الطلب "العادي" التسلسلي (1، 2، 3...) اللي بيبان للعميل/المصنع بدل كود الطلب الداخلي الطويل
-var COL_EDIT_COUNT  = 23; // عدد مرات التعديل — بيتورّث من الطلب الأصلي وبيزيد ١ مع كل تعديل، وبيبان زي "معدل 1" في المستند
+var COL_EDIT_COUNT  = 23; // عدد مرات التعديل — بيتورّث من الطلب الأصلي وبيزيد ١ مع كل تعديل
+var COL_EDITED_AT   = 24; // تاريخ آخر تعديل. الطلب المعدّل بياخد تاريخ الطلب الأصلي عن قصد،
+                          // فتاريخ التعديل نفسه مكانش متسجّل في أي مكان. بيبان في المستند
+                          // جنب الرقم المركّب: «52/1 — التعديل رقم 1 بتاريخ ...»
+                          // العمود بيتضاف تلقائي لأي شيت قديم (شوف sheet_ تحت).
 
 var HEAD_ITEMS = [
   'Order No', 'Date', 'Distributor', 'Type', 'Item', 'Colour Code',
@@ -363,6 +367,7 @@ function doGet(e) {
           replacesId: rows[i][COL_REPLACES - 1] || '',
           displayNo: rows[i][COL_DISPLAY_NO - 1] || '',
           editCount: rows[i][COL_EDIT_COUNT - 1] || 0,
+          editedAt: fmtDate_(rows[i][COL_EDITED_AT - 1]),
           archived: isAdmin ? (String(rows[i][COL_ARCHIVED - 1] || '') === 'Y') : undefined
         });
       }
@@ -731,6 +736,7 @@ function doGet(e) {
           replacesId: rowsLW[jLW][COL_REPLACES - 1] || '',
           displayNo: rowsLW[jLW][COL_DISPLAY_NO - 1] || '',
           editCount: rowsLW[jLW][COL_EDIT_COUNT - 1] || 0,
+          editedAt: fmtDate_(rowsLW[jLW][COL_EDITED_AT - 1]),
           items:     itemsByIdLW[idLW] || []
         });
       }
@@ -871,6 +877,10 @@ function saveOrder_(o) {
     editCount = 0;
   }
   shO.getRange(rowIdxRepl, COL_DISPLAY_NO, 1, 2).setValues([[displayNo, editCount]]);
+  // تاريخ التعديل: بيتكتب بس لو ده تعديل فعلي (editCount > 0) وجالنا تاريخ من التطبيق
+  if (editCount > 0 && o.editedAt) {
+    shO.getRange(rowIdxRepl, COL_EDITED_AT).setValue(sanitizeCell_(String(o.editedAt)));
+  }
 
   // ---- سطور التفاصيل ----
   var shI = sheet_(SHEET_ITEMS, HEAD_ITEMS);
