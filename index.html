@@ -735,6 +735,11 @@ function ensureLib_(name){
 async function needLibs_(...names){
   const missing = names.filter(n => !(LIB_READY[n] && LIB_READY[n]()));
   if(!missing.length) return true;
+  // ⚠️ كان فيه باج هنا: الدالة دي بتقفل شاشة «جارٍ التجهيز» في الآخر على طول.
+  // بس هي بتتنده أحيانًا من جوه عملية أطول فاتحة الشاشة أصلًا (زي «تقرير كامل»)،
+  // فكانت بتقفلها في نص الشغل والمستخدم يفتكر إن التطبيق علّق — والباقي (رسم
+  // الصفحة وتحويلها PDF) هو أبطأ جزء أصلًا. دلوقتي بنرجّع الشاشة زي ما لقيناها.
+  const wasOn = _busyOn, wasTxt = _busyTxt;
   busy(true,'جارٍ تجهيز الأدوات…');
   try{
     await Promise.all(missing.map(ensureLib_));
@@ -743,7 +748,8 @@ async function needLibs_(...names){
     toast('محتاج نت أول مرة عشان يجهّز الملف — جرّب تاني وانت متصل');
     return false;
   }finally{
-    busy(false);
+    if(wasOn) busy(true, wasTxt);   // العملية الأكبر لسه شغّالة — سيب الشاشة مفتوحة
+    else busy(false);
   }
 }
 // أول ما المستخدم يفتح شاشة فيها تصدير، بنبدأ نجيب المكتبات في الخلفية بهدوء
@@ -756,7 +762,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v112';
+const APP_BUILD   = 'v113';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1205,7 +1211,13 @@ async function saveStockDrafts(){
 function profileOk(){return !!state.profile.name.trim() && phoneOk(state.profile.phone) && !!state.customer.name.trim();}
 
 function toast(m,ms){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms||2600);}
-function busy(on,txt){const b=document.getElementById('busy');if(txt)document.getElementById('busyTxt').textContent=txt;b.classList.toggle('on',!!on);}
+let _busyOn = false, _busyTxt = '';
+function busy(on,txt){
+  const b=document.getElementById('busy');
+  if(txt){ document.getElementById('busyTxt').textContent=txt; _busyTxt=txt; }
+  _busyOn = !!on;
+  b.classList.toggle('on',!!on);
+}
 function dateStr(ts){return new Date(ts).toLocaleDateString('ar-EG',{day:'2-digit',month:'2-digit',year:'numeric'});}
 // نفس الفكرة بس بأرقام إنجليزية وشكل يوم/شهر/سنة ثابت — مستخدمة في صيغة "طلب أوردر رقم (...) بتاريخ ..." في المستند المطبوع
 function dateStrDMY_(ts){
