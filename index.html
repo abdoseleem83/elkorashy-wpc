@@ -808,7 +808,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v118';
+const APP_BUILD   = 'v119';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1613,7 +1613,7 @@ function viewNew(){
         <input type="number" inputmode="numeric" min="0" step="1" placeholder="عدد" value="${esc(state.fr.extra[idx].qty)}" data-act="fr-extra-qty" data-i="${idx}">
       </div>
       ${x.cm>0&&pricesVisible()?`<div class="rp">${money(rodPrice(frSel.price,x.cm))} ج/عود</div>`:''}
-      <button class="btn ghost sm" style="margin-top:6px;padding:4px 10px" data-act="fr-extra-del" data-i="${idx}">✕ حذف</button>
+      <button class="btn ghost sm" style="margin-top:6px;padding:4px 10px" data-act="fr-extra-del" data-i="${idx}">${ico("x")} حذف</button>
     </div>`).join('');
 
   const secFrame = `
@@ -1890,7 +1890,7 @@ function viewOrders(){
       : `<button class="btn ghost sm" data-act="ord-del" data-id="${esc(o.id)}">${ico("trash")} حذف</button>`;
     return `
     <div class="ord">
-      <div class="oh"><span class="oid">#${esc(o.id)}</span>${o.replacesId?`<span style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على #${esc(o.replacesId)}</span>`:''}${live?statusPill(live.status):''}</div>
+      <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:#8A6512;background:#FFF6E5;border:1px solid #E8C77A;border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على #${esc(o.replacesId)}</span>`:''}${live?statusPill(live.status):''}</div>
       <div class="os">${esc(dateStr(o.ts))} · ${o.items.length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
         ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}<br>
         ${esc(o.items.map(x=>x.title).slice(0,3).join('، '))}${o.items.length>3?'…':''}
@@ -1900,7 +1900,7 @@ function viewOrders(){
         ${editBtn}
         <button class="btn ghost sm" data-act="ord-pdf"   data-id="${esc(o.id)}">${ico("doc")} PDF</button>
         <button class="btn ghost sm" data-act="ord-xls"   data-id="${esc(o.id)}">${ico("sheet")} إكسيل</button>
-        <button class="btn ghost sm" data-act="resend"    data-id="${esc(o.id)}">↗ إرسال</button>
+        <button class="btn ghost sm" data-act="resend"    data-id="${esc(o.id)}">${ico("send")} إرسال</button>
         ${delBtn}
       </div>
     </div>`;
@@ -2133,6 +2133,18 @@ const FLOW = ['Received','In Progress','Ready','Delivered'];
 // المصنع يمكن يكون بدأ ينفّذه فعلاً وأي تعديل ممكن يبوّظ الشغل.
 const LOCKED_EDIT_STATUSES = ['In Progress','Ready','Delivered'];
 function isOrderLocked_(live){ return !!(live && LOCKED_EDIT_STATUSES.includes(live.status)); }
+// رقم الطلب زي ما بيبان للناس: الرقم التسلسلي (417) مش الكود الداخلي (2026-0417)،
+// ومعدّل بيبقى مركّب (417/2) زي المستند بالظبط.
+// ⚠️ باج كان هنا: الشاشات كانت بتعرض o.id (الكود الداخلي) والمستند بيعرض displayNo،
+// فالموزع والمصنع كانوا شايفين رقمين مختلفين لنفس الطلب — وجع أول ما حد يكلّم حد.
+function orderNoText_(o){
+  if(!o) return '';
+  const n = o.displayNo;
+  if(!n) return '#' + (o.id || '');
+  const ec = Number(o.editCount) || 0;
+  return ec > 0 ? (n + '/' + ec) : String(n);
+}
+
 function statusPill(v){
   const st = STATUS[v] || {ar:(v||'—'), ic:'doc', bg:'#EDF0F3', fg:'#5B6B7D'};
   return `<span style="display:inline-block;padding:3px 11px;border-radius:20px;font-size:11.5px;
@@ -4098,7 +4110,7 @@ function viewAdmin(){
          <button class="btn act-del sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}>${ico("trash")}${delBusy?'…':'حذف'}</button>`;
 
     return `<div class="ord">
-      <div class="oh"><span class="oid">#${esc(o.id)}</span>${o.replacesId?`<span style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على #${esc(o.replacesId)}</span>`:''}${statusPill(o.status)}</div>
+      <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:#8A6512;background:#FFF6E5;border:1px solid #E8C77A;border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على #${esc(o.replacesId)}</span>`:''}${statusPill(o.status)}</div>
       <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}
         ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}
         ${o.ordNote?`<br><span style="color:#8A6512">ملاحظات: ${esc(o.ordNote)}</span>`:''}<br>
