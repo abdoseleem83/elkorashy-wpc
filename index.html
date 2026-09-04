@@ -808,7 +808,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v130';
+const APP_BUILD   = 'v131';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2339,6 +2339,11 @@ async function adminLoad(){
     state.admin.pendingCount = 0; updateAdmBadge();
     if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
     startAdminPolling();
+    // ⚠️ كلمة سر المصنع متخزّنة في sessionStorage وبتتمسح لما التطبيق يتقفل.
+    // فلو المصنع عدّل الأسعار وهو أوفلاين وقفل التطبيق، الرفع مكانش يقدر يشتغل
+    // تاني (محتاج كلمة السر) ومزامنة الأسعار كانت هتفضل واقفة. الدخول نفسه
+    // بيشغّلها دلوقتي — فأول ما يدخل، اللي لسه ما اترفعش بيترفع.
+    syncPricesFromServer_();
   }catch(err){
     state.admin.err = err.message || String(err);
     // فشل التحديث وعندنا نسخة محفوظة معروضة؟ سيبها شغّالة بدل ما نقفل الشاشة
