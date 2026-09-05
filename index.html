@@ -998,7 +998,7 @@ const state = {
   profile: load(LS_PROFILE, {name:'', phone:'', region:''}),
   cart:    load(LS_CART, []),
   orders:  load(LS_ORDERS, []),
-  pick:{code:'', sizes:{}, customOn:false, custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,frameKind:null,frameRodQty:'',frameForDoors:''}},
+  pick:{code:'', sizes:{}, customOn:false, note:'', custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,frameKind:null,frameRodQty:'',frameForDoors:''}},
   newSection: load(LS_SECTION, ''),   // '' (لسه محددش) | doors | acc | frame | bror | prodium
   fr:{cm:10, code:'', doorW:'', kind:'full', qty:1, nonStd:false, jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:''},   // حلق منفصل: kind = 'full' (طقم كامل — الكمية × [٢ قائم ٢٢٠سم + ١ عارضة حلق علوية ١١٠سم]، والارتفاع يتغيّر بس لو nonStd=true) أو 'rods' (أعواد حرة — عدد وطول بيحددهم المستخدم من غير قيمة افتراضية). doorW = مقاس الباب اللي الحلق ده ليه (70/80/90/100) — اختياري. note: ملحوظة اختيارية
   br:{size:'6×9', code:'', rods:1, lenM:BROR_ROD_M_DEFAULT}, // برور إضافي بالعود — code = كود/لون الباب (إجباري زي الحلق)، lenM = طول العود بالمتر (قابل للتغيير لو حد طلب مقاس تكملة)
@@ -1602,6 +1602,11 @@ function viewNew(){
 
       ${sizeCards}
       ${customCard}
+
+      <label class="fld">
+        <span>ملاحظات على الباب (اختياري)</span>
+        <textarea rows="2" placeholder="مثال: الباب حفر جانبي حفر وردة — أو: الطول لأربع أبواب" data-act="pick-note">${esc(p.note||'')}</textarea>
+      </label>
 
       <div class="note" id="sumline">${esc(currentSummary())}</div>
       <button class="btn primary" style="margin-top:12px" data-act="add-door" ${readyToAdd?'':'disabled'}>
@@ -4578,6 +4583,7 @@ document.addEventListener('input',e=>{
     save(LS_PROFILE,state.profile); return;
   }
   if(a==='cust'){ state.pick.custom[el.dataset.k]=el.value; refreshSummary(); return; }
+  if(a==='pick-note'){ state.pick.note=el.value; return; }
   if(a==='cust-name'){ state.customer.name=el.value; return; }
   if(a==='cust-phone'){ state.customer.phone=toLatinDigits_(el.value); return; }
   if(a==='edit-date'){ state.editingDate=el.value; return; }
@@ -4715,7 +4721,7 @@ function addDoor(){
       w,   // العرض بالسم كرقم خام — لخصم الرصيد بدقة
       frame:e.frame||0, dbror:e.dbror||'', frameHeight:e.frameHeight?Number(e.frameHeight):0,
       frameKind, frameRodQty:frameKind==='rods'?(e.frameRodQty||''):'', frameForDoors:frameKind==='rods'?(e.frameForDoors||''):'',
-      note: frameKind==='rods' ? frameKindNote_('rods', e.frameRodQty, e.frameForDoors) : '',
+      note: [frameKind==='rods' ? frameKindNote_('rods', e.frameRodQty, e.frameForDoors) : '', (p.note||'').trim()].filter(Boolean).join(' — '),
       doorHeight, hafr:!!e.hafr, millEn:e.hafr?'Carved':''
     });
     addedTxts.push(doorSizeText_(sizeTxt,doorHeight)+' × '+qty);
@@ -4733,7 +4739,7 @@ function addDoor(){
       w:'',   // مقاس خاص مش متتبّع في المخزون
       frame:p.custom.frame||0, dbror:p.custom.dbror||'', frameHeight:p.custom.frameHeight?Number(p.custom.frameHeight):0,
       frameKind:customFrameKind, frameRodQty:customFrameKind==='rods'?(p.custom.frameRodQty||''):'', frameForDoors:customFrameKind==='rods'?(p.custom.frameForDoors||''):'',
-      note: customFrameKind==='rods' ? frameKindNote_('rods', p.custom.frameRodQty, p.custom.frameForDoors) : '',
+      note: [customFrameKind==='rods' ? frameKindNote_('rods', p.custom.frameRodQty, p.custom.frameForDoors) : '', (p.note||'').trim()].filter(Boolean).join(' — '),
       doorHeight:0, hafr:!!p.custom.hafr, millEn:p.custom.hafr?'Carved':''
     });
     addedTxts.push(sizeTxt+' × '+qty);
@@ -4743,7 +4749,7 @@ function addDoor(){
   clearPulledLine_();
   toast('اتضاف للسلة: '+d.code+' — '+addedTxts.join('، '));
   // نلمّ الاختيارات ونقفل اللوحة عشان يختار باب تاني بارتياح
-  state.pick={code:'', sizes:{}, customOn:false, custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,frameKind:null,frameRodQty:'',frameForDoors:''}};
+  state.pick={code:'', sizes:{}, customOn:false, note:'', custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,frameKind:null,frameRodQty:'',frameForDoors:''}};
   render();
 }
 
@@ -4902,7 +4908,7 @@ let _pulledLine = null;
 // ببياناته، فأول ضغطة على «أضف» بتحطّه تاني — يعني نسختين من نفس الصنف.
 function resetPickerFor_(kind){
   if(kind==='door'){
-    state.pick = {code:'', sizes:{}, customOn:false,
+    state.pick = {code:'', sizes:{}, customOn:false, note:'',
       custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,
               frameKind:null,frameRodQty:'',frameForDoors:''}};
   } else if(kind==='frame'){
@@ -4958,7 +4964,7 @@ function editCartLine(i){
         customFrameKind=it.frameKind||null; customFrameRodQty=it.frameRodQty||''; customFrameForDoors=it.frameForDoors||'';
       }
     }
-    state.pick = {code:it.code||'', sizes, customOn,
+    state.pick = {code:it.code||'', sizes, customOn, note:it.note||'',
       custom:{w:customW,h:customH,qty:customQty,frame:customFrame,frameHeight:customFrameHeight,dbror:customDbror,hafr:isHafr,
         frameKind:customFrameKind,frameRodQty:customFrameRodQty,frameForDoors:customFrameForDoors}};
     state.newSection='doors'; save(LS_SECTION,state.newSection);
@@ -5374,10 +5380,18 @@ function submitOrder(){
       ? { prevId, phone:o.phone||'', newId:o.id, admin:wasAdminEdit } : null;
     (async ()=>{
       const sent = await syncOrder_(o);
+      // ⚠️ باج كان هنا: كنا بنبعت الصورة (shareOrderImage) فورًا من غير ما نستنى
+      // رد السيرفر، فـ o.displayNo لسه مش موجود لحظة تجهيز الصورة — والمستند كان
+      // بيرجع يعرض o.id (الكود الداخلي الطويل W260905-...) بدل الرقم الصغير
+      // العادي. دلوقتي بنستنى رد السيرفر الأول (سواء نجح أو فشل)، وبعدين نجهّز
+      // الصورة على o بعد ما displayNo يتحدّث فيه (لو السيرفر رد بنجاح).
+      if(!wasAdminEdit) shareOrderImage(o);
       if(!cancelInfo) return;
       if(sent === false){ savePendingCancel_(cancelInfo); return; }   // لسه ما وصلش — سيب القديم
       await cancelOldOrder_(cancelInfo);
     })();
+  } else if(!wasAdminEdit){
+    shareOrderImage(o);
   }
   if(wasAdminEdit){
     // المصنع رجع لشاشته، والقايمة بتتحدّث من السيرفر عشان تبان بالأصناف الجديدة
@@ -5395,7 +5409,6 @@ function submitOrder(){
     toast('⚠️ الطلب اتبعت للمصنع، بس مساحة جهازك مليانة فمقدرناش نحفظه هنا — '
         + 'صوّر الشاشة أو ابعت الصورة لنفسك، وفضّي مساحة من إعدادات المتصفح', 8000);
   }
-  shareOrderImage(o);
 }
 
 /* ============================================================
