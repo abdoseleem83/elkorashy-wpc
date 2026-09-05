@@ -769,7 +769,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v136';
+const APP_BUILD   = 'v137';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -967,7 +967,7 @@ async function syncPricesFromServer_(){
     if(!pushed) return;
   }
   try{
-    const d = await jsonp(APPS_SCRIPT_URL + '?action=prices', 12000);
+    const d = await jsonp(APPS_SCRIPT_URL + '?action=prices');
     if(!d || !d.ok || !d.prices) return;
     const incoming = JSON.stringify(d.prices);
     if(incoming === JSON.stringify(loadPriceOverrides_())) return;   // نفس اللي عندنا
@@ -2223,11 +2223,18 @@ function admParams_(){
 }
 
 // بنستخدم JSONP (وسم script) بدل fetch — أضمن مع Apps Script ومفيش مشاكل CORS
+// ⚠️ المهلات كانت متناثرة بأرقام عشوائية: ١٢ ثانية لجلب الأسعار، ١٥ للافتراضي،
+// ٢٠ لإرسال الطلب، ٢٥ لتقرير الأصناف. وأقصر واحدة فيهم (الأسعار) بتتنادى عند
+// فتح التطبيق بالظبط — وقت ما Apps Script بيبقى «نايم» ورده بياخد أطول حاجة.
+// Apps Script بطيء بطبعه (بيصحّى من السكون + بيقرا الشيت)، والفشل الحقيقي في
+// الشبكة بيوصل فورًا من sc.onerror مش بالمهلة — فالمهلة الطويلة مابتأخّرش
+// المستخدم في حالة العطل، بس بتديه فرصة لما السيرفر يكون بطيء وخلاص.
+const JSONP_TIMEOUT_MS = 25000;
 function jsonp(url, timeout){
   return new Promise((res, rej) => {
     const cb = 'wpcb' + Date.now() + Math.floor(Math.random()*999);
     const sc = document.createElement('script');
-    const t = setTimeout(() => { cleanup(); rej(new Error('انتهت المهلة')); }, timeout || 15000);
+    const t = setTimeout(() => { cleanup(); rej(new Error('انتهت المهلة')); }, timeout || JSONP_TIMEOUT_MS);
     function cleanup(){ clearTimeout(t); delete window[cb]; sc.remove(); }
     window[cb] = d => { cleanup(); res(d); };
     sc.onerror = () => { cleanup(); rej(new Error('تعذّر الاتصال')); };
@@ -2409,7 +2416,7 @@ async function clearDeliveredOrders(){
   state.admin.archLoading = true; render();
   try{
     const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=deleteDelivered' + admParams_(), 25000);
+      + '?action=deleteDelivered' + admParams_());
     if(!d || !d.ok) throw new Error((d && d.error) || 'فشل المسح');
     state.admin.archRows = list.filter(o=>o.status!=='Delivered');
     state.admin.rows = (state.admin.rows||[]).filter(o=>o.status!=='Delivered');
@@ -2701,7 +2708,7 @@ async function pushPricesToServer_(out, quiet){
     const payload = JSON.stringify(out);
     const url = APPS_SCRIPT_URL + '?action=setPrices' + admParams_() + '&payload=' + encodeURIComponent(payload);
     if(url.length > 7500) throw new Error('الأسعار أطول من اللي الرابط بيستحمله');
-    const d = await jsonp(url, 20000);
+    const d = await jsonp(url);
     if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
     ok = true;
     save(LS_PRICES_DIRTY, false);
@@ -3432,7 +3439,7 @@ async function buildPendingDoorsExcel_(orders){
 // بيجيب بيانات الطلبات المعلّقة بالتفصيل من السيرفر — مشتركة بين التلات أزرار التصدير
 async function fetchPendingOrders_(){
   if(!APPS_SCRIPT_URL || !state.admin.pw) return null;
-  const d = await jsonp(APPS_SCRIPT_URL + '?action=listWithItems' + admParams_(), 25000);
+  const d = await jsonp(APPS_SCRIPT_URL + '?action=listWithItems' + admParams_());
   if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
   const orders = d.orders || [];
   if(!orders.length){ toast('مفيش طلبات لسه'); return null; }
@@ -5104,8 +5111,19 @@ function draftOrder(){
 function buildMessage(o){
   const priced=pricesVisible();
   let m='🚪 طلب أوردر — '+COMPANY+'\n';
-  m+='رقم الطلب: #'+o.id+'\n';
-  if(o.replacesId) m+='🔁 تعديل على الطلب رقم: #'+o.replacesId+'\n';
+  // ⚠️ باج كان هنا: الرسالة كانت بتكتب الكود الداخلي (#W260904-1234ABC) بينما
+  // المستند المطبوع وكل شاشات التطبيق بيكتبوا الرقم التسلسلي (52). يعني نفس
+  // الطلب ليه رقمين مختلفين — واحد على واتساب وواحد على الورق. نفس الباج اللي
+  // اتصلّح للشاشات والمستند قبل كده، بس قناة الواتساب فاتت.
+  m+='رقم الطلب: '+orderNoText_(o)+(o.displayNo?' (الكود الداخلي: '+o.id+')':'')+'\n';
+  if(o.replacesId){
+    // رقم النسخة اللي قبل دي: نفس الرقم التسلسلي بعدّاد تعديل أقل بواحد —
+    // بالظبط زي ما المستند بيكتبه (52 ثم 52/1 ثم 52/2)
+    const prevNo = o.displayNo
+      ? orderNoText_({ displayNo:o.displayNo, editCount:(Number(o.editCount)||1) - 1 })
+      : '#' + o.replacesId;
+    m+='🔁 تعديل على الطلب رقم: '+prevNo+'\n';
+  }
   m+='الاسم: '+(o.name||'-')+'\n';
   m+='المنطقة: '+(o.region||'-')+'\n';
   m+='الموبايل: '+(o.phone||'-')+'\n';
@@ -5179,7 +5197,7 @@ async function sendOrderToServer_(o){
   const jsonpUrl = APPS_SCRIPT_URL + '?action=newOrder&payload=' + encodeURIComponent(payload);
   if(jsonpUrl.length < 7500){
     try{
-      const d = await jsonp(jsonpUrl, 20000);
+      const d = await jsonp(jsonpUrl);
       if(d && d.ok && d.displayNo){
         // بنسجّل رقم الطلب "العادي" اللي السيرفر رجّعه على النسخة المحلية عشان يبان صح في أي طباعة/مشاركة لاحقة
         o.displayNo = d.displayNo; o.editCount = d.editCount||0;
