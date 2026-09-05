@@ -769,7 +769,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v137';
+const APP_BUILD   = 'v138';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -4772,8 +4772,12 @@ function addRod(kind){
   if(isFrame){
     const f = FRAMES.find(x=>x.cm===st.cm)||FRAMES[0];
     const forDoor = st.doorW ? ' — لباب '+st.doorW+' سم' : '';
-    const kind = st.kind==='rods' ? 'rods' : 'full';
-    if(kind==='full'){
+    // ⚠️ ده كان اسمه kind كمان — وبيحجب باراميتر الدالة نفسه (frame/bror) جوّه
+    // البلوك ده. اشتغل صح بالصدفة لأن push() اتعرّفت قبله فبتقفل على الأصلي،
+    // والسطر اللي جاي بيكتب 'frame' بالنص بدل ما يستعمل المتغيّر. أي سطر جديد
+    // يستعمل kind هنا كان هيقارن بـ'full' من غير ما حد ياخد باله.
+    const frameMode = st.kind==='rods' ? 'rods' : 'full';
+    if(frameMode==='full'){
       const qty = Math.max(0, Math.round(Number(st.qty)||0));
       const jambCm = Math.max(1, Math.round(Number(st.jambCm)||220));
       const headerCm = Math.max(1, Math.round(Number(st.headerCm)||110));
@@ -4784,7 +4788,7 @@ function addRod(kind){
         // الحالة الاستاندر: سطر واحد "حلق كامل" بعدد الأطقم — من غير تفاصيل قائم/عارضة حلق علوية/الطول لأنها معروفة للمصنع
         const setPrice = Math.round((rodPrice(f.price,220)*2 + rodPrice(f.price,110)*1)*100)/100;
         const key = 'frame|fullset|'+f.cm+'|'+st.code+'|'+(st.doorW||'');
-        const ex = state.cart.find(it=>it.kind==='frame' && it.key===key);
+        const ex = state.cart.find(it=>it.kind===kind && it.key===key);
         if(ex){ ex.qty += qty; }
         else{
           state.cart.push({
