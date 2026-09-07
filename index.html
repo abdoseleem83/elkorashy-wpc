@@ -5431,7 +5431,7 @@ function doorWH_(sizeEn, doorHeight){
   return { w:'', h:'' };
 }
 
-function docRowHTML_(it, idx, priced, showFrameHCol){
+function docRowHTML_(it, idx, priced, showFrameHCol, oddFrameW){
   let widthTxt='—', heightTxt='—', frameW='—', frameH='—', brorTxt='—', qty=it.qty, unit;
   if(it.kind==='door'){
     const wh = doorWH_(it.sizeEn, it.doorHeight);
@@ -5449,13 +5449,18 @@ function docRowHTML_(it, idx, priced, showFrameHCol){
     if(unit==='—') unit='قطعة';
   }
   const pp = itemProdPending_(it);
+  // لو مقاس الحلق (البرور) في السطر ده مختلف عن باقي أسطر الطلب، نبرز الخلية دي
+  // بخلفية تلفت النظر عشان المصنع ما يلخبطش بين حلق 15 وحلق 20 مثلًا في نفس الأوردر.
+  const frameWStyle = oddFrameW
+    ? 'background:#FFF3CD;color:#8A5A00;font-weight:700;border-radius:4px'
+    : 'color:#5B6B7D';
   return `<tr>
     <td style="text-align:center">${idx}</td>
-    <td><b>${esc(it.title)}</b>${(it.kind==='door'&&it.note)?`<br><span style="font-size:9.5px;color:#8A6512">${esc(it.note)}</span>`:''}</td>
+    <td><b>${esc(it.title)}</b>${(it.kind==='door'&&it.note)?`<br><span style="font-size:12.5px;font-weight:700;color:#B3261E">${esc(it.note)}</span>`:''}</td>
     <td style="text-align:center">${qty} ${esc(unit)}</td>
     <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(widthTxt)}</td>
     <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(heightTxt)}</td>
-    <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(frameW)}</td>
+    <td style="text-align:center;font-size:11px;${frameWStyle}">${esc(frameW)}</td>
     ${showFrameHCol?`<td style="text-align:center;font-size:11px;color:${frameH==='استاندر'?'#8A6512':'#5B6B7D'}">${esc(frameH)}</td>`:''}
     <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(brorTxt)}</td>
     <td style="text-align:center;font-size:11px;color:${pp.produced>=qty&&qty>0?'#1E8E52':(pp.produced>0?'#B8790A':'#6B7A8C')}">${pp.produced}</td>
@@ -5482,18 +5487,31 @@ function docRows(o, priced, showFrameHCol){
   const otherItems=items.filter(it=>it.kind!=='door');
   const colspan=(priced?11:9)+(showFrameHCol?1:0);
 
+  // نحدّد مقاس الحلق (البرور) الأكتر تكرارًا في كل أبواب الطلب، عشان أي سطر
+  // بمقاس حلق مختلف عنه (زي حلق 20 وسط حلق 15) يبان بخلفية صفراء تلفت النظر.
+  const frameWCount={};
+  doorItems.forEach(it=>{ const f=it.frame?String(it.frame):''; if(f) frameWCount[f]=(frameWCount[f]||0)+1; });
+  const distinctFrameWs=Object.keys(frameWCount);
+  let dominantFrameW=null;
+  if(distinctFrameWs.length>1){
+    dominantFrameW=distinctFrameWs.reduce((a,b)=>frameWCount[a]>=frameWCount[b]?a:b);
+  }
+
   const groups={};
   doorItems.forEach(it=>{ const k=doorSizeText_(it.sizeTxt,it.doorHeight)||''; (groups[k]=groups[k]||[]).push(it); });
   const order=sortSizeKeys_(Object.keys(groups));
 
   let n=0, rows='';
   order.forEach(k=>{
-    rows += `<tr><td colspan="${colspan}" style="background:#EAF2FA;padding:6px 8px;font-weight:700;color:#0B4A7A;font-size:11.5px;font-family:Arial,'Helvetica Neue',sans-serif">🚪 أبواب مقاس ${esc(k)}</td></tr>`;
-    groups[k].forEach(it=>{ rows += docRowHTML_(it, ++n, priced, showFrameHCol); });
+    rows += `<tr><td colspan="${colspan}" style="background:#F7E3D9;padding:6px 8px;font-weight:700;color:#8B3A22;font-size:11.5px;font-family:Arial,'Helvetica Neue',sans-serif">🚪 أبواب مقاس ${esc(k)}</td></tr>`;
+    groups[k].forEach(it=>{
+      const oddFrameW = dominantFrameW!=null && it.frame && String(it.frame)!==dominantFrameW;
+      rows += docRowHTML_(it, ++n, priced, showFrameHCol, oddFrameW);
+    });
   });
   if(otherItems.length){
     rows += `<tr><td colspan="${colspan}" style="background:#F3F6FA;padding:6px 8px;font-weight:700;color:#5B6B7D;font-size:11.5px;font-family:Arial,'Helvetica Neue',sans-serif">🔩 حلق / برور / إكسسوارات</td></tr>`;
-    otherItems.forEach(it=>{ rows += docRowHTML_(it, ++n, priced, showFrameHCol); });
+    otherItems.forEach(it=>{ rows += docRowHTML_(it, ++n, priced, showFrameHCol, false); });
   }
   return rows;
 }
