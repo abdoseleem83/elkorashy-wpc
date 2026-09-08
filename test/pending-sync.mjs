@@ -5,11 +5,16 @@ let pass=0, fail=0;
 const check=(n,ok,x='')=>{ console.log((ok?'✅':'❌')+' '+n+(x?'  — '+x:'')); ok?pass++:fail++; };
 const b = await chromium.launch();
 const pg = await (await b.newContext({viewport:{width:412,height:915}})).newPage();
+// ⚠️ قايمة المعلّق بقت بتدمج مع اللي في التخزين وبتتأكد إن الطلب لسه موجود،
+// فكل حالة لازم تبدأ من تخزين نضيف — من غير كده حالة بتلوّث اللي بعدها.
+const صفّر = () => pg.evaluate(()=>{ ['wpc_orders','wpc_pending_sync','wpc_sent_ids','wpc_deleted_ids']
+  .forEach(k=>localStorage.removeItem(k)); state.orders = []; });
 const errs=[]; pg.on('pageerror',e=>errs.push(e.message));
 await pg.goto(process.env.APP_URL || 'http://localhost:8100/index.html',{waitUntil:'domcontentloaded'});
 await pg.waitForTimeout(1300);
 
 // ١) طلب جديد فشل وسط إعادة المحاولة — لازم يفضل في القايمة
+await صفّر();
 const r1 = await pg.evaluate(async()=>{
   const mk = id => ({id, ts:Date.now(), name:'م', phone:'01012345678', region:'ط',
     items:[{kind:'door',title:'باب',qty:1}], total:1});
@@ -27,6 +32,7 @@ check('الطلب الجديد ما اتمسحش من قايمة المعلّق'
 check('الطلب القديم اللي وصل اتشال', !r1.القايمة.includes('OLD1'), JSON.stringify(r1.القايمة));
 
 // ٢) اللي فشل بيفضل، واللي نجح بيتشال
+await صفّر();
 const r2 = await pg.evaluate(async()=>{
   const mk = id => ({id, ts:Date.now(), name:'م', phone:'01012345678', region:'ط',
     items:[{kind:'door',title:'باب',qty:1}], total:1});
@@ -40,6 +46,7 @@ const r2 = await pg.evaluate(async()=>{
 check('اللي نجح اتشال واللي فشل فضل', JSON.stringify(r2)===JSON.stringify(['A']), JSON.stringify(r2));
 
 // ٣) طلب اتمسح من الجهاز مايفضلش معلّق للأبد
+await صفّر();
 const r3 = await pg.evaluate(async()=>{
   state.orders = [];
   savePendingSync_(['GHOST']);
@@ -50,6 +57,7 @@ const r3 = await pg.evaluate(async()=>{
 check('طلب مش موجود على الجهاز بيتشال من القايمة', r3.length===0, JSON.stringify(r3));
 
 // ٤) الصفحة اتقفلت وسط الإرسال — الطلب لازم يفضل مسجّل معلّق
+await صفّر();
 const r4 = await pg.evaluate(async()=>{
   const mk = id => ({id, ts:Date.now(), name:'م', phone:'01012345678', region:'ط',
     items:[{kind:'door',title:'باب',qty:1}], total:1});
@@ -63,6 +71,7 @@ const r4 = await pg.evaluate(async()=>{
 check('الطلب مسجّل معلّق وهو لسه بيتبعت', r4.includes('MID1'), JSON.stringify(r4));
 
 // ٥) الإرسال نجح → بيتشال من المعلّق
+await صفّر();
 const r5 = await pg.evaluate(async()=>{
   const mk = id => ({id, ts:Date.now(), name:'م', phone:'01012345678', region:'ط',
     items:[{kind:'door',title:'باب',qty:1}], total:1});
@@ -75,6 +84,7 @@ const r5 = await pg.evaluate(async()=>{
 check('لما يوصل بيتشال من المعلّق', r5.length===0, JSON.stringify(r5));
 
 // ٦) إعادة المحاولة ما بتبعتش طلب لسه بيتبعت (مفيش نسخة مكررة عند المصنع)
+await صفّر();
 const r6 = await pg.evaluate(async()=>{
   const mk = id => ({id, ts:Date.now(), name:'م', phone:'01012345678', region:'ط',
     items:[{kind:'door',title:'باب',qty:1}], total:1});
