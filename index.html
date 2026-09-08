@@ -769,7 +769,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v145';
+const APP_BUILD   = 'v146';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -890,7 +890,7 @@ const ACCESSORIES = [
 // و const مابتترفعش زي الدوال. لما كانت متعرّفة تحت، أي جهاز بياناته مخربة كان
 // بيقع بشاشة بيضا: "Cannot access '_storeProblems_' before initialization".
 const _storeProblems_ = [];
-const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders', LS_TAB = 'wpc_tab', LS_SECTION = 'wpc_section', LS_PRICES = 'wpc_prices', LS_PENDING = 'wpc_pending_sync', LS_PENDING_CANCEL = 'wpc_pending_cancel', LS_PRICES_DIRTY = 'wpc_prices_dirty';
+const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders', LS_TAB = 'wpc_tab', LS_SECTION = 'wpc_section', LS_PRICES = 'wpc_prices', LS_PENDING = 'wpc_pending_sync', LS_PENDING_CANCEL = 'wpc_pending_cancel', LS_PRICES_DIRTY = 'wpc_prices_dirty', LS_DELETED = 'wpc_deleted_ids';
 
 // مستويات السعر: السعر الأساسي المتخزّن في الكتالوج هو "سعر موزع"، ومنه بتتحسب المستويات التانية بزيادة ثابتة.
 // الزيادة بتتطبّق وقت طباعة عرض السعر بس — من غير ما تغيّر الأسعار المتخزّنة نفسها.
@@ -1992,9 +1992,9 @@ function viewOrders(){
     return `
     <div class="ord">
       <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:#8A6512;background:#FFF6E5;border:1px solid #E8C77A;border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${live?statusPill(live.status):''}</div>
-      <div class="os">${esc(dateStr(o.ts))} · ${o.items.length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
+      <div class="os">${esc(dateStr(o.ts))} · ${(o.items||[]).length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
         ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}<br>
-        ${esc(o.items.map(x=>x.title).slice(0,3).join('، '))}${o.items.length>3?'…':''}
+        ${esc((o.items||[]).map(x=>x&&x.title).filter(Boolean).slice(0,3).join('، '))}${(o.items||[]).length>3?'…':''}
         ${o.note?('<br><span style="color:#8A6512">ملاحظات: '+esc(o.note)+'</span>'):''}
         ${live && live.note?('<br><b style="color:var(--brand)">'+esc(live.note)+'</b>'):''}</div>
       <div class="oa">
@@ -2325,7 +2325,7 @@ async function loadTrack(){
         lo.displayNo=r.displayNo; lo.editCount=r.editCount||0; changedLocal=true;
       }
     });
-    if(changedLocal) save(LS_ORDERS,state.orders);
+    if(changedLocal) saveOrders_(state.orders);
   }catch(err){
     state.track.err = err.message || String(err);
   }
@@ -2954,7 +2954,7 @@ function reportHTML(orders){
   // من هنا مرة واحدة، وأي طلب مابقاش فيه ولا باب بيتشال بالكامل.
   orders = orders
     .map(o=>Object.assign({}, o, { items:(o.items||[]).filter(it=>it.type==='Door') }))
-    .filter(o=>o.items.length);
+    .filter(o=>(o.items||[]).length);
 
   // عمود "ارتفاع الحلق" شرطي على مستوى التقرير كله (زي docHTML/customerTableHTML_) — يظهر بس لو صنف باب
   // واحد على الأقل في كل الطلبات متسجّل له عرض حلق + ارتفاع حلق مع بعض.
@@ -3699,7 +3699,7 @@ async function buildAdminOrdersExcel_(orders){
   // وأي طلب مابقاش فيه ولا باب بيتشال بالكامل من التلات شيتات.
   orders = orders
     .map(o=>Object.assign({}, o, { items:(o.items||[]).filter(it=>it.type==='Door') }))
-    .filter(o=>o.items.length);
+    .filter(o=>(o.items||[]).length);
   if(!orders.length){ toast('مفيش أبواب في الطلبات الحالية'); return; }
 
   // عمود "ارتفاع الحلق" شرطي على مستوى المصنَّف كله (زي docHTML/reportHTML) — يظهر بس لو صنف باب
@@ -4537,8 +4537,9 @@ document.addEventListener('click',e=>{
       const live = (state.track.rows||[]).find(r=>String(r.id)===String(o.id));
       if(isOrderLocked_(live)){ toast('الطلب دخل التنفيذ في المصنع، مينفعش يتحذف دلوقتي'); break; }
       if(!confirm('حذف الطلب '+orderNoText_(o)+' من الجهاز ده؟ (ده مش هيلغي الطلب عند المصنع لو اتبعت خلاص، بس هيشيله من قايمتك هنا)')) break;
+      markDeleted_(o.id);                       // حذف مقصود — الدمج مايرجّعهوش
       state.orders = state.orders.filter(x=>x.id!==o.id);
-      save(LS_ORDERS, state.orders);
+      saveOrders_(state.orders);
       toast('اتحذف الطلب '+orderNoText_(o)+' من القايمة');
       render();
     } break;
@@ -5252,7 +5253,7 @@ function buildMessage(o){
   m+='المخزن: '+WAREHOUSE+'\n';
   if(o.note) m+='ملاحظات: '+o.note+'\n';
   m+='——————\n';
-  o.items.forEach((it,i)=>{
+  (o.items||[]).forEach((it,i)=>{
     m+=(i+1)+'. '+it.title+'\n';
     if(it.kind==='door'){
       m+='   المقاس: '+doorSizeText_(it.sizeTxt,it.doorHeight)+' — الكمية: '+it.qty+'\n';
@@ -5322,7 +5323,7 @@ async function sendOrderToServer_(o){
         // بنسجّل رقم الطلب "العادي" اللي السيرفر رجّعه على النسخة المحلية عشان يبان صح في أي طباعة/مشاركة لاحقة
         o.displayNo = d.displayNo; o.editCount = d.editCount||0;
         const idx = state.orders.findIndex(x=>String(x.id)===String(o.id));
-        if(idx>-1){ state.orders[idx].displayNo=d.displayNo; state.orders[idx].editCount=d.editCount||0; save(LS_ORDERS,state.orders); }
+        if(idx>-1){ state.orders[idx].displayNo=d.displayNo; state.orders[idx].editCount=d.editCount||0; saveOrders_(state.orders); }
       }
       return !!(d && d.ok);
     }catch(err){ return false; }
@@ -5335,6 +5336,44 @@ async function sendOrderToServer_(o){
       body:JSON.stringify({action:'newOrder',order:o})});
     return null;   // اتبعت لكن مش متأكدين من الرد
   }catch(err){ return false; }
+}
+
+/* ---------- حفظ الطلبات: دمج مش كتابة فوق ----------
+   ⚠️ ده كان سبب «طلبات النهاردة اختفت». التطبيق ممكن يكون مفتوح في أكتر من
+   مكان (مثبّت + تاب في المتصفح)، وكل نسخة شايلة قايمة الطلبات في ذاكرتها.
+   كل مسارات الحفظ كانت بتكتب القايمة اللي في الذاكرة فوق التخزين كله — فأول
+   ما نسخة قديمة تحفظ أي حاجة، بتمسح الطلبات اللي النسخة التانية ضافتها.
+   والطلب الجديد بيتحط في أول القايمة، فاللي بيضيع هو الأحدث — مش الأقدم.
+   والـService Worker بيعمل reload لكل النسخ المفتوحة مع كل تحديث، فوقت
+   التحديث هو أخطر وقت بالظبط.
+   دلوقتي بنقرا اللي في التخزين ونضمّ اللي مش عندنا، وبنمشي على سجل المحذوف
+   عشان اللي اتمسح عن قصد مايرجعش. */
+function loadDeleted_(){ const v = load(LS_DELETED, []); return Array.isArray(v) ? v : []; }
+function markDeleted_(id){
+  if(!id) return;
+  const list = loadDeleted_().filter(x=>String(x)!==String(id));
+  list.unshift(String(id));
+  save(LS_DELETED, list.slice(0,300));   // آخر ٣٠٠ كفاية — أقدم من كده مش هيرجع من حتة تانية
+}
+function saveOrders_(list){
+  const اتمسح = new Set(loadDeleted_().map(String));
+  // سجل الحذف بيتطبّق على القايمة الداخلة كمان — مش على اللي في التخزين بس.
+  // من غير كده، نسخة تانية من التطبيق لسه شايلة الطلب المحذوف في ذاكرتها كانت
+  // بترجّعه أول ما تحفظ أي حاجة.
+  list = (list||[]).filter(o=>o && !اتمسح.has(String(o.id)));
+  let stored = [];
+  try{
+    const raw = localStorage.getItem(LS_ORDERS);
+    if(raw) stored = JSON.parse(raw) || [];
+  }catch(e){ stored = []; }
+  if(Array.isArray(stored) && stored.length){
+    const عندنا = new Set(list.map(o=>String(o && o.id)));
+    const زيادة = stored.filter(o=>o && !عندنا.has(String(o.id)) && !اتمسح.has(String(o.id)));
+    if(زيادة.length) list = list.concat(زيادة).sort((a,b)=>(Number(b.ts)||0)-(Number(a.ts)||0));
+  }
+  list = (list||[]).slice(0,80);
+  state.orders = list;
+  return save(LS_ORDERS, list);
 }
 
 function loadPendingSync_(){ return load(LS_PENDING, []); }
@@ -5467,6 +5506,7 @@ function submitOrder(){
 
   if(wasEditing){
     // التعديل بيلغي الطلب القديم بدل ما يحدّثه في مكانه — وبيعمل طلب جديد مستقل بالأصناف المعدّلة
+    markDeleted_(prevId);                       // اتلغى بالتعديل — الدمج مايرجّعهوش
     state.orders = state.orders.filter(x=>String(x.id)!==String(prevId));
     // ⚠️ ونشيله من نسخة قايمة السيرفر المحفوظة على الجهاز كمان. من غير كده كان
     // بيفضل فيها لحد التحديث الجاي من السيرفر — وأي بحث بالحالة أو قفل التعديل
@@ -5476,8 +5516,7 @@ function submitOrder(){
   state.orders.unshift(o);
   // كانت الذاكرة بتحتفظ بكل الطلبات والمحفوظ 80 بس — فبعد أي إعادة فتح الأرقام
   // بتختلف عن اللي كان ظاهر. بنقصّ الاتنين على نفس الحد.
-  state.orders = state.orders.slice(0,80);
-  const savedLocally = save(LS_ORDERS,state.orders);
+  const savedLocally = saveOrders_(state.orders);
   const wasAdminEdit = !!state.editingMeta;
   state.cart=[]; save(LS_CART,state.cart); state.touched=false;
   state.editingId=null; state.editingMeta=null; state.editingDate=null;
@@ -5712,7 +5751,11 @@ function docHTML(o,mode,priced){
         // الطلب المعدّل بياخد رقم مركّب: رقم الطلب / رقم التعديل — يعني الطلب 52
         // أول ما يتعدّل يبقى 52/1، وتاني تعديل 52/2. كده المصنع يعرف على طول
         // إن الورقة دي نسخة معدّلة والكام، ويقدر يرمي النسخ الأقدم بثقة.
-        const num = isQuote ? esc(o.id)
+        // ⚠️ عرض السعر كان بيطبع الكود الداخلي (W260908-...) كـ«رقم عرض السعر».
+        // ده كود مالوش أي معنى للعميل ولا مكتوب على أي ورقة تانية عنده.
+        // عرض السعر مبني على طلب، فبياخد رقمه — وبيقع على الكود الداخلي لوحده
+        // لو الطلب لسه مالوش رقم تسلسلي.
+        const num = isQuote ? esc(orderNoText_(o))
                   : (o.displayNo ? esc(o.displayNo) + (edited ? '/' + esc(o.editCount) : '')
                                  : esc(o.id));
         const label = isQuote ? 'رقم عرض السعر' : (edited ? 'رقم طلب الأوردر — معدّل' : 'رقم طلب الأوردر');
