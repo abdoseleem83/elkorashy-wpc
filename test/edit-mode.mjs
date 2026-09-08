@@ -55,6 +55,39 @@ check('بموبايله هو', r2.phone==='01099998888', r2.phone);
 check('ومنطقته هو', r2.region==='المنصورة', r2.region);
 check('وصاحب الأوردر بتاعه هو', r2.customer==='ورشة أحمد', r2.customer);
 
+// ٣) الملاحظة العامة على الطلب لازم ترجع في التعديل — كانت بتضيع خالص
+const r3 = await pg.evaluate(()=>{
+  window.toast=()=>{};
+  state.orderNote = '';                       // الخانة اتصفّرت بعد آخر إرسال
+  state.cart = [{kind:'door',title:'باب',qty:1,unitPrice:100,code:'A01',sizeTxt:'70 سم'}];
+  enterEditMode_({id:'N1', ts:Date.now(), displayNo:11, editCount:0, items:[],
+                  note:'التسليم قبل الجمعة'});
+  const جوّه_الخانة = state.orderNote;
+  const في_الطلب = draftOrder().note;
+  // ومسار المصنع بيسمّيها ordNote
+  state.orderNote = '';
+  enterEditMode_({id:'N2', displayNo:12, editCount:0, ordNote:'الحلق أبيض'}, {date:'2026-09-01'});
+  const مصنع = state.orderNote;
+  // وطلب من غير ملاحظة مايرثش ملاحظة اللي قبله
+  enterEditMode_({id:'N3', ts:Date.now(), displayNo:13, editCount:0, items:[]});
+  return {جوّه_الخانة, في_الطلب, مصنع, بعد_طلب_فاضي: state.orderNote};
+});
+check('الملاحظة رجعت في خانة التعديل', r3.جوّه_الخانة==='التسليم قبل الجمعة', r3.جوّه_الخانة);
+check('وبتتبعت مع الطلب المعدّل', r3.في_الطلب==='التسليم قبل الجمعة', r3.في_الطلب);
+check('ومسار المصنع كمان (ordNote)', r3.مصنع==='الحلق أبيض', r3.مصنع);
+check('وطلب من غير ملاحظة مايرثش ملاحظة اللي قبله', r3.بعد_طلب_فاضي==='', JSON.stringify(r3.بعد_طلب_فاضي));
+
+// ٤) إلغاء التعديل لازم يمسح بقايا الطلب اللي كنا بنعدّله
+const r4 = await pg.evaluate(()=>{
+  window.toast=()=>{};
+  state.cart = [{kind:'door',title:'باب',qty:1,unitPrice:100,code:'A01',sizeTxt:'70 سم'}];
+  enterEditMode_({id:'C1', ts:Date.now(), displayNo:44, editCount:1, items:[], note:'ملاحظة الطلب القديم'});
+  document.querySelector('[data-act="cancel-edit"]').click();
+  return {id:state.editingId, note:state.orderNote, no:state.editingDisplayNo, cnt:state.editingEditCount};
+});
+check('إلغاء التعديل بيمسح ملاحظة الطلب القديم', r4.note==='', JSON.stringify(r4.note));
+check('وبيمسح رقم الطلب وعدّاد التعديل', !r4.id && !r4.no && !r4.cnt, JSON.stringify(r4));
+
 check('مفيش أخطاء', errs.length===0, errs.join(' | '));
 console.log(`\nالنتيجة: ${pass} نجحت، ${fail} فشلت`);
 await b.close();
