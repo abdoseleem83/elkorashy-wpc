@@ -23,7 +23,14 @@ await pg.waitForTimeout(600);
 let pass=0, fail=0;
 const check=(n,ok,x='')=>{ console.log((ok?'✅':'❌')+' '+n+(x?'  — '+x:'')); ok?pass++:fail++; };
 
-check('زرار PDF للطلب الواحد ظاهر', (await pg.$$('[data-act="adm-pdf"]')).length === 1);
+// بقى فيه زرارين PDF لنفس الطلب: واحد على سطر الطلب في كارت العميل،
+// وواحد جوه كارت الطلب المفتوح — الاتنين على نفس الـ id.
+{
+  const ids = await pg.$$eval('[data-act="adm-pdf"]', els=>els.map(e=>e.dataset.id));
+  check('زرار PDF للطلب الواحد ظاهر', ids.length>=1 && ids.every(i=>i==='2026-0052'), ids.join(','));
+  const pv = await pg.$$eval('[data-act="adm-preview"]', els=>els.map(e=>e.dataset.id));
+  check('وزرار معاينة للطلب الواحد كمان', pv.length>=1 && pv.every(i=>i==='2026-0052'), pv.join(','));
+}
 const av = await pg.$$('[data-act="adm-item-avail"]');
 check('زرار «متاح» لكل صنف', av.length === 2, String(av.length));
 const r = await pg.evaluate(()=>{

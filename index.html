@@ -578,6 +578,21 @@ input.bad{box-shadow:0 0 0 3px rgba(179,38,30,.1)}
   transition:transform var(--t-fast) var(--ease),background var(--t-fast);
 }
 .rpv-bar button:active{transform:scale(.95)}
+.grp-hd{display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer}
+.grp-chev{font-size:18px;color:#8A97A6;transition:transform .15s;flex:none}
+.grp-list{border-top:1px solid var(--line)}
+.grp-ord{display:flex;align-items:center;gap:7px;padding:7px 12px;border-top:1px dashed #E4EAF0;min-width:0}
+.grp-ord:first-child{border-top:0}
+.grp-no{background:#EAF2FA;border:1px solid #B9D4EA;border-radius:20px;padding:2px 11px;
+  font-weight:800;font-size:12.5px;color:#0B4A7A;white-space:nowrap;flex:none}
+.grp-no.nn{background:#F1F3F6;border-color:#DDE3EA;color:#6B7A8C;font-weight:700;font-size:11px}
+.grp-dt{color:#5B7B99;font-size:11px;white-space:nowrap;flex:none}
+.grp-dy{color:#8A6512;font-size:11px;font-weight:700;white-space:nowrap;flex:none}
+.grp-b{width:auto!important;padding:5px 9px!important;font-size:11px!important;flex:none}
+.grp-b .i{width:13px;height:13px}
+.grp-all{display:flex;align-items:center;gap:7px;padding:8px 12px;border-top:1px solid var(--line);
+  background:#F7F9FC;font-size:11px;color:#6B7A8C}
+.grp-all span:first-child{flex:1;min-width:0}
 .ordnote-box{margin-top:11px;padding:9px 11px;background:#FFF8E7;border:1.5px solid #E8C77A;border-radius:11px}
 .ordnote-ta{background:#fff;border-color:#E8C77A!important}
 .ordnote{margin-top:7px;padding:7px 10px;background:#FFF3D6;border:1.5px solid #E8B94A;border-inline-start:5px solid #D99A0B;border-radius:8px;color:#7A5405;font-weight:700;font-size:12px;display:flex;gap:6px;align-items:flex-start}
@@ -773,7 +788,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v151';
+const APP_BUILD   = 'v152';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2281,6 +2296,13 @@ function orderNoText_(o){
   if(!n) return '#' + (o.id || '');
   const ec = Number(o.editCount) || 0;
   return ec > 0 ? (n + '/' + ec) : String(n);
+}
+
+// الطلب اللي لسه مالوش رقم تسلسلي: بنعرض آخر ٤ حروف من الكود الداخلي بس
+// (زي #KQ4) — الكود كامل طويل وبياخد نص السطر، وموجود في الـ title لو حد محتاجه.
+function shortIdText_(id){
+  const t = String(id || '');
+  return '#' + (t.length > 4 ? t.slice(-4) : t);
 }
 
 function statusPill(v){
@@ -3931,14 +3953,24 @@ function xlDateCell_(row, col){
 
 // اسم اليوم بالعربي (الأحد/الاتنين/…) — المصنع بيرتّب شغله بالأيام مش بالتواريخ
 const DAY_AR_ = ['الأحد','الاتنين','التلات','الأربع','الخميس','الجمعة','السبت'];
+// ⚠️ new Date('2026-09-08') بيتقرا على إنه UTC، فالجهاز اللي توقيته قبل UTC
+// بيرجّع اليوم اللي قبله — اسم اليوم بيطلع غلط. بنفكّ التاريخ بإيدينا بدل كده.
+function dateParts_(d){
+  if(!d) return null;
+  const m = String(d).trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return { y:+m[1], m:+m[2], d:+m[3] };
+  const t = new Date(d);
+  if(isNaN(t.getTime())) return null;
+  return { y:t.getFullYear(), m:t.getMonth()+1, d:t.getDate() };
+}
 function dayNameAr_(d){
-  if(!d) return '';
-  try{ const t = new Date(d); return isNaN(t.getTime()) ? '' : DAY_AR_[t.getDay()]; }
-  catch(e){ return ''; }
+  const p = dateParts_(d); if(!p) return '';
+  return DAY_AR_[new Date(p.y, p.m-1, p.d).getDay()] || '';
 }
 function dateStr2_(d){
-  if(!d) return '';
-  try{ return new Date(d).toLocaleDateString('ar-EG',{day:'2-digit',month:'2-digit',year:'numeric'}); }catch(e){ return String(d); }
+  const p = dateParts_(d); if(!p) return String(d||'');
+  try{ return new Date(p.y, p.m-1, p.d).toLocaleDateString('ar-EG',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+  catch(e){ return p.d+'/'+p.m+'/'+p.y; }
 }
 
 // إكسيل تفصيلي بكل الطلبات — كان كمان بدون زرار.
@@ -4252,6 +4284,25 @@ function prodTableHTML_(oid, its, a, qtyMode){
   </div>`;
 }
 
+// سطر الطلب الواحد على كارت العميل: رقمه وتاريخه ويومه، ومعاه معاينة وطباعة
+// للطلب ده لوحده. قبل كده الأزرار كانت على مستوى العميل بس — يعني معاينة كل
+// طلباته مع بعض — وكانت في نفس صف الأرقام فالشكل كان بيتداخل.
+function groupOrderRowHTML_(o, a){
+  const busy = a.orderPreviewBusy === o.id;
+  const noTxt = orderNoText_(o);
+  const hasNo = !!o.displayNo;
+  return `<div class="grp-ord">
+    <span class="grp-no${hasNo?'':' nn'}" title="الكود الداخلي: ${esc(o.id)}">${esc(hasNo ? noTxt : shortIdText_(o.id))}</span>
+    ${o.date?`<span class="grp-dt">${esc(dateStr2_(o.date))}</span>
+    <span class="grp-dy">${esc(dayNameAr_(o.date))}</span>`:''}
+    <span style="flex:1"></span>
+    <button class="btn act-tool sm grp-b" data-act="adm-preview" data-id="${esc(o.id)}" ${busy?'disabled':''}
+      title="معاينة الطلب ${esc(noTxt)}" aria-label="معاينة الطلب ${esc(noTxt)}">${ico("search")}${busy?'…':'معاينة'}</button>
+    <button class="btn act-report sm grp-b" data-act="adm-pdf" data-id="${esc(o.id)}"
+      title="طباعة الطلب ${esc(noTxt)}" aria-label="طباعة الطلب ${esc(noTxt)}">${ico("doc")}PDF</button>
+  </div>`;
+}
+
 function viewAdmin(){
 
 
@@ -4477,28 +4528,24 @@ function viewAdmin(){
     const pdfBusy = a.groupPdfBusy === name;
     const prevBusy = a.groupPreviewBusy === name;
     return `<div class="ord" style="padding:0;overflow:hidden">
-      <div data-act="adm-toggle-group" data-name="${esc(name)}" style="display:flex;align-items:center;gap:8px;padding:13px 14px;cursor:pointer">
+      <div class="grp-hd" data-act="adm-toggle-group" data-name="${esc(name)}">
         <span style="flex:1;min-width:0">
           <b style="font-size:13.5px;color:#0B2A4A">${esc(name)}</b>
           <div style="font-size:11px;color:#6B7A8C;margin-top:2px">${orders.length} طلب · ${totalQty} قطعة · ${money(totalMoney)} ج</div>
-          <div style="font-size:11.5px;font-weight:700;color:#0B4A7A;margin-top:3px;line-height:1.6">${
-            // أرقام الطلبات على كارت العميل — من غيرها المصنع لازم يفتح كل عميل
-            // عشان يدوّر على رقم معيّن. الأحدث الأول.
-            orders.map(o=>`<div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-              <span style="background:#EAF2FA;border:1px solid #B9D4EA;border-radius:20px;
-                padding:2px 11px;font-weight:800;color:#0B4A7A;white-space:nowrap">${esc(orderNoText_(o))}</span>
-              ${o.date?`<span style="font-weight:400;color:#5B7B99;font-size:11px;white-space:nowrap">${esc(dateStr2_(o.date))}</span>
-              <span style="font-weight:700;color:#8A6512;font-size:11px;white-space:nowrap">${esc(dayNameAr_(o.date))}</span>`:''}
-            </div>`).join('')
-          }</div>
         </span>
-        <button class="btn act-tool sm" data-act="adm-group-preview" data-name="${esc(name)}" ${prevBusy?'disabled':''}
-          title="معاينة الطلب قبل التصدير" aria-label="معاينة طلب ${esc(name)}" style="width:auto;padding:7px 10px">
-          ${ico("search")}${prevBusy?'…':'معاينة'}</button>
-        <button class="btn act-report sm" data-act="adm-group-pdf" data-name="${esc(name)}" ${pdfBusy?'disabled':''} style="width:auto;padding:7px 10px">
-          ${ico("doc")}${pdfBusy?'…':'PDF'}</button>
-        <span style="font-size:18px;color:#8A97A6;transform:rotate(${open?90:0}deg);transition:.15s">‹</span>
+        <span class="grp-chev" style="transform:rotate(${open?90:0}deg)">‹</span>
       </div>
+      <!-- سطر لكل طلب: رقمه وتاريخه ويومه، ومعاه معاينة وطباعة للطلب ده لوحده.
+           الأزرار كانت قبل كده على مستوى العميل بس — يعني معاينة كل الطلبات مع
+           بعض — والسطور كانت متداخلة مع الأزرار في نفس الصف فالشكل بيتلخبط. -->
+      <div class="grp-list">${orders.map(o=>groupOrderRowHTML_(o, a)).join('')}</div>
+      ${orders.length>1?`<div class="grp-all">
+        <span>كل طلبات العميل مع بعض:</span>
+        <button class="btn act-tool sm grp-b" data-act="adm-group-preview" data-name="${esc(name)}" ${prevBusy?'disabled':''}
+          title="معاينة كل طلبات ${esc(name)}">${ico("search")}${prevBusy?'…':'معاينة'}</button>
+        <button class="btn act-report sm grp-b" data-act="adm-group-pdf" data-name="${esc(name)}" ${pdfBusy?'disabled':''}
+          title="PDF كل طلبات ${esc(name)}">${ico("doc")}${pdfBusy?'…':'PDF'}</button>
+      </div>`:''}
       ${open?`<div style="padding:0 10px 10px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line)">
         <div style="height:1px"></div>${orders.map(orderCardHTML_).join('')}
       </div>`:''}
