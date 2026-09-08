@@ -578,6 +578,10 @@ input.bad{box-shadow:0 0 0 3px rgba(179,38,30,.1)}
   transition:transform var(--t-fast) var(--ease),background var(--t-fast);
 }
 .rpv-bar button:active{transform:scale(.95)}
+.ordnote-box{margin-top:11px;padding:9px 11px;background:#FFF8E7;border:1.5px solid #E8C77A;border-radius:11px}
+.ordnote-ta{background:#fff;border-color:#E8C77A!important}
+.ordnote{margin-top:7px;padding:7px 10px;background:#FFF3D6;border:1.5px solid #E8B94A;border-inline-start:5px solid #D99A0B;border-radius:8px;color:#7A5405;font-weight:700;font-size:12px;display:flex;gap:6px;align-items:flex-start}
+.ordnote .i{flex:none;width:14px;height:14px;margin-top:1px}
 .rpv-pdf{background:linear-gradient(180deg,var(--brand-lt),var(--brand));color:#fff}
 .rpv-x{background:rgba(255,255,255,.14);border:1px solid rgba(159,209,240,.35);color:#EAF2FA;padding:0 10px}
 .rpv-scroll{
@@ -769,7 +773,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v150';
+const APP_BUILD   = 'v151';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1841,8 +1845,10 @@ function viewNew(){
     <label class="fld"><span>المنطقة</span>
       <input type="text" value="${esc(state.profile.region)}" placeholder="طنطا مثلاً" data-act="prof" data-k="region"></label>
     ${bad && !profileOk() ? `<div class="note" style="color:var(--danger)">الاسم ورقم الموبايل وصاحب الأوردر إجباريين — الرقم لازم يكون ١١ رقم يبدأ بـ 01.</div>` : ''}
-    <label class="fld" style="margin-top:11px"><span>ملاحظات <span style="font-weight:400;color:var(--muted)">(اختياري)</span></span>
-      <textarea rows="2" placeholder="أي تفاصيل إضافية عن الطلب" data-act="ord-note">${esc(state.orderNote)}</textarea></label>
+    <div class="ordnote-box">
+      <label class="fld" style="margin:0"><span style="color:#8A6512">${ico("warn")} ملاحظات عامة على الأوردر <span style="font-weight:400;color:#A98A45">(بتظهر للمصنع على الطلب والمستند)</span></span>
+        <textarea rows="2" class="ordnote-ta" placeholder="أي تفاصيل إضافية عن الطلب — لون، مواعيد، تسليم…" data-act="ord-note">${esc(state.orderNote)}</textarea></label>
+    </div>
   </section>
 
   ${nav}
@@ -1963,6 +1969,10 @@ function viewCart(){
       المخزن: <b>${esc(WAREHOUSE)}</b>
       ${ok?'':'<br><span style="color:var(--danger)">اكتب الاسم ورقم الموبايل واسم صاحب الأوردر في تبويب «طلب جديد» قبل الإرسال.</span>'}
     </div>
+    <div class="ordnote-box" style="margin-bottom:12px">
+      <label class="fld" style="margin:0"><span style="color:#8A6512">${ico("warn")} ملاحظات عامة على الأوردر <span style="font-weight:400;color:#A98A45">(بتظهر للمصنع على الطلب والمستند)</span></span>
+        <textarea rows="2" class="ordnote-ta" placeholder="أي تفاصيل إضافية عن الطلب — لون، مواعيد، تسليم…" data-act="ord-note">${esc(state.orderNote)}</textarea></label>
+    </div>
     <button class="btn brand" data-act="submit">${editing?ico("save")+' حفظ التعديل وإرسال واتساب':'إرسال طلب الأوردر على واتساب'}</button>
     <div class="btnrow" style="margin-top:9px">
       <button class="btn ghost sm" data-act="quote-cart">${ico("doc")} PDF الطلب</button>
@@ -2008,7 +2018,7 @@ function viewOrders(){
       <div class="os">${esc(dateStr(o.ts))} · ${(o.items||[]).length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
         ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}<br>
         ${esc((o.items||[]).map(x=>x&&x.title).filter(Boolean).slice(0,3).join('، '))}${(o.items||[]).length>3?'…':''}
-        ${o.note?('<br><span style="color:#8A6512">ملاحظات: '+esc(o.note)+'</span>'):''}
+        ${o.note?('</div><div class="ordnote">'+ico("warn")+'<span><b>ملاحظات:</b> '+esc(o.note)+'</span></div><div class="os">'):''}
         ${live && live.note?('<br><b style="color:var(--brand)">'+esc(live.note)+'</b>'):''}</div>
       <div class="oa">
         ${editBtn}
@@ -3565,6 +3575,23 @@ async function previewCustomerOrder_(name){
   a.groupPreviewBusy = null; render();
 }
 
+// معاينة طلب واحد. المصنع كان يقدر يعاين كل طلبات العميل مع بعض بس — ولو العميل
+// عنده عشر طلبات، اللي عايز يشوف طلب واحد بيستنى تحميلهم كلهم ويدوّر في الورق.
+async function previewOneOrder_(id){
+  const o = adminOrderById_(id); if(!o) return;
+  const a = state.admin;
+  if(a.orderPreviewBusy) return;
+  a.orderPreviewBusy = o.id; render();
+  try{
+    const its = await loadOrderItems_(o.id);
+    if(!its.length){ toast('مفيش أصناف في الطلب ده'); }
+    else showReportPreview_(docHTML(buildAdminDocOrder_(o, its), 'order'), orderNoText_(o), o.id);
+  }catch(err){
+    toast('تعذّر فتح المعاينة: ' + (err.message || err));
+  }
+  a.orderPreviewBusy = null; render();
+}
+
 // بتجيب أصناف طلب واحد وتكاشهم. بترجّع من غير أي نداء لو محمّلين خلاص.
 async function loadOrderItems_(id){
   if(state.admin.items[id]) return state.admin.items[id];
@@ -3578,7 +3605,7 @@ async function loadOrderItems_(id){
 // بتعرض HTML التقرير في طبقة فوق الشاشة، مصغّر ليدخل في عرض الموبايل.
 // التقرير مرسوم بعرض A4 ثابت (794 بكسل)، فبنعمله scale حسب عرض الشاشة
 // عشان يتقري من غير تمرير أفقي.
-function showReportPreview_(html, title){
+function showReportPreview_(html, title, orderId){
   const old = document.getElementById('reportPreviewOverlay'); if(old) old.remove();
   const ov = document.createElement('div');
   ov.id = 'reportPreviewOverlay';
@@ -3586,7 +3613,7 @@ function showReportPreview_(html, title){
   ov.innerHTML = `
     <div class="rpv-bar">
       <b>معاينة — ${esc(title||'')}</b>
-      <button class="rpv-pdf" data-act="rpv-pdf" data-name="${esc(title||'')}">${ico('doc')}تصدير PDF</button>
+      <button class="rpv-pdf" data-act="rpv-pdf" data-name="${esc(title||'')}"${orderId?` data-id="${esc(orderId)}"`:''}>${ico('doc')}تصدير PDF</button>
       <button class="rpv-x" data-act="rpv-close" aria-label="إغلاق المعاينة">${ico('x')}</button>
     </div>
     <div class="rpv-scroll"><div class="rpv-fit"><div class="rpv-page">${html}</div></div></div>`;
@@ -4362,6 +4389,7 @@ function viewAdmin(){
   const orderCardHTML_ = o=>{
     const busy = a.busy === o.id;
     const delBusy = a.delBusy === o.id;
+    const prevBusy = a.orderPreviewBusy === o.id;
     const archBusy = a.archBusy === o.id;
     const btns = FLOW.map(st=>{
       const c = STATUS[st];
@@ -4410,6 +4438,7 @@ function viewAdmin(){
     // موجودة وشغّالة والمعالج موجود، بس مفيش زرار بينده عليهم. فالمصنع كان يقدر
     // يصدّر PDF لكل طلبات العميل مع بعض بس، مش طلب واحد.
     const actionBtns = `<button class="btn ${itemsOpen?'brand':'act-edit'} sm" data-act="adm-toggle-items" data-id="${esc(o.id)}">${ico("box")}${itemsOpen?'إخفاء':'الأصناف'}</button>
+         <button class="btn act-tool sm" data-act="adm-preview" data-id="${esc(o.id)}" ${prevBusy?'disabled':''}>${ico("search")}${prevBusy?'…':'معاينة'}</button>
          <button class="btn act-report sm" data-act="adm-pdf" data-id="${esc(o.id)}">${ico("doc")}PDF</button>
          <button class="btn ${qtyMode?'brand':'act-edit'} sm" data-act="adm-toggle-qtymode" data-id="${esc(o.id)}">${ico("edit")}تعديل</button>
          <button class="btn act-edit sm" data-act="adm-add-items" data-id="${esc(o.id)}">${ico("plus")}إضافة</button>
@@ -4422,7 +4451,7 @@ function viewAdmin(){
       <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:#8A6512;background:#FFF6E5;border:1px solid #E8C77A;border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${statusPill(o.status)}</div>
       <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}
         ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}
-        ${o.ordNote?`<br><span style="color:#8A6512">ملاحظات: ${esc(o.ordNote)}</span>`:''}<br>
+        ${o.ordNote?`</div><div class="ordnote">${ico("warn")}<span><b>ملاحظات:</b> ${esc(o.ordNote)}</span></div><div class="os">`:''}<br>
         ${esc(dateStr2_(o.date))} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''} · ${money(o.total||0)} ج</div>
       <div class="chips" style="margin-top:10px;gap:6px;flex-wrap:nowrap">${btns}</div>
       ${busy?'<div class="note">جارٍ الحفظ…</div>':''}
@@ -4594,7 +4623,15 @@ document.addEventListener('click',e=>{
     case 'adm-group-pdf': exportCustomerPdf_(el.dataset.name); break;
     case 'adm-group-preview': previewCustomerOrder_(el.dataset.name); break;
     case 'rpv-close': closeReportPreview_(); break;
-    case 'rpv-pdf': { const n = el.dataset.name; closeReportPreview_(); exportCustomerPdf_(n); break; }
+    case 'rpv-pdf': {
+      // المعاينة ممكن تكون لطلب واحد أو لكل طلبات العميل — زرار التصدير بيتبع
+      // اللي اتعرض فعلاً، مش دايمًا كل طلبات العميل.
+      const n = el.dataset.name, id = el.dataset.id;
+      closeReportPreview_();
+      if(id){ const o = adminOrderById_(id); if(o) exportAdminOrderPdf(o); }
+      else exportCustomerPdf_(n);
+      break; }
+    case 'adm-preview': previewOneOrder_(el.dataset.id); break;
     case 'adm-pdf':     { const o=adminOrderById_(el.dataset.id); if(o) exportAdminOrderPdf(o); } break;
     case 'adm-quote':   { const o=adminOrderById_(el.dataset.id); if(o) showQuoteTierPicker(o); } break;
     case 'adm-share':    { const o=adminOrderById_(el.dataset.id); if(o) shareAdminOrderImage(o); } break;
@@ -5922,8 +5959,9 @@ function docHTML(o,mode,priced){
           <td colspan="3" style="font-weight:700;color:#0B4A7A">${esc(o.customer)}</td>
         </tr>`:''}
       </table>
-      ${o.note?`<div style="margin-top:12px;padding:9px 12px;background:#FFF6E5;border-inline-start:3px solid #E8C9A8;border-radius:7px;font-size:12px">
-        <b>ملاحظات:</b> ${esc(o.note)}</div>`:''}
+      ${o.note?`<div style="margin-top:12px;padding:11px 14px;background:#FFF3D6;border:2px solid #E8B94A;border-inline-start:7px solid #D99A0B;border-radius:9px;font-size:13.5px;font-weight:700;color:#7A5405">
+        <span style="display:block;font-size:11.5px;font-weight:700;color:#A9821F;margin-bottom:2px">ملاحظات عامة على الأوردر</span>
+        ${esc(o.note)}</div>`:''}
 
       <table style="width:100%;margin-top:18px;border-collapse:collapse;font-size:12px">
         <thead>
