@@ -769,7 +769,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v143';
+const APP_BUILD   = 'v144';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3884,6 +3884,52 @@ function markAdminSeen_(rows){
   saveAdminSeen_(seen);
 }
 
+// نافذة منبثقة للطلبات الجديدة. الإشعار الوحيد اللي كان موجود قبل كده رسالة توست
+// بتختفي في أقل من ٣ ثواني — والمصنع بيشتغل على ماكينة والتليفون جنبه، فسهل جدًا
+// تفوته. دي بتفضل قدامه لحد ما يقفلها بنفسه.
+function showNewOrdersPopup_(list){
+  if(!list || !list.length) return;
+  const old = document.getElementById('newOrdersOverlay'); if(old) old.remove();
+  const ov = document.createElement('div');
+  ov.id = 'newOrdersOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:320;background:rgba(0,10,30,.86);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px';
+  const عدد = list.length;
+  const سطور = list.slice(0,6).map(o=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;background:#F7FAFC;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;text-align:right">
+      <div>
+        <div style="font-weight:800;font-size:15px;color:var(--navy)">${esc(orderNoText_(o))}</div>
+        <div style="font-size:11.5px;color:#6B7A8C;margin-top:2px">${esc(o.dist||'')}${o.customer?' · '+esc(o.customer):''}</div>
+      </div>
+      <div style="font-size:11.5px;color:#0B4A7A;white-space:nowrap">${esc(o.qty||0)} قطعة</div>
+    </div>`).join('');
+  const باقي = عدد > 6 ? `<div style="font-size:12px;color:#B9CBDD;margin-bottom:10px">و${عدد-6} طلب كمان…</div>` : '';
+  ov.innerHTML = `
+    <div style="width:100%;max-width:340px">
+      <div style="text-align:center;color:#fff;margin-bottom:14px">
+        <div style="font-size:34px;line-height:1">📥</div>
+        <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:17px;font-weight:800;margin-top:6px">
+          ${عدد===1 ? 'وصل طلب جديد' : 'وصلوا '+عدد+' طلبات جديدة'}
+        </div>
+      </div>
+      <div style="background:#fff;border-radius:14px;padding:12px">
+        ${سطور}${باقي}
+        <button id="newOrdersOpen" class="btn brand" style="width:100%;margin-top:4px;padding:13px;font-size:15px;font-weight:700">افتح شاشة المصنع</button>
+      </div>
+      <button id="newOrdersClose" style="width:100%;margin-top:10px;background:rgba(255,255,255,.15);color:#fff;padding:11px;border-radius:12px;font-size:13.5px">تمام، شفتها</button>
+    </div>`;
+  document.body.appendChild(ov);
+  const close = ()=>ov.remove();
+  ov.addEventListener('click', e=>{ if(e.target===ov) close(); });
+  document.getElementById('newOrdersClose').onclick = close;
+  document.getElementById('newOrdersOpen').onclick = ()=>{
+    close();
+    state.tab = 'admin';
+    state.admin.pendingCount = 0; updateAdmBadge();
+    render();
+    if(state.admin.open) adminLoad();
+  };
+}
+
 function notifyAdmin_(title, body){
   try{
     if('Notification' in window && Notification.permission==='granted'){
@@ -3923,12 +3969,18 @@ async function adminPoll(){
     if(!d || !d.ok) return;
     const rows = d.orders || [];
     const seen = loadAdminSeen_();
+    // ⚠️ أول تشغيلة على جهاز جديد: مفيش أي طلب متسجّل كـ«مشوف»، فكل الطلبات
+    // الموجودة هتبان جديدة والنافذة هتفتح بقايمة كاملة. markAdminSeen_ بتتنادى
+    // جوّه adminLoad، لكن الفحص بيبدأ من غير ما يستنّاها — فبنسجّل الموجود
+    // ونسكت في المرة الأولى بس.
+    const أول_مرة = Object.keys(seen).length === 0;
     let pending = 0;
+    const جداد = [];
     rows.forEach(o=>{
       const prev = seen[o.id];
       if(prev===undefined){
         pending++;
-        notifyAdmin_('📥 طلب جديد '+orderNoText_(o), o.dist?('من: '+o.dist):'');
+        جداد.push(o);
       } else if(prev !== o.status){
         const stAr = (STATUS[o.status] && STATUS[o.status].ar) || o.status;
         notifyAdmin_('طلب '+orderNoText_(o)+' تم تعديله لـ '+stAr, o.dist?('صاحب الطلب: '+o.dist):'');
@@ -3938,6 +3990,14 @@ async function adminPoll(){
     saveAdminSeen_(seen);
     state.admin.pendingCount = pending;
     updateAdmBadge();
+    // إشعار واحد ونافذة واحدة لكل الطلبات الجديدة مع بعض — مش إشعار لكل طلب
+    // بيمسح اللي قبله. الإشعار بيوصل حتى لو المصنع في تطبيق تاني، والنافذة
+    // بتفضل مستنياه لما يرجع.
+    if(جداد.length && !أول_مرة){
+      notifyAdmin_(جداد.length===1 ? ('📥 طلب جديد '+orderNoText_(جداد[0])) : ('📥 '+جداد.length+' طلبات جديدة'),
+                   جداد.length===1 ? (جداد[0].dist?('من: '+جداد[0].dist):'') : 'افتح شاشة المصنع للتفاصيل');
+      showNewOrdersPopup_(جداد);
+    }
     // لو شاشة متابعة المصنع مفتوحة فعلًا قدام المستخدم، حدّث القايمة المعروضة كمان
     if(state.admin.open && state.tab==='admin'){
       state.admin.rows = rows;
