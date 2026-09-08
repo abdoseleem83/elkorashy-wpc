@@ -9,13 +9,22 @@ const check=(n,ok,x='')=>{ console.log((ok?'✅':'❌')+' '+n+(x?'  — '+x:''))
 
 // ═══ فحص المصدر: مفيش نص عربي بيلزق الكود الداخلي ═══
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const مسموح = /الكود الداخلي/;   // الأماكن اللي بتقوله صراحة
+// ⚠️ النسخة الأولى من الكاشف ده كانت بتقف عند السطر الجديد، فما مسكتش تسريب
+// كان جوّه قالب متعدد السطور (عنوان الطلب في تقرير الـPDF الشامل).
+// دلوقتي بنفحص كل سطر لوحده، وبنستثني data-id لأن الكود الداخلي هو المفتاح
+// الصح للأزرار — الممنوع هو إنه يتعرض كـنص للمستخدم.
+const مسموح = /الكود الداخلي/;
 const تسريبات = [];
-for(const m of html.matchAll(/['"`][^'"`\n]*(?:\+o\.id\+|\$\{esc\(o\.id\)\}|'\+o\.id|\$\{esc\(state\.editingId\)\})[^'"`\n]*['"`]/g)){
-  const t = m[0];
-  if(!/[؀-ۿ]/.test(t)) continue;      // مش نص بيتعرض
-  if(مسموح.test(t)) continue;                   // مقصود
-  تسريبات.push(t.slice(0,90));
+for(const سطر of html.split('\n')){
+  if(!/o\.id|state\.editingId/.test(سطر)) continue;
+  if(!/[؀-ۿ]/.test(سطر)) continue;        // مفيش نص عربي = مش شاشة
+  if(مسموح.test(سطر)) continue;                    // مقصود
+  // نشيل خصائص data-* عشان data-id="${esc(o.id)}" مش تسريب
+  // وكمان نشيل التعليقات — سطر فيه شرح عربي جنب كود مش تسريب
+  const نظيف = سطر.replace(/data-[a-z-]+="[^"]*"/g, '').replace(/\/\/.*$/, '');
+  if(!/o\.id|state\.editingId/.test(نظيف)) continue;
+  if(!/[؀-ۿ]/.test(نظيف)) continue;
+  تسريبات.push(نظيف.trim().slice(0,90));
 }
 check('مفيش نص عربي بيعرض الكود الداخلي للمستخدم',
   تسريبات.length===0, تسريبات.join(' | '));
