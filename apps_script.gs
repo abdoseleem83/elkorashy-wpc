@@ -1257,13 +1257,24 @@ function findRow_(sh, id) {
   return -1;
 }
 
+// ⚠️ كانت بتمسح سطر سطر: طلب فيه ٢٠ سطر = ٢٠ نداء لـ Sheets، وكل نداء وقته
+// محسوب. ده على المسار اللي بيتعمل مع كل حفظ طلب (بنمسح القديم قبل ما نكتب
+// الجديد)، وهو نفس المسار اللي بيبطّأ الطلبات الكبيرة لحد ما الطلب يفشل.
+// سطور الطلب الواحد بتتكتب مع بعض فبتبقى متجاورة، فبنمسحها ككتلة واحدة:
+// طلب ٢٠ سطر بقى نداء واحد بدل ٢٠.
 function clearItemRows_(sh, id) {
   var last = sh.getLastRow();
   if (last < 2) return;
   var ids = sh.getRange(2, 1, last - 1, 1).getValues();
-  // بنمسح من تحت لفوق عشان أرقام السطور ما تتغيّرش وإحنا شغالين
-  for (var i = ids.length - 1; i >= 0; i--) {
-    if (String(ids[i][0]) === String(id)) sh.deleteRow(i + 2);
+  var key = String(id);
+  // من تحت لفوق عشان أرقام السطور ما تتغيّرش وإحنا شغالين
+  var i = ids.length - 1;
+  while (i >= 0) {
+    if (String(ids[i][0]) !== key) { i--; continue; }
+    var end = i;                                  // آخر سطر في الكتلة
+    while (i >= 0 && String(ids[i][0]) === key) i--;
+    var start = i + 1;                            // أول سطر فيها
+    sh.deleteRows(start + 2, end - start + 1);
   }
 }
 

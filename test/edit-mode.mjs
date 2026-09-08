@@ -82,9 +82,15 @@ const r4 = await pg.evaluate(()=>{
   window.toast=()=>{};
   state.cart = [{kind:'door',title:'باب',qty:1,unitPrice:100,code:'A01',sizeTxt:'70 سم'}];
   enterEditMode_({id:'C1', ts:Date.now(), displayNo:44, editCount:1, items:[], note:'ملاحظة الطلب القديم'});
-  document.querySelector('[data-act="cancel-edit"]').click();
+  // enterEditMode_ بتنده render() اللي بيتجمّع لإطار الرسم الجاي — من غير رسم
+  // فوري الزرار ممكن ما يكونش اترسم لسه، والاختبار يفشل على الفاضي
+  renderNow();
+  const زرار = document.querySelector('[data-act="cancel-edit"]');
+  if(!زرار) return { خطأ:'زرار إلغاء التعديل مش موجود بعد الرسم' };
+  زرار.click();
   return {id:state.editingId, note:state.orderNote, no:state.editingDisplayNo, cnt:state.editingEditCount};
 });
+check('زرار إلغاء التعديل ظاهر في شاشة المراجعة', !r4.خطأ, r4.خطأ||'');
 check('إلغاء التعديل بيمسح ملاحظة الطلب القديم', r4.note==='', JSON.stringify(r4.note));
 check('وبيمسح رقم الطلب وعدّاد التعديل', !r4.id && !r4.no && !r4.cnt, JSON.stringify(r4));
 
