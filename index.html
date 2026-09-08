@@ -769,7 +769,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v144';
+const APP_BUILD   = 'v145';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -886,6 +886,10 @@ const ACCESSORIES = [
   {id:'h8', name:'جوان',                          en:'Gasket',                               price:6,    unit:'متر'}
 ];
 
+// ⚠️ لازم تتعرّف هنا قبل تعريف state — load() بتتنادى جوّه تعريف state نفسه،
+// و const مابتترفعش زي الدوال. لما كانت متعرّفة تحت، أي جهاز بياناته مخربة كان
+// بيقع بشاشة بيضا: "Cannot access '_storeProblems_' before initialization".
+const _storeProblems_ = [];
 const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders', LS_TAB = 'wpc_tab', LS_SECTION = 'wpc_section', LS_PRICES = 'wpc_prices', LS_PENDING = 'wpc_pending_sync', LS_PENDING_CANCEL = 'wpc_pending_cancel', LS_PRICES_DIRTY = 'wpc_prices_dirty';
 
 // مستويات السعر: السعر الأساسي المتخزّن في الكتالوج هو "سعر موزع"، ومنه بتتحسب المستويات التانية بزيادة ثابتة.
@@ -1012,7 +1016,39 @@ const state = {
   editingDate:null           // تاريخ الطلب وقت التعديل — افتراضيًا نفس تاريخ الطلب الأصلي، وقابل للتغيير يدويًا
 };
 
-function load(k,d){ try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;} }
+/* ---------- قراية التخزين ----------
+   ⚠️ دي كانت بترجّع القيمة الافتراضية في صمت لو الـJSON اتخرب. والمشكلة إن أول
+   حفظ بعدها بيكتب القايمة الفاضية فوق البيانات المخربة — فالضياع يبقى نهائي
+   ومفيش أي أثر ليه.
+   والـJSON بيتخرب فعلًا: الـService Worker بيعمل reload إجباري لكل الصفحات
+   المفتوحة مع كل نسخة جديدة، ولو ده حصل وسط كتابة قايمة الطلبات، النص بيتقطع.
+   دلوقتي: بنحتفظ بالأصل المخرب في مفتاح جانبي، وبنحاول نرجّع منه أكبر عدد
+   ممكن من الطلبات السليمة، وبنقول للمستخدم اللي حصل. */
+function load(k,d){
+  let raw = null;
+  try{ raw = localStorage.getItem(k); }catch(e){ return d; }
+  if(raw == null || raw === '') return d;
+  try{ return JSON.parse(raw); }catch(e){}
+  // الـJSON مقطوع أو مخرب — نحفظ الأصل الأول قبل أي حاجة تكتب فوقه
+  try{ localStorage.setItem(k + '_corrupt', raw); }catch(e2){}
+  const مسترجع = recoverArray_(raw);
+  _storeProblems_.push({ key:k, recovered: مسترجع ? مسترجع.length : 0 });
+  return مسترجع && مسترجع.length ? مسترجع : d;
+}
+
+// بيحاول ينقذ أكبر عدد عناصر من مصفوفة JSON اتقطعت في النص.
+// بيرجع للخلف لآخر عنصر مكتمل ويقفل المصفوفة، وبيجرّب لحد ما يعرف يقراها.
+function recoverArray_(raw){
+  const t = String(raw||'').trim();
+  if(t[0] !== '[') return null;
+  for(let i = t.lastIndexOf('}'); i > 0; i = t.lastIndexOf('}', i - 1)){
+    try{
+      const v = JSON.parse(t.slice(0, i + 1) + ']');
+      if(Array.isArray(v) && v.length) return v;
+    }catch(e){}
+  }
+  return null;
+}
 // ⚠️ دي كانت بتبتلع أي خطأ في صمت. لما مساحة التخزين تمتلي (أو المتصفح يمنع
 // التخزين — بيحصل في وضع التصفح الخاص وعلى iOS لما المساحة تقل)، الطلب كان
 // بيتحط في الذاكرة والمستخدم يشوف «✅ اتسجّل الطلب»، وأول ما يقفل التطبيق يلاقيه
@@ -1028,6 +1064,11 @@ function save(k,v){
         const trimmed = v.slice(0, Math.max(12, Math.floor(v.length/2)));
         localStorage.setItem(k, JSON.stringify(trimmed));
         if(Array.isArray(state.orders)) state.orders = trimmed;
+        // ⚠️ دي كانت بترجّع true في صمت — يعني المستخدم يشوف «اتحفظ» والطلبات
+        // القديمة اتمسحت من غير ما حد يقوله. القص ضرورة عشان منضيّعش الطلب
+        // الجديد، بس لازم يعرف إن ده حصل.
+        try{ toast('⚠️ مساحة جهازك امتلت — اتشال '+(v.length-trimmed.length)
+          +' طلب قديم من القايمة عشان الجديد يتحفظ. الطلبات دي لسه عند المصنع.', 8000); }catch(eT){}
         return true;
       }
       // مش قايمة الطلبات؟ نفضّي كاش شاشة المصنع (أقل حاجة أهمية) ونعيد
@@ -5953,6 +5994,18 @@ document.addEventListener('focusin', e => {
 renderNow();
 loadStock();   // أرصدة المخزن بتتحمّل في الخلفية من غير ما تعطّل فتح التطبيق
 preloadDoorImages_();   // نبدأ تحميل صور الأبواب بدري عشان تبقى جاهزة وقت التصدير
+// لو التخزين كان مخرب وقت الفتح، نقول للمستخدم بدل ما نسكت. الأصل المخرب
+// محفوظ في مفتاح جانبي (wpc_orders_corrupt) فلسه ينفع يترجع يدويًا.
+if(_storeProblems_.length){
+  const طلبات = _storeProblems_.find(p=>p.key===LS_ORDERS);
+  setTimeout(()=>{
+    if(طلبات && طلبات.recovered) toast('⚠️ بيانات الجهاز كانت مقطوعة — رجّعنا '+طلبات.recovered
+      +' طلب. لو فيه طلبات ناقصة هتلاقيها عند المصنع في «تابع طلبك».', 9000);
+    else if(طلبات) toast('⚠️ قايمة الطلبات على جهازك كانت مخربة ومقدرناش نرجّعها. '
+      +'طلباتك كلها لسه عند المصنع — اضغط تحديث في «تابع طلبك».', 9000);
+  }, 1200);
+}
+
 retryPendingOrders_();   // لو فيه طلبات اتسجلت على الجهاز بس ما وصلتش المصنع، نحاول تاني
 syncPricesFromServer_(); // أحدث أسعار من المصنع — بتشتغل في الخلفية ومابتوقفش حاجة
 window.addEventListener('online', retryPendingOrders_);
