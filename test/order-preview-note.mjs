@@ -23,6 +23,18 @@ await pg.evaluate(()=>{
 });
 await pg.waitForTimeout(700);
 
+// الملاحظة لازم تبان على سطر الطلب في كارت العميل — من غير ما نفتح الطلب
+{
+  const غير_مفتوح = await pg.evaluate(()=>{ state.admin.groupOpen={}; renderNow();
+    const n = document.querySelector('.grp-note');
+    return { نص: n?n.textContent.trim():'', مفتوح: !!document.querySelector('.grp-ord ~ .ord') };
+  });
+  check('الملاحظة ظاهرة على سطر الطلب في كارت العميل',
+    /التسليم قبل الجمعة/.test(غير_مفتوح.نص), غير_مفتوح.نص);
+  await pg.evaluate(()=>{ state.admin.groupOpen['ورشة النور']=true; renderNow(); });
+  await pg.waitForTimeout(300);
+}
+
 const prevBtn = await pg.$('[data-act="adm-preview"][data-id="2026-0070"]');
 check('زرار معاينة موجود على كارت الطلب', !!prevBtn);
 

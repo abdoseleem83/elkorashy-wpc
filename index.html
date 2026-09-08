@@ -588,6 +588,11 @@ input.bad{box-shadow:0 0 0 3px rgba(179,38,30,.1)}
 .grp-no.nn{background:#F1F3F6;border-color:#DDE3EA;color:#6B7A8C;font-weight:700;font-size:11px}
 .grp-dt{color:#5B7B99;font-size:11px;white-space:nowrap;flex:none}
 .grp-dy{color:#8A6512;font-size:11px;font-weight:700;white-space:nowrap;flex:none}
+.grp-ord.hasnote{border-bottom:0}
+.grp-note{display:flex;gap:6px;align-items:flex-start;margin:0 12px 8px;padding:6px 10px;
+  background:#FFF3D6;border:1.5px solid #E8B94A;border-inline-start:5px solid #D99A0B;
+  border-radius:8px;color:#7A5405;font-weight:700;font-size:11.5px;line-height:1.55}
+.grp-note .i{flex:none;width:13px;height:13px;margin-top:2px}
 .grp-b{width:auto!important;padding:5px 9px!important;font-size:11px!important;flex:none}
 .grp-b .i{width:13px;height:13px}
 .grp-all{display:flex;align-items:center;gap:7px;padding:8px 12px;border-top:1px solid var(--line);
@@ -788,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v153';
+const APP_BUILD   = 'v154';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1860,16 +1865,23 @@ function viewNew(){
     <label class="fld"><span>المنطقة</span>
       <input type="text" value="${esc(state.profile.region)}" placeholder="طنطا مثلاً" data-act="prof" data-k="region"></label>
     ${bad && !profileOk() ? `<div class="note" style="color:var(--danger)">الاسم ورقم الموبايل وصاحب الأوردر إجباريين — الرقم لازم يكون ١١ رقم يبدأ بـ 01.</div>` : ''}
-    <div class="ordnote-box">
-      <label class="fld" style="margin:0"><span style="color:#8A6512">${ico("warn")} ملاحظات عامة على الأوردر <span style="font-weight:400;color:#A98A45">(بتظهر للمصنع على الطلب والمستند)</span></span>
-        <textarea rows="2" class="ordnote-ta" placeholder="أي تفاصيل إضافية عن الطلب — لون، مواعيد، تسليم…" data-act="ord-note">${esc(state.orderNote)}</textarea></label>
-    </div>
+    ${ordNoteBoxHTML_()}
   </section>
 
   ${nav}
   ${body}
 
   ${verBar()}`;
+}
+
+// خانة الملاحظات العامة — بتتعرض في شاشتين (طلب جديد، ومراجعة الطلب قبل
+// الإرسال) وبتشتغل على نفس state.orderNote، فاللي يتكتب في أي واحدة فيهم
+// هو اللي بيتبعت مع الطلب.
+function ordNoteBoxHTML_(extraStyle){
+  return `<div class="ordnote-box"${extraStyle?` style="${extraStyle}"`:''}>
+    <label class="fld" style="margin:0"><span style="color:#8A6512">${ico("warn")} ملاحظات عامة على الأوردر <span style="font-weight:400;color:#A98A45">(بتظهر للمصنع على الطلب والمستند)</span></span>
+      <textarea rows="2" class="ordnote-ta" placeholder="أي تفاصيل إضافية عن الطلب — لون، مواعيد، تسليم…" data-act="ord-note">${esc(state.orderNote)}</textarea></label>
+  </div>`;
 }
 
 function currentSummary(){
@@ -1984,10 +1996,7 @@ function viewCart(){
       المخزن: <b>${esc(WAREHOUSE)}</b>
       ${ok?'':'<br><span style="color:var(--danger)">اكتب الاسم ورقم الموبايل واسم صاحب الأوردر في تبويب «طلب جديد» قبل الإرسال.</span>'}
     </div>
-    <div class="ordnote-box" style="margin-bottom:12px">
-      <label class="fld" style="margin:0"><span style="color:#8A6512">${ico("warn")} ملاحظات عامة على الأوردر <span style="font-weight:400;color:#A98A45">(بتظهر للمصنع على الطلب والمستند)</span></span>
-        <textarea rows="2" class="ordnote-ta" placeholder="أي تفاصيل إضافية عن الطلب — لون، مواعيد، تسليم…" data-act="ord-note">${esc(state.orderNote)}</textarea></label>
-    </div>
+    ${ordNoteBoxHTML_('margin-bottom:12px')}
     <button class="btn brand" data-act="submit">${editing?ico("save")+' حفظ التعديل وإرسال واتساب':'إرسال طلب الأوردر على واتساب'}</button>
     <div class="btnrow" style="margin-top:9px">
       <button class="btn ghost sm" data-act="quote-cart">${ico("doc")} PDF الطلب</button>
@@ -2033,8 +2042,8 @@ function viewOrders(){
       <div class="os">${esc(dateStr(o.ts))} · ${(o.items||[]).length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
         ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}<br>
         ${esc((o.items||[]).map(x=>x&&x.title).filter(Boolean).slice(0,3).join('، '))}${(o.items||[]).length>3?'…':''}
-        ${o.note?('</div><div class="ordnote">'+ico("warn")+'<span><b>ملاحظات:</b> '+esc(o.note)+'</span></div><div class="os">'):''}
         ${live && live.note?('<br><b style="color:var(--brand)">'+esc(live.note)+'</b>'):''}</div>
+      ${o.note?('<div class="ordnote">'+ico("warn")+'<span><b>ملاحظات:</b> '+esc(o.note)+'</span></div>'):''}
       <div class="oa">
         ${editBtn}
         <button class="btn ghost sm" data-act="ord-pdf"   data-id="${esc(o.id)}">${ico("doc")} PDF</button>
@@ -4292,7 +4301,9 @@ function groupOrderRowHTML_(o, a){
   const busy = a.orderPreviewBusy === o.id;
   const noTxt = orderNoText_(o);
   const hasNo = !!o.displayNo;
-  return `<div class="grp-ord">
+  // الملاحظة العامة بتبان على سطر الطلب نفسه — من غير كده المصنع لازم يفتح
+  // العميل ويفتح كارت الطلب عشان يشوفها، والملاحظة المفروض تبان للجميع.
+  return `<div class="grp-ord${o.ordNote?' hasnote':''}">
     <span class="grp-no${hasNo?'':' nn'}" title="الكود الداخلي: ${esc(o.id)}">${esc(hasNo ? noTxt : shortIdText_(o.id))}</span>
     ${o.date?`<span class="grp-dt">${esc(dateStr2_(o.date))}</span>
     <span class="grp-dy">${esc(dayNameAr_(o.date))}</span>`:''}
@@ -4301,7 +4312,8 @@ function groupOrderRowHTML_(o, a){
       title="معاينة الطلب ${esc(noTxt)}" aria-label="معاينة الطلب ${esc(noTxt)}">${ico("search")}${busy?'…':'معاينة'}</button>
     <button class="btn act-report sm grp-b" data-act="adm-pdf" data-id="${esc(o.id)}"
       title="طباعة الطلب ${esc(noTxt)}" aria-label="طباعة الطلب ${esc(noTxt)}">${ico("doc")}PDF</button>
-  </div>`;
+  </div>
+  ${o.ordNote?`<div class="grp-note">${ico("warn")}<span><b>ملاحظات:</b> ${esc(o.ordNote)}</span></div>`:''}`;
 }
 
 function viewAdmin(){
@@ -4503,8 +4515,8 @@ function viewAdmin(){
       <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:#8A6512;background:#FFF6E5;border:1px solid #E8C77A;border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${statusPill(o.status)}</div>
       <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}
         ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}
-        ${o.ordNote?`</div><div class="ordnote">${ico("warn")}<span><b>ملاحظات:</b> ${esc(o.ordNote)}</span></div><div class="os">`:''}<br>
-        ${esc(dateStr2_(o.date))} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''} · ${money(o.total||0)} ج</div>
+        <br>${esc(dateStr2_(o.date))} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''} · ${money(o.total||0)} ج</div>
+      ${o.ordNote?`<div class="ordnote">${ico("warn")}<span><b>ملاحظات:</b> ${esc(o.ordNote)}</span></div>`:''}
       <div class="chips" style="margin-top:10px;gap:6px;flex-wrap:nowrap">${btns}</div>
       ${busy?'<div class="note">جارٍ الحفظ…</div>':''}
       <div class="cardacts">${actionBtns}</div>
@@ -4652,7 +4664,11 @@ document.addEventListener('click',e=>{
     } break;
     case 'cancel-edit': {
       const wasAdmin = !!state.editingMeta;
-      state.editingId = null; state.editingMeta = null; state.editingDate = null; state.cart = []; save(LS_CART,state.cart);
+      // لازم نصفّر كل بقايا التعديل: لو سبنا رقم الطلب أو ملاحظته، الطلب الجديد
+      // اللي بعده كان هياخد ملاحظة طلب حد تاني من غير ما الموزّع ياخد باله.
+      state.editingId = null; state.editingMeta = null; state.editingDate = null;
+      state.editingDisplayNo = null; state.editingEditCount = null; state.orderNote = '';
+      state.cart = []; save(LS_CART,state.cart);
       state.tab = wasAdmin ? 'admin' : 'orders'; render(); window.scrollTo({top:0,behavior:'smooth'});
       toast('اتلغى التعديل');
     } break;
@@ -4676,7 +4692,12 @@ document.addEventListener('click',e=>{
       // اللي اتعرض فعلاً، مش دايمًا كل طلبات العميل.
       const n = el.dataset.name, id = el.dataset.id;
       closeReportPreview_();
-      if(id){ const o = adminOrderById_(id); if(o) exportAdminOrderPdf(o); }
+      if(id){
+        const o = adminOrderById_(id);
+        // الطلب ممكن يكون اتشال من الشاشة (تحديث أو أرشفة) والمعاينة لسه مفتوحة
+        if(o) exportAdminOrderPdf(o);
+        else toast('الطلب ده مابقاش في الشاشة — اعمل تحديث وجرّب تاني', 4000);
+      }
       else exportCustomerPdf_(n);
       break; }
     case 'adm-preview': previewOneOrder_(el.dataset.id); break;
@@ -5315,6 +5336,11 @@ function adminOrderById_(id){
 
 function enterEditMode_(o, opts){
   opts = opts || {};
+  // ⚠️ الملاحظة العامة على الطلب كانت بتضيع مع التعديل: الخانة بتتصفّر بعد كل
+  // إرسال، وحد ما كان بيرجّعها هنا — فالطلب المعدّل بيروح للمصنع من غير الملاحظة
+  // اللي مكتوبة على الطلب الأصلي. بناخدها من الطلب نفسه (o.note جوّه الجهاز،
+  // ordNote من صف المصنع).
+  state.orderNote = String(o.note || o.ordNote || '');
   state.editingId = o.id;
   state.editingMeta = opts.meta || null;
   state.editingDate = opts.date || isoLocal_(o.ts);
