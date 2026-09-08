@@ -769,7 +769,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v138';
+const APP_BUILD   = 'v139';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1080,6 +1080,12 @@ function showDoorPreview(code){
 // كانوا بيشوفوا العرض والارتفاع بس، والإضافة الفعلية بتشوف الكمية كمان. فلو
 // الموزّع مسح خانة الكمية عشان يكتب رقم تاني وضغط «أضف»، الزرار شغّال
 // والمعاينة بتوريه سعر — والباب الخاص بيتشال في صمت والباقي بيتضاف عادي.
+// طقم الحلق الكامل = قائمين + عارضة علوية = ٣ عيدان. الأرقام دي كانت مكتوبة
+// بالنص في أكتر من مكان (السعر، والتفكيك لقوائم وعوارض) — والمصنع بيقطّع على
+// أساسها، فخلّيناها ثابت واحد.
+const JAMBS_PER_SET = 2, HEADERS_PER_SET = 1;
+const RODS_PER_SET = JAMBS_PER_SET + HEADERS_PER_SET;
+
 function customReady_(p){
   return !!(p.customOn && Number(p.custom.w) > 0 && Number(p.custom.h) > 0 && Number(p.custom.qty) > 0);
 }
@@ -4786,7 +4792,7 @@ function addRod(kind){
       if(qty<=0){toast('اكتب الكمية');return;}
       if(isStd){
         // الحالة الاستاندر: سطر واحد "حلق كامل" بعدد الأطقم — من غير تفاصيل قائم/عارضة حلق علوية/الطول لأنها معروفة للمصنع
-        const setPrice = Math.round((rodPrice(f.price,220)*2 + rodPrice(f.price,110)*1)*100)/100;
+        const setPrice = Math.round((rodPrice(f.price,220)*JAMBS_PER_SET + rodPrice(f.price,110)*HEADERS_PER_SET)*100)/100;
         const key = 'frame|fullset|'+f.cm+'|'+st.code+'|'+(st.doorW||'');
         const ex = state.cart.find(it=>it.kind===kind && it.key===key);
         if(ex){ ex.qty += qty; }
@@ -4802,8 +4808,8 @@ function addRod(kind){
         added += qty;
         addedIsSet = true;
       } else {
-        const jamb = qty*2;
-        const header = qty*1;
+        const jamb = qty*JAMBS_PER_SET;
+        const header = qty*HEADERS_PER_SET;
         if(jamb){
           push(f.cm+' سم', jambCm, jamb, f.price,
             'حلق باب '+f.cm+' سم — قائم '+jambCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
@@ -5502,11 +5508,19 @@ function docTotalsHTML(o){
   const overallTotal=items.reduce((s,it)=>s+(Number(it.qty)||0),0);
   const overallProduced=items.reduce((s,it)=>s+itemProdPending_(it).produced,0);
   const overallPending=overallTotal-overallProduced;
+  // ⚠️ «الإجمالي الكلي» بيعدّ طقم الحلق كقطعة واحدة — وهو فعليًا ٣ عيدان.
+  // المصنع بيقطّع على أساس الرقم ده، فسطر واحد ملخبط معناه خشب مقطوع غلط.
+  // مابنغيّرش الحساب (المصنع اتعوّد عليه) — بنوضّح الطقم كام عود صراحة.
+  const setsQty = items.reduce((s,it)=>s+(it.isSet?(Number(it.qty)||0):0),0);
+  const setsNote = setsQty
+    ? `<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:#6B7A8C"><span>منهم ${setsQty} طقم حلق</span><b>= ${setsQty*RODS_PER_SET} عود</b></div>`
+    : '';
 
   return `<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">${cards}</div>
   <div style="margin-top:10px;padding:10px 13px;background:#F3F6FA;border-radius:9px">
     <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0"><span><b>إجمالي الأبواب</b></span><b>${doorsTotal} باب</b></div>
     <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span><b>الإجمالي الكلي</b></span><b>${overallTotal} قطعة</b></div>
+    ${setsNote}
     <div style="display:flex;justify-content:space-between;font-size:11.5px;padding:2px 0;color:#1E8E52"><span>جاهز</span><b>${overallProduced} قطعة</b></div>
     <div style="display:flex;justify-content:space-between;font-size:11.5px;padding:2px 0;color:#B3261E"><span>متبقي</span><b>${overallPending} قطعة</b></div>
   </div>`;
