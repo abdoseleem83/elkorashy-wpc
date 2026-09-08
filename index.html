@@ -769,7 +769,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v146';
+const APP_BUILD   = 'v147';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -890,7 +890,7 @@ const ACCESSORIES = [
 // و const مابتترفعش زي الدوال. لما كانت متعرّفة تحت، أي جهاز بياناته مخربة كان
 // بيقع بشاشة بيضا: "Cannot access '_storeProblems_' before initialization".
 const _storeProblems_ = [];
-const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders', LS_TAB = 'wpc_tab', LS_SECTION = 'wpc_section', LS_PRICES = 'wpc_prices', LS_PENDING = 'wpc_pending_sync', LS_PENDING_CANCEL = 'wpc_pending_cancel', LS_PRICES_DIRTY = 'wpc_prices_dirty', LS_DELETED = 'wpc_deleted_ids';
+const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders', LS_TAB = 'wpc_tab', LS_SECTION = 'wpc_section', LS_PRICES = 'wpc_prices', LS_PENDING = 'wpc_pending_sync', LS_PENDING_CANCEL = 'wpc_pending_cancel', LS_PRICES_DIRTY = 'wpc_prices_dirty', LS_DELETED = 'wpc_deleted_ids', LS_SENT = 'wpc_sent_ids';
 
 // مستويات السعر: السعر الأساسي المتخزّن في الكتالوج هو "سعر موزع"، ومنه بتتحسب المستويات التانية بزيادة ثابتة.
 // الزيادة بتتطبّق وقت طباعة عرض السعر بس — من غير ما تغيّر الأسعار المتخزّنة نفسها.
@@ -1975,10 +1975,16 @@ function viewOrders(){
   const t = state.track;
   const liveById = {};
   (t.rows||[]).forEach(r=>{ liveById[String(r.id)] = r; });
+  // الطلبات اللي لسه على الجهاز وما وصلتش المصنع
+  const pendingIds = new Set(loadPendingSync_().map(String));
 
   const refreshBtn = `<button class="btn ghost sm" style="margin-bottom:12px" data-act="track-load" ${t.loading?'disabled':''}>
     ${t.loading?ico('clock')+' جارٍ تحديث الحالة…':ico('refresh')+' تحديث حالة الطلبات من المصنع'}</button>`;
   const errNote = t.err ? `<div class="note" style="color:var(--danger);margin-bottom:10px">${esc(t.err)}</div>` : '';
+  const pendingNote = pendingIds.size ? `<div class="note" style="margin-bottom:10px;background:#FFF6E5;
+      border:1px solid var(--warn-line);color:#8A6512;border-radius:8px;padding:9px 12px;font-weight:700">
+      ${ico('warn')} فيه ${pendingIds.size} طلب لسه ما وصلش المصنع — التطبيق بيحاول يبعتهم تلقائي.
+      خلّي النت شغّال وسيب التطبيق مفتوح شوية.</div>` : '';
 
   const cards = state.orders.map(o=>{
     const live = liveById[String(o.id)];
@@ -1989,8 +1995,12 @@ function viewOrders(){
     const delBtn = locked
       ? `<button class="btn ghost sm" disabled title="الطلب دخل التنفيذ ومينفعش يتحذف">${ico("lock")} اتقفل الحذف</button>`
       : `<button class="btn ghost sm" data-act="ord-del" data-id="${esc(o.id)}">${ico("trash")} حذف</button>`;
+    // ⚠️ الطلب اللي لسه ما وصلش المصنع لازم يبان مختلف. من غير كده الموزّع
+    // شايفه في قايمته وفاكر إنه عند المصنع — والمصنع مايعرفش عنه حاجة خالص.
+    const معلّق = pendingIds.has(String(o.id));
     return `
-    <div class="ord">
+    <div class="ord"${معلّق?' style="border:1.5px solid #E8A33D;background:#FFFBF2"':''}>
+      ${معلّق?`<div style="font-size:11.5px;font-weight:700;color:#8A6512;margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}لسه ما وصلش المصنع — هيتبعت تلقائي أول ما النت يرجع</div>`:''}
       <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:#8A6512;background:#FFF6E5;border:1px solid #E8C77A;border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${live?statusPill(live.status):''}</div>
       <div class="os">${esc(dateStr(o.ts))} · ${(o.items||[]).length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
         ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}<br>
@@ -2007,7 +2017,7 @@ function viewOrders(){
     </div>`;
   }).join('');
 
-  return refreshBtn + errNote + cards
+  return refreshBtn + errNote + pendingNote + cards
     + `<button class="btn ghost sm" data-act="all-xls" style="margin-bottom:12px">${ico("sheet")} تصدير كل الطلبات إكسيل</button>`
     + verBar();
 }
@@ -5376,8 +5386,43 @@ function saveOrders_(list){
   return save(LS_ORDERS, list);
 }
 
-function loadPendingSync_(){ return load(LS_PENDING, []); }
-function savePendingSync_(list){ save(LS_PENDING, list); }
+function loadPendingSync_(){ const v = load(LS_PENDING, []); return Array.isArray(v) ? v : []; }
+
+// الطلبات اللي اتأكد وصولها للمصنع — عشان الدمج مايرجّعهاش لقايمة المعلّق
+// فتتبعت مرتين.
+function loadSent_(){ const v = load(LS_SENT, []); return Array.isArray(v) ? v : []; }
+function markSent_(id){
+  if(!id) return;
+  const l = loadSent_().filter(x=>String(x)!==String(id));
+  l.unshift(String(id));
+  save(LS_SENT, l.slice(0,300));
+}
+
+/* ⚠️ ده كان نفس باج قايمة الطلبات: الكتابة فوق بدل الدمج.
+   قايمة المعلّق دي هي الضمان الوحيد إن الطلب اللي ما وصلش المصنع يتبعت تاني.
+   لو نسخة تانية من التطبيق (مثبّت + تاب) كتبت قايمتها القديمة فوقها، الـid
+   بيتشال — والطلب مايتبعتش تاني أبدًا، فيفضل على الجهاز والمصنع مايشوفهوش خالص.
+   وده أخطر من ضياعه من الشاشة: الطلب يبقى «موجود» عند الموزّع ومش موجود عند
+   المصنع. */
+function savePendingSync_(list){
+  const اتبعت = new Set(loadSent_().map(String));
+  const عندنا = new Set((list||[]).map(String));
+  // الطلب المعلّق لازم يكون لسه موجود — على الجهاز أو في التخزين (نسخة تانية
+  // ضافته). الـid اللي مالوش طلب مانقدرش نبعته أصلًا، وسيبه في القايمة معناه
+  // تحذير كاذب «فيه طلب ما وصلش» على طول.
+  const موجود = new Set((state.orders||[]).map(o=>String(o && o.id)));
+  try{
+    const raw = localStorage.getItem(LS_ORDERS);
+    (raw ? (JSON.parse(raw)||[]) : []).forEach(o=>{ if(o) موجود.add(String(o.id)); });
+  }catch(e){}
+  const زيادة = loadPendingSync_()
+    .map(String)
+    .filter(id => !عندنا.has(id) && !اتبعت.has(id) && موجود.has(id));
+  const نهائي = (list||[]).map(String)
+    .filter(id => !اتبعت.has(id) && موجود.has(id))
+    .concat(زيادة);
+  save(LS_PENDING, نهائي);
+}
 
 // الطلبات اللي لسه بتتبعت دلوقتي — عشان إعادة المحاولة ماتبعتهاش تاني في نفس الوقت
 const _sendingNow = new Set();
@@ -5396,6 +5441,7 @@ async function syncOrder_(o){
   if(ok === false){
     toast('⚠️ الطلب '+orderNoText_(o)+' اتسجّل على جهازك بس لسه ما وصلش المصنع — هنحاول تاني تلقائي أول ما يرجع النت', 4200);
   } else {
+    markSent_(o.id);   // اتأكد وصوله — الدمج مايرجّعهوش لقايمة المعلّق
     savePendingSync_(loadPendingSync_().filter(id=>String(id)!==String(o.id)));
   }
   return ok;
@@ -5461,7 +5507,7 @@ async function retryPendingOrders_(){
       if(_sendingNow.has(String(id))){ stillPending.push(id); continue; }
       const ok = await sendOrderToServer_(o);
       if(ok === false) stillPending.push(id);
-      else await runPendingCancelFor_(id);   // وصل — دلوقتي بس ينفع نمسح القديم
+      else { markSent_(id); await runPendingCancelFor_(id); }   // وصل — دلوقتي بس ينفع نمسح القديم
     }
     // مش savePendingSync_(stillPending) على طول: لو الموزع بعت طلب جديد وهو
     // مستني الرد هنا، syncOrder_ بتكون ضافته للقايمة — والكتابة فوقها كانت

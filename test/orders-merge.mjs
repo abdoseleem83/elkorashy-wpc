@@ -90,6 +90,32 @@ const حد = await ids(B);
 check('الدمج مابيعديش حد الـ٨٠ طلب', حد.length===80, String(حد.length));
 check('والأحدث هو اللي بيفضل', حد[0]==='Y0', حد.slice(0,3).join(','));
 
+// ═══ ٥) قايمة المعلّق: نفس المشكلة — ولو ضاعت الطلب مايوصلش المصنع أبدًا ═══
+// الطلب المعلّق لازم يكون موجود فعلًا — الـid لوحده مالوش معنى، ومانقدرش نبعته
+await A.evaluate(()=>{
+  localStorage.removeItem('wpc_pending_sync'); localStorage.removeItem('wpc_sent_ids');
+  localStorage.setItem('wpc_orders', JSON.stringify([{id:'PEND_TODAY',ts:Date.now(),displayNo:99,items:[]}]));
+  state.orders = [{id:'PEND_TODAY',ts:Date.now(),displayNo:99,items:[]}];
+});
+await B.evaluate(()=>{ state.orders = [{id:'PEND_TODAY',ts:Date.now(),displayNo:99,items:[]}]; });
+// B سجّل طلب معلّق (اتحفظ على الجهاز بس ما وصلش المصنع)
+await B.evaluate(()=>savePendingSync_(['PEND_TODAY']));
+const معلّق_B = await B.evaluate(()=>loadPendingSync_());
+check('الطلب اتسجّل معلّق', معلّق_B.includes('PEND_TODAY'), JSON.stringify(معلّق_B));
+// A نسخة قديمة قايمة المعلّق عندها فاضية — بتحفظ أي حاجة
+await A.evaluate(()=>savePendingSync_([]));
+const بعد_A = await A.evaluate(()=>loadPendingSync_());
+check('الطلب المعلّق ما اتمسحش من نسخة قديمة — يعني هيتبعت للمصنع',
+  بعد_A.includes('PEND_TODAY'), JSON.stringify(بعد_A));
+
+// واللي وصل فعلاً مايرجعش فيتبعت مرتين
+await A.evaluate(()=>{ markSent_('PEND_TODAY'); savePendingSync_(
+  loadPendingSync_().filter(id=>id!=='PEND_TODAY')); });
+await B.evaluate(()=>savePendingSync_(['PEND_TODAY']));   // B لسه شايفه معلّق
+const بعد_الوصول = await B.evaluate(()=>loadPendingSync_());
+check('اللي وصل المصنع ما رجعش لقايمة المعلّق (مفيش إرسال مرتين)',
+  !بعد_الوصول.includes('PEND_TODAY'), JSON.stringify(بعد_الوصول));
+
 check('مفيش أخطاء', errs.length===0, errs.join(' | '));
 console.log(`\nالنتيجة: ${pass} نجحت، ${fail} فشلت`);
 await b.close();
