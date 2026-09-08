@@ -769,7 +769,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v141';
+const APP_BUILD   = 'v142';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1889,7 +1889,7 @@ function viewCart(){
   <section class="card">
     <div class="step"><span class="n">✓</span><h2>مراجعة الطلب</h2></div>
     ${editing?`<div class="note" style="margin-top:0;background:#FFF6E5;color:#8A6512;border-radius:8px;padding:9px 12px">
-      ${ico("edit")} بتعدّل الطلب <b>#${esc(state.editingId)}</b>${state.editingMeta?' — العميل: <b>'+esc(state.editingMeta.name||'')+'</b>':''} — الحفظ هيلغي الطلب القديم ده وهيعمل طلب جديد بالأصناف المعدّلة.
+      ${ico("edit")} بتعدّل الطلب <b title="الكود الداخلي: ${esc(state.editingId)}">${esc(orderNoText_({displayNo:state.editingDisplayNo, editCount:state.editingEditCount, id:state.editingId}))}</b>${state.editingMeta?' — العميل: <b>'+esc(state.editingMeta.name||'')+'</b>':''} — الحفظ هيلغي الطلب القديم ده وهيعمل طلب جديد بالأصناف المعدّلة.
       ${state.editingMeta?`
       <div class="row2" style="margin-top:9px">
         <label class="fld"><span>اسم صاحب الأوردر <b class="req">*</b></span>
@@ -2818,7 +2818,7 @@ async function shareAdminOrderImage(o){
 }
 async function shareAdminOrderImageWith_(o, its){
   const doc = buildAdminDocOrder_(o, its);
-  const caption = 'طلب أوردر #'+o.id+' — '+(o.dist||'');
+  const caption = 'طلب أوردر '+orderNoText_(o)+' — '+(o.dist||'');
 
   try{ await ensureLib_('html2canvas'); }
   catch(e){
@@ -2830,13 +2830,13 @@ async function shareAdminOrderImageWith_(o, its){
   try{
     const {canvas} = await renderPaper_(docHTML(doc,'order'));
     const blob=await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
-    const file=new File([blob],'طلب_'+o.id+'.png',{type:'image/png'});
+    const file=new File([blob],'طلب_'+orderNoText_(o).replace('/','-')+'.png',{type:'image/png'});
 
     if(navigator.canShare && navigator.canShare({files:[file]})){
       // شاشة المشاركة الأصلية بتاعة الموبايل — يختار واتساب وبعدين الشخص/المجموعة بنفسه
       await navigator.share({files:[file], title:'طلب أوردر #'+o.id, text:caption});
     } else {
-      downloadBlob(blob,'طلب_'+o.id+'.png');
+      downloadBlob(blob,'طلب_'+orderNoText_(o).replace('/','-')+'.png');
       openWhatsAppFree(caption);
       toast('اتحمّلت صورة الطلب — اختار واتساب والمستلم وارفقها');
     }
@@ -3752,7 +3752,7 @@ async function buildAdminOrdersExcel_(orders){
 
     cust.orders.forEach(o=>{
       const st = STATUS[o.status] || {ar:o.status||'—'};
-      const rOrd = wsDet.addRow(['', 'طلب #'+o.id+'  —  '+dateStr2_(o.date)+'  —  '+st.ar+(o.customer?'  —  صاحب الأوردر: '+o.customer:'')]);
+      const rOrd = wsDet.addRow(['', 'طلب '+orderNoText_(o)+'  —  '+dateStr2_(o.date)+'  —  '+st.ar+(o.customer?'  —  صاحب الأوردر: '+o.customer:'')]);
       wsDet.mergeCells(rOrd.number,2,rOrd.number,detLastCol);
       rOrd.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:BRAND}}; c.font={bold:true,color:{argb:WHITE},name:FONT,size:10.5}; c.alignment={horizontal:'right',vertical:'middle'}; });
 
@@ -3928,10 +3928,10 @@ async function adminPoll(){
       const prev = seen[o.id];
       if(prev===undefined){
         pending++;
-        notifyAdmin_('📥 طلب جديد #'+o.id, o.dist?('من: '+o.dist):'');
+        notifyAdmin_('📥 طلب جديد '+orderNoText_(o), o.dist?('من: '+o.dist):'');
       } else if(prev !== o.status){
         const stAr = (STATUS[o.status] && STATUS[o.status].ar) || o.status;
-        notifyAdmin_('طلب #'+o.id+' تم تعديله لـ '+stAr, o.dist?('صاحب الطلب: '+o.dist):'');
+        notifyAdmin_('طلب '+orderNoText_(o)+' تم تعديله لـ '+stAr, o.dist?('صاحب الطلب: '+o.dist):'');
       }
       seen[o.id] = o.status;
     });
@@ -4435,10 +4435,10 @@ document.addEventListener('click',e=>{
       if(!o) break;
       const live = (state.track.rows||[]).find(r=>String(r.id)===String(o.id));
       if(isOrderLocked_(live)){ toast('الطلب دخل التنفيذ في المصنع، مينفعش يتحذف دلوقتي'); break; }
-      if(!confirm('حذف الطلب #'+o.id+' من الجهاز ده؟ (ده مش هيلغي الطلب عند المصنع لو اتبعت خلاص، بس هيشيله من قايمتك هنا)')) break;
+      if(!confirm('حذف الطلب '+orderNoText_(o)+' من الجهاز ده؟ (ده مش هيلغي الطلب عند المصنع لو اتبعت خلاص، بس هيشيله من قايمتك هنا)')) break;
       state.orders = state.orders.filter(x=>x.id!==o.id);
       save(LS_ORDERS, state.orders);
-      toast('اتحذف الطلب #'+o.id+' من القايمة');
+      toast('اتحذف الطلب '+orderNoText_(o)+' من القايمة');
       render();
     } break;
     case 'cancel-edit': {
@@ -5103,7 +5103,7 @@ function enterEditMode_(o, opts){
   state.editingDisplayNo = o.displayNo || '';
   state.editingEditCount = Number(o.editCount) || 0;
   state.tab = 'cart'; render(); window.scrollTo({top:0, behavior:'smooth'});
-  toast('بتعدّل الطلب #'+o.id+' — عدّل السلة واضغط «حفظ التعديل»');
+  toast('بتعدّل الطلب '+orderNoText_(o)+' — عدّل السلة واضغط «حفظ التعديل»');
 }
 
 function draftOrder(){
@@ -5189,12 +5189,12 @@ async function shareOrderImage(o){
   try{
     const {canvas} = await renderPaper_(docHTML(o,'order'));
     const blob=await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
-    const file=new File([blob],'طلب_'+o.id+'.png',{type:'image/png'});
+    const file=new File([blob],'طلب_'+orderNoText_(o).replace('/','-')+'.png',{type:'image/png'});
 
     if(navigator.canShare && navigator.canShare({files:[file]})){
       await navigator.share({files:[file], title:'طلب أوردر #'+o.id});   // صورة بس، من غير نص مرفق
     } else {
-      downloadBlob(blob,'طلب_'+o.id+'.png');
+      downloadBlob(blob,'طلب_'+orderNoText_(o).replace('/','-')+'.png');
       toast('اتحمّلت صورة الطلب — افتح واتساب وابعتها من المعرض');
     }
   }catch(err){
@@ -5254,7 +5254,7 @@ async function syncOrder_(o){
   try{ ok = await sendOrderToServer_(o); }
   finally{ _sendingNow.delete(String(o.id)); }
   if(ok === false){
-    toast('⚠️ الطلب #'+o.id+' اتسجّل على جهازك بس لسه ما وصلش المصنع — هنحاول تاني تلقائي أول ما يرجع النت', 4200);
+    toast('⚠️ الطلب '+orderNoText_(o)+' اتسجّل على جهازك بس لسه ما وصلش المصنع — هنحاول تاني تلقائي أول ما يرجع النت', 4200);
   } else {
     savePendingSync_(loadPendingSync_().filter(id=>String(id)!==String(o.id)));
   }
@@ -5419,7 +5419,9 @@ function submitOrder(){
   if(wasAdminEdit){
     // المصنع رجع لشاشته، والقايمة بتتحدّث من السيرفر عشان تبان بالأصناف الجديدة
     state.tab='admin'; render();
-    toast(wasEditing?('✅ اتلغى الطلب القديم #'+prevId+' واتعمل طلب جديد #'+o.id):('✅ اتحدّث الطلب #'+o.id));
+    toast(wasEditing
+      ? ('✅ اتلغى الطلب القديم '+prevOrderNoText_(o)+' واتعمل طلب جديد '+orderNoText_(o))
+      : ('✅ اتحدّث الطلب '+orderNoText_(o)));
     adminLoad();
     return;
   }
@@ -5691,7 +5693,7 @@ async function makeDoc(o,mode,priced){
   busy(true,'جارٍ تجهيز المستند…');
   try{
     const {canvas} = await renderPaper_(docHTML(o,mode,priced));
-    await canvasToPdf_(canvas, (mode==='quote'?'عرض_سعر_':'طلب_')+o.id+(priced?'_بالسعر':'')+'.pdf');
+    await canvasToPdf_(canvas, (mode==='quote'?'عرض_سعر_':'طلب_')+orderNoText_(o).replace('/','-')+(priced?'_بالسعر':'')+'.pdf');
   }catch(err){ toast('تعذّر تجهيز الـ PDF: '+(err&&err.message?err.message:err)); }
   busy(false);
 }
