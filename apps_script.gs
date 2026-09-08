@@ -970,6 +970,18 @@ function saveOrder_(o) {
   // ولو طلب جديد بالكامل بنطلب رقم تسلسلي جديد من nextOrderDisplayNo_.
   var displayNo = o.displayNo ? Number(o.displayNo) : 0;
   var editCount = Number(o.editCount) || 0;
+  // ⚠️ باج: الطلب اللي اتبعت تاني (إعادة إرسال أو محاولة من طابور الانتظار) كان
+  // بياخد رقم تسلسلي جديد كل مرة. ده بيحصل بجد: الطلب الكبير بيتبعت بـ POST
+  // والرد مش بيوصل للتطبيق، فالتطبيق ما يعرفش الرقم ويعيد الإرسال من غيره —
+  // فالرقم اللي المصنع شايفه على الورق يتغيّر، وأرقام بتتحرق على الفاضي.
+  // الصف موجود خلاص وله رقم، فبناخد رقمه هو.
+  if (!displayNo && existing > 0) {
+    var oldNo = shO.getRange(existing, COL_DISPLAY_NO, 1, 2).getValues()[0];
+    if (Number(oldNo[0])) {
+      displayNo = Number(oldNo[0]);
+      if (!editCount) editCount = Number(oldNo[1]) || 0;
+    }
+  }
   if (!displayNo) {
     displayNo = nextOrderDisplayNo_(shO);
     editCount = 0;
@@ -1158,9 +1170,14 @@ function adjustStockForItems_(items, dir){
   var rowsAS = rng.getValues();
   var now = new Date();
   var touched = false;
+  // ⚠️ لو الشيت فيه صفين بنفس (الكود|المقاس) — وده بيحصل لو حد ضاف صف بالإيد —
+  // الكود كان بيخصم الكمية من الصفين، يعني خصم مضاعف من رصيد حقيقي.
+  // setStock بيحدّث أول صف مطابق بس، فبنمشي على نفس القاعدة: أول صف يفوز.
+  var doneAS = {};
   for (var jAS = 0; jAS < rowsAS.length; jAS++) {
     var k = String(rowsAS[jAS][0]).trim() + '|' + String(rowsAS[jAS][1]).trim();
-    if (!(k in deltas)) continue;              // الصف ده مش متتبّع في الطلب
+    if (!(k in deltas) || doneAS[k]) continue;   // مش متتبّع في الطلب، أو اتعدّل خلاص
+    doneAS[k] = true;
     rowsAS[jAS][2] = (Number(rowsAS[jAS][2]) || 0) + deltas[k];
     rowsAS[jAS][3] = now;
     touched = true;
