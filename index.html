@@ -769,7 +769,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v148';
+const APP_BUILD   = 'v149';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1899,7 +1899,10 @@ function currentSummary(){
 }
 
 function viewCart(){
-  if(!state.cart.length) return `<div class="empty"><span class="em">${ico("cart","xl")}</span><p>السلة فاضية — ارجع لتبويب «طلب جديد».</p></div>${verBar()}`;
+  if(!state.cart.length) return `<div class="empty"><span class="em">${ico("cart","xl")}</span>
+    <p>السلة فاضية — ارجع لتبويب «طلب جديد».</p>
+    <button class="btn ghost sm" data-act="order-import" style="margin-top:14px">${ico("undo")} استرجاع طلب من نسخة محفوظة</button>
+    </div>${verBar()}`;
   const priced=pricesVisible();
 
   const lines=state.cart.map((it,i)=>{
@@ -4669,6 +4672,7 @@ document.addEventListener('click',e=>{
       sessionStorage.removeItem('wpc_adm');
       if(adminPollTimer){ clearInterval(adminPollTimer); adminPollTimer=null; }
       updateAdmBadge(); render(); break;
+    case 'order-import': importOrderText_(); break;
     case 'update': doUpdate(); break;
     case 'install': doInstall(); break;
   }
@@ -5216,6 +5220,34 @@ function enterEditMode_(o, opts){
   state.editingEditCount = Number(o.editCount) || 0;
   state.tab = 'cart'; render(); window.scrollTo({top:0, behavior:'smooth'});
   toast('بتعدّل الطلب '+orderNoText_(o)+' — عدّل السلة واضغط «حفظ التعديل»');
+}
+
+/* ---------- استرجاع طلب من نص ----------
+   الطلب ممكن يضيع من الجهاز ومن السيرفر مع بعض (زي ما حصل مع طلب كبير فشل
+   إرساله في صمت). المستند المطبوع بيبقى فيه كل التفاصيل، فبدل ما الموزّع
+   يدخّل ١٥ صنف تاني بالإيد، بيلزق نص الطلب هنا ويراجعه ويحفظ. */
+function importOrderText_(){
+  const txt = prompt('الصق نص الطلب المحفوظ هنا:');
+  if(!txt || !txt.trim()) return;
+  let data;
+  try{ data = JSON.parse(txt.trim()); }
+  catch(e){ toast('النص مش مقروء — اتأكد إنك نسخته كامل', 4500); return; }
+  const items = Array.isArray(data) ? data : (data && data.items);
+  if(!Array.isArray(items) || !items.length){ toast('مفيش أصناف في النص ده', 4000); return; }
+  // بنتأكد إن كل صنف شكله صح قبل ما نحط حاجة في السلة
+  const سليم = items.filter(it => it && it.kind && (Number(it.qty)||0) > 0);
+  if(!سليم.length){ toast('الأصناف في النص ده مش مكتملة', 4000); return; }
+  state.cart = JSON.parse(JSON.stringify(سليم));
+  save(LS_CART, state.cart);
+  if(data && data.profile){
+    ['name','phone','region'].forEach(k=>{ if(data.profile[k]) state.profile[k] = data.profile[k]; });
+    save(LS_PROFILE, state.profile);
+  }
+  if(data && data.customer && data.customer.name) state.customer = {
+    name: data.customer.name, phone: data.customer.phone || '' };
+  const عدد = سليم.reduce((n,it)=>n+(Number(it.qty)||0), 0);
+  toast('اترجّع '+سليم.length+' صنف ('+عدد+' قطعة) — راجعهم كويس واضغط «حفظ وإرسال»', 6000);
+  state.tab='cart'; render(); window.scrollTo({top:0,behavior:'smooth'});
 }
 
 function draftOrder(){
