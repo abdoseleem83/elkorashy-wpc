@@ -769,7 +769,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v142';
+const APP_BUILD   = 'v143';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2834,7 +2834,7 @@ async function shareAdminOrderImageWith_(o, its){
 
     if(navigator.canShare && navigator.canShare({files:[file]})){
       // شاشة المشاركة الأصلية بتاعة الموبايل — يختار واتساب وبعدين الشخص/المجموعة بنفسه
-      await navigator.share({files:[file], title:'طلب أوردر #'+o.id, text:caption});
+      await navigator.share({files:[file], title:'طلب أوردر '+orderNoText_(o), text:caption});
     } else {
       downloadBlob(blob,'طلب_'+orderNoText_(o).replace('/','-')+'.png');
       openWhatsAppFree(caption);
@@ -2998,7 +2998,7 @@ function reportHTML(orders){
       return `<div class="rpt-order-block" style="margin-top:8px;padding-top:2px">
         <div style="font-size:10px;color:#8A97A6;margin-bottom:2px">صاحب الحساب: ${esc(cust.name)}</div>
         <div style="background:${BRAND};color:#fff;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700">
-          طلب #${esc(o.id)} — ${esc(dateStr2_(o.date))} — ${esc(st.ar)}${o.customer?' — صاحب الأوردر: '+esc(o.customer):''}
+          طلب ${esc(orderNoText_(o))} — ${esc(dateStr2_(o.date))} — ${esc(st.ar)}${o.customer?' — صاحب الأوردر: '+esc(o.customer):''}
         </div>
         <table style="width:100%;border-collapse:collapse;margin-top:4px">
           <thead><tr>
@@ -4302,7 +4302,7 @@ function viewAdmin(){
       <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}
         ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}
         ${o.ordNote?`<br><span style="color:#8A6512">ملاحظات: ${esc(o.ordNote)}</span>`:''}<br>
-        ${esc(o.date||'')} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''} · ${money(o.total||0)} ج</div>
+        ${esc(dateStr2_(o.date))} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''} · ${money(o.total||0)} ج</div>
       <div class="chips" style="margin-top:10px;gap:6px;flex-wrap:nowrap">${btns}</div>
       ${busy?'<div class="note">جارٍ الحفظ…</div>':''}
       <div class="cardacts">${actionBtns}</div>
@@ -4420,7 +4420,7 @@ document.addEventListener('click',e=>{
     case 'submit': submitOrder(); break;
     case 'quote-cart': makeDoc(draftOrder(), 'order'); break;
     case 'ord-pdf':   withOrder(el,o=>makeDoc(mergeProducedFromTrack_(o),'order')); break;
-    case 'ord-xls':   withOrder(el,o=>exportExcel([mergeProducedFromTrack_(o)],'طلب_'+o.id)); break;
+    case 'ord-xls':   withOrder(el,o=>exportExcel([mergeProducedFromTrack_(o)],'طلب_'+orderNoText_(o).replace('/','-'))); break;
     case 'all-xls':   exportExcel(state.orders.map(mergeProducedFromTrack_),'كل_الطلبات'); break;
     case 'resend':    withOrder(el,o=>shareOrderImage(mergeProducedFromTrack_(o))); break;
     case 'ord-edit':   withOrder(el,o=>{
@@ -5192,7 +5192,7 @@ async function shareOrderImage(o){
     const file=new File([blob],'طلب_'+orderNoText_(o).replace('/','-')+'.png',{type:'image/png'});
 
     if(navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file], title:'طلب أوردر #'+o.id});   // صورة بس، من غير نص مرفق
+      await navigator.share({files:[file], title:'طلب أوردر '+orderNoText_(o)});   // صورة بس، من غير نص مرفق
     } else {
       downloadBlob(blob,'طلب_'+orderNoText_(o).replace('/','-')+'.png');
       toast('اتحمّلت صورة الطلب — افتح واتساب وابعتها من المعرض');
