@@ -788,7 +788,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v152';
+const APP_BUILD   = 'v153';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3951,8 +3951,9 @@ function xlDateCell_(row, col){
   if(c.value instanceof Date){ c.numFmt = 'yyyy-mm-dd'; c.alignment = { horizontal:'center' }; }
 }
 
-// اسم اليوم بالعربي (الأحد/الاتنين/…) — المصنع بيرتّب شغله بالأيام مش بالتواريخ
-const DAY_AR_ = ['الأحد','الاتنين','التلات','الأربع','الخميس','الجمعة','السبت'];
+// اسم اليوم بالعربي الفصيح (الأحد/الاثنين/الثلاثاء/…) — المصنع بيرتّب شغله
+// بالأيام مش بالتواريخ، والأسماء دي هي اللي بتتكتب على الورق والمستندات.
+const DAY_AR_ = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 // ⚠️ new Date('2026-09-08') بيتقرا على إنه UTC، فالجهاز اللي توقيته قبل UTC
 // بيرجّع اليوم اللي قبله — اسم اليوم بيطلع غلط. بنفكّ التاريخ بإيدينا بدل كده.
 function dateParts_(d){
