@@ -769,7 +769,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v139';
+const APP_BUILD   = 'v140';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -5384,14 +5384,24 @@ function submitOrder(){
     // أي نسخة من الطلب خالص.
     const cancelInfo = (wasEditing && prevId)
       ? { prevId, phone:o.phone||'', newId:o.id, admin:wasAdminEdit } : null;
+    // ⚠️ باج كان هنا: كنا بنبعت الصورة (shareOrderImage) فورًا من غير ما نستنى
+    // رد السيرفر، فـ o.displayNo لسه مش موجود لحظة تجهيز الصورة — والمستند كان
+    // بيرجع يعرض o.id (الكود الداخلي الطويل W260905-...) بدل الرقم الصغير
+    // العادي. دلوقتي بنستنى رد السيرفر الأول (سواء نجح أو فشل)، وبعدين نجهّز
+    // الصورة على o بعد ما displayNo يتحدّث فيه (لو السيرفر رد بنجاح).
+    // ⚠️ والانتظار ده ممكن يوصل ٢٥ ثانية لو السيرفر بطيء — من غير أي مؤشّر كان
+    // المستخدم يشوف «اتسجّل الطلب» ويفتكر إنه خلص، وفجأة شاشة المشاركة تفتح
+    // عليه. فبنوريه إن فيه حاجة شغالة.
+    const syncing = syncOrder_(o);
+    if(!wasAdminEdit){
+      (async ()=>{
+        busy(true, 'جارٍ تأكيد رقم الطلب مع المصنع…');
+        try{ await syncing; } finally { busy(false); }
+        shareOrderImage(o);
+      })();
+    }
     (async ()=>{
-      const sent = await syncOrder_(o);
-      // ⚠️ باج كان هنا: كنا بنبعت الصورة (shareOrderImage) فورًا من غير ما نستنى
-      // رد السيرفر، فـ o.displayNo لسه مش موجود لحظة تجهيز الصورة — والمستند كان
-      // بيرجع يعرض o.id (الكود الداخلي الطويل W260905-...) بدل الرقم الصغير
-      // العادي. دلوقتي بنستنى رد السيرفر الأول (سواء نجح أو فشل)، وبعدين نجهّز
-      // الصورة على o بعد ما displayNo يتحدّث فيه (لو السيرفر رد بنجاح).
-      if(!wasAdminEdit) shareOrderImage(o);
+      const sent = await syncing;
       if(!cancelInfo) return;
       if(sent === false){ savePendingCancel_(cancelInfo); return; }   // لسه ما وصلش — سيب القديم
       await cancelOldOrder_(cancelInfo);
@@ -5408,7 +5418,10 @@ function submitOrder(){
   }
   state.tab='orders'; render();
   if(savedLocally){
-    toast(wasEditing?'✅ اتحدّث الطلب #'+o.id:'اتسجّل طلب الأوردر #'+o.id);
+    // ⚠️ نفس باج v137: الرسالة كانت بتكتب الكود الداخلي بينما المستند والواتساب
+    // وكل الشاشات بيكتبوا الرقم التسلسلي. الرقم لسه ممكن مايكونش وصل من السيرفر
+    // في اللحظة دي، فـ orderNoText_ بترجّع الكود الداخلي لوحدها وقتها.
+    toast((wasEditing?'✅ اتحدّث الطلب ':'اتسجّل طلب الأوردر ') + orderNoText_(o));
   } else {
     // الطلب اتبعت للمصنع بس مقدرناش نحفظه على الجهاز — لازم المستخدم يعرف،
     // لأنه هيختفي من «تابع طلبك» أول ما يقفل التطبيق.
