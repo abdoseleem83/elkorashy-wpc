@@ -769,7 +769,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v149';
+const APP_BUILD   = 'v150';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3902,6 +3902,13 @@ function xlDateCell_(row, col){
   if(c.value instanceof Date){ c.numFmt = 'yyyy-mm-dd'; c.alignment = { horizontal:'center' }; }
 }
 
+// اسم اليوم بالعربي (الأحد/الاتنين/…) — المصنع بيرتّب شغله بالأيام مش بالتواريخ
+const DAY_AR_ = ['الأحد','الاتنين','التلات','الأربع','الخميس','الجمعة','السبت'];
+function dayNameAr_(d){
+  if(!d) return '';
+  try{ const t = new Date(d); return isNaN(t.getTime()) ? '' : DAY_AR_[t.getDay()]; }
+  catch(e){ return ''; }
+}
 function dateStr2_(d){
   if(!d) return '';
   try{ return new Date(d).toLocaleDateString('ar-EG',{day:'2-digit',month:'2-digit',year:'numeric'}); }catch(e){ return String(d); }
@@ -4445,6 +4452,16 @@ function viewAdmin(){
         <span style="flex:1;min-width:0">
           <b style="font-size:13.5px;color:#0B2A4A">${esc(name)}</b>
           <div style="font-size:11px;color:#6B7A8C;margin-top:2px">${orders.length} طلب · ${totalQty} قطعة · ${money(totalMoney)} ج</div>
+          <div style="font-size:11.5px;font-weight:700;color:#0B4A7A;margin-top:3px;line-height:1.6">${
+            // أرقام الطلبات على كارت العميل — من غيرها المصنع لازم يفتح كل عميل
+            // عشان يدوّر على رقم معيّن. الأحدث الأول.
+            orders.map(o=>`<div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+              <span style="background:#EAF2FA;border:1px solid #B9D4EA;border-radius:20px;
+                padding:2px 11px;font-weight:800;color:#0B4A7A;white-space:nowrap">${esc(orderNoText_(o))}</span>
+              ${o.date?`<span style="font-weight:400;color:#5B7B99;font-size:11px;white-space:nowrap">${esc(dateStr2_(o.date))}</span>
+              <span style="font-weight:700;color:#8A6512;font-size:11px;white-space:nowrap">${esc(dayNameAr_(o.date))}</span>`:''}
+            </div>`).join('')
+          }</div>
         </span>
         <button class="btn act-tool sm" data-act="adm-group-preview" data-name="${esc(name)}" ${prevBusy?'disabled':''}
           title="معاينة الطلب قبل التصدير" aria-label="معاينة طلب ${esc(name)}" style="width:auto;padding:7px 10px">
