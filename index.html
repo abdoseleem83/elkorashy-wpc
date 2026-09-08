@@ -769,7 +769,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v147';
+const APP_BUILD   = 'v148';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -5338,14 +5338,50 @@ async function sendOrderToServer_(o){
       return !!(d && d.ok);
     }catch(err){ return false; }
   }
-  // طلب كبير جدًا (أصناف كتير) — الرابط ممكن يطول أكتر من اللازم لـ JSONP،
-  // فبنرجع لطريقة POST القديمة (بتوصل غالبًا لكن من غير تأكيد رد من السيرفر)
+  /* طلب كبير (أصناف كتير) — الرابط أطول من اللي JSONP بيستحمله، فبنبعت POST.
+     ⚠️ ودي كانت أخطر نقطة في التطبيق: mode:'no-cors' معناه إننا مش شايفين رد
+     السيرفر خالص، والدالة كانت بترجّع null = «اتبعت بس مش متأكدين».
+     والنتيجة إن null مكانش بيتعامل معاه كفشل في أي مكان:
+       • submitOrder كان بيمسح الطلب القديم على طول (الشرط sent === false بس)
+       • syncOrder_ كان بيشيله من قايمة المعلّق فمايتبعتش تاني
+     يعني لو الـPOST فشل في صمت، الطلب بيروح بالكامل: الجديد ما وصلش والقديم
+     اتمسح ومحدش هيحاول تاني. وده بيحصل بالظبط للطلبات الكبيرة (١٥ صنف =
+     رابط ١٦ ألف حرف). دلوقتي بنسأل السيرفر بنفسنا بدل ما نفترض. */
   try{
     await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify({action:'newOrder',order:o})});
-    return null;   // اتبعت لكن مش متأكدين من الرد
   }catch(err){ return false; }
+  return await verifyOrderArrived_(o);
+}
+
+// بنسأل السيرفر: الطلب وصل ولا لأ؟ بنجرّب أكتر من مرة لأن Apps Script بياخد
+// وقت لحد ما يكتب في الشيت. لو ما قدرناش نتأكد بنعتبره ما وصلش — والإرسال
+// تاني آمن لأن السيرفر بيحدّث الصف بنفس الـid بدل ما يضيف صف جديد.
+async function verifyOrderArrived_(o, tries){
+  const مرات = tries || 3;
+  for(let i = 0; i < مرات; i++){
+    await new Promise(r=>setTimeout(r, 1500 * (i + 1)));
+    try{
+      const d = await jsonp(APPS_SCRIPT_URL + '?action=list&phone=' + encodeURIComponent(o.phone||''));
+      if(d && d.ok){
+        const hit = (d.orders||[]).find(r=>String(r.id)===String(o.id));
+        if(hit){
+          if(hit.displayNo){
+            o.displayNo = hit.displayNo; o.editCount = Number(hit.editCount)||0;
+            const idx = state.orders.findIndex(x=>String(x.id)===String(o.id));
+            if(idx>-1){
+              state.orders[idx].displayNo = hit.displayNo;
+              state.orders[idx].editCount = Number(hit.editCount)||0;
+              saveOrders_(state.orders);
+            }
+          }
+          return true;
+        }
+      }
+    }catch(e){}
+  }
+  return false;
 }
 
 /* ---------- حفظ الطلبات: دمج مش كتابة فوق ----------
@@ -5438,7 +5474,7 @@ async function syncOrder_(o){
   let ok;
   try{ ok = await sendOrderToServer_(o); }
   finally{ _sendingNow.delete(String(o.id)); }
-  if(ok === false){
+  if(ok !== true){
     toast('⚠️ الطلب '+orderNoText_(o)+' اتسجّل على جهازك بس لسه ما وصلش المصنع — هنحاول تاني تلقائي أول ما يرجع النت', 4200);
   } else {
     markSent_(o.id);   // اتأكد وصوله — الدمج مايرجّعهوش لقايمة المعلّق
@@ -5506,7 +5542,7 @@ async function retryPendingOrders_(){
       // بيتبعت دلوقتي من syncOrder_ — سيبه له عشان مايوصلش المصنع مرتين
       if(_sendingNow.has(String(id))){ stillPending.push(id); continue; }
       const ok = await sendOrderToServer_(o);
-      if(ok === false) stillPending.push(id);
+      if(ok !== true) stillPending.push(id);   // مش متأكدين = لسه معلّق
       else { markSent_(id); await runPendingCancelFor_(id); }   // وصل — دلوقتي بس ينفع نمسح القديم
     }
     // مش savePendingSync_(stillPending) على طول: لو الموزع بعت طلب جديد وهو
@@ -5596,7 +5632,10 @@ function submitOrder(){
     (async ()=>{
       const sent = await syncing;
       if(!cancelInfo) return;
-      if(sent === false){ savePendingCancel_(cancelInfo); return; }   // لسه ما وصلش — سيب القديم
+      // ⚠️ الشرط ده كان `sent === false` بس، و null (اتبعت من غير تأكيد) كان
+      // بيعدّي منه ويمسح الطلب القديم. دلوقتي مفيش null أصلًا، بس بنتشدّد:
+      // القديم مايتمسحش غير لما الجديد يتأكد وصوله بالظبط.
+      if(sent !== true){ savePendingCancel_(cancelInfo); return; }   // لسه ما وصلش — سيب القديم
       await cancelOldOrder_(cancelInfo);
     })();
   } else if(!wasAdminEdit){
