@@ -769,7 +769,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v140';
+const APP_BUILD   = 'v141';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1950,7 +1950,7 @@ function viewOrders(){
       : `<button class="btn ghost sm" data-act="ord-del" data-id="${esc(o.id)}">${ico("trash")} حذف</button>`;
     return `
     <div class="ord">
-      <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:#8A6512;background:#FFF6E5;border:1px solid #E8C77A;border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على #${esc(o.replacesId)}</span>`:''}${live?statusPill(live.status):''}</div>
+      <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:#8A6512;background:#FFF6E5;border:1px solid #E8C77A;border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${live?statusPill(live.status):''}</div>
       <div class="os">${esc(dateStr(o.ts))} · ${o.items.length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
         ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}<br>
         ${esc(o.items.map(x=>x.title).slice(0,3).join('، '))}${o.items.length>3?'…':''}
@@ -2201,6 +2201,16 @@ function isOrderLocked_(live){ return !!(live && LOCKED_EDIT_STATUSES.includes(l
 // ومعدّل بيبقى مركّب (417/2) زي المستند بالظبط.
 // ⚠️ باج كان هنا: الشاشات كانت بتعرض o.id (الكود الداخلي) والمستند بيعرض displayNo،
 // فالموزع والمصنع كانوا شايفين رقمين مختلفين لنفس الطلب — وجع أول ما حد يكلّم حد.
+// رقم النسخة اللي قبل التعديل: نفس الرقم التسلسلي بعدّاد تعديل أقل بواحد
+// (52 ثم 52/1 ثم 52/2). لو الرقم التسلسلي لسه مش معروف بنقع على الكود الداخلي.
+// ⚠️ الشاشات كانت بتعرض الكود الداخلي (#W260908-...) — كود الموزّع مايعرفوش
+// ومش مكتوب على أي ورقة عنده. نفس باج v137 اللي اتصلّح للواتساب والمستند.
+function prevOrderNoText_(o){
+  if(!o || !o.replacesId) return '';
+  return o.displayNo
+    ? orderNoText_({ displayNo:o.displayNo, editCount:(Number(o.editCount)||1) - 1 })
+    : '#' + o.replacesId;
+}
 function orderNoText_(o){
   if(!o) return '';
   const n = o.displayNo;
@@ -4288,7 +4298,7 @@ function viewAdmin(){
          <button class="btn act-del sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}>${ico("trash")}${delBusy?'…':'حذف'}</button>`;
 
     return `<div class="ord">
-      <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:#8A6512;background:#FFF6E5;border:1px solid #E8C77A;border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على #${esc(o.replacesId)}</span>`:''}${statusPill(o.status)}</div>
+      <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:#8A6512;background:#FFF6E5;border:1px solid #E8C77A;border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${statusPill(o.status)}</div>
       <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}
         ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}
         ${o.ordNote?`<br><span style="color:#8A6512">ملاحظات: ${esc(o.ordNote)}</span>`:''}<br>
@@ -5132,14 +5142,7 @@ function buildMessage(o){
   // الطلب ليه رقمين مختلفين — واحد على واتساب وواحد على الورق. نفس الباج اللي
   // اتصلّح للشاشات والمستند قبل كده، بس قناة الواتساب فاتت.
   m+='رقم الطلب: '+orderNoText_(o)+(o.displayNo?' (الكود الداخلي: '+o.id+')':'')+'\n';
-  if(o.replacesId){
-    // رقم النسخة اللي قبل دي: نفس الرقم التسلسلي بعدّاد تعديل أقل بواحد —
-    // بالظبط زي ما المستند بيكتبه (52 ثم 52/1 ثم 52/2)
-    const prevNo = o.displayNo
-      ? orderNoText_({ displayNo:o.displayNo, editCount:(Number(o.editCount)||1) - 1 })
-      : '#' + o.replacesId;
-    m+='🔁 تعديل على الطلب رقم: '+prevNo+'\n';
-  }
+  if(o.replacesId) m+='🔁 تعديل على الطلب رقم: '+prevOrderNoText_(o)+'\n';
   m+='الاسم: '+(o.name||'-')+'\n';
   m+='المنطقة: '+(o.region||'-')+'\n';
   m+='الموبايل: '+(o.phone||'-')+'\n';
@@ -5364,6 +5367,10 @@ function submitOrder(){
   if(wasEditing){
     // التعديل بيلغي الطلب القديم بدل ما يحدّثه في مكانه — وبيعمل طلب جديد مستقل بالأصناف المعدّلة
     state.orders = state.orders.filter(x=>String(x.id)!==String(prevId));
+    // ⚠️ ونشيله من نسخة قايمة السيرفر المحفوظة على الجهاز كمان. من غير كده كان
+    // بيفضل فيها لحد التحديث الجاي من السيرفر — وأي بحث بالحالة أو قفل التعديل
+    // كان لسه بيلاقي طلب اتمسح خلاص.
+    if(state.track.rows) state.track.rows = state.track.rows.filter(x=>String(x.id)!==String(prevId));
   }
   state.orders.unshift(o);
   // كانت الذاكرة بتحتفظ بكل الطلبات والمحفوظ 80 بس — فبعد أي إعادة فتح الأرقام
@@ -5590,7 +5597,7 @@ function docHTML(o,mode,priced){
         </div>
         <div style="text-align:left">
           <div style="font-size:11.5px;color:#6B7A8C">${(!isQuote && o.displayNo)?'بتاريخ ':''}${esc(dateStrDMY_(o.ts))}</div>
-          ${o.replacesId?`<div style="font-size:11.5px;font-weight:700;color:#B3261E;margin-top:2px">بدل الطلب #${esc(o.replacesId)}</div>`:''}
+          ${o.replacesId?`<div style="font-size:11.5px;font-weight:700;color:#B3261E;margin-top:2px">بدل الطلب رقم ${esc(prevOrderNoText_(o))}</div>`:''}
         </div>
       </div>
 
