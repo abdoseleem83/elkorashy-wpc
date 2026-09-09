@@ -26,6 +26,8 @@
  *     متستخدمش نفس الرابط للاتنين عشان الطلبات ما تتخلطش.
  */
 
+// كود بند «خدمة قص» — بند تسعير بيتحسب في الفلوس بس، مش في عدد القطع
+var CUT_SERVICE_CODE_ = 'CUT';
 var SHEET_ORDERS = 'Orders';
 var SHEET_ITEMS  = 'Order_Items';
 var SHEET_ERRORS = 'Errors';
@@ -1027,6 +1029,8 @@ function saveOrder_(o) {
   var rods = 0;
   for (var i = 0; i < items.length; i++) {
     var k = items[i].kind;
+    // «خدمة قص» بند تسعير مش قطعة بتتصنّع — مابتتعدّش في عدد القطع
+    if (String(items[i].code || '') === CUT_SERVICE_CODE_) continue;
     if (k === 'frame' || k === 'bror') rods += (items[i].isSet ? (Number(items[i].qty)||0)*3 : Number(items[i].qty) || 0);
     else qty += Number(items[i].qty) || 0;
   }
@@ -1180,7 +1184,11 @@ function recomputeOrderTotals_(id) {
     var type = String(valsI[i][3] || '');
     var unit = String(valsI[i][9] || '');
     var q = Number(valsI[i][10]) || 0;
-    if (type === 'Frame' || type === 'Bror') rods += (unit === 'set' ? q * 3 : q); else qty += q;
+    var code = String(valsI[i][5] || '');
+    // بند «خدمة قص» بيتحسب في الفلوس بس — مش في عدد القطع ولا العيدان
+    if (code !== CUT_SERVICE_CODE_) {
+      if (type === 'Frame' || type === 'Bror') rods += (unit === 'set' ? q * 3 : q); else qty += q;
+    }
     total += Number(valsI[i][12]) || 0;
   }
   var shO = sheet_(SHEET_ORDERS, HEAD_ORDERS);

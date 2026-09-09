@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v169';
+const APP_BUILD   = 'v170';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -848,10 +848,14 @@ function doorNeedsCut_(it){
 // عنوان بند القص بيحمل نص مقاس الباب نفسه — عشان البند يتحط تحت مجموعة مقاسه
 // في المستند بمطابقة نص بسيطة، سواء اتقرا من السلة أو رجع من السيرفر.
 function cutServiceTitle_(label){ return CUT_SERVICE_NOTE_ + ' — ' + label; }
+// بيشتغل على الشكلين: صنف السلة (kind) وصنف السيرفر الخام (type).
+// ⚠️ شرط النوع مهم: الأبواب اللي اتعملت في v164 ملحوظتها «خدمة قص» بتتلزق في
+// اسم الصنف — من غير الشرط ده كنا هنعدّ الباب نفسه على إنه بند قص.
 function isCutLine_(it){
-  if(!it || it.kind!=='acc') return false;
-  return it.code===CUT_SERVICE_CODE_ || it.id===CUT_SERVICE_CODE_
-      || String(it.title||'').indexOf(CUT_SERVICE_NOTE_)>=0;
+  if(!it) return false;
+  if(it.code===CUT_SERVICE_CODE_ || it.id===CUT_SERVICE_CODE_) return true;
+  const isAcc = it.kind==='acc' || it.type==='Accessory';
+  return isAcc && String(it.title||'').indexOf(CUT_SERVICE_NOTE_)>=0;
 }
 function cutLineLabel_(it){
   return String(it.title||'').replace(/^.*?خدمة قص\s*—\s*/,'');
@@ -3105,6 +3109,7 @@ function doorWidthGroup_(sizeStr){
 function groupItemsByCode_(orders){
   const grand = {};
   (orders||[]).forEach(o=>(o.items||[]).forEach(it=>{
+    if(isCutLine_(it)) return;        // بند تسعير — مش شغل إنتاج
     const key = it.type+'|'+(it.code||it.title||'')+(it.isSet?'|set':'');
     if(!grand[key]) grand[key] = { type:it.type, code:it.code||'', name:itemNameAr_(it), qty:0, produced:0, orderIds:new Set() };
     grand[key].qty += Number(it.qty)||0;
@@ -3899,6 +3904,7 @@ function buildAdminOrdersDetail_(orders){
     const codeTotals = {}; // key: type+code -> {label, qty}
     let clientQty = 0, clientProduced = 0;
     ords.forEach(o=>(o.items||[]).forEach(it=>{
+      if(isCutLine_(it)) return;      // بند تسعير — مش شغل إنتاج
       const qty = Number(it.qty)||0;
       const pp = itemProdPending_(it);
       clientQty += qty; clientProduced += pp.produced;
@@ -4022,7 +4028,7 @@ async function buildAdminOrdersExcel_(orders){
       const hdr = wsDet.addRow(hdrCells);
       hdr.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}}; c.font={bold:true,color:{argb:NAVY},name:FONT,size:10}; c.alignment={horizontal:'center'}; c.border=border; });
 
-      (o.items||[]).forEach(it=>{
+      (o.items||[]).filter(it=>!isCutLine_(it)).forEach(it=>{
         const sp = itemSpecCells_(it);
         const wh = {w:sp.w, h:sp.h}, frameW = sp.frameW, frameH = sp.frameH, brorTxt = sp.bror;
         const pp = itemProdPending_(it);
@@ -4364,7 +4370,11 @@ function sizeText_(it){
   return it.size||'—';
 }
 function prodTableHTML_(oid, its, a, qtyMode){
-  const rows = its.map((it,idx)=>{
+  // ⚠️ الترقيم (idx) لازم يفضل على القايمة الأصلية زي ما هي، لأنه هو اللي
+  // بيتبعت للسيرفر عشان يعدّل الصنف الصح. فبنفلتر بعد ما ناخد الرقم.
+  const rows = its.map((it,idx)=>({it,idx}))
+    .filter(x=>!isCutLine_(x.it))     // «خدمة قص» بند تسعير مش قطعة بتتصنّع
+    .map(({it,idx})=>{
     const key = oid+':'+idx;
     const qty = Number(it.qty)||0;
     const produced = Math.max(0, Math.min(qty, Number(it.produced)||0));
