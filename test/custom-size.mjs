@@ -24,8 +24,9 @@ const addAndCount = () => pg.evaluate(()=>{
   const msgs=[]; const old=window.toast; window.toast=m=>msgs.push(m);
   addDoor();
   window.toast=old;
-  return { عدد_السلة: state.cart.length,
+  return { عدد_السلة: state.cart.filter(it=>it.kind==='door').length,
            فيه_خاص: state.cart.some(it=>/مقاس خاص/.test(it.sizeTxt||'')),
+           بند_قص: state.cart.filter(it=>/خدمة قص/.test(it.title||'')).length,
            الرسائل: msgs };
 });
 
@@ -34,7 +35,8 @@ let r = await setup(3);
 check('كمية ٣: جاهز للإضافة', r.جاهز === true);
 let a = await addAndCount();
 check('العادي والخاص الاتنين اتضافوا', a.عدد_السلة===2 && a.فيه_خاص,
-  `${a.عدد_السلة} صنف · خاص=${a.فيه_خاص}`);
+  `${a.عدد_السلة} باب · خاص=${a.فيه_خاص}`);
+check('بند «خدمة قص» اتضاف مع الباب الخاص', a.بند_قص===1, String(a.بند_قص));
 
 // ٢) خانة الكمية اتمسحت → مش جاهز، والزرار والمعاينة لازم يعرفوا
 r = await setup('');

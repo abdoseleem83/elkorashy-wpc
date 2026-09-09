@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v164';
+const APP_BUILD   = 'v165';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -828,12 +828,59 @@ function frameText_(cm, height){
   return cm+' سم' + (height?' (ارتفاع '+height+' سم)':'');
 }
 // بيبني نص مقاس الباب شامل ارتفاع الفتحة المعمارية لو مختلف عن الاستاندر 215 (اختياري، زي الحلق بالظبط)
-// المقاس الخاص محتاج قص، والارتفاع غير الاستاندر محتاج تظبيط. الاتنين بيتكتبوا
-// كسطر معلومات تحت الصنف — بيبانوا للمصنع وللعميل من غير ما يتحسبوا في السعر.
+// المقاس الخاص محتاج قص، والارتفاع غير الاستاندر محتاج تظبيط. الاتنين بقوا
+// بند مستقل بكميته وسعره (خدمة قص) — مش زيادة مخفية جوه سعر الباب.
 const CUT_SERVICE_NOTE_ = 'خدمة قص';
+const CUT_SERVICE_CODE_ = 'CUT';
 function doorSizeText_(sizeTxt, height){
   return (sizeTxt||'') + (height?' (ارتفاع '+height+' سم)':'');
 }
+// الباب اللي محتاج قص: مقاس خاص، أو ارتفاع غير الاستاندر (٢١٥).
+// بنعرفه من نص المقاس كمان عشان الطلبات القديمة تتحسب صح.
+function doorNeedsCut_(it){
+  if(!it || it.kind!=='door') return false;
+  if(/مقاس خاص/.test(it.sizeTxt||'') || /\(custom\)/i.test(it.sizeEn||'')) return true;
+  // ⚠️ مش أي ارتفاع مكتوب = قص. الطلبات اللي جاية من السيرفر أو من نص طلب
+  // بيتكتب فيها الارتفاع الاستاندر (215) صراحة — ده مافيهوش أي قص.
+  const h = Number(it.doorHeight)||0;
+  return !!h && h !== DOOR_STD_HEIGHT;
+}
+// عنوان بند القص بيحمل نص مقاس الباب نفسه — عشان البند يتحط تحت مجموعة مقاسه
+// في المستند بمطابقة نص بسيطة، سواء اتقرا من السلة أو رجع من السيرفر.
+function cutServiceTitle_(label){ return CUT_SERVICE_NOTE_ + ' — ' + label; }
+function isCutLine_(it){
+  if(!it || it.kind!=='acc') return false;
+  return it.code===CUT_SERVICE_CODE_ || it.id===CUT_SERVICE_CODE_
+      || String(it.title||'').indexOf(CUT_SERVICE_NOTE_)>=0;
+}
+function cutLineLabel_(it){
+  return String(it.title||'').replace(/^.*?خدمة قص\s*—\s*/,'');
+}
+// بيعيد بناء بنود «خدمة قص» من الأبواب اللي في السلة — بيتنده مع أي تغيير في
+// السلة. إعادة البناء من الصفر معناها إن تعديل باب أو مسحه مابيسيبش بند قص
+// يتيم ولا بيكرّره. السعر القديم بيتحافظ عليه لو البند موجود أصلاً.
+function syncCutServiceLines_(){
+  const cart = state.cart || [];
+  const prevByTitle = {};
+  cart.forEach(it=>{ if(isCutLine_(it)) prevByTitle[it.title]=it; });
+  const need = {};
+  cart.forEach(it=>{
+    if(!doorNeedsCut_(it)) return;
+    const label = doorSizeText_(it.sizeTxt, it.doorHeight) || '';
+    need[label] = (need[label]||0) + (Number(it.qty)||0);
+  });
+  const kept = cart.filter(it=>!isCutLine_(it));
+  Object.keys(need).forEach(label=>{
+    const title = cutServiceTitle_(label);
+    const prev = prevByTitle[title];
+    kept.push({ kind:'acc', id:CUT_SERVICE_CODE_, code:CUT_SERVICE_CODE_,
+                title, titleEn:title, unit:'باب', qty:need[label],
+                price: prev ? (Number(prev.price)||0) : CUSTOM_EXTRA });
+  });
+  state.cart = kept;
+}
+// أي حفظ للسلة بيمرّ من هنا عشان بنود القص تفضل مظبوطة مع محتوى السلة
+function saveCart_(){ syncCutServiceLines_(); return save(LS_CART, state.cart); }
 // نوع الحلق: "كامل" (طقم كامل شامل مع الباب زي المعتاد — من غير تفاصيل زيادة) أو "أعواد" (عدد أعواد إضافي منفصل، بيتكتب كملحوظة على الصنف)
 function frameKindNote_(kind, rodQty, forDoors){
   if(kind!=='rods') return '';
@@ -954,7 +1001,11 @@ function tierKeyFor_(it, kind){
   if(kind==='door' || kind==='frame'){ const m=/^(\d+)/.exec(String(it.size||'')); return m?Number(m[1]):null; }
   if(kind==='bror') return it.size||null;
   if(kind==='panel') return 'prodium';
-  if(kind==='acc') return ACC_EN_TO_ID_[it.title] || null;
+  // بند «خدمة قص» بياخد سعره من نفس مفتاح customExtra في كل مستوى
+  if(kind==='acc'){
+    if(String(it.title||'').indexOf(CUT_SERVICE_NOTE_)>=0) return 'customExtra';
+    return ACC_EN_TO_ID_[it.title] || null;
+  }
   return null;
 }
 
@@ -1582,7 +1633,7 @@ function viewNew(){
       ${s.w} سم${pricesVisible()?`<span class="sub">${money(s.price)}ج</span>`:''}
       ${st>0?`<span class="stk">متوفر ${st}</span>`:''}</button>`;
   }).join('')
-    +`<button class="colchip ${p.customOn?'on':''}" data-act="toggle-custom">خاص${pricesVisible()?`<span class="sub">نفس السعر</span>`:''}</button>`;
+    +`<button class="colchip ${p.customOn?'on':''}" data-act="toggle-custom">خاص${pricesVisible()?`<span class="sub">+${CUSTOM_EXTRA}ج قص</span>`:''}</button>`;
 
   // شبكة صغيرة لاختيار الحلق/البرور جوه كارت كل مقاس — كل مقاس له حلقه وبروره الخاصين بيه
   // w بيبقى رقم المقاس العادي، أو النص 'custom' للمقاس الخاص — وبناءً عليه بنبعت الحدث للـhandler الصح
@@ -1656,7 +1707,7 @@ function viewNew(){
         <input type="number" inputmode="numeric" min="1" value="${p.custom.qty}" data-act="cust-qty-set">
         <button data-act="cust-qty-plus">+</button>
       </div>
-      <div class="note">المقاس الخاص بنفس سعر المقاس العادي — بتتكتب عليه <b>«${CUT_SERVICE_NOTE_}»</b> عشان تبان للمصنع، من غير أي زيادة في السعر.</div>
+      <div class="note">سعر الباب زي المقاس العادي، و<b>«${CUT_SERVICE_NOTE_}»</b> بتتحط بند مستقل تحته بالكمية والسعر (${CUSTOM_EXTRA} ج للباب).</div>
       <div class="miniLbl">النوع</div>
       <div class="miniChips">${hafrMiniChips(p.custom.hafr,'custom')}</div>
       <div class="miniLbl">الحلق</div>
@@ -1968,8 +2019,11 @@ function currentSummary(){
     const e=p.sizes[w];
     const qty=Number(e.qty)||1; totalQty+=qty;
     const unit=priceForWidth(w,e.hafr); totalPrice+=unit*qty;
+    // ارتفاع غير الاستاندر = خدمة قص، بند مستقل بيتحسب في الإجمالي
+    if(Number(e.height)) totalPrice+=CUSTOM_EXTRA*qty;
     let line=doorSizeText_(w+' سم',e.height)+' × '+qty;
     const bits=[];
+    if(Number(e.height)) bits.push(CUT_SERVICE_NOTE_);
     if(e.hafr) bits.push('حفر');
     if(e.frame) bits.push('حلق '+frameText_(e.frame,e.frameHeight));
     if(e.dbror) bits.push('برور '+e.dbror);
@@ -1978,9 +2032,10 @@ function currentSummary(){
   });
   if(customReady){
     const w=Number(p.custom.w), h=Number(p.custom.h), qty=Number(p.custom.qty)||1;
-    totalQty+=qty; totalPrice+=priceForWidth(w,p.custom.hafr)*qty;
+    // خدمة القص بند مستقل — بتتحسب في الإجمالي زي أي صنف
+    totalQty+=qty; totalPrice+=(priceForWidth(w,p.custom.hafr)*qty)+(CUSTOM_EXTRA*qty);
     let line=w+'×'+h+' سم (خاص) × '+qty;
-    const bits=[];
+    const bits=[CUT_SERVICE_NOTE_];
     if(p.custom.hafr) bits.push('حفر');
     if(p.custom.frame) bits.push('حلق '+frameText_(p.custom.frame,p.custom.frameHeight));
     if(p.custom.dbror) bits.push('برور '+p.custom.dbror);
@@ -4271,8 +4326,9 @@ function viewAdminPrices(){
     <div class="grp">أسعار الأبواب (حسب المقاس)</div>
     ${head}
     ${rowsSizes}
+    ${priTri_(CUT_SERVICE_NOTE_+' (لكل باب)', 'customExtra', 'customExtra', pe.customExtra)}
     ${priTri_('إضافة باب حفر', 'hafrExtra', 'hafrExtra', pe.hafrExtra)}
-    <div class="note">المقاس الخاص بياخد سعر المقاس العادي بالظبط — من غير أي إضافة. بيتكتب عليه «${CUT_SERVICE_NOTE_}» كسطر تحت الصنف عشان يبان للمصنع.</div>
+    <div class="note">سعر الباب مابيتغيّرش بالمقاس الخاص. «${CUT_SERVICE_NOTE_}» بند مستقل بيتضاف تحت الباب بالكمية والسعر — للمقاس الخاص وللارتفاع غير الاستاندر.</div>
 
     <div class="grp" style="margin-top:14px">أسعار الحلق (للمتر الطولي)</div>
     ${head}
@@ -4736,9 +4792,9 @@ document.addEventListener('click',e=>{
     case 'acc-minus': state.acc[el.dataset.id]=Math.max(0,(state.acc[el.dataset.id]||0)-1); render(); break;
     case 'acc-plus':  state.acc[el.dataset.id]=(state.acc[el.dataset.id]||0)+1; render(); break;
     case 'add-acc': addAccessories(); break;
-    case 'del': state.cart.splice(Number(el.dataset.i),1); save(LS_CART,state.cart); render(); break;
+    case 'del': state.cart.splice(Number(el.dataset.i),1); saveCart_(); render(); break;
     case 'edit-line': editCartLine(Number(el.dataset.i)); break;
-    case 'clear': if(confirm('تفريغ السلة بالكامل؟')){state.cart=[];save(LS_CART,state.cart);render();} break;
+    case 'clear': if(confirm('تفريغ السلة بالكامل؟')){state.cart=[];saveCart_();render();} break;
     case 'submit': submitOrder(); break;
     case 'quote-cart': makeDoc(draftOrder(), 'order'); break;
     case 'ord-pdf':   withOrder(el,o=>makeDoc(mergeProducedFromTrack_(o),'order')); break;
@@ -4749,7 +4805,7 @@ document.addEventListener('click',e=>{
       const live = (state.track.rows||[]).find(r=>String(r.id)===String(o.id));
       if(isOrderLocked_(live)){ toast('الطلب دخل التنفيذ في المصنع، مينفعش يتعدّل دلوقتي'); return; }
       state.cart = JSON.parse(JSON.stringify(o.items));
-      save(LS_CART,state.cart);
+      saveCart_();
       enterEditMode_(o);
     }); break;
     case 'ord-del': {
@@ -4770,7 +4826,7 @@ document.addEventListener('click',e=>{
       // اللي بعده كان هياخد ملاحظة طلب حد تاني من غير ما الموزّع ياخد باله.
       state.editingId = null; state.editingMeta = null; state.editingDate = null;
       state.editingDisplayNo = null; state.editingEditCount = null; state.orderNote = '';
-      state.cart = []; save(LS_CART,state.cart);
+      state.cart = []; saveCart_();
       state.tab = wasAdmin ? 'admin' : 'orders'; render(); window.scrollTo({top:0,behavior:'smooth'});
       toast('اتلغى التعديل');
     } break;
@@ -5099,15 +5155,15 @@ function addDoor(){
       w:'',   // مقاس خاص مش متتبّع في المخزون
       frame:p.custom.frame||0, dbror:p.custom.dbror||'', frameHeight:p.custom.frameHeight?Number(p.custom.frameHeight):0,
       frameKind:customFrameKind, frameRodQty:customFrameKind==='rods'?(p.custom.frameRodQty||''):'', frameForDoors:customFrameKind==='rods'?(p.custom.frameForDoors||''):'',
-      note: [CUT_SERVICE_NOTE_,
-             customFrameKind==='rods' ? frameKindNote_('rods', p.custom.frameRodQty, p.custom.frameForDoors) : '',
+      // «خدمة قص» مابقتش ملحوظة — بقت بند مستقل بسعره تحت الباب (syncCutServiceLines_)
+      note: [customFrameKind==='rods' ? frameKindNote_('rods', p.custom.frameRodQty, p.custom.frameForDoors) : '',
              (p.note||'').trim()].filter(Boolean).join(' — '),
       doorHeight:0, hafr:!!p.custom.hafr, millEn:p.custom.hafr?'Carved':''
     });
     addedTxts.push(sizeTxt+' × '+qty);
   }
 
-  save(LS_CART,state.cart);
+  saveCart_();
   clearPulledLine_();
   toast('اتضاف للسلة: '+d.code+' — '+addedTxts.join('، '));
   // نلمّ الاختيارات ونقفل اللوحة عشان يختار باب تاني بارتياح
@@ -5215,7 +5271,7 @@ function addRod(kind){
     state.br.rods=1; state.br.lenM=BROR_ROD_M_DEFAULT;
   }
 
-  save(LS_CART,state.cart);
+  saveCart_();
   clearPulledLine_();
   toast(addedIsSet ? ('اتضاف '+added+' طقم حلق كامل') : ('اتضاف '+added+' عود'));
   render();
@@ -5238,7 +5294,7 @@ function addPanel(){
       titleEn: 'Prodium Panel'+(st.code?' - '+st.code:'')
     });
   }
-  save(LS_CART,state.cart);
+  saveCart_();
   clearPulledLine_();
   toast('اتضاف '+qty+' لوح بروديوم');
   state.pd={code:'', qty:1};
@@ -5255,7 +5311,7 @@ function addAccessories(){
     n+=q;
   });
   if(!n){toast('محددتش أي كميات');return;}
-  state.acc={}; save(LS_CART,state.cart); clearPulledLine_(); toast('اتضافت الإكسسوارات'); render();
+  state.acc={}; saveCart_(); clearPulledLine_(); toast('اتضافت الإكسسوارات'); render();
 }
 
 // تعديل صنف موجود في السلة: بنشيله من السلة ونفتحله شاشة الاختيار بنفس بياناته
@@ -5291,7 +5347,7 @@ function restorePulledLine_(silent){
   const { item, index, kind } = _pulledLine;
   _pulledLine = null;
   state.cart.splice(Math.min(index, state.cart.length), 0, item);
-  save(LS_CART, state.cart);
+  saveCart_();
   resetPickerFor_(kind);          // لازم تتصفّر مع الرجوع، وإلا الصنف بيتكرر
   if(!silent) toast('رجّعنا «'+(item.title||'الصنف')+'» للسلة — التعديل ما اتكملش');
   return true;
@@ -5305,7 +5361,7 @@ function editCartLine(i){
   restorePulledLine_(true);                      // لو فيه تعديل سابق ما اتكملش، رجّعه الأول
   _pulledLine = { item: JSON.parse(JSON.stringify(it)), index: i, kind: it.kind };
   state.cart.splice(i,1);
-  save(LS_CART,state.cart);
+  saveCart_();
 
   if(it.kind==='door'){
     const isHafr = !!it.hafr || /\(حفر\)|\(Carved\)/i.test((it.title||'')+(it.titleEn||''));
@@ -5418,7 +5474,7 @@ function adminEditOrderWith_(o, its){
     return { kind:'acc', id:it.code||it.title||'', title:arabicItemTitle_(it), titleEn:it.title||'',
              price, qty, unit:it.unit||'' };
   });
-  save(LS_CART,state.cart);
+  saveCart_();
 
   enterEditMode_(o, {
     date: o.date || isoLocal_(),
@@ -5473,7 +5529,7 @@ function importOrderText_(){
   const سليم = items.filter(it => it && it.kind && (Number(it.qty)||0) > 0);
   if(!سليم.length){ toast('الأصناف في النص ده مش مكتملة', 4000); return; }
   state.cart = JSON.parse(JSON.stringify(سليم));
-  save(LS_CART, state.cart);
+  saveCart_();
   if(data && data.profile){
     ['name','phone','region'].forEach(k=>{ if(data.profile[k]) state.profile[k] = data.profile[k]; });
     save(LS_PROFILE, state.profile);
@@ -5915,7 +5971,7 @@ function submitOrder(){
   // بتختلف عن اللي كان ظاهر. بنقصّ الاتنين على نفس الحد.
   const savedLocally = saveOrders_(state.orders);
   const wasAdminEdit = !!state.editingMeta;
-  state.cart=[]; save(LS_CART,state.cart); state.touched=false;
+  state.cart=[]; saveCart_(); state.touched=false;
   state.editingId=null; state.editingMeta=null; state.editingDate=null;
   state.editingDisplayNo=null; state.editingEditCount=null;
   state.customer={name:'',phone:''}; state.orderNote='';   // تصفير بيانات صاحب الأوردر للطلب الجاي
@@ -5999,7 +6055,7 @@ function doorWH_(sizeEn, doorHeight){
   return { w:'', h:'' };
 }
 
-function docRowHTML_(it, idx, priced, showFrameHCol, oddFrameW){
+function docRowHTML_(it, idx, priced, showFrameHCol, oddFrameW, titleTxt){
   let widthTxt='—', heightTxt='—', frameW='—', frameH='—', brorTxt='—', qty=it.qty, unit;
   if(it.kind==='door'){
     const wh = doorWH_(it.sizeEn, it.doorHeight);
@@ -6017,22 +6073,28 @@ function docRowHTML_(it, idx, priced, showFrameHCol, oddFrameW){
     if(unit==='—') unit='قطعة';
   }
   const pp = itemProdPending_(it);
+  const isCut = isCutLine_(it);
   // لو مقاس الحلق (البرور) في السطر ده مختلف عن باقي أسطر الطلب، نبرز الخلية دي
   // بخلفية تلفت النظر عشان المصنع ما يلخبطش بين حلق 15 وحلق 20 مثلًا في نفس الأوردر.
   const frameWStyle = oddFrameW
     ? 'background:#FFF3CD;color:#8A5A00;font-weight:700;border-radius:4px'
     : 'color:#5B6B7D';
-  return `<tr>
+  // «خدمة قص» بتتشال من نص الملحوظة هنا لأنها بقت صف مستقل تحت الصنف
+  const restNote = (it.kind==='door' && it.note)
+    ? it.note.split(' — ').filter(x=>x.trim() && x.trim()!==CUT_SERVICE_NOTE_).join(' — ')
+    : '';
+  return `<tr${isCut?' style="background:#FFF8E8"':''}>
     <td style="text-align:center">${idx}</td>
-    <td><b>${esc(it.title)}</b>${(it.kind==='door'&&it.note)?`<br><span style="font-size:12.5px;font-weight:700;color:#B3261E">${esc(it.note)}</span>`:''}</td>
+    <td><b>${esc(titleTxt||it.title)}</b>${restNote?`<br><span style="font-size:12.5px;font-weight:700;color:#B3261E">${esc(restNote)}</span>`:''}</td>
     <td style="text-align:center">${qty} ${esc(unit)}</td>
     <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(widthTxt)}</td>
     <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(heightTxt)}</td>
     <td style="text-align:center;font-size:11px;${frameWStyle}">${esc(frameW)}</td>
     ${showFrameHCol?`<td style="text-align:center;font-size:11px;color:${frameH==='استاندر'?'#8A6512':'#5B6B7D'}">${esc(frameH)}</td>`:''}
     <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(brorTxt)}</td>
-    <td style="text-align:center;font-size:11px;color:${pp.produced>=qty&&qty>0?'#1E8E52':(pp.produced>0?'#B8790A':'#6B7A8C')}">${pp.produced}</td>
-    <td style="text-align:center;font-size:11px;font-weight:700;color:${pp.pending>0?'#B3261E':'#6B7A8C'}">${pp.pending}</td>
+    ${isCut?`<td style="text-align:center;font-size:11px;color:#9AA7B4">—</td><td style="text-align:center;font-size:11px;color:#9AA7B4">—</td>`
+      :`<td style="text-align:center;font-size:11px;color:${pp.produced>=qty&&qty>0?'#1E8E52':(pp.produced>0?'#B8790A':'#6B7A8C')}">${pp.produced}</td>
+    <td style="text-align:center;font-size:11px;font-weight:700;color:${pp.pending>0?'#B3261E':'#6B7A8C'}">${pp.pending}</td>`}
     ${priced?`<td style="text-align:center">${money(it.kind==='door'?it.unitPrice:it.price)}</td>
     <td style="text-align:center;font-weight:700">${money(linePrice(it))}</td>`:''}
   </tr>`;
@@ -6069,6 +6131,13 @@ function docRows(o, priced, showFrameHCol){
   doorItems.forEach(it=>{ const k=doorSizeText_(it.sizeTxt,it.doorHeight)||''; (groups[k]=groups[k]||[]).push(it); });
   const order=sortSizeKeys_(Object.keys(groups));
 
+  // بنود «خدمة قص» بتتحط تحت مجموعة مقاسها على طول — عنوان البند فيه نفس نص
+  // المقاس، فبنطابق بيه. أي بند قص مالوش مجموعة (مقاس اتشال مثلًا) بينزل مع الباقي.
+  const cutFor={};
+  const cutItems = otherItems.filter(isCutLine_);
+  cutItems.forEach(it=>{ const k=cutLineLabel_(it); if(groups[k]) (cutFor[k]=cutFor[k]||[]).push(it); });
+  const restOther = otherItems.filter(it=>!isCutLine_(it) || !groups[cutLineLabel_(it)]);
+
   let n=0, rows='';
   order.forEach(k=>{
     rows += `<tr><td colspan="${colspan}" style="background:#F7E3D9;padding:6px 8px;font-weight:700;color:#8B3A22;font-size:11.5px;font-family:Arial,'Helvetica Neue',sans-serif">🚪 أبواب مقاس ${esc(k)}</td></tr>`;
@@ -6076,10 +6145,12 @@ function docRows(o, priced, showFrameHCol){
       const oddFrameW = dominantFrameW!=null && it.frame && String(it.frame)!==dominantFrameW;
       rows += docRowHTML_(it, ++n, priced, showFrameHCol, oddFrameW);
     });
+    // البند تحت مجموعة مقاسه — فالاسم المختصر كفاية، المقاس مكتوب في عنوان المجموعة
+    (cutFor[k]||[]).forEach(it=>{ rows += docRowHTML_(it, ++n, priced, showFrameHCol, false, CUT_SERVICE_NOTE_); });
   });
-  if(otherItems.length){
+  if(restOther.length){
     rows += `<tr><td colspan="${colspan}" style="background:#F3F6FA;padding:6px 8px;font-weight:700;color:#5B6B7D;font-size:11.5px;font-family:Arial,'Helvetica Neue',sans-serif">🔩 حلق / برور / إكسسوارات</td></tr>`;
-    otherItems.forEach(it=>{ rows += docRowHTML_(it, ++n, priced, showFrameHCol, false); });
+    restOther.forEach(it=>{ rows += docRowHTML_(it, ++n, priced, showFrameHCol, false); });
   }
   return rows;
 }
@@ -6098,8 +6169,10 @@ function docTotalsHTML(o){
     <div style="font-size:15px;font-weight:700;color:${c.text}">${perSize[k]}</div>
   </div>`; }).join('');
   const doorsTotal=keys.reduce((s,k)=>s+perSize[k],0);
-  const overallTotal=items.reduce((s,it)=>s+(Number(it.qty)||0),0);
-  const overallProduced=items.reduce((s,it)=>s+itemProdPending_(it).produced,0);
+  // «خدمة قص» بند فلوس مش قطعة تتقطع — مابتتعدّش في إجمالي القطع ولا في الجاهز/المتبقي
+  const counted=items.filter(it=>!isCutLine_(it));
+  const overallTotal=counted.reduce((s,it)=>s+(Number(it.qty)||0),0);
+  const overallProduced=counted.reduce((s,it)=>s+itemProdPending_(it).produced,0);
   const overallPending=overallTotal-overallProduced;
   // ⚠️ «الإجمالي الكلي» بيعدّ طقم الحلق كقطعة واحدة — وهو فعليًا ٣ عيدان.
   // المصنع بيقطّع على أساس الرقم ده، فسطر واحد ملخبط معناه خشب مقطوع غلط.
