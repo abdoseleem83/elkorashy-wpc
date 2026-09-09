@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v157';
+const APP_BUILD   = 'v158';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2620,10 +2620,21 @@ function toggleQtyEditMode_(o){
   render();
 }
 
+// هوية الصنف اللي بنعدّله — بتتبعت مع رقمه عشان السيرفر يتأكد إننا بنعدّل
+// نفس الصنف اللي إحنا شايفينه. لو حد تاني حذف أو ضاف صنف في نفس الطلب، ترتيب
+// الأصناف بيتغيّر والرقم لوحده كان بيوقّع التعديل على صنف تاني.
+function itemIdParams_(id, idx){
+  const it = (state.admin.items[id] || [])[idx];
+  if(!it) return '';
+  return '&itype=' + encodeURIComponent(it.type || '')
+       + '&icode=' + encodeURIComponent(it.code || '')
+       + '&isize=' + encodeURIComponent(it.size || '');
+}
+
 async function setItemAvail(id, idx, avail){
   return adminAction_({
     busyField:'itemBusy', busyKey:id+':'+idx, action:'setItemAvail',
-    params:'&id=' + encodeURIComponent(id) + '&idx=' + idx + '&avail=' + (avail?1:0),
+    params:'&id=' + encodeURIComponent(id) + '&idx=' + idx + '&avail=' + (avail?1:0) + itemIdParams_(id, idx),
     onOk(){
       const it = (state.admin.items[id]||[])[idx];
       if(it) it.avail = avail;
@@ -2653,7 +2664,7 @@ async function setItemQty_(id, idx, qty){
   const key = id+':'+idx;
   return adminAction_({
     busyField:'qtyBusy', busyKey:key, action:'setItemQty',
-    params:'&id=' + encodeURIComponent(id) + '&idx=' + idx + '&qty=' + encodeURIComponent(qty),
+    params:'&id=' + encodeURIComponent(id) + '&idx=' + idx + '&qty=' + encodeURIComponent(qty) + itemIdParams_(id, idx),
     onOk(d){
       const it = (state.admin.items[id]||[])[idx];
       if(it){ it.qty = d.qty; it.produced = d.produced; }
@@ -2668,7 +2679,7 @@ async function setItemQty_(id, idx, qty){
 async function deleteOrderItem_(id, idx){
   return adminAction_({
     busyField:'itemDelBusy', busyKey:id+':'+idx, action:'deleteOrderItem',
-    params:'&id=' + encodeURIComponent(id) + '&idx=' + idx,
+    params:'&id=' + encodeURIComponent(id) + '&idx=' + idx + itemIdParams_(id, idx),
     failMsg:'فشل الحذف', errPrefix:'تعذّر الحذف: ',
     onOk(d){
       if(state.admin.items[id]) state.admin.items[id].splice(idx,1);
@@ -2710,7 +2721,7 @@ async function setItemProduced(id, idx, produced){
   const key = id+':'+idx;
   return adminAction_({
     busyField:'prodBusy', busyKey:key, action:'setItemProduced',
-    params:'&id=' + encodeURIComponent(id) + '&idx=' + idx + '&produced=' + encodeURIComponent(produced),
+    params:'&id=' + encodeURIComponent(id) + '&idx=' + idx + '&produced=' + encodeURIComponent(produced) + itemIdParams_(id, idx),
     onOk(d){
       const it = (state.admin.items[id]||[])[idx];
       if(it) it.produced = d.produced;
