@@ -1,6 +1,6 @@
 // ⚠️ مهم: غيّر رقم النسخة دي في كل مرة ترفع تحديث جديد.
 // ده اللي بيخلي المتصفح يرمي الكاش القديم ويجيب الملفات الجديدة.
-const CACHE_VERSION = 'v159';
+const CACHE_VERSION = 'v160';
 const CACHE_NAME = 'elkorashy-wpc-' + CACHE_VERSION;
 // كاش منفصل للمكتبات الخارجية — مش بيتمسح مع كل تحديث للتطبيق، لأن روابطها فيها
 // رقم إصدار ثابت. لو كانت جوه الكاش العادي كانت هتتحمّل من النت من أول وجديد
@@ -16,8 +16,10 @@ const LIB_CACHE = 'elkorashy-libs-v1';
 //  • APP_SHELL  → في الكاش المرقّم، بيتجدّد مع كل نسخة (صغير: HTML + manifest)
 //  • STATIC     → في كاش دايم، بيتنزّل أول مرة بس، ومابيتمسحش مع التحديثات
 // لو غيّرت صورة فعلاً، زوّد ASSET_VERSION تحت عشان تتجدّد.
+// ⚠️ './' و './index.html' نفس الملف بالظبط (٣٩٠ كيلوبايت). تنزيل الاتنين
+// معناه نسخة زيادة على الفاضي أول مرة. سيبنا واحد بس، والرد الأوفلاين
+// بيرجّع './index.html' في الحالتين.
 const PRECACHE = [
-  './',
   './index.html',
   './manifest.json'
 ];
@@ -49,20 +51,32 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil((async () => {
     // ١) قشرة التطبيق — بتتجدّد إجباريًا مع كل نسخة
+    // ⚠️ index.html حجمه ~٣٩٠ كيلوبايت، والصفحة لسه نزّلته من ثانية عشان تشتغل.
+    //    تنزيله تاني هنا كان بيدفع نفس الحجم مرة تانية على بيانات المستخدم.
+    //    force-cache: خد نسخة المتصفح اللي لسه واصلة (وهي بالظبط النسخة الشغّالة
+    //    دلوقتي — وده الصح للنسخة الاحتياطية الأوفلاين)، ولو مش موجودة نزّلها.
     const shell = await caches.open(CACHE_NAME);
-    await Promise.all(PRECACHE.map(u =>
-      fetch(u, { cache: 'no-store' })
-        .then(r => (r && r.ok) ? shell.put(u, r) : null)
-        .catch(() => null)
-    ));
+    await Promise.all(PRECACHE.map(async u => {
+      try {
+        let r = await fetch(u, { cache: 'force-cache' });
+        if (!r || !r.ok) r = await fetch(u, { cache: 'no-store' });
+        if (r && r.ok) await shell.put(u, r);
+      } catch (e) {}
+    }));
 
     // ٢) الصور والأيقونات — بننزّل الناقص بس. اللي متخزّن خلاص بيتساب زي ما هو،
     //    فالتحديث العادي مابينزّلش ولا بايت صور.
+    // ⚠️ الصفحة بتنزّل نفس الصور دي وهي بتفتح، والـ install بيشتغل في نفس
+    //    الوقت — يعني كل صورة كانت بتتنزّل **مرتين** أول زيارة (حوالي ٣٥٠
+    //    كيلوبايت زيادة على بيانات الموبايل).
+    //    force-cache معناها: لو المتصفح نزّلها خلاص خدها من عنده، ومتسألش
+    //    الشبكة تاني. الأوفلاين لسه مضمون، والبيانات بقت النص.
     const assets = await caches.open(ASSET_CACHE);
     await Promise.all(STATIC.map(async u => {
       if (await assets.match(u)) return;             // موجود خلاص
       try {
-        const r = await fetch(u);
+        let r = await fetch(u, { cache: 'force-cache' });
+        if (!r || !r.ok) r = await fetch(u);          // مش في كاش المتصفح؟ نزّلها عادي
         if (r && r.ok) await assets.put(u, r);
       } catch (e) {}
     }));
@@ -73,6 +87,11 @@ self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     // امسح كل الكاشات القديمة بتاعة النسخ السابقة
     const keys = await caches.keys();
+    // فيه نسخة قديمة من التطبيق كانت شغّالة على الجهاز ده قبل كده؟
+    // بندوّر على كاش قشرة بنسخة **مختلفة** عن الحالية. (مانقدرش نسأل هل فيه
+    // أي كاش بتاعنا، لأن install نفسه بيكون عمل كاشات قبل ما نوصل هنا)
+    const كانت_فيه_نسخة_قديمة = keys.some(k =>
+      k.indexOf('elkorashy-wpc-') === 0 && k !== CACHE_NAME);
     await Promise.all(
       keys.filter(k => k.startsWith('elkorashy-') && k !== CACHE_NAME && k !== LIB_CACHE && k !== ASSET_CACHE)
           .map(k => caches.delete(k))
@@ -82,10 +101,16 @@ self.addEventListener('activate', (event) => {
 
     // اقفل/حدّث كل الصفحات المفتوحة عشان تشتغل بالكود الجديد على طول.
     // النسخ القديمة من index.html مش بتعرف تعمل reload لوحدها، فبنعملهولها احنا.
-    const clients = await self.clients.matchAll({ type: 'window' });
-    clients.forEach(client => {
-      if ('navigate' in client) client.navigate(client.url).catch(() => {});
-    });
+    //
+    // ⚠️ بس ده لازم يحصل مع **التحديث** بس. أول مرة يتفتح فيها التطبيق مافيش
+    // كود قديم أصلًا، وكنا برضه بنعمل reload — يعني الصفحة بتتبني مرتين وكل
+    // فحوصات البداية بتتنفّذ مرتين، والمستخدم شايف رمشة وقت الفتح الأول.
+    if (كانت_فيه_نسخة_قديمة) {
+      const clients = await self.clients.matchAll({ type: 'window' });
+      clients.forEach(client => {
+        if ('navigate' in client) client.navigate(client.url).catch(() => {});
+      });
+    }
   })());
 });
 
