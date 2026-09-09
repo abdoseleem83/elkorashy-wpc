@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v161';
+const APP_BUILD   = 'v162';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2423,7 +2423,8 @@ async function loadTrack(){
   state.track.loading = true; state.track.err = ''; render();
   try{
     const phone = String(state.profile.phone||'').trim();
-    const d = await jsonp(APPS_SCRIPT_URL + '?action=list&phone=' + encodeURIComponent(phone));
+    const d = await jsonp(APPS_SCRIPT_URL + '?action=list&dev=' + encodeURIComponent(deviceId_())
+      + '&phone=' + encodeURIComponent(phone));
     if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
     state.track.rows = d.orders || [];
     state.track.at = Date.now();
@@ -5582,7 +5583,10 @@ async function sendOrderToServer_(o){
   // بتتحوّل لـ %XX%XX في الرابط، يعني بتتضخّم 3 أضعاف تقريبًا. فطلب طوله 5999 حرف
   // كان بيوصل لرابط ~18000 حرف — أطول من اللي المتصفح وApps Script بيقبلوه، فبيفشل.
   // بنقيس الرابط النهائي نفسه دلوقتي، وبنسيب هامش أمان تحت الحد المتعارف عليه (8000).
-  const jsonpUrl = APPS_SCRIPT_URL + '?action=newOrder&payload=' + encodeURIComponent(payload);
+  // معرّف الجهاز بيتبعت مع الطلب عشان حدود الاستخدام على السيرفر تبقى لكل
+  // جهاز لوحده — من غيره كل الأجهزة بتتحاسب على دلو واحد مشترك.
+  const jsonpUrl = APPS_SCRIPT_URL + '?action=newOrder&dev=' + encodeURIComponent(deviceId_())
+                 + '&payload=' + encodeURIComponent(payload);
   if(jsonpUrl.length < 7500){
     try{
       const d = await jsonp(jsonpUrl);
@@ -5607,7 +5611,7 @@ async function sendOrderToServer_(o){
   try{
     await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({action:'newOrder',order:o})});
+      body:JSON.stringify({action:'newOrder', dev:deviceId_(), order:o})});
   }catch(err){ return false; }
   return await verifyOrderArrived_(o);
 }
@@ -5620,7 +5624,8 @@ async function verifyOrderArrived_(o, tries){
   for(let i = 0; i < مرات; i++){
     await new Promise(r=>setTimeout(r, 1500 * (i + 1)));
     try{
-      const d = await jsonp(APPS_SCRIPT_URL + '?action=list&phone=' + encodeURIComponent(o.phone||''));
+      const d = await jsonp(APPS_SCRIPT_URL + '?action=list&dev=' + encodeURIComponent(deviceId_())
+        + '&phone=' + encodeURIComponent(o.phone||''));
       if(d && d.ok){
         const hit = (d.orders||[]).find(r=>String(r.id)===String(o.id));
         if(hit){
@@ -5753,7 +5758,8 @@ function savePendingCancel_(info){
 }
 async function cancelOldOrder_(info){
   try{
-    const d = await jsonp(APPS_SCRIPT_URL + '?action=cancelOrder&id=' + encodeURIComponent(info.prevId)
+    const d = await jsonp(APPS_SCRIPT_URL + '?action=cancelOrder&dev=' + encodeURIComponent(deviceId_())
+      + '&id=' + encodeURIComponent(info.prevId)
       + '&phone=' + encodeURIComponent(info.phone||'')
       + '&newId=' + encodeURIComponent(info.newId)
       + (info.admin ? admParams_() : ''));

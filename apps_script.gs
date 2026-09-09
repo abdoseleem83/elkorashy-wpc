@@ -257,6 +257,65 @@ function adminPwError_() {
 }
 
 /* ============================================================
+   حدود الاستخدام (حماية من العبث)
+   ============================================================
+   المسارات دي مفتوحة من غير كلمة سر عن قصد — الموزّع لازم يقدر يبعت طلب
+   ويتابعه من غير ما يحفظ كلمة سر. بس ده معناه إن أي حد معاه الرابط يقدر:
+     • يغرق الشيت بطلبات وهمية
+     • يجرّب أرقام موبايل واحد ورا التاني لحد ما يلاقي طلبات ويلغيها
+   الحدود دي بتخلّي العبث ده غير عملي، وواسعة كفاية إن الاستخدام الحقيقي
+   (حتى لو الموزّع بعت عشر طلبات ورا بعض، أو طابور الانتظار فضّى نفسه)
+   عمره ما يوصلها.
+   ============================================================ */
+var RATE_LIMITS_ = {
+  newOrder:    { limit: 40,  window: 600 },   // ٤٠ طلب في ١٠ دقايق للجهاز
+  listPhone:   { limit: 120, window: 600 },   // ١٢٠ استعلام في ١٠ دقايق
+  cancelOrder: { limit: 20,  window: 600 }    // ٢٠ إلغاء في ١٠ دقايق
+};
+
+// معرّف الجهاز اللي التطبيق بيبعته. لو مش موجود بنستعمل دلو مشترك بحد أوسع
+// عشان ما نقفلش على ناس بسبب نسخة قديمة من التطبيق مش بتبعت المعرّف.
+function rateKey_(kind, devId) {
+  var dev = String(devId || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40);
+  return 'rl_' + kind + '_' + (dev || 'shared');
+}
+
+// بترجّع true لو مسموح، false لو الجهاز عدّى الحد.
+function rateOk_(kind, devId) {
+  try {
+    var conf = RATE_LIMITS_[kind];
+    if (!conf) return true;
+    var dev = String(devId || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40);
+    var limit = dev ? conf.limit : conf.limit * 5;   // الدلو المشترك أوسع
+    var cache = CacheService.getScriptCache();
+    var key = rateKey_(kind, devId);
+    var n = Number(cache.get(key) || 0) + 1;
+    cache.put(key, String(n), conf.window);
+    return n <= limit;
+  } catch (e) { return true; }   // الكاش مش متاح؟ ما نوقفش الشغل
+}
+
+var RATE_MSG_ = 'محاولات كتير في وقت قصير — استنى شوية وجرّب تاني';
+
+// فحص شكل الطلب قبل ما يتكتب في الشيت. الهدف: طلب مشوّه أو ضخم مايبوّظش
+// الشيت ولا ياكل وقت التنفيذ.
+var MAX_ITEMS_ = 300;          // أكبر طلب حقيقي عندنا كان ١٥ صنف
+var MAX_TEXT_  = 500;          // أطول نص معقول في أي خانة
+function orderShapeError_(o) {
+  if (!o || typeof o !== 'object') return 'بيانات الطلب مش مقروءة';
+  if (!o.id || String(o.id).length > 60) return 'كود الطلب مش صحيح';
+  var items = o.items;
+  if (!items || !items.length) return 'الطلب مفيهوش أصناف';
+  if (items.length > MAX_ITEMS_) return 'عدد الأصناف أكبر من المسموح';
+  var fields = ['name', 'phone', 'region', 'customer', 'note', 'customerPhone'];
+  for (var i = 0; i < fields.length; i++) {
+    var v = o[fields[i]];
+    if (v != null && String(v).length > MAX_TEXT_) return 'حقل «' + fields[i] + '» أطول من المسموح';
+  }
+  return '';
+}
+
+/* ============================================================
    استقبال الطلب من التطبيق
    ============================================================ */
 function doPost(e) {
@@ -270,6 +329,9 @@ function doPost(e) {
     if (body.action !== 'newOrder' || !body.order) {
       return json({ ok: false, error: 'Unknown action' });
     }
+    if (!rateOk_('newOrder', body.dev)) return json({ ok: false, error: RATE_MSG_ });
+    var shapeErr = orderShapeError_(body.order);
+    if (shapeErr) return json({ ok: false, error: shapeErr });
 
     var saved = saveOrder_(body.order);
     return json({ ok: true, id: body.order.id, displayNo: saved.displayNo, editCount: saved.editCount });
@@ -301,7 +363,9 @@ function doGet(e) {
       try {
         lockNO.waitLock(20000);
         var orderNO = JSON.parse(String(e.parameter.payload || '{}'));
-        if (!orderNO || !orderNO.id) return reply({ ok: false, error: 'بيانات الطلب ناقصة' }, cb);
+        if (!rateOk_('newOrder', e.parameter.dev)) return reply({ ok: false, error: RATE_MSG_ }, cb);
+        var shapeErrNO = orderShapeError_(orderNO);
+        if (shapeErrNO) return reply({ ok: false, error: shapeErrNO }, cb);
         var savedNO = saveOrder_(orderNO);
         return reply({ ok: true, id: orderNO.id, displayNo: savedNO.displayNo, editCount: savedNO.editCount }, cb);
       } catch (errNO) {
@@ -373,8 +437,12 @@ function doGet(e) {
     if (action === 'list') {
       var isAdmin;
       if (e.parameter.phone) {
-        // مستخدم عادي بيجيب طلباته هو برقم موبايله — مفيش داعي لأي تحقق باسورد أو تقييد محاولات
+        // مستخدم عادي بيجيب طلباته هو برقم موبايله — مفيش كلمة سر، بس فيه حد
+        // للمحاولات عشان حد ما يقعدش يجرّب أرقام واحد ورا التاني
         isAdmin = isAdminPwQuiet_(e.parameter.pw);
+        if (!isAdmin && !rateOk_('listPhone', e.parameter.dev)) {
+          return reply({ ok: false, error: RATE_MSG_ }, cb);
+        }
       } else {
         // مفيش رقم موبايل = محاولة دخول شاشة المصنع؛ لازم تعدي بوابة الحماية من التخمين
         if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) return reply({ ok: false, error: adminPwError_() }, cb);
@@ -671,6 +739,9 @@ function doGet(e) {
         if (rCO < 0) return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
 
         var isAdminCO = isAdminPwQuiet_(e.parameter.pw);   // المستخدم العادي بيلغي طلبه برقم موبايله، مش بكلمة سر
+        if (!isAdminCO && !rateOk_('cancelOrder', e.parameter.dev)) {
+          return reply({ ok: false, error: RATE_MSG_ }, cb);
+        }
         if (!isAdminCO) {
           var ownerPhoneCO = digitsOnly_(shCO.getRange(rCO, 5).getValue() || '');   // digitsOnly_ بتشيل الفاصلة العليا كمان
           var reqPhoneCO = digitsOnly_(e.parameter.phone || '');
