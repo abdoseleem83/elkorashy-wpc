@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v174';
+const APP_BUILD   = 'v175';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -5898,8 +5898,27 @@ async function syncOrder_(o){
    بنسجّل نية الحذف وننفّذها أول ما يوصل. طلب قديم أحسن من ولا طلب. */
 function loadPendingCancels_(){ return load(LS_PENDING_CANCEL, []); }
 function savePendingCancel_(info){
-  const list = loadPendingCancels_().filter(c=>String(c.newId)!==String(info.newId));
+  // ⚠️ الفلترة كانت بالـnewId لوحده — يعني تعديل ورا تعديل والنت واقع كان
+  // بيمسح النية المنقولة (أ→ج) وهو بيسجّل (ب→ج)، والطلب الأصلي يفضل عند
+  // المصنع. المفتاح لازم يكون الاتنين مع بعض.
+  const list = loadPendingCancels_().filter(c=>
+    !(String(c.newId)===String(info.newId) && String(c.prevId)===String(info.prevId)));
   list.push(info); save(LS_PENDING_CANCEL, list);
+}
+// ⚠️ باج كان هنا: الموزّع يعدّل الطلب مرتين والنت واقع.
+//   أ → ب: ب ما وصلش، فالنية «ألغي أ لما ب يوصل» بتتسجّل.
+//   ب → ج: ب بيتشال من الجهاز خالص لأنه اتبدل، يعني عمره ما هيوصل ولا هيتبعت.
+// النتيجة إن نية إلغاء «أ» بتفضل مستنية طلب مش هييجي أبدًا — والمصنع يفضل
+// شايف الطلب الأصلي أ جنب الجديد ج. طلب مكرر في الورشة.
+// الحل: النية بتتنقل للطلب الجديد. أ لسه محتاج يتلغي، بس دلوقتي لما ج يوصل.
+function transferPendingCancel_(oldNewId, newNewId){
+  const list = loadPendingCancels_();
+  let غيّرنا = false;
+  list.forEach(c=>{
+    if(String(c.newId) === String(oldNewId)){ c.newId = newNewId; غيّرنا = true; }
+  });
+  if(غيّرنا) save(LS_PENDING_CANCEL, list);
+  return غيّرنا;
 }
 async function cancelOldOrder_(info){
   try{
@@ -5922,13 +5941,19 @@ async function cancelOldOrder_(info){
   }
 }
 // بيتنادى بعد ما طلب معلّق يوصل المصنع بنجاح: دلوقتي بس ينفع نمسح القديم
+// ⚠️ كانت بتنفّذ أول نية بس. بعد ما بقى ينفع أكتر من طلب قديم يستنّى نفس
+// الطلب الجديد (تعديل ورا تعديل والنت واقع)، لازم تنفّذهم كلهم — وتشيل اللي
+// نجح بس، عشان اللي فشل يتحاول تاني.
 async function runPendingCancelFor_(newId){
-  const list = loadPendingCancels_();
-  const hit = list.find(c=>String(c.newId)===String(newId));
-  if(!hit) return;
-  if(await cancelOldOrder_(hit)){
-    save(LS_PENDING_CANCEL, loadPendingCancels_().filter(c=>String(c.newId)!==String(newId)));
+  const hits = loadPendingCancels_().filter(c=>String(c.newId)===String(newId));
+  if(!hits.length) return;
+  const نجح = [];
+  for(const hit of hits){
+    if(await cancelOldOrder_(hit)) نجح.push(String(hit.prevId));
   }
+  if(!نجح.length) return;
+  save(LS_PENDING_CANCEL, loadPendingCancels_().filter(c=>
+    !(String(c.newId)===String(newId) && نجح.indexOf(String(c.prevId))>-1)));
 }
 
 // بيحاول يبعت أي طلبات فشل إرسالها قبل كده — بيتنادى عند فتح التطبيق وعند رجوع النت
@@ -6006,6 +6031,10 @@ function submitOrder(){
   o.msg=buildMessage(o);
 
   if(wasEditing){
+    // ⚠️ لو الطلب اللي بنعدّله هو نفسه لسه ما وصلش المصنع، يبقى فيه نية إلغاء
+    // مستنياه — ونيته دي هتفضل مستنية طلب مش هييجي أبدًا (لأنه بيتشال دلوقتي).
+    // بننقلها للطلب الجديد عشان الطلب الأصلي القديم مايفضلش عند المصنع.
+    transferPendingCancel_(prevId, o.id);
     // التعديل بيلغي الطلب القديم بدل ما يحدّثه في مكانه — وبيعمل طلب جديد مستقل بالأصناف المعدّلة
     markDeleted_(prevId);                       // اتلغى بالتعديل — الدمج مايرجّعهوش
     state.orders = state.orders.filter(x=>String(x.id)!==String(prevId));
@@ -6056,6 +6085,9 @@ function submitOrder(){
       // القديم مايتمسحش غير لما الجديد يتأكد وصوله بالظبط.
       if(sent !== true){ savePendingCancel_(cancelInfo); return; }   // لسه ما وصلش — سيب القديم
       await cancelOldOrder_(cancelInfo);
+      // ولو كانت فيه نية إلغاء اتنقلت للطلب ده (تعديل ورا تعديل والنت واقع)،
+      // دلوقتي بعد ما وصل بقى ينفع تتنفّذ.
+      await runPendingCancelFor_(o.id);
     })();
   } else if(!wasAdminEdit){
     shareOrderImage(o);
