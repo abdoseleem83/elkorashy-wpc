@@ -653,9 +653,10 @@ function doGet(e) {
         rowIQ[12] = unitPriceIQ * newQtyIQ;                // Line Total
         rowIQ[COL_ITEM_PRODUCED - 1] = producedIQ;
         rowRngIQ.setValues([rowIQ]);
-        syncCutRows_(shIQ, idIQ);          // كمية بند القص تمشي مع كمية الباب
+        var cutIQ = syncCutRows_(shIQ, idIQ);   // كمية بند القص تمشي مع كمية الباب
         var totalsIQ = recomputeOrderTotals_(idIQ);
-        return reply({ ok: true, qty: newQtyIQ, produced: producedIQ, totals: totalsIQ }, cb);
+        return reply({ ok: true, qty: newQtyIQ, produced: producedIQ, totals: totalsIQ,
+                       cutChanged: cutIQ > 0 }, cb);
       } finally {
         try { lockIQ.releaseLock(); } catch (eIQ) {}
       }
@@ -693,9 +694,9 @@ function doGet(e) {
         if (stkDI && orderStatus_(idDI) !== 'Delivered') adjustStockForItems_([stkDI], +1);
 
         shDI.deleteRow(foundDI);
-        syncCutRows_(shDI, idDI);          // بند القص يتشال/ينقص مع الباب
+        var cutDI = syncCutRows_(shDI, idDI);   // بند القص يتشال/ينقص مع الباب
         var totalsDI = recomputeOrderTotals_(idDI);
-        return reply({ ok: true, totals: totalsDI }, cb);
+        return reply({ ok: true, totals: totalsDI, cutChanged: cutDI > 0 }, cb);
       } finally {
         try { lockDI.releaseLock(); } catch (eDI) {}
       }
@@ -1192,10 +1193,14 @@ function doorRowNeedsCut_(size, doorHeight) {
 function cutRowKey_(size, doorHeight) {
   return String(size || '') + '|' + (Number(doorHeight) || '');
 }
+// بترجّع عدد السطور اللي اتغيّرت — التطبيق محتاج يعرف عشان يرمي نسخته
+// المحفوظة من أصناف الطلب. من غير كده أرقام الأصناف عنده بتبقى مزحلقة عن
+// الشيت، وأول تعديل بعد كده بيوقع على الصنف الغلط (ITEM_MOVED_ERR_).
 function syncCutRows_(shI, id) {
+  var changed = 0;
   var got = itemRowsFor_(shI, id);
   var rows = got.rows, rowNums = got.rowNums;   // rowNums = رقم كل سطر في الشيت
-  if (!rows.length) return;
+  if (!rows.length) return 0;
 
   var need = {}, total = 0, cutRows = [];
   for (var i = 0; i < rows.length; i++) {
@@ -1209,7 +1214,7 @@ function syncCutRows_(shI, id) {
     need[k] = (need[k] || 0) + qty;
     total += qty;
   }
-  if (!cutRows.length) return;
+  if (!cutRows.length) return 0;
 
   // بنمسح من تحت لفوق عشان أرقام السطور ما تزحلقش
   for (var j = cutRows.length - 1; j >= 0; j--) {
@@ -1221,10 +1226,12 @@ function syncCutRows_(shI, id) {
     var cur = Number(c.row[10]) || 0;
     if (want === cur) continue;
     var rowNo = rowNums[c.i];
-    if (want <= 0) { shI.deleteRow(rowNo); continue; }
+    if (want <= 0) { shI.deleteRow(rowNo); changed++; continue; }
     var price = Number(c.row[11]) || 0;
     shI.getRange(rowNo, 11, 1, 3).setValues([[want, price, price * want]]);   // Qty / Unit Price / Line Total
+    changed++;
   }
+  return changed;
 }
 
 function recomputeOrderTotals_(id) {
