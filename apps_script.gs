@@ -28,6 +28,7 @@
 
 // كود بند «خدمة قص» — بند تسعير بيتحسب في الفلوس بس، مش في عدد القطع
 var CUT_SERVICE_CODE_ = 'CUT';
+var DOOR_STD_HEIGHT_ = 215;   // الارتفاع الاستاندر — أي ارتفاع غيره معناه قص
 var SHEET_ORDERS = 'Orders';
 var SHEET_ITEMS  = 'Order_Items';
 var SHEET_ERRORS = 'Errors';
@@ -652,6 +653,7 @@ function doGet(e) {
         rowIQ[12] = unitPriceIQ * newQtyIQ;                // Line Total
         rowIQ[COL_ITEM_PRODUCED - 1] = producedIQ;
         rowRngIQ.setValues([rowIQ]);
+        syncCutRows_(shIQ, idIQ);          // كمية بند القص تمشي مع كمية الباب
         var totalsIQ = recomputeOrderTotals_(idIQ);
         return reply({ ok: true, qty: newQtyIQ, produced: producedIQ, totals: totalsIQ }, cb);
       } finally {
@@ -691,6 +693,7 @@ function doGet(e) {
         if (stkDI && orderStatus_(idDI) !== 'Delivered') adjustStockForItems_([stkDI], +1);
 
         shDI.deleteRow(foundDI);
+        syncCutRows_(shDI, idDI);          // بند القص يتشال/ينقص مع الباب
         var totalsDI = recomputeOrderTotals_(idDI);
         return reply({ ok: true, totals: totalsDI }, cb);
       } finally {
@@ -1136,7 +1139,7 @@ function saveOrder_(o) {
       type,
       it.titleEn || it.title || '',            // النسخة الإنجليزية أولاً
       it.code || '',
-      isDoor ? (it.sizeEn || it.sizeTxt || '') : (isRod ? (it.spec || '') : ''),
+      isDoor ? (it.sizeEn || it.sizeTxt || '') : (it.spec || ''),
       isDoor ? [ (it.frame ? it.frame + ' cm frame' + (it.frameHeight ? ' (h:' + it.frameHeight + 'cm)' : '') : ''),
                  (it.dbror ? 'bror ' + it.dbror : '') ]
                .filter(function(x){ return x; }).join(' + ')
@@ -1152,7 +1155,7 @@ function saveOrder_(o) {
       isDoor ? (it.frameHeight || '') : '',
       isDoor ? (it.w || '') : '',
       0,   // Produced Qty — يبدأ صفر لكل صنف جديد، وبيتحدّث بعدين من شاشة المصنع
-      isDoor ? (it.doorHeight || '') : '',
+      (isDoor || String(it.code||'') === CUT_SERVICE_CODE_) ? (it.doorHeight || '') : '',
       isRod ? (it.doorW || '') : '',      // الحلق/البرور ده لباب مقاس كام (اختياري)
       sanitizeCell_(it.note || '')         // ملاحظة حرة على الصنف (اختياري)
     ]);
@@ -1176,6 +1179,54 @@ function saveOrder_(o) {
 // بيرجّع رصيد أصناف طلب (قبل ما سطوره تتمسح) — بتتنادى من cancelOrder و deleteOrder
 // بيعيد حساب إجماليات طلب (الكمية / عدد العيدان / المبلغ الكلي) من سطور Order_Items بتاعته
 // ويحدّثهم في سطر الطلب بتبويب Orders — بتتنادى بعد أي تعديل يدوي على كمية/حذف صنف من شاشة المصنع
+// ⚠️ بند «خدمة قص» كميته مربوطة بأبواب المقاس الخاص/الارتفاع غير الاستاندر.
+// المصنع بيقدر يحذف باب أو ينقّص كميته من شاشته — والبند كان بيفضل بكميته
+// القديمة، يعني العميل بيدفع قص لأبواب مش موجودة. الدالة دي بتعيد ضبط كمية
+// بنود القص من الأبواب الموجودة فعليًا في الطلب، وبتمسح البند لو مبقاش ليه
+// أبواب. بتتنادى بعد أي تعديل كمية أو حذف صنف.
+function doorRowNeedsCut_(size, doorHeight) {
+  if (/\(custom\)/i.test(String(size || ''))) return true;
+  var h = Number(doorHeight) || 0;
+  return !!h && h !== DOOR_STD_HEIGHT_;
+}
+function cutRowKey_(size, doorHeight) {
+  return String(size || '') + '|' + (Number(doorHeight) || '');
+}
+function syncCutRows_(shI, id) {
+  var got = itemRowsFor_(shI, id);
+  var rows = got.rows, rowNums = got.rowNums;   // rowNums = رقم كل سطر في الشيت
+  if (!rows.length) return;
+
+  var need = {}, total = 0, cutRows = [];
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var type = String(r[3] || '');
+    var qty = Number(r[10]) || 0;
+    if (String(r[5] || '') === CUT_SERVICE_CODE_) { cutRows.push({ i: i, row: r }); continue; }
+    if (type !== 'Door') continue;
+    if (!doorRowNeedsCut_(r[6], r[19])) continue;
+    var k = cutRowKey_(r[6], r[19]);
+    need[k] = (need[k] || 0) + qty;
+    total += qty;
+  }
+  if (!cutRows.length) return;
+
+  // بنمسح من تحت لفوق عشان أرقام السطور ما تزحلقش
+  for (var j = cutRows.length - 1; j >= 0; j--) {
+    var c = cutRows[j];
+    var key = cutRowKey_(c.row[6], c.row[19]);
+    var want = need.hasOwnProperty(key) ? need[key]
+             : (cutRows.length === 1 ? total : null);   // بند قديم من غير مقاس
+    if (want === null) continue;                        // مش قادرين نحدد — مانلمسهوش
+    var cur = Number(c.row[10]) || 0;
+    if (want === cur) continue;
+    var rowNo = rowNums[c.i];
+    if (want <= 0) { shI.deleteRow(rowNo); continue; }
+    var price = Number(c.row[11]) || 0;
+    shI.getRange(rowNo, 11, 1, 3).setValues([[want, price, price * want]]);   // Qty / Unit Price / Line Total
+  }
+}
+
 function recomputeOrderTotals_(id) {
   var shI = sheet_(SHEET_ITEMS, HEAD_ITEMS);
   var qty = 0, rods = 0, total = 0;

@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v171';
+const APP_BUILD   = 'v172';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -885,8 +885,14 @@ function syncCutServiceLines_(){
   Object.keys(need).forEach(label=>{
     const title = cutServiceTitle_(label);
     const prev = prevByTitle[title];
+    // spec/doorHeight بيمشوا مع البند للسيرفر عشان يعرف البند ده تبع أنهي
+    // مقاس باب — من غيرهم لو المصنع حذف باب أو نقّص كميته، بند القص بيفضل
+    // بكميته القديمة والعميل بيدفع قص لأبواب مش موجودة.
+    const أول = (state.cart||[]).find(it=>doorNeedsCut_(it) &&
+      (doorSizeText_(it.sizeTxt, it.doorHeight)||'')===label) || {};
     kept.push({ kind:'acc', id:CUT_SERVICE_CODE_, code:CUT_SERVICE_CODE_,
                 title, titleEn:title, unit:'باب', qty:need[label],
+                spec: أول.sizeEn || '', doorHeight: أول.doorHeight || '',
                 price: prev ? (Number(prev.price)||0) : CUSTOM_EXTRA });
   });
   state.cart = kept;
