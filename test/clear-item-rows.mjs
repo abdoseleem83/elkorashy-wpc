@@ -58,5 +58,34 @@ function شغّل(معرفات, id){
   check('طلب ٢٠ سطر: نداء واحد بدل ٢٠', r.باقي.join('')==='AC' && r.نداءات===1,
     'باقي='+r.باقي.join('')+' نداءات='+r.نداءات);
 }
+// ═══ مسح أصناف كذا طلب مرة واحدة (زرار «مسح المسلّم») ═══
+const srcMany = /function clearItemRowsMany_\(sh, ids\) \{[\s\S]*?\n\}/.exec(gs);
+check('لقينا دالة المسح المجمّع', !!srcMany);
+function شغّل_مجمّع(معرفات, ids){
+  const { sh, st } = شيت(معرفات);
+  const ctx = { sh, ids, String, Number, Object };
+  vm.createContext(ctx);
+  vm.runInContext(srcMany[0] + '\nclearItemRowsMany_(sh, ids);', ctx);
+  return { باقي: st.rows.slice(1), نداءات: st.نداءات };
+}
+{
+  const r = شغّل_مجمّع(['A','A','B','C','C','D'], ['A','C']);
+  check('بيمسح أصناف كل الطلبات المطلوبة', r.باقي.join('')==='BD', r.باقي.join(''));
+  check('بنداءين بس (كتلتين)', r.نداءات===2, 'نداءات='+r.نداءات);
+}
+{
+  // ١٠٠ طلب مسلّم × ٣ أصناف، كلهم ورا بعض
+  const معرفات = [];
+  for(let i=0;i<100;i++){ معرفات.push('D'+i,'D'+i,'D'+i); }
+  معرفات.push('KEEP');
+  const r = شغّل_مجمّع(معرفات, Array.from({length:100},(_,i)=>'D'+i));
+  check('١٠٠ طلب متجاورين = نداء واحد بدل ٣٠٠', r.باقي.join('')==='KEEP' && r.نداءات===1,
+    'باقي='+r.باقي.join('')+' نداءات='+r.نداءات);
+}
+{
+  const r = شغّل_مجمّع(['A','B'], []);
+  check('من غير معرّفات = مفيش مسح', r.باقي.join('')==='AB' && r.نداءات===0);
+}
+
 console.log(`\nالنتيجة: ${pass} نجحت، ${fail} فشلت`);
 process.exit(fail?1:0);

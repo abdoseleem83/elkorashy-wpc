@@ -507,8 +507,22 @@ function doGet(e) {
           shOM.getRange(rOM, COL_CUSTOMER).setValue(sanitizeCell_(e.parameter.customer || ''));
         }
         if (e.parameter.date) {
-          var dOM = new Date(String(e.parameter.date) + 'T00:00:00');
-          if (!isNaN(dOM.getTime())) shOM.getRange(rOM, 2).setValue(Utilities.formatDate(dOM, TZ, 'yyyy-MM-dd'));
+          // ⚠️ كان بيعمل new Date('2026-09-08T00:00:00') وبعدين يفرمته بتوقيت
+          // القاهرة. لكن new Date على نص بيتقري **بتوقيت مشروع الأبس سكريبت**،
+          // اللي مش بالضرورة توقيت القاهرة. لو توقيت المشروع مقدّم عن القاهرة
+          // (مثلاً طوكيو) التاريخ كان بيرجع يوم لورا: المصنع يكتب ٨/٩ ويتخزّن ٧/٩.
+          // التاريخ أصلًا جايلنا بالشكل الصح (yyyy-MM-dd)، فبنتأكد من شكله
+          // وبنكتبه زي ما هو — من غير أي تحويل توقيت.
+          var dTxtOM = String(e.parameter.date).trim();
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(dTxtOM)) {
+            return reply({ ok: false, error: 'شكل التاريخ مش صحيح' }, cb);
+          }
+          var pOM = dTxtOM.split('-');
+          var mOM = Number(pOM[1]), dayOM = Number(pOM[2]);
+          if (mOM < 1 || mOM > 12 || dayOM < 1 || dayOM > 31) {
+            return reply({ ok: false, error: 'شكل التاريخ مش صحيح' }, cb);
+          }
+          shOM.getRange(rOM, 2).setValue(dTxtOM);
         }
         return reply({ ok: true, id: e.parameter.id,
           customer: shOM.getRange(rOM, COL_CUSTOMER).getValue(),
@@ -722,16 +736,22 @@ function doGet(e) {
         var deletedIds = [];
         if (lastDD >= 2) {
           var valsDD = shDD.getRange(2, 1, lastDD - 1, HEAD_ORDERS.length).getValues();
-          // من الآخر للأول عشان مسح صف ميغيّرش أرقام الصفوف اللي لسه هنمسحها
-          for (var iDD = valsDD.length - 1; iDD >= 0; iDD--) {
-            if (String(valsDD[iDD][COL_STATUS - 1]) === 'Delivered') {
+          // من الآخر للأول عشان مسح صف ميغيّرش أرقام الصفوف اللي لسه هنمسحها،
+          // وبالكتل المتجاورة بدل صف صف (نداء واحد بدل عشرات)
+          var iDD = valsDD.length - 1;
+          while (iDD >= 0) {
+            if (String(valsDD[iDD][COL_STATUS - 1]) !== 'Delivered') { iDD--; continue; }
+            var endDD = iDD;
+            while (iDD >= 0 && String(valsDD[iDD][COL_STATUS - 1]) === 'Delivered') {
               deletedIds.push(String(valsDD[iDD][0]));
-              shDD.deleteRow(iDD + 2);
+              iDD--;
             }
+            var startDD = iDD + 1;
+            shDD.deleteRows(startDD + 2, endDD - startDD + 1);
           }
         }
         var shIDD = sheet_(SHEET_ITEMS, HEAD_ITEMS);
-        deletedIds.forEach(function (idDD) { clearItemRows_(shIDD, idDD); });
+        if (deletedIds.length) clearItemRowsMany_(shIDD, deletedIds);
         return reply({ ok: true, count: deletedIds.length, ids: deletedIds }, cb);
       } finally {
         try { lockDD.releaseLock(); } catch (eDD) {}
@@ -1344,6 +1364,26 @@ function itemRowsForMany_(sh, ids){
     }
   }
   return out;
+}
+
+// مسح أصناف أكتر من طلب في مرور واحد.
+// ⚠️ زرار «مسح المسلّم» كان بينده clearItemRows_ لكل طلب لوحده — يعني قراية
+// لعمود المعرّف لكل طلب. مع ١٠٠ طلب مسلّم دي ١٠٠ قراية + مسح، وممكن توصل
+// لحد وقت التنفيذ في جوجل ويقف نص الشغل. دلوقتي: قراية واحدة ومسح بالكتل.
+function clearItemRowsMany_(sh, ids) {
+  var want = {};
+  for (var k = 0; k < ids.length; k++) want[String(ids[k])] = true;
+  var last = sh.getLastRow();
+  if (last < 2) return;
+  var col = sh.getRange(2, 1, last - 1, 1).getValues();
+  var i = col.length - 1;
+  while (i >= 0) {
+    if (!want[String(col[i][0])]) { i--; continue; }
+    var end = i;
+    while (i >= 0 && want[String(col[i][0])]) i--;
+    var start = i + 1;
+    sh.deleteRows(start + 2, end - start + 1);
+  }
 }
 
 function clearItemRows_(sh, id) {
