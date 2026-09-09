@@ -480,6 +480,8 @@ function doGet(e) {
           }
         }
         if (foundIA < 0) return reply({ ok: false, error: 'الصنف مش موجود' }, cb);
+        var rowIA = shIA.getRange(foundIA, 1, 1, HEAD_ITEMS.length).getValues()[0];
+        if (!itemMatches_(rowIA, e)) return reply({ ok: false, error: ITEM_MOVED_ERR_ }, cb);
         shIA.getRange(foundIA, COL_ITEM_AVAIL).setValue(String(e.parameter.avail) === '1' ? 'Y' : 'N');
         return reply({ ok: true }, cb);
       } finally {
@@ -544,6 +546,7 @@ function doGet(e) {
         // واحدة. دلوقتي: قراية واحدة للصف كله، وكتابة واحدة للمدى ١١..١٩.
         var rowRngIQ = shIQ.getRange(foundIQ, 1, 1, HEAD_ITEMS.length);
         var rowIQ = rowRngIQ.getValues()[0];
+        if (!itemMatches_(rowIQ, e)) return reply({ ok: false, error: ITEM_MOVED_ERR_ }, cb);
         var unitPriceIQ = Number(rowIQ[11]) || 0;                      // عمود Unit Price
         var producedIQ = Number(rowIQ[COL_ITEM_PRODUCED - 1]) || 0;
         if (producedIQ > newQtyIQ) producedIQ = newQtyIQ;   // ميفضلش "جاهز" أكبر من "مطلوب" بعد التعديل
@@ -592,6 +595,8 @@ function doGet(e) {
           }
         }
         if (foundDI < 0) return reply({ ok: false, error: 'الصنف مش موجود' }, cb);
+        var rowDI = shDI.getRange(foundDI, 1, 1, HEAD_ITEMS.length).getValues()[0];
+        if (!itemMatches_(rowDI, e)) return reply({ ok: false, error: ITEM_MOVED_ERR_ }, cb);
 
         // ⚠️ باج كان هنا: الصنف بيتحذف والرصيد ما بيرجعش. يعني حذف صنف فيه 5 أبواب
         // كان بيسيبهم مخصومين من المخزن للأبد. بنرجّعهم قبل ما نمسح الصف.
@@ -628,7 +633,9 @@ function doGet(e) {
           }
         }
         if (foundIP < 0) return reply({ ok: false, error: 'الصنف مش موجود' }, cb);
-        var qtyIP = Number(shIP.getRange(foundIP, 11).getValue()) || 0;   // عمود Qty
+        var rowIP = shIP.getRange(foundIP, 1, 1, HEAD_ITEMS.length).getValues()[0];
+        if (!itemMatches_(rowIP, e)) return reply({ ok: false, error: ITEM_MOVED_ERR_ }, cb);
+        var qtyIP = Number(rowIP[10]) || 0;   // عمود Qty
         var producedIP = Math.max(0, Math.min(qtyIP, Number(e.parameter.produced) || 0));  // من صفر لحد الكمية المطلوبة، مش أكتر ولا أقل
         shIP.getRange(foundIP, COL_ITEM_PRODUCED).setValue(producedIP);
         return reply({ ok: true, produced: producedIP }, cb);
@@ -1265,6 +1272,21 @@ function findRow_(sh, id) {
 // دلوقتي: نقرا عمود المعرّف لوحده (عمود واحد = قراية رخيصة)، وبعدين نقرا
 // سطور الطلب نفسها بس — وهي متجاورة عادةً فبتبقى قراية واحدة.
 // بتحوّل صفوف الشيت لأصناف زي ما التطبيق مستنيها
+// ⚠️ الأصناف بتتحدّد بترتيبها جوه الطلب (idx) — والترتيب ده بيتغيّر لو حد تاني
+// حذف صنف أو ضاف صنف والشاشة عندك لسه القديمة. ساعتها التعديل أو الحذف بيقع
+// على **صنف تاني** من غير ما حد ياخد باله. التطبيق بقى يبعت هوية الصنف
+// (النوع + الكود + المقاس) مع رقمه، وبنتأكد إنها مطابقة قبل أي كتابة.
+// (التطبيق القديم مش بيبعتها — ساعتها بنعدّي زي الأول عشان ما نكسّرش نسخة قديمة)
+function itemMatches_(row, e) {
+  var wantType = e.parameter.itype, wantCode = e.parameter.icode, wantSize = e.parameter.isize;
+  if (wantType === undefined && wantCode === undefined && wantSize === undefined) return true;
+  if (wantType !== undefined && String(row[3] || '') !== String(wantType)) return false;
+  if (wantCode !== undefined && String(row[5] || '') !== String(wantCode)) return false;
+  if (wantSize !== undefined && String(row[6] || '') !== String(wantSize)) return false;
+  return true;
+}
+var ITEM_MOVED_ERR_ = 'الأصناف اتغيّرت من جهاز تاني — اعمل تحديث وجرّب تاني';
+
 function itemsFromRows_(rows){
   var out = [];
   for (var i = 0; i < rows.length; i++) {
@@ -1347,8 +1369,14 @@ function json(obj) {
 }
 
 // لو التطبيق بعت callback بنرد JSONP — ده بيتخطّى مشاكل CORS خالص
+// ⚠️ ثغرة كانت هنا: اسم الدالة اللي جاي في الرابط (callback) كان بيتحط في الرد
+// زي ما هو من غير أي فحص، والرد بيترجع كـ JavaScript. يعني حد يبعت رابط فيه
+// callback=<أي كود> والسيرفر بتاعنا يرجّع الكود ده منفّذ. التطبيق بيبعت أسماء
+// شكلها ثابت (wpcb...)، فبنقبل الشكل ده بس: حروف وأرقام و_ و$ يبدأوا بحرف.
+var CB_OK_ = /^[A-Za-z_$][A-Za-z0-9_$]{0,63}$/;
 function reply(obj, cb) {
   if (cb) {
+    if (!CB_OK_.test(String(cb))) return json({ ok: false, error: 'callback غير صالح' });
     return ContentService
       .createTextOutput(cb + '(' + JSON.stringify(obj) + ')')
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
