@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v175';
+const APP_BUILD   = 'v176';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3473,6 +3473,14 @@ const CUST_TINTS_ = [
 // جدول عميل واحد: صنف/مقاس/كمية/حلق/برور — كل عميل بجدوله المستقل ولونه الخاص
 // حالة توفّر الصنف بالمخزن: أخضر = متاح بالكامل، أصفر = الكمية أكبر من المتاح جزئيًا، أحمر = مفيش خالص
 function stockStatus_(code, size, qty){
+  // ⚠️ باج كان هنا: المقاس الخاص مش متتبّع في المخزون عن قصد (الباب بيتقص،
+  // مش صنف جاهز على الرف) — ومحصلش يتخصم ولا يترجع رصيد له أبدًا. لكن الشارة
+  // كانت بتدوّر على رصيد بنص المقاس الكامل، مالهوش سطر في المخزن، فبترجع صفر
+  // وتطبع «غير متاح» أحمر على كل باب مقاس خاص. شارة إنذار غلط دايمًا معناها
+  // إن المصنع يبطّل ياخد باله منها خالص.
+  if(/\(custom\)/i.test(String(size||'')) || /مقاس خاص/.test(String(size||''))){
+    return { color:'#5B6B7D', bg:'#F0F3F7', label:'مقاس خاص' };
+  }
   const w = doorWidthGroup_(size);
   const stock = stockFor(code, w!=null ? w : size);
   if(stock===null) return null;   // الأرصدة لسه ما اتحمّلتش
