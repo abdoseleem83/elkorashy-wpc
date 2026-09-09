@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v170';
+const APP_BUILD   = 'v171';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -871,6 +871,14 @@ function syncCutServiceLines_(){
   cart.forEach(it=>{
     if(!doorNeedsCut_(it)) return;
     const label = doorSizeText_(it.sizeTxt, it.doorHeight) || '';
+    // ⚠️ الطلبات اللي اتعملت قبل v164 سعر الباب فيها شامل الـ٣٠٠. لو المصنع
+    // فتحها للتعديل وحفظ، كنا هنضيف بند قص فوقهم — يعني القص اتحسب مرتين،
+    // والمرة دي متسجّلة في الطلب مش في ورقة بس. فبنولّد البند للأبواب اللي
+    // سعرها هو سعر المقاس الحالي بالظبط، أو اللي ليها بند قص أصلاً.
+    const w = Number(it.w) || doorWH_(it.sizeEn, it.doorHeight).w;
+    const hafr = !!it.hafr || /\(حفر\)|Carved/i.test(it.title||'');
+    const مطابق = w && (Number(it.unitPrice)||0) === priceForWidth(w, hafr);
+    if(!مطابق && !prevByTitle[cutServiceTitle_(label)]) return;
     need[label] = (need[label]||0) + (Number(it.qty)||0);
   });
   const kept = cart.filter(it=>!isCutLine_(it));
@@ -2077,12 +2085,17 @@ function viewCart(){
                        : (it.qty+' عود'+(it.rodCm?' × '+it.rodCm+' سم':'')+(priced?' — '+money(it.price)+' ج/عود':''));
     } else spec=(priced?money(it.price)+' ج × ':'× ')+it.qty;
 
+    // ⚠️ بند «خدمة قص» بيتولّد تلقائي من الأبواب. لو سبنا زراير التعديل/الحذف
+    // شغالة عليه، الحذف كان بيشيله والحفظ بيرجّعه في نفس اللحظة — زرار بيوهم
+    // المستخدم إنه عمل حاجة وهي مش بتحصل. بيتشال بشيل الباب اللي طالبه.
+    const cut = isCutLine_(it);
+    if(cut) spec += '<br><span style="color:#8A6512">بيتحسب تلقائي مع الباب — بيتشال لما الباب يتشال</span>';
     return `<div class="line">${th}<div class="info2"><b>${esc(it.title)}</b>
       <div class="spec">${spec}</div>${priced?`<div class="pr">${money(linePrice(it))} ج</div>`:''}</div>
-      <div class="lineacts">
+      ${cut?'':`<div class="lineacts">
         <button class="edit" data-act="edit-line" data-i="${i}" title="تعديل" aria-label="تعديل">${ico("edit")}</button>
         <button class="del" data-act="del" data-i="${i}" title="حذف" aria-label="حذف">${ico("x")}</button>
-      </div></div>`;}).join('');
+      </div>`}</div>`;}).join('');
 
   const ok=profileOk();
   const editing = !!state.editingId;
@@ -2163,9 +2176,9 @@ function viewOrders(){
     <div class="ord"${معلّق?' style="border:1.5px solid #E8A33D;background:#FFFBF2"':''}>
       ${معلّق?`<div style="font-size:11.5px;font-weight:700;color:#8A6512;margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}لسه ما وصلش المصنع — هيتبعت تلقائي أول ما النت يرجع</div>`:''}
       <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:#8A6512;background:#FFF6E5;border:1px solid #E8C77A;border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${live?statusPill(live.status):''}</div>
-      <div class="os">${esc(dateStr(o.ts))} · ${(o.items||[]).length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
+      <div class="os">${esc(dateStr(o.ts))} · ${(o.items||[]).filter(x=>!isCutLine_(x)).length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
         ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}<br>
-        ${esc((o.items||[]).map(x=>x&&x.title).filter(Boolean).slice(0,3).join('، '))}${(o.items||[]).length>3?'…':''}
+        ${esc((o.items||[]).filter(x=>x&&!isCutLine_(x)).map(x=>x.title).filter(Boolean).slice(0,3).join('، '))}${(o.items||[]).filter(x=>x&&!isCutLine_(x)).length>3?'…':''}
         ${live && live.note?('<br><b style="color:var(--brand)">'+esc(live.note)+'</b>'):''}</div>
       ${o.note?('<div class="ordnote">'+ico("warn")+'<span><b>ملاحظات:</b> '+esc(o.note)+'</span></div>'):''}
       <div class="oa">
