@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v168';
+const APP_BUILD   = 'v169';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -986,9 +986,11 @@ function tierPrice(basePrice, kind, tierKey, key){
   if(!tierKey || tierKey==='dist') return Number(basePrice)||0;
   const group = kind==='door'?'sizes':kind==='frame'?'frames':kind==='bror'?'brors':kind==='panel'?'panel':'acc';
   const ov = TIER_OVERRIDES[tierKey];
+  // «خدمة قص» سعرها واحد في كل المستويات إلا لو المصنع حفظ للمستوى ده قيمة
+  // بنفسه. الزيادة الافتراضية للمستوى مالهاش لازمة هنا — كانت بتطلّع 300.5.
+  if(key==='customExtra') return (ov && ov.customExtra!=null) ? (Number(ov.customExtra)||0) : (Number(basePrice)||0);
   if(ov){
-    if(key==='customExtra'){ if(ov.customExtra!=null) return Number(ov.customExtra)||0; }
-    else if(key==='hafrExtra'){ if(ov.hafrExtra!=null) return Number(ov.hafrExtra)||0; }
+    if(key==='hafrExtra'){ if(ov.hafrExtra!=null) return Number(ov.hafrExtra)||0; }
     else if(key!=null && ov[group] && ov[group][key]!=null){ return Number(ov[group][key])||0; }
   }
   const t = PRICE_TIERS[tierKey] || PRICE_TIERS.dist;
@@ -2889,7 +2891,7 @@ function triFor_(basePrice, kind, key){
 function openAdminPrices(){
   state.admin.priceEdit = {
     sizes: Object.fromEntries(SIZES.map(s=>[s.w, triFor_(s.price,'door',s.w)])),
-    customExtra: triFor_(CUSTOM_EXTRA,'door','customExtra'),
+    customExtra: triFor_(CUSTOM_EXTRA,'acc','customExtra'),
     hafrExtra: triFor_(HAFR_EXTRA,'door','hafrExtra'),
     frames: Object.fromEntries(FRAMES.map(f=>[f.cm, triFor_(f.price,'frame',f.cm)])),
     brors: Object.fromEntries(BRORS.map(b=>[b.size, triFor_(b.price,'bror',b.size)])),
