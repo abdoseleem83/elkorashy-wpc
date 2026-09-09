@@ -765,6 +765,18 @@ function doGet(e) {
       }
       var shLW = sheet_(SHEET_ORDERS, HEAD_ORDERS);
       var rowsLW = readOrderRows_(shLW);   // نفس الحكاية — من غير الأعمدة التقيلة
+      // ⚠️ الأصناف كانت بتتجمّع لكل طلب في الشيت — حتى الطلبات المؤرشفة اللي
+      // التقرير أصلًا بيستبعدها. يعني بناء وذاكرة على الفاضي بيكبروا مع كل طلب
+      // قديم. دلوقتي بنحدّد الطلبات المطلوبة الأول ونجمّع أصنافها هي بس.
+      // نفس القاعدة القديمة بالظبط: من غير archived=1 بنستبعد المؤرشف،
+      // ومع archived=1 بنرجّع كل حاجة.
+      var wantLW = {};
+      var withArchLW = String(e.parameter.archived || '') === '1';
+      for (var kLW = 0; kLW < rowsLW.length; kLW++) {
+        var archLW = String(rowsLW[kLW][COL_ARCHIVED - 1] || '') === 'Y';
+        if (archLW && !withArchLW) continue;
+        wantLW[String(rowsLW[kLW][0])] = true;
+      }
       var shILW = sheet_(SHEET_ITEMS, HEAD_ITEMS);
       var lastILW = shILW.getLastRow();
       var itemsByIdLW = {};
@@ -772,6 +784,7 @@ function doGet(e) {
         var valsILW = shILW.getRange(2, 1, lastILW - 1, HEAD_ITEMS.length).getValues();
         for (var iILW = 0; iILW < valsILW.length; iILW++) {
           var oidLW = String(valsILW[iILW][0]);
+          if (!wantLW[oidLW]) continue;              // طلب مش في التقرير — مالوش لازمة
           if (!itemsByIdLW[oidLW]) itemsByIdLW[oidLW] = [];
           itemsByIdLW[oidLW].push({
             type:     valsILW[iILW][3],
@@ -797,7 +810,7 @@ function doGet(e) {
       var outLW = [];
       for (var jLW = 0; jLW < rowsLW.length; jLW++) {
         var isArchLW = String(rowsLW[jLW][COL_ARCHIVED - 1] || '') === 'Y';
-        if (isArchLW && String(e.parameter.archived || '') !== '1') continue;   // المؤرشف مايظهرش في التقارير افتراضيًا
+        if (isArchLW && !withArchLW) continue;   // المؤرشف مايظهرش في التقارير افتراضيًا
         var idLW = String(rowsLW[jLW][0]);
         outLW.push({
           id:        idLW,

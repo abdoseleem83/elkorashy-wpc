@@ -30,16 +30,25 @@ await pg.evaluate(()=>{
   check('رسمة مطابقة مابتستبدلش الشاشة', r.نفس_العنصر);
 }
 
-// ٢) وأسرع بكتير من الرسمة الكاملة
+// ٢) الرسمة المتطابقة مابتعملش أي شغل على الصفحة أصلًا
+//    (بنعدّ التغييرات الفعلية في الشجرة بدل ما نقيس وقت — الوقت بيتأرجح)
 {
-  const r = await pg.evaluate(()=>{
-    const t0=performance.now(); for(let i=0;i<20;i++) renderNow(); const t1=performance.now();
+  const r = await pg.evaluate(async ()=>{
+    const v = document.getElementById('view');
+    let تغييرات = 0;
+    const مراقب = new MutationObserver(ms => { تغييرات += ms.length; });
+    مراقب.observe(v, { childList:true, subtree:true, attributes:true, characterData:true });
+    for(let i=0;i<20;i++) renderNow();
+    await new Promise(r=>setTimeout(r,50));
+    const بعد_المتطابقة = تغييرات;
     state.admin.rows[0].qty = 999;                   // تغيير حقيقي
-    const t2=performance.now(); renderNow(); const t3=performance.now();
-    return { متخطاة:(t1-t0)/20, كاملة:(t3-t2) };
+    renderNow();
+    await new Promise(r=>setTimeout(r,50));
+    مراقب.disconnect();
+    return { بعد_المتطابقة, بعد_التغيير: تغييرات };
   });
-  check('التخطي أسرع من الرسمة الكاملة',
-    r.متخطاة < r.كاملة, 'متخطاة='+r.متخطاة.toFixed(1)+'ms كاملة='+r.كاملة.toFixed(1)+'ms');
+  check('٢٠ رسمة متطابقة = صفر تعديل على الصفحة', r.بعد_المتطابقة===0, 'تعديلات='+r.بعد_المتطابقة);
+  check('وأول تغيير حقيقي بيتكتب في الصفحة', r.بعد_التغيير > 0, 'تعديلات='+r.بعد_التغيير);
 }
 
 // ٣) أي تغيير حقيقي لازم يظهر
