@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v163';
+const APP_BUILD   = 'v164';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -828,6 +828,9 @@ function frameText_(cm, height){
   return cm+' سم' + (height?' (ارتفاع '+height+' سم)':'');
 }
 // بيبني نص مقاس الباب شامل ارتفاع الفتحة المعمارية لو مختلف عن الاستاندر 215 (اختياري، زي الحلق بالظبط)
+// المقاس الخاص محتاج قص، والارتفاع غير الاستاندر محتاج تظبيط. الاتنين بيتكتبوا
+// كسطر معلومات تحت الصنف — بيبانوا للمصنع وللعميل من غير ما يتحسبوا في السعر.
+const CUT_SERVICE_NOTE_ = 'خدمة قص';
 function doorSizeText_(sizeTxt, height){
   return (sizeTxt||'') + (height?' (ارتفاع '+height+' سم)':'');
 }
@@ -918,16 +921,19 @@ const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders'
 
 // مستويات السعر: السعر الأساسي المتخزّن في الكتالوج هو "سعر موزع"، ومنه بتتحسب المستويات التانية بزيادة ثابتة.
 // الزيادة بتتطبّق وقت طباعة عرض السعر بس — من غير ما تغيّر الأسعار المتخزّنة نفسها.
+// ⚠️ المستويات بقت اتنين بس: جملة وعميل. المستوى التاني مفتاحه الداخلي فاضل
+// 'showroom' زي ما هو عن قصد — الأسعار المحفوظة على السيرفر وعلى الأجهزة
+// متخزّنة بالمفتاح ده، فتغييره كان هيضيّع كل الأسعار اللي المصنع ظبّطها.
+// اللي اتغيّر هو الاسم اللي بيبان للناس بس.
 const PRICE_TIERS = {
   dist:     { label:'سعر جملة', labelEn:'Wholesale Price', doorAdd:0,   otherAdd:0   },
-  showroom: { label:'سعر معرض', labelEn:'Showroom Price',    doorAdd:300, otherAdd:0.5 },
-  customer: { label:'سعر عميل', labelEn:'Customer Price',    doorAdd:500, otherAdd:1   }
+  showroom: { label:'سعر عميل', labelEn:'Customer Price',  doorAdd:300, otherAdd:0.5 }
 };
-// كل مستوى سعر (جملة/معرض/عميل) بقى بيتخزّن كقيمة مستقلة لكل صنف — مش بيتحسب تلقائي من زيادة ثابتة.
+// كل مستوى سعر (جملة/عميل) بيتخزّن كقيمة مستقلة لكل صنف — مش بيتحسب تلقائي من زيادة ثابتة.
 // الزيادات فوق (doorAdd/otherAdd) بتُستخدم بس كقيمة مبدئية أول مرة تفتح فيها شاشة تعديل الأسعار قبل ما تحفظ حاجة بنفسك.
-const TIER_OVERRIDES = { showroom:{sizes:{},customExtra:null,hafrExtra:null,frames:{},brors:{},acc:{},panel:{}}, customer:{sizes:{},customExtra:null,hafrExtra:null,frames:{},brors:{},acc:{},panel:{}} };
+const TIER_OVERRIDES = { showroom:{sizes:{},customExtra:null,hafrExtra:null,frames:{},brors:{},acc:{},panel:{}} };
 const ACC_EN_TO_ID_ = {}; ACCESSORIES.forEach(a=>{ ACC_EN_TO_ID_[a.en] = a.id; });
-// بيرجّع سعر الصنف على مستوى معيّن (جملة/معرض/عميل). لو الصنف ده اتحفظله سعر مخصوص لنفس المستوى بيترجع هو،
+// بيرجّع سعر الصنف على مستوى معيّن (جملة/عميل). لو الصنف ده اتحفظله سعر مخصوص لنفس المستوى بيترجع هو،
 // وإلا بيترجع سعر الجملة + الزيادة الافتراضية للمستوى (fallback للأصناف اللي لسه محدّش عدّل سعرها بنفسه).
 function tierPrice(basePrice, kind, tierKey, key){
   if(!tierKey || tierKey==='dist') return Number(basePrice)||0;
@@ -957,7 +963,7 @@ function tierKeyFor_(it, kind){
 function loadPriceOverrides_(){ try{ return JSON.parse(localStorage.getItem(LS_PRICES)||'{}'); }catch(e){ return {}; } }
 function applyPriceOverrides(){
   const ov = loadPriceOverrides_();
-  // توافق مع الشكل القديم (كان فيه سعر جملة بس، من غير مستويات معرض/عميل مخصوصة)
+  // توافق مع الشكل القديم (كان فيه سعر جملة بس، من غير مستوى عميل مخصوص)
   const dist = ov.dist || ov;
   if(dist.sizes) SIZES.forEach(s=>{ if(dist.sizes[s.w]!=null) s.price=Number(dist.sizes[s.w])||0; });
   if(dist.customExtra!=null) CUSTOM_EXTRA = Number(dist.customExtra)||0;
@@ -966,7 +972,7 @@ function applyPriceOverrides(){
   if(dist.brors) BRORS.forEach(b=>{ if(dist.brors[b.size]!=null) b.price=Number(dist.brors[b.size])||0; });
   if(dist.acc) ACCESSORIES.forEach(a=>{ if(dist.acc[a.id]!=null) a.price=Number(dist.acc[a.id])||0; });
   if(dist.panel && dist.panel.prodium!=null) PRODIUM_PRICE = Number(dist.panel.prodium)||0;
-  ['showroom','customer'].forEach(tk=>{
+  ['showroom'].forEach(tk=>{
     const t = ov[tk]; if(!t) return;
     if(t.sizes) TIER_OVERRIDES[tk].sizes = {...t.sizes};
     if(t.customExtra!=null) TIER_OVERRIDES[tk].customExtra = t.customExtra;
@@ -1576,7 +1582,7 @@ function viewNew(){
       ${s.w} سم${pricesVisible()?`<span class="sub">${money(s.price)}ج</span>`:''}
       ${st>0?`<span class="stk">متوفر ${st}</span>`:''}</button>`;
   }).join('')
-    +`<button class="colchip ${p.customOn?'on':''}" data-act="toggle-custom">خاص${pricesVisible()?`<span class="sub">+${CUSTOM_EXTRA}ج</span>`:''}</button>`;
+    +`<button class="colchip ${p.customOn?'on':''}" data-act="toggle-custom">خاص${pricesVisible()?`<span class="sub">نفس السعر</span>`:''}</button>`;
 
   // شبكة صغيرة لاختيار الحلق/البرور جوه كارت كل مقاس — كل مقاس له حلقه وبروره الخاصين بيه
   // w بيبقى رقم المقاس العادي، أو النص 'custom' للمقاس الخاص — وبناءً عليه بنبعت الحدث للـhandler الصح
@@ -1650,7 +1656,7 @@ function viewNew(){
         <input type="number" inputmode="numeric" min="1" value="${p.custom.qty}" data-act="cust-qty-set">
         <button data-act="cust-qty-plus">+</button>
       </div>
-      <div class="note">المقاسات خارج الاستاندر بيتضاف عليها <b>${CUSTOM_EXTRA} ج</b>.</div>
+      <div class="note">المقاس الخاص بنفس سعر المقاس العادي — بتتكتب عليه <b>«${CUT_SERVICE_NOTE_}»</b> عشان تبان للمصنع، من غير أي زيادة في السعر.</div>
       <div class="miniLbl">النوع</div>
       <div class="miniChips">${hafrMiniChips(p.custom.hafr,'custom')}</div>
       <div class="miniLbl">الحلق</div>
@@ -1972,7 +1978,7 @@ function currentSummary(){
   });
   if(customReady){
     const w=Number(p.custom.w), h=Number(p.custom.h), qty=Number(p.custom.qty)||1;
-    totalQty+=qty; totalPrice+=(priceForWidth(w,p.custom.hafr)+CUSTOM_EXTRA)*qty;
+    totalQty+=qty; totalPrice+=priceForWidth(w,p.custom.hafr)*qty;
     let line=w+'×'+h+' سم (خاص) × '+qty;
     const bits=[];
     if(p.custom.hafr) bits.push('حفر');
@@ -2774,7 +2780,7 @@ function arabicSizeText_(sizeEn){
 function buildAdminDocOrder_(o, its, tierKey){
   const items = (its||[]).map(it=>adminDocItem_(it, tierKey));
   // ⚠️ باج كان هنا: الإجمالي كان بيتاخد من o.total زي ما هو — وده دايمًا إجمالي
-  // الجملة. لكن السطور بتتسعّر بالمستوى المختار (معرض/عميل). يعني عرض السعر
+  // الجملة. لكن السطور بتتسعّر بالمستوى المختار (عميل). يعني عرض السعر
   // اللي بيروح للعميل سطوره مابتجمعش على الإجمالي المكتوب تحتها، والإجمالي أقل
   // من مجموعها. بنحسبه من نفس السطور اللي اتطبعت.
   const total = tierKey && tierKey !== 'dist'
@@ -2817,13 +2823,12 @@ function adminDocItem_(it, tierKey){
 }
 
 // بيبني مستند PDF للطلب من بيانات شاشة المصنع (بعد ما أصنافه تتحمّل)
-// بيبني صف تلات مستويات (جملة/معرض/عميل) لصنف معيّن — سعر الجملة هو الأساسي، والباقي بيتاخد من القيمة
+// بيبني صف المستويين (جملة/عميل) لصنف معيّن — سعر الجملة هو الأساسي، والتاني بيتاخد من القيمة
 // المحفوظة له لو موجودة، وإلا بتتحسب مبدئيًا بالزيادة الافتراضية لحد ما تحفظ إنت قيمة تانية بنفسك.
 function triFor_(basePrice, kind, key){
   return {
     dist: basePrice,
-    showroom: tierPrice(basePrice, kind, 'showroom', key),
-    customer: tierPrice(basePrice, kind, 'customer', key)
+    showroom: tierPrice(basePrice, kind, 'showroom', key)
   };
 }
 function openAdminPrices(){
@@ -2851,8 +2856,8 @@ function saveAdminPrices(){
   if(pe.panel && pe.panel.prodium) PRODIUM_PRICE = Number(pe.panel.prodium.dist)||0;
 
   const pickGroup = (g, tier) => Object.fromEntries(Object.entries(g).map(([k,v])=>[k, Number(v[tier])||0]));
-  const out = { dist:{}, showroom:{}, customer:{} };
-  ['dist','showroom','customer'].forEach(tier=>{
+  const out = { dist:{}, showroom:{} };
+  ['dist','showroom'].forEach(tier=>{
     out[tier] = {
       sizes: pickGroup(pe.sizes, tier),
       customExtra: Number(pe.customExtra[tier])||0,
@@ -2867,7 +2872,6 @@ function saveAdminPrices(){
   // «اتحفظت الأسعار الجديدة» والأسعار ترجع القديمة أول ما يقفل التطبيق.
   const pricesSaved = save(LS_PRICES, out);
   TIER_OVERRIDES.showroom = { sizes:{...out.showroom.sizes}, customExtra:out.showroom.customExtra, hafrExtra:out.showroom.hafrExtra, frames:{...out.showroom.frames}, brors:{...out.showroom.brors}, acc:{...out.showroom.acc}, panel:{...out.showroom.panel} };
-  TIER_OVERRIDES.customer = { sizes:{...out.customer.sizes}, customExtra:out.customer.customExtra, hafrExtra:out.customer.hafrExtra, frames:{...out.customer.frames}, brors:{...out.customer.brors}, acc:{...out.customer.acc}, panel:{...out.customer.panel} };
   state.admin.pricesOpen=false; state.admin.priceEdit=null;
   render();
 
@@ -2946,7 +2950,7 @@ async function exportAdminOrderQuote(o, tierKey){
   await withOrderItems_(o, its => makeDoc(buildAdminDocOrder_(o, its, tierKey||'dist'),'quote',true));
 }
 
-// بيفتح نافذة صغيرة تسأل: عرض السعر يكون بسعر مين — موزع / معرض / عميل
+// بيفتح نافذة صغيرة تسأل: عرض السعر يكون بسعر مين — جملة / عميل
 function showQuoteTierPicker(o){
   const old=document.getElementById('quoteTierOverlay'); if(old) old.remove();
   const ov=document.createElement('div');
@@ -2959,7 +2963,7 @@ function showQuoteTierPicker(o){
   ov.innerHTML=`
     <div style="width:100%;max-width:320px;text-align:center">
       <div style="color:#fff;margin-bottom:16px;font-family:Arial,'Helvetica Neue',sans-serif;font-size:16px;font-weight:700">عرض السعر ده يكون بسعر مين؟</div>
-      ${btn('dist')}${btn('showroom')}${btn('customer')}
+      ${btn('dist')}${btn('showroom')}
       <button id="closeQuoteTier" style="margin-top:6px;background:rgba(255,255,255,.15);color:#fff;padding:11px 20px;border-radius:12px;font-size:13.5px">إلغاء</button>
     </div>`;
   document.body.appendChild(ov);
@@ -4237,11 +4241,11 @@ function priTri_(label, group, key, tri, extra){
   return `
     <div class="prow3">
       <div class="lbl">${label}${extra?` <small>${extra}</small>`:''}</div>
-      <div class="tri">${cell('dist')}${cell('showroom')}${cell('customer')}</div>
+      <div class="tri">${cell('dist')}${cell('showroom')}</div>
     </div>`;
 }
 function priHead_(){
-  return `<div class="ptri-head"><b>${esc(PRICE_TIERS.dist.label)}</b><b>${esc(PRICE_TIERS.showroom.label)}</b><b>${esc(PRICE_TIERS.customer.label)}</b></div>`;
+  return `<div class="ptri-head"><b>${esc(PRICE_TIERS.dist.label)}</b><b>${esc(PRICE_TIERS.showroom.label)}</b></div>`;
 }
 function viewAdminPrices(){
   const pe = state.admin.priceEdit;
@@ -4261,14 +4265,14 @@ function viewAdminPrices(){
         : (_pricesSyncedAt ? ' <span style="color:#6B7A8C">(آخر تحديث من السيرفر: '+esc(_pricesSyncedAt)+')</span>' : '')
     }</div>
     <div class="note" style="background:#EAF2FA;color:#0B4A7A;border-radius:8px;padding:9px 12px">
-      عمود <b>${esc(PRICE_TIERS.dist.label)}</b> هو الأساسي وهو اللي بيتحسب بيه الأوردر الفعلي. عمودَي <b>${esc(PRICE_TIERS.showroom.label)}</b> و<b>${esc(PRICE_TIERS.customer.label)}</b> بتقدر تعدّلهم بحرية لكل صنف، وبيُستخدموا لما تعمل عرض سعر وتختار المستوى المناسب.
+      عمود <b>${esc(PRICE_TIERS.dist.label)}</b> هو الأساسي وهو اللي بيتحسب بيه الأوردر الفعلي. وعمود <b>${esc(PRICE_TIERS.showroom.label)}</b> بتقدر تعدّله بحرية لكل صنف، وبيُستخدم لما تعمل عرض سعر وتختار المستوى المناسب.
     </div>
 
     <div class="grp">أسعار الأبواب (حسب المقاس)</div>
     ${head}
     ${rowsSizes}
-    ${priTri_('إضافة المقاس الخاص', 'customExtra', 'customExtra', pe.customExtra)}
     ${priTri_('إضافة باب حفر', 'hafrExtra', 'hafrExtra', pe.hafrExtra)}
+    <div class="note">المقاس الخاص بياخد سعر المقاس العادي بالظبط — من غير أي إضافة. بيتكتب عليه «${CUT_SERVICE_NOTE_}» كسطر تحت الصنف عشان يبان للمصنع.</div>
 
     <div class="grp" style="margin-top:14px">أسعار الحلق (للمتر الطولي)</div>
     ${head}
@@ -5082,7 +5086,10 @@ function addDoor(){
 
   if(customReady){
     const w=Number(p.custom.w), h=Number(p.custom.h), qty=Number(p.custom.qty)||1;
-    const sizeTxt=w+'×'+h+' سم (مقاس خاص — مقاس الفتحة المعمارية)', sizeEn=w+'x'+h+' cm (custom)', unitPrice=priceForWidth(w,p.custom.hafr)+CUSTOM_EXTRA;
+    // ⚠️ المقاس الخاص كان بيتضاف عليه CUSTOM_EXTRA في السعر. دلوقتي السعر زي
+    // سعر المقاس العادي بالظبط، و«خدمة قص» بتتكتب كسطر تحت الصنف — تبان
+    // للمصنع وللعميل من غير ما تتحسب في الفلوس.
+    const sizeTxt=w+'×'+h+' سم (مقاس خاص — مقاس الفتحة المعمارية)', sizeEn=w+'x'+h+' cm (custom)', unitPrice=priceForWidth(w,p.custom.hafr);
     const customFrameKind = p.custom.frame ? (p.custom.frameKind||'full') : null;
     state.cart.push({
       kind:'door',
@@ -5092,7 +5099,9 @@ function addDoor(){
       w:'',   // مقاس خاص مش متتبّع في المخزون
       frame:p.custom.frame||0, dbror:p.custom.dbror||'', frameHeight:p.custom.frameHeight?Number(p.custom.frameHeight):0,
       frameKind:customFrameKind, frameRodQty:customFrameKind==='rods'?(p.custom.frameRodQty||''):'', frameForDoors:customFrameKind==='rods'?(p.custom.frameForDoors||''):'',
-      note: [customFrameKind==='rods' ? frameKindNote_('rods', p.custom.frameRodQty, p.custom.frameForDoors) : '', (p.note||'').trim()].filter(Boolean).join(' — '),
+      note: [CUT_SERVICE_NOTE_,
+             customFrameKind==='rods' ? frameKindNote_('rods', p.custom.frameRodQty, p.custom.frameForDoors) : '',
+             (p.note||'').trim()].filter(Boolean).join(' — '),
       doorHeight:0, hafr:!!p.custom.hafr, millEn:p.custom.hafr?'Carved':''
     });
     addedTxts.push(sizeTxt+' × '+qty);
