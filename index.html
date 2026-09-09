@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v167';
+const APP_BUILD   = 'v168';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -5586,7 +5586,8 @@ function buildMessage(o){
   m+='المخزن: '+WAREHOUSE+'\n';
   if(o.note) m+='ملاحظات: '+o.note+'\n';
   m+='——————\n';
-  (o.items||[]).forEach((it,i)=>{
+  // بنود «خدمة قص» بتبان في عرض السعر بس — الرسالة دي ملخّص الأوردر
+  (o.items||[]).filter(it=>!isCutLine_(it)).forEach((it,i)=>{
     m+=(i+1)+'. '+it.title+'\n';
     if(it.kind==='door'){
       m+='   المقاس: '+doorSizeText_(it.sizeTxt,it.doorHeight)+' — الكمية: '+it.qty+'\n';
@@ -6234,9 +6235,17 @@ function withCutLines_(o){
   return Object.assign({}, o, { items:(o.items||[]).concat(derived),
                                 total:(Number(o.total)||0) + add });
 }
+// بيشيل بنود القص من نسخة الطلب (للمستندات اللي مش عرض سعر) من غير ما يلمس الإجمالي
+function withoutCutLines_(o){
+  if(!o || !(o.items||[]).some(isCutLine_)) return o;
+  return Object.assign({}, o, { items:(o.items||[]).filter(it=>!isCutLine_(it)) });
+}
 function docHTML(o,mode,priced){
-  o = withCutLines_(o);
   const isQuote = mode==='quote';
+  // «خدمة قص» بند تسعير — بيبان في عرض السعر بس. ورقة الأوردر اللي بتروح
+  // للمصنع مالهاش دعوة بيه: هي ورقة شغل، والمصنع بيقرا القص من المقاس نفسه.
+  // الإجمالي المكتوب تحت مابيتغيّرش — هو إجمالي الطلب زي ما هو متسجّل.
+  o = isQuote ? withCutLines_(o) : withoutCutLines_(o);
   if(priced===undefined) priced = pricesVisible();
   // عمود "ارتفاع الحلق" شرطي — بيظهر بس لو صنف باب واحد على الأقل في الطلب ده متسجّل له ارتفاع حلق فعلي
   const showFrameHCol = (o.items||[]).some(it=>it.kind==='door' && it.frame && it.frameHeight);
@@ -6376,10 +6385,12 @@ async function exportExcel(orders,fname){
     const sum=[], det=[];
 
     orders.forEach(o=>{
-      const sumRow=[o.id, xlDate_(o.ts), o.name||'', String(o.phone||''), o.region||'', o.warehouse||WAREHOUSE, o.status||'', (o.items||[]).length];
+      // بنود «خدمة قص» بتبان في عرض السعر بس — الإكسل ده كشف أصناف للمصنع
+      const its = (o.items||[]).filter(it=>!isCutLine_(it));
+      const sumRow=[o.id, xlDate_(o.ts), o.name||'', String(o.phone||''), o.region||'', o.warehouse||WAREHOUSE, o.status||'', its.length];
       if(priced) sumRow.push(Number(o.total)||0);
       sum.push(sumRow);
-      (o.items||[]).forEach(it=>{
+      its.forEach(it=>{
         const isDoor=it.kind==='door', isRod=it.kind==='frame'||it.kind==='bror';
         const pp=itemProdPending_(it);
         const row=[

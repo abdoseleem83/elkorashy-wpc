@@ -82,7 +82,7 @@ const doc = await pg.evaluate(()=>{
   const جوان = {kind:'acc', id:'gsk', title:'جوان', unit:'متر', qty:5, price:6};
   const o = { id:'x1', no:'72/1', name:'اسلام عونى', phone:'1', date:'2026-09-09',
               items:[باب, عادي, قص, جوان], total:19230 };
-  const html = docHTML(o,'order',true);
+  const html = docHTML(o,'quote',true);
   const نص = html.replace(/<[^>]*>/g,'|');
   // ترتيب: مجموعة المقاس الخاص → الباب → بند القص → مجموعة الإكسسوارات
   const iباب = html.indexOf('باب A02 خشبي'), iقص = html.indexOf('خدمة قص');
@@ -105,7 +105,7 @@ const قديم = await pg.evaluate(()=>{
     unitPrice:سعر, qty:2, w:'', frame:15, dbror:'9×6', frameHeight:0, doorHeight:0, note:''};
   const o = { id:'old1', no:'9/1', name:'اسلام عونى', phone:'1', date:'2026-09-09',
               items:[باب], total:سعر*2 };
-  const html = docHTML(o,'order',true);
+  const html = docHTML(o,'quote',true);
   return { فيه_قص: /خدمة قص/.test(html),
            الإجمالي_الجديد: new RegExp(money(سعر*2 + CUSTOM_EXTRA*2)).test(html),
            الإجمالي_القديم_اختفى: !new RegExp('>\\s*'+money(سعر*2)+' ج').test(html),
@@ -123,13 +123,32 @@ const أقدم = await pg.evaluate(()=>{
     unitPrice:سعر, qty:2, w:'', frame:15, dbror:'9×6', frameHeight:0, doorHeight:0, note:''};
   const o = { id:'old2', no:'8/1', name:'ا', phone:'1', date:'2026-09-09',
               items:[باب], total:سعر*2 };
-  const html = docHTML(o,'order',true);
+  const html = docHTML(o,'quote',true);
   return { فيه_قص: /خدمة قص/.test(html), مشمول: /مشمول/.test(html),
            الإجمالي_ما_زادش: new RegExp(money(سعر*2)+' ج').test(html) };
 });
 check('التسعير القديم: السطر بيبان برضه للمصنع', أقدم.فيه_قص === true);
 check('بس مكتوب عليه «مشمول» — مش بيتحسب مرتين', أقدم.مشمول === true);
 check('والإجمالي ما زادش', أقدم.الإجمالي_ما_زادش === true);
+
+// ٧) البند بيبان في عرض السعر بس — مش في ورقة الأوردر ولا رسالة الواتساب
+const أين = await pg.evaluate(()=>{
+  const باب = {kind:'door', title:'باب A02 خشبي', code:'A02',
+    sizeTxt:'90×206 سم (مقاس خاص — مقاس الفتحة المعمارية)', sizeEn:'90x206 cm (custom)',
+    unitPrice:6000, qty:1, w:'', frame:15, dbror:'9×6', frameHeight:0, doorHeight:0, note:''};
+  const قص = {kind:'acc', id:'CUT', code:'CUT', unit:'باب', qty:1, price:300,
+    title:'خدمة قص — 90×206 سم (مقاس خاص — مقاس الفتحة المعمارية)'};
+  const o = { id:'q1', no:'72/1', name:'ا', phone:'1', date:'2026-09-09',
+              items:[باب, قص], total:6300 };
+  return { عرض_سعر: /خدمة قص/.test(docHTML(o,'quote',true)),
+           ورقة_الأوردر: /خدمة قص/.test(docHTML(o,'order',true)),
+           إجمالي_الورقة_ما_اتغيّرش: new RegExp(money(6300)+' ج').test(docHTML(o,'order',true)),
+           رسالة: /خدمة قص/.test(buildMessage(o)) };
+});
+check('بيبان في عرض السعر', أين.عرض_سعر === true);
+check('مش بيبان في ورقة الأوردر', أين.ورقة_الأوردر === false);
+check('وإجمالي ورقة الأوردر زي ما هو', أين.إجمالي_الورقة_ما_اتغيّرش === true);
+check('ومش بيبان في رسالة الواتساب', أين.رسالة === false);
 
 check('مفيش أخطاء JS', errs.length===0, errs.join(' | '));
 await b.close();
