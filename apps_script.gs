@@ -1437,6 +1437,11 @@ function reply(obj, cb) {
   return json(obj);
 }
 
+// ⚠️ تبويب الأخطاء كان بيكبر للأبد. أي مشكلة متكررة (نت بيقطع، محاولة غلط
+// بتتعاد) بتكتب سطر جديد كل مرة، والشيت بيتقل من غير ما حد يبصله. وحد الخلايا
+// في جوجل شيت مشترك بين كل التبويبات — يعني ممكن يزاحم الطلبات نفسها.
+// بنسيب آخر ERR_KEEP_ سطر بس.
+var ERR_KEEP_ = 500;
 function logError_(err) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1448,6 +1453,9 @@ function logError_(err) {
       sh.setFrozenRows(1);
     }
     sh.appendRow([new Date(), String(err && err.stack ? err.stack : err)]);
+    // تنظيف: بنمسح الأقدم لما نعدّي الحد (مسح واحد مجمّع، مش سطر سطر)
+    var last = sh.getLastRow();
+    if (last > ERR_KEEP_ + 1) sh.deleteRows(2, last - ERR_KEEP_ - 1);
   } catch (e) {}
 }
 
