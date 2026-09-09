@@ -150,6 +150,19 @@ check('مش بيبان في ورقة الأوردر', أين.ورقة_الأور
 check('وإجمالي ورقة الأوردر زي ما هو', أين.إجمالي_الورقة_ما_اتغيّرش === true);
 check('ومش بيبان في رسالة الواتساب', أين.رسالة === false);
 
+// ٨) سعر خدمة القص واحد في كل المستويات — «سعر عميل» مابيزوّدش عليه نص جنيه
+const مستويات = await pg.evaluate(()=>{
+  const it = { title:'خدمة قص — 90×206 سم', unitPrice:CUSTOM_EXTRA, qty:1 };
+  const مفتاح = tierKeyFor_(it,'acc');
+  return { مفتاح,
+    جملة: tierPrice(CUSTOM_EXTRA,'acc','dist',مفتاح),
+    عميل: tierPrice(CUSTOM_EXTRA,'acc','showroom',مفتاح),
+    القيمة: CUSTOM_EXTRA };
+});
+check('البند بيتربط بمفتاح خدمة القص', مستويات.مفتاح === 'customExtra');
+check('سعره واحد في الجملة والعميل', مستويات.جملة === مستويات.القيمة && مستويات.عميل === مستويات.القيمة,
+  `جملة=${مستويات.جملة} عميل=${مستويات.عميل}`);
+
 check('مفيش أخطاء JS', errs.length===0, errs.join(' | '));
 await b.close();
 console.log(`\n${pass} نجح · ${fail} فشل`);
