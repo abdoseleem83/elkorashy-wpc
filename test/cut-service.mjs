@@ -123,9 +123,13 @@ const أقدم = await pg.evaluate(()=>{
     unitPrice:سعر, qty:2, w:'', frame:15, dbror:'9×6', frameHeight:0, doorHeight:0, note:''};
   const o = { id:'old2', no:'8/1', name:'ا', phone:'1', date:'2026-09-09',
               items:[باب], total:سعر*2 };
-  return { فيه_قص: /خدمة قص/.test(docHTML(o,'order',true)) };
+  const html = docHTML(o,'order',true);
+  return { فيه_قص: /خدمة قص/.test(html), مشمول: /مشمول/.test(html),
+           الإجمالي_ما_زادش: new RegExp(money(سعر*2)+' ج').test(html) };
 });
-check('التسعير القديم (الـ٣٠٠ جوه سعر الباب) مابياخدش بند تاني', أقدم.فيه_قص === false);
+check('التسعير القديم: السطر بيبان برضه للمصنع', أقدم.فيه_قص === true);
+check('بس مكتوب عليه «مشمول» — مش بيتحسب مرتين', أقدم.مشمول === true);
+check('والإجمالي ما زادش', أقدم.الإجمالي_ما_زادش === true);
 
 check('مفيش أخطاء JS', errs.length===0, errs.join(' | '));
 await b.close();
