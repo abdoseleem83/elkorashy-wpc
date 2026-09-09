@@ -96,6 +96,37 @@ check('ومش نازل مع الإكسسوارات', doc.القص_قبل_الإ�
 check('البند مكتوب مرة واحدة وباسم مختصر جوه مجموعته', doc.عدد_القص===1, String(doc.عدد_القص));
 check('وإجماليه متضروب (2 × 300 = 600)', doc.فيه_600 === true);
 
+// ٥) طلب قديم (اتعمل قبل ما القص يبقى بند) — المعاينة لازم توّلد السطر
+//    من الباب نفسه، وتزوّد الإجمالي. ده الطلب اللي في بلاغ صاحب المصنع بالظبط.
+const قديم = await pg.evaluate(()=>{
+  const w = SIZES[0].w, سعر = priceForWidth(w,false);
+  const باب = {kind:'door', title:'باب A03 أرو', code:'A03',
+    sizeTxt:w+'×205 سم (مقاس خاص — مقاس الفتحة المعمارية)', sizeEn:w+'x205 cm (custom)',
+    unitPrice:سعر, qty:2, w:'', frame:15, dbror:'9×6', frameHeight:0, doorHeight:0, note:''};
+  const o = { id:'old1', no:'9/1', name:'اسلام عونى', phone:'1', date:'2026-09-09',
+              items:[باب], total:سعر*2 };
+  const html = docHTML(o,'order',true);
+  return { فيه_قص: /خدمة قص/.test(html),
+           الإجمالي_الجديد: new RegExp(money(سعر*2 + CUSTOM_EXTRA*2)).test(html),
+           الإجمالي_القديم_اختفى: !new RegExp('>\\s*'+money(سعر*2)+' ج').test(html),
+           الأصل_ما_اتغيّرش: o.items.length===1 && o.total===سعر*2 };
+});
+check('طلب قديم من غير بند: المعاينة بتولّده', قديم.فيه_قص === true);
+check('والإجمالي بيزيد بقيمته', قديم.الإجمالي_الجديد === true);
+check('من غير ما نلمس الطلب المتخزّن نفسه', قديم.الأصل_ما_اتغيّرش === true);
+
+// ٦) طلب بتسعير قديم (الـ٣٠٠ كانت جوه سعر الباب) — ممنوع نحسبها تاني
+const أقدم = await pg.evaluate(()=>{
+  const w = SIZES[0].w, سعر = priceForWidth(w,false) + CUSTOM_EXTRA;   // تسعير ما قبل v164
+  const باب = {kind:'door', title:'باب A03 أرو', code:'A03',
+    sizeTxt:w+'×205 سم (مقاس خاص — مقاس الفتحة المعمارية)', sizeEn:w+'x205 cm (custom)',
+    unitPrice:سعر, qty:2, w:'', frame:15, dbror:'9×6', frameHeight:0, doorHeight:0, note:''};
+  const o = { id:'old2', no:'8/1', name:'ا', phone:'1', date:'2026-09-09',
+              items:[باب], total:سعر*2 };
+  return { فيه_قص: /خدمة قص/.test(docHTML(o,'order',true)) };
+});
+check('التسعير القديم (الـ٣٠٠ جوه سعر الباب) مابياخدش بند تاني', أقدم.فيه_قص === false);
+
 check('مفيش أخطاء JS', errs.length===0, errs.join(' | '));
 await b.close();
 console.log(`\n${pass} نجح · ${fail} فشل`);
