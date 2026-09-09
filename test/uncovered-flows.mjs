@@ -86,17 +86,18 @@ await pg.evaluate(()=>{ window.toast=(m)=>{ window.__toast=m; }; });
     const code = DOORS[0].code;
     localStorage.setItem('wpc_prices', JSON.stringify({
       dist:   { sizes:{ [w]: 1111 }, customExtra: 55, acc:{ [ACCESSORIES[0].id]: 77 }, panel:{prodium: 99} },
-      showroom:{ sizes:{ [w]: 2222 } },
-      customer:{ sizes:{ [w]: 3333 } }
+      showroom:{ sizes:{ [w]: 2222 } }
     }));
     applyPriceOverrides();
     return {
       جملة: SIZES[0].price, إضافي_خاص: CUSTOM_EXTRA,
       إكسسوار: ACCESSORIES[0].price, لوح: PRODIUM_PRICE,
-      معرض: tierPrice(SIZES[0].price, 'door', 'showroom', w),
-      عميل: tierPrice(SIZES[0].price, 'door', 'customer', w),
+      عميل: tierPrice(SIZES[0].price, 'door', 'showroom', w),
       // من غير أوفررايد بيرجع للسعر الأساسي + الزيادة الثابتة للمستوى
-      معرض_مقاس_تاني: tierPrice(SIZES[1].price, 'door', 'showroom', SIZES[1].w),
+      عميل_مقاس_تاني: tierPrice(SIZES[1].price, 'door', 'showroom', SIZES[1].w),
+      // المستويات المتاحة دلوقتي
+      مستويات: Object.keys(PRICE_TIERS),
+      اسم_المستوى_التاني: PRICE_TIERS.showroom.label,
       حجم_تاني_ماتغيرش: SIZES[1].price,
       قديم
     };
@@ -107,10 +108,13 @@ await pg.evaluate(()=>{ window.toast=(m)=>{ window.__toast=m; }; });
   check('إضافي المقاس الخاص اتغيّر', r.إضافي_خاص===55, String(r.إضافي_خاص));
   check('سعر الإكسسوار اتغيّر', r.إكسسوار===77, String(r.إكسسوار));
   check('سعر لوح البروديوم اتغيّر', r.لوح===99, String(r.لوح));
-  check('سعر المعرض منفصل عن الجملة', r.معرض===2222, String(r.معرض));
-  check('وسعر العميل منفصل كمان', r.عميل===3333, String(r.عميل));
+  check('سعر العميل منفصل عن الجملة', r.عميل===2222, String(r.عميل));
   check('المقاس اللي مالوش سعر مخصّص بياخد زيادة المستوى الثابتة',
-    r.معرض_مقاس_تاني > SIZES1, 'معرض='+r.معرض_مقاس_تاني+' جملة='+SIZES1);
+    r.عميل_مقاس_تاني > SIZES1, 'عميل='+r.عميل_مقاس_تاني+' جملة='+SIZES1);
+  check('المستويات بقت اتنين بس: جملة وعميل',
+    r.مستويات.length===2 && r.مستويات.join(',')==='dist,showroom', r.مستويات.join(','));
+  check('واسم المستوى التاني «سعر عميل» مش «سعر معرض»',
+    r.اسم_المستوى_التاني==='سعر عميل', r.اسم_المستوى_التاني);
 }
 
 // ═══ ٥) دورة الأرشيف كاملة ═══

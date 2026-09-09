@@ -18,7 +18,7 @@ const r = await pg.evaluate(()=>{
     {type:'Frame', title:'حلق', code:'F10', size:'10 cm', unit:'set',  qty:1, unitPrice:400, produced:0}
   ];
   const out = {};
-  ['dist','showroom','customer'].forEach(tier=>{
+  ['dist','showroom'].forEach(tier=>{
     const doc = buildAdminDocOrder_(o, its, tier);
     const مجموع_السطور = doc.items.reduce((s,it)=>s + it.unitPrice * it.qty, 0);
     out[tier] = { الإجمالي: doc.total, مجموع_السطور,
@@ -32,7 +32,7 @@ const r = await pg.evaluate(()=>{
 check('الجملة: الإجمالي زي ما هو من الشيت', r.dist.الإجمالي === 1000, String(r.dist.الإجمالي));
 check('من غير مستوى: الإجمالي زي ما هو برضه', r.بدون.الإجمالي === 1000, String(r.بدون.الإجمالي));
 
-['showroom','customer'].forEach(tier=>{
+['showroom'].forEach(tier=>{
   const t = r[tier];
   check(`${tier}: أسعار السطور اتغيّرت فعلاً عن الجملة`,
     JSON.stringify(t.الأسعار) !== JSON.stringify(r.dist.الأسعار),
