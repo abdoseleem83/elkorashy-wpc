@@ -163,6 +163,34 @@ check('البند بيتربط بمفتاح خدمة القص', مستويات.�
 check('سعره واحد في الجملة والعميل', مستويات.جملة === مستويات.القيمة && مستويات.عميل === مستويات.القيمة,
   `جملة=${مستويات.جملة} عميل=${مستويات.عميل}`);
 
+// ٩) تعديل طلب قديم (سعر الباب شامل الـ٣٠٠) — ممنوع نضيف بند قص فوقه،
+//    لأن ده كان هيتسجّل في الطلب نفسه ويتحسب على العميل مرتين.
+const تعديل = await pg.evaluate(()=>{
+  const w = SIZES[0].w;
+  const قديم = { kind:'door', title:'باب A02 خشبي', code:'A02',
+    sizeTxt:w+'×205 سم (مقاس خاص — مقاس الفتحة المعمارية)', sizeEn:w+'x205 cm (custom)',
+    unitPrice: priceForWidth(w,false) + CUSTOM_EXTRA, qty:2, w:'', frame:0, dbror:'',
+    frameHeight:0, doorHeight:0, note:'' };
+  state.cart = [قديم]; saveCart_();
+  const بعد_القديم = state.cart.filter(it=>/خدمة قص/.test(it.title||'')).length;
+
+  const جديد = Object.assign({}, قديم, { unitPrice: priceForWidth(w,false) });
+  state.cart = [جديد]; saveCart_();
+  const بعد_الجديد = state.cart.filter(it=>/خدمة قص/.test(it.title||'')).length;
+
+  // ولو البند موجود أصلاً في الطلب، بيفضل حتى لو الأسعار اتغيّرت بعدين
+  state.cart = [قديم, {kind:'acc', id:'CUT', code:'CUT', unit:'باب', qty:2, price:300,
+    title:'خدمة قص — '+قديم.sizeTxt}];
+  saveCart_();
+  const بند_موجود = state.cart.filter(it=>/خدمة قص/.test(it.title||''));
+  state.cart = [];
+  return { بعد_القديم, بعد_الجديد, بند_باقي: بند_موجود.length, سعره: بند_موجود[0] && بند_موجود[0].price };
+});
+check('تسعير قديم: مافيش بند قص بيتزاد على الطلب', تعديل.بعد_القديم === 0);
+check('تسعير حالي: البند بيتزاد عادي', تعديل.بعد_الجديد === 1);
+check('بند موجود أصلاً بيفضل بسعره', تعديل.بند_باقي === 1 && تعديل.سعره === 300,
+  `${تعديل.بند_باقي} · ${تعديل.سعره}`);
+
 check('مفيش أخطاء JS', errs.length===0, errs.join(' | '));
 await b.close();
 console.log(`\n${pass} نجح · ${fail} فشل`);
