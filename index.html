@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v156';
+const APP_BUILD   = 'v157';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1449,6 +1449,40 @@ function restoreFocus_(snap){
 let _renderQueued = false;
 let _lastRenderedTab = null;
 let _lastRenderedHTML = null;   // آخر HTML اترسم لشاشة المصنع — للمقارنة قبل أي استبدال
+// شاشة المصنع بتتبني على هيئة «شِل» (العنوان والأزرار) + كارت لكل عميل.
+// بنحتفظ بآخر نسخة عشان الرسمة الجاية تستبدل الكارت اللي اتغيّر بس.
+const ADMIN_CARDS_MARK = '<!--كروت-العملاء-->';
+let _adminShell = null, _adminCards = null;
+let _lastAdminShell = null, _lastAdminCards = null;
+
+// بتحاول تحدّث الكروت اللي اتغيّرت بس. بترجّع true لو نجحت،
+// و false لو الشكل اتغيّر (عميل زاد/نقص، أو ترتيبهم اتغيّر) ولازم رسمة كاملة.
+function patchAdminCards_(){
+  if(!_adminShell || !_adminCards || !_lastAdminShell || !_lastAdminCards) return false;
+  if(_adminShell !== _lastAdminShell) return false;
+  if(_adminCards.length !== _lastAdminCards.length) return false;
+  for(let i = 0; i < _adminCards.length; i++){
+    if(_adminCards[i].مفتاح !== _lastAdminCards[i].مفتاح) return false;
+  }
+  const اتغيّر = [];
+  for(let i = 0; i < _adminCards.length; i++){
+    if(_adminCards[i].html !== _lastAdminCards[i].html) اتغيّر.push(_adminCards[i]);
+  }
+  if(اتغيّر.length){
+    // لو الكارت مش موجود في الصفحة (حاجة غير متوقعة) بنرجع للرسمة الكاملة
+    const عناصر = اتغيّر.map(c => document.querySelector('[data-grp="' + cssEscape_(c.مفتاح) + '"]'));
+    if(عناصر.some(el => !el)) return false;
+    عناصر.forEach((el, i) => { el.outerHTML = اتغيّر[i].html; });
+  }
+  return true;
+}
+
+// اسم العميل بيتحط في محدّد CSS — لازم يتهرّب (فيه مسافات وأقواس وعلامات)
+function cssEscape_(v){
+  const s = String(v);
+  if(window.CSS && CSS.escape) return CSS.escape(s);
+  return s.replace(/["\\]/g, '\\$&');
+}
 // النداء العادي: بيتجمّع مع أي نداءات تانية في نفس اللحظة ويتنفّذ مرة واحدة
 function render(){
   if(_renderQueued) return;
@@ -1495,8 +1529,16 @@ function renderNow(){
     updateAdmBadge();
     return;
   }
+
+  // اتغيّر كارت عميل واحد بس؟ (فتح طلب، حفظ، تعديل كمية…) — نستبدل الكارت ده
+  // لوحده. استبدال الشاشة كلها مع كل ضغطة كان بياخد وقت محسوس على الموبايل.
+  let اتحدّث_جزئي = false;
+  if(يقدر_يتخطى) اتحدّث_جزئي = patchAdminCards_();
+  if(!اتحدّث_جزئي) v.innerHTML = html;
+
   _lastRenderedHTML = state.tab === 'admin' ? html : null;
-  v.innerHTML = html;
+  _lastAdminShell = state.tab === 'admin' ? _adminShell : null;
+  _lastAdminCards = state.tab === 'admin' ? _adminCards : null;
 
   restoreFocus_(snap);
   // لو الصفحة قصرت فجأة المتصفح بيقفز لفوق — بنرجّع المكان زي ما كان
@@ -4351,6 +4393,9 @@ function groupOrderRowHTML_(o, a){
 }
 
 function viewAdmin(){
+  // المسارات التانية في الشاشة دي (المخزن، الأسعار، «مفيش طلبات») مش بتبني كروت
+  // عملاء، فبنصفّرهم هنا عشان التحديث الجزئي ما يشتغلش ببيانات قديمة.
+  _adminShell = null; _adminCards = null;
 
 
   const a = state.admin;
@@ -4567,6 +4612,9 @@ function viewAdmin(){
     groups[key].push(o);
   });
 
+  // كل كارت عميل بيتبني لوحده وبيتخزّن بمفتاحه — عشان الرسمة الجاية تقدر
+  // تحدّث الكارت اللي اتغيّر بس بدل ما تستبدل الشاشة كلها.
+  const بالكارت = [];
   const rows = order.map(name=>{
     const orders = groups[name];
     const open = !!a.groupOpen[name];
@@ -4574,7 +4622,7 @@ function viewAdmin(){
     const totalMoney = orders.reduce((s,o)=>s+(Number(o.total)||0),0);
     const pdfBusy = a.groupPdfBusy === name;
     const prevBusy = a.groupPreviewBusy === name;
-    return `<div class="ord" style="padding:0;overflow:hidden">
+    const كارت = `<div class="ord" data-grp="${esc(name)}" style="padding:0;overflow:hidden">
       <div class="grp-hd" data-act="adm-toggle-group" data-name="${esc(name)}">
         <span style="flex:1;min-width:0">
           <b style="font-size:13.5px;color:#0B2A4A">${esc(name)}</b>
@@ -4597,14 +4645,18 @@ function viewAdmin(){
         <div style="height:1px"></div>${orders.map(orderCardHTML_).join('')}
       </div>`:''}
     </div>`;
+    بالكارت.push({ مفتاح: name, html: كارت });
+    return كارت;
   }).join('');
+  _adminCards = بالكارت;
 
-  return `<section class="card">
+  _adminShell = `<section class="card">
       <div class="step"><span class="n">${viewingArchive?ico("folder","lg"):ico("factory","lg")}</span><h2>${viewingArchive?'الأرشيف':'متابعة المصنع'}</h2><span class="hint">${list.length} طلب · ${order.length} عميل</span></div>
       <div class="note" style="margin-top:0">${viewingArchive?'الطلبات المؤرشفة (اتسلمت أو اتأرشفت يدوي) — مش بتظهر في التقارير.':'اضغط اسم العميل عشان تشوف طلباته، وبعدين «الأصناف والإنتاج» جوه كل طلب عشان تسجّل الإنتاج وتشوف المتبقي. تسليم الطلب بيأرشفه أوتوماتيك.'}</div>
       ${headerBtns}
     </section>
-    ${rows}${verBar()}`;
+    ${ADMIN_CARDS_MARK}${verBar()}`;
+  return _adminShell.replace(ADMIN_CARDS_MARK, rows);
 }
 
 
