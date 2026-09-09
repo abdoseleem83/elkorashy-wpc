@@ -331,7 +331,9 @@ function doPost(e) {
     }
     if (!rateOk_('newOrder', body.dev)) return json({ ok: false, error: RATE_MSG_ });
     var shapeErr = orderShapeError_(body.order);
-    if (shapeErr) return json({ ok: false, error: shapeErr });
+    // permanent = مفيش فايدة من إعادة المحاولة، شكل الطلب نفسه غلط.
+    // (بعكس حد الاستخدام أو انقطاع النت — دول بيتصلّحوا بالمحاولة تاني)
+    if (shapeErr) return json({ ok: false, error: shapeErr, permanent: true });
 
     var saved = saveOrder_(body.order);
     return json({ ok: true, id: body.order.id, displayNo: saved.displayNo, editCount: saved.editCount });
@@ -365,7 +367,7 @@ function doGet(e) {
         var orderNO = JSON.parse(String(e.parameter.payload || '{}'));
         if (!rateOk_('newOrder', e.parameter.dev)) return reply({ ok: false, error: RATE_MSG_ }, cb);
         var shapeErrNO = orderShapeError_(orderNO);
-        if (shapeErrNO) return reply({ ok: false, error: shapeErrNO }, cb);
+        if (shapeErrNO) return reply({ ok: false, error: shapeErrNO, permanent: true }, cb);
         var savedNO = saveOrder_(orderNO);
         return reply({ ok: true, id: orderNO.id, displayNo: savedNO.displayNo, editCount: savedNO.editCount }, cb);
       } catch (errNO) {

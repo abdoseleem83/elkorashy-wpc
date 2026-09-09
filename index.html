@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v162';
+const APP_BUILD   = 'v163';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -914,7 +914,7 @@ const ACCESSORIES = [
 // و const مابتترفعش زي الدوال. لما كانت متعرّفة تحت، أي جهاز بياناته مخربة كان
 // بيقع بشاشة بيضا: "Cannot access '_storeProblems_' before initialization".
 const _storeProblems_ = [];
-const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders', LS_TAB = 'wpc_tab', LS_SECTION = 'wpc_section', LS_PRICES = 'wpc_prices', LS_PENDING = 'wpc_pending_sync', LS_PENDING_CANCEL = 'wpc_pending_cancel', LS_PRICES_DIRTY = 'wpc_prices_dirty', LS_DELETED = 'wpc_deleted_ids', LS_SENT = 'wpc_sent_ids';
+const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders', LS_TAB = 'wpc_tab', LS_SECTION = 'wpc_section', LS_PRICES = 'wpc_prices', LS_PENDING = 'wpc_pending_sync', LS_PENDING_CANCEL = 'wpc_pending_cancel', LS_PRICES_DIRTY = 'wpc_prices_dirty', LS_DELETED = 'wpc_deleted_ids', LS_SENT = 'wpc_sent_ids', LS_REJECTED = 'wpc_rejected_ids';
 
 // مستويات السعر: السعر الأساسي المتخزّن في الكتالوج هو "سعر موزع"، ومنه بتتحسب المستويات التانية بزيادة ثابتة.
 // الزيادة بتتطبّق وقت طباعة عرض السعر بس — من غير ما تغيّر الأسعار المتخزّنة نفسها.
@@ -5577,7 +5577,14 @@ async function shareOrderImage(o){
 /* ============================================================
    إرسال الطلب للسيرفر مع تأكيد فعلي للوصول (بدل الإرسال الأعمى القديم)
    ============================================================ */
+/* السيرفر ممكن يرفض الطلب لسببين مختلفين تمامًا:
+     • رفض مؤقت (حد استخدام، نت قطع) → إعادة المحاولة هي الحل
+     • رفض دائم (شكل الطلب غلط) → إعادة المحاولة عمرها ما هتنجح
+   من غير التفرقة دي التطبيق كان هيقول «لسه ما وصلش، هنحاول تاني» ويفضل
+   يحاول للأبد على طلب السيرفر رافضه — والموزّع مستني على الفاضي. */
+let _lastSendError = null;
 async function sendOrderToServer_(o){
+  _lastSendError = null;
   const payload = JSON.stringify(o);
   // ⚠️ الشرط القديم كان `payload.length < 6000` — بيقيس النص الخام. لكن الحروف العربية
   // بتتحوّل لـ %XX%XX في الرابط، يعني بتتضخّم 3 أضعاف تقريبًا. فطلب طوله 5999 حرف
@@ -5590,6 +5597,7 @@ async function sendOrderToServer_(o){
   if(jsonpUrl.length < 7500){
     try{
       const d = await jsonp(jsonpUrl);
+      _lastSendError = (d && !d.ok) ? { msg: d.error || '', permanent: !!d.permanent } : null;
       if(d && d.ok && d.displayNo){
         // بنسجّل رقم الطلب "العادي" اللي السيرفر رجّعه على النسخة المحلية عشان يبان صح في أي طباعة/مشاركة لاحقة
         o.displayNo = d.displayNo; o.editCount = d.editCount||0;
@@ -5689,6 +5697,18 @@ function loadPendingSync_(){ const v = load(LS_PENDING, []); return Array.isArra
 // الطلبات اللي اتأكد وصولها للمصنع — عشان الدمج مايرجّعهاش لقايمة المعلّق
 // فتتبعت مرتين.
 function loadSent_(){ const v = load(LS_SENT, []); return Array.isArray(v) ? v : []; }
+
+/* الطلبات اللي السيرفر رفضها رفض دائم (شكل الطلب نفسه غلط).
+   ⚠️ مش كفاية نشيلها من قايمة المعلّق: القايمة دي بتدمج بدل ما تكتب فوق —
+   دي حماية مقصودة عشان طلب ما يضيعش لو نسخة تانية من التطبيق حفظت في نفس
+   الوقت. فمن غير القايمة دي، الطلب المرفوض بيرجع للطابور ويتحاول للأبد. */
+function loadRejected_(){ const v = load(LS_REJECTED, []); return Array.isArray(v) ? v : []; }
+function markRejected_(id){
+  if(!id) return;
+  const l = loadRejected_().filter(x=>String(x)!==String(id));
+  l.unshift(String(id));
+  save(LS_REJECTED, l.slice(0,300));
+}
 function markSent_(id){
   if(!id) return;
   const l = loadSent_().filter(x=>String(x)!==String(id));
@@ -5703,7 +5723,7 @@ function markSent_(id){
    وده أخطر من ضياعه من الشاشة: الطلب يبقى «موجود» عند الموزّع ومش موجود عند
    المصنع. */
 function savePendingSync_(list){
-  const اتبعت = new Set(loadSent_().map(String));
+  const اتبعت = new Set(loadSent_().concat(loadRejected_()).map(String));
   const عندنا = new Set((list||[]).map(String));
   // الطلب المعلّق لازم يكون لسه موجود — على الجهاز أو في التخزين (نسخة تانية
   // ضافته). الـid اللي مالوش طلب مانقدرش نبعته أصلًا، وسيبه في القايمة معناه
@@ -5737,7 +5757,19 @@ async function syncOrder_(o){
   try{ ok = await sendOrderToServer_(o); }
   finally{ _sendingNow.delete(String(o.id)); }
   if(ok !== true){
-    toast('⚠️ الطلب '+orderNoText_(o)+' اتسجّل على جهازك بس لسه ما وصلش المصنع — هنحاول تاني تلقائي أول ما يرجع النت', 4200);
+    const رفض = _lastSendError;
+    if(رفض && رفض.permanent){
+      // السيرفر رافض الطلب نفسه — إعادة المحاولة مالهاش لازمة، والموزّع لازم يعرف
+      markRejected_(o.id);
+      savePendingSync_(loadPendingSync_().filter(id=>String(id)!==String(o.id)));
+      toast('⛔ المصنع رفض الطلب '+orderNoText_(o)+': '+(رفض.msg||'شكل الطلب مش مقبول')+
+            ' — عدّل الطلب وابعته تاني', 7000);
+    } else if(رفض && رفض.msg){
+      toast('⚠️ الطلب '+orderNoText_(o)+' لسه ما وصلش المصنع: '+رفض.msg+
+            ' — هنحاول تاني تلقائي', 5200);
+    } else {
+      toast('⚠️ الطلب '+orderNoText_(o)+' اتسجّل على جهازك بس لسه ما وصلش المصنع — هنحاول تاني تلقائي أول ما يرجع النت', 4200);
+    }
   } else {
     markSent_(o.id);   // اتأكد وصوله — الدمج مايرجّعهوش لقايمة المعلّق
     savePendingSync_(loadPendingSync_().filter(id=>String(id)!==String(o.id)));
@@ -5799,12 +5831,20 @@ async function retryPendingOrders_(){
   _retryRunning = true;
   try{
     const stillPending = [];
+    let مرفوض = 0;
     for(const id of pending){
       const o = state.orders.find(x=>String(x.id)===String(id));
       if(!o) continue;   // اتشال من عندنا لأي سبب — متبقاش نحاول تاني
       // بيتبعت دلوقتي من syncOrder_ — سيبه له عشان مايوصلش المصنع مرتين
       if(_sendingNow.has(String(id))){ stillPending.push(id); continue; }
       const ok = await sendOrderToServer_(o);
+      // رفض دائم؟ نشيله من الطابور بدل ما نفضل نحاول للأبد، ونقول للموزّع
+      if(ok !== true && _lastSendError && _lastSendError.permanent){
+        markRejected_(id);
+        مرفوض++;
+        toast('⛔ المصنع رفض الطلب '+orderNoText_(o)+': '+(_lastSendError.msg||'شكل الطلب مش مقبول'), 7000);
+        continue;
+      }
       if(ok !== true) stillPending.push(id);   // مش متأكدين = لسه معلّق
       else { markSent_(id); await runPendingCancelFor_(id); }   // وصل — دلوقتي بس ينفع نمسح القديم
     }
@@ -5815,7 +5855,10 @@ async function retryPendingOrders_(){
     const handled = new Set(pending.map(String));
     const merged = loadPendingSync_().filter(id => !handled.has(String(id)));
     savePendingSync_(merged.concat(stillPending));
-    if(pending.length && !stillPending.length) toast('✅ اتبعتت كل الطلبات اللي كانت معلّقة للمصنع');
+    // الطلب المرفوض مااتبعتش — مانقولش «اتبعتت كلها» وهو لسه برّه
+    if(pending.length && !stillPending.length && !مرفوض){
+      toast('✅ اتبعتت كل الطلبات اللي كانت معلّقة للمصنع');
+    }
   } finally {
     _retryRunning = false;
   }
