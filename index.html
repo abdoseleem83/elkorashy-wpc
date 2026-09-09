@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v155';
+const APP_BUILD   = 'v156';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1448,6 +1448,7 @@ function restoreFocus_(snap){
 
 let _renderQueued = false;
 let _lastRenderedTab = null;
+let _lastRenderedHTML = null;   // آخر HTML اترسم لشاشة المصنع — للمقارنة قبل أي استبدال
 // النداء العادي: بيتجمّع مع أي نداءات تانية في نفس اللحظة ويتنفّذ مرة واحدة
 function render(){
   if(_renderQueued) return;
@@ -1478,10 +1479,24 @@ function renderNow(){
   _lastRenderedTab = state.tab;
   v.classList.toggle('enter', tabChanged);
 
-  v.innerHTML = state.tab==='new' ? viewNew()
-              : state.tab==='cart' ? viewCart()
-              : state.tab==='admin' ? viewAdmin()
-              : viewOrders();
+  const html = state.tab==='new' ? viewNew()
+             : state.tab==='cart' ? viewCart()
+             : state.tab==='admin' ? viewAdmin()
+             : viewOrders();
+
+  // ⚠️ استبدال شاشة المصنع كلها تقيل: مع ٣٠٠ طلب الرسمة الواحدة بتاخد ١٠٠ مللي
+  // على جهاز سريع (وأكتر بكتير على موبايل)، والشاشة بتترسم مع كل ضغطة ومع كل
+  // فحص خلفي. الفحص الخلفي كل ٩٠ ثانية بيرسم نفس الشكل بالظبط في أغلب المرات.
+  // فلو الناتج مطابق للي معروض، مانلمسش الصفحة خالص.
+  // الشاشات التانية فيها حاجات بتتعدّل في الصفحة من غير render (زرار
+  // الإكسسوارات، سطر الملخّص)، فالمقارنة دي لشاشة المصنع بس.
+  const يقدر_يتخطى = state.tab === 'admin' && _lastRenderedHTML !== null && !tabChanged;
+  if(يقدر_يتخطى && html === _lastRenderedHTML){
+    updateAdmBadge();
+    return;
+  }
+  _lastRenderedHTML = state.tab === 'admin' ? html : null;
+  v.innerHTML = html;
 
   restoreFocus_(snap);
   // لو الصفحة قصرت فجأة المتصفح بيقفز لفوق — بنرجّع المكان زي ما كان
@@ -3586,13 +3601,8 @@ async function previewCustomerOrder_(name){
 
   a.groupPreviewBusy = name; render();
   try{
-    // نجيب أصناف الطلبات اللي لسه ماتحمّلتش بس. بالتوازي عشان السرعة، بس على دفعات
-    // من 4 — عميل عنده 15 طلب معلّق كان هيبعت 15 نداء لـ Apps Script في نفس اللحظة،
-    // وده بيقرّب من حد التنفيذ المتوازي عنده وممكن بعض النداءات ترجع فاضية.
-    const need = mine.filter(o => !a.items[o.id]);
-    for(let i = 0; i < need.length; i += 4){
-      await Promise.all(need.slice(i, i+4).map(o => loadOrderItems_(o.id).catch(()=>null)));
-    }
+    // أصناف كل الطلبات في نداء واحد بدل نداء لكل طلب
+    await loadOrderItemsMany_(mine.map(o => o.id));
 
     const html = mine.map(o => {
       const its = a.items[o.id] || [];
@@ -3631,6 +3641,30 @@ async function loadOrderItems_(id){
     + '&id=' + encodeURIComponent(id));
   if(d && d.ok) state.admin.items[id] = d.items || [];
   return state.admin.items[id] || [];
+}
+
+// أصناف كذا طلب في نداء واحد.
+// ⚠️ المعاينة والتصدير لعميل كانوا بيبعتوا نداء لكل طلب، و Apps Script بينفّذ
+// نداءات نفس المستخدم واحد ورا التاني — يعني الانتظار بيتضاعف بعدد الطلبات.
+// نداء واحد بكل المعرّفات = تنفيذ واحد وقراية واحدة للشيت.
+// بنقسّمهم على دفعات عشان الرابط ما يطولش أوي.
+async function loadOrderItemsMany_(ids){
+  const ناقص = ids.filter(id => !state.admin.items[id]);
+  for(let i = 0; i < ناقص.length; i += 12){
+    const دفعة = ناقص.slice(i, i + 12);
+    try{
+      const d = await jsonp(APPS_SCRIPT_URL
+        + '?action=orderItems' + admParams_()
+        + '&ids=' + encodeURIComponent(دفعة.join(',')));
+      if(d && d.ok && d.itemsById){
+        دفعة.forEach(id => { if(d.itemsById[id]) state.admin.items[id] = d.itemsById[id]; });
+      }
+    }catch(e){}
+    // أي طلب ما رجعش في الرد (سيرفر قديم مثلًا) بنجيبه لوحده
+    for(const id of دفعة){
+      if(!state.admin.items[id]){ try{ await loadOrderItems_(id); }catch(e){} }
+    }
+  }
 }
 
 // بتعرض HTML التقرير في طبقة فوق الشاشة، مصغّر ليدخل في عرض الموبايل.
