@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v172';
+const APP_BUILD   = 'v173';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2747,6 +2747,20 @@ async function saveOrderMeta_(id, customer, date){
 }
 
 // بيحدّث الكمية المطلوبة لصنف معيّن جوه طلب (تعديل يدوي من شاشة المصنع) وبيحدّث إجماليات الطلب في القايمة
+// ⚠️ السيرفر ممكن يعدّل/يمسح بند «خدمة قص» لوحده بعد تعديل كمية باب أو حذفه.
+// نسخة الأصناف المحفوظة على الجهاز بتبقى ساعتها مزحلقة عن الشيت — والأرقام
+// اللي بنبعتها في أي تعديل بعده بتوقع على الصنف الغلط. بنرمي النسخة ونجيبها
+// تاني من السيرفر.
+async function refreshOrderItems_(id){
+  delete state.admin.items[id];
+  // مسودّات تعديل الكميات متخزّنة بالرقم (id:idx) — بعد ما الترتيب يتغيّر
+  // بتبقى بتشاور على أصناف تانية خالص. بنمسحها بدل ما تتطبّق على الغلط.
+  Object.keys(state.admin.qtyEdit || {}).forEach(k=>{
+    if(k.indexOf(id+':')===0) delete state.admin.qtyEdit[k];
+  });
+  try{ await loadOrderItems_(id); }catch(e){}
+  render();
+}
 async function setItemQty_(id, idx, qty){
   const key = id+':'+idx;
   return adminAction_({
@@ -2757,6 +2771,7 @@ async function setItemQty_(id, idx, qty){
       if(it){ it.qty = d.qty; it.produced = d.produced; }
       applyOrderTotals_(id, d.totals);
       delete state.admin.qtyEdit[key];
+      if(d.cutChanged) refreshOrderItems_(id);
     },
     okMsg:'اتحدّثت الكمية'
   });
@@ -2771,6 +2786,7 @@ async function deleteOrderItem_(id, idx){
     onOk(d){
       if(state.admin.items[id]) state.admin.items[id].splice(idx,1);
       applyOrderTotals_(id, d.totals);
+      if(d.cutChanged) refreshOrderItems_(id);
     },
     okMsg:'اتحذف الصنف'
   });

@@ -119,5 +119,24 @@ check('الارتفاع الاستاندر مالوش بند قص', r.length===1
   check('مفيش كتابة من غير داعي', s.عمليات.length===0, s.عمليات.join('، '));
 }
 
+
+// ٦) الدالة لازم تقول إنها غيّرت حاجة — التطبيق بيعتمد على ده عشان يرمي نسخته
+//    المحفوظة من الأصناف. من غيره أرقام الأصناف عنده بتزحلق عن الشيت.
+function عدد_التغييرات(سطور){
+  const s = شيتCut(سطور);
+  const c = { String, Number, Object, Array, RegExp,
+    CUT_SERVICE_CODE_:'CUT', DOOR_STD_HEIGHT_:215, HEAD_ITEMS:new Array(NCOLS).fill('') };
+  vm.createContext(c);
+  vm.runInContext(grab('itemRowsForMany_')+'\n'+grab('itemRowsFor_')+'\n'
+    +grab('doorRowNeedsCut_')+'\n'+grab('cutRowKey_')+'\n'+grab('syncCutRows_'), c);
+  return c.syncCutRows_(s.sh, 'W9');
+}
+check('بترجّع ١ لما بند اتعدّل',
+  عدد_التغييرات([ بابC('90x206 cm (custom)','',1), قصC('90x206 cm (custom)','',3) ]) === 1);
+check('بترجّع صفر لما مفيش تغيير',
+  عدد_التغييرات([ بابC('90x206 cm (custom)','',2), قصC('90x206 cm (custom)','',2) ]) === 0);
+check('بترجّع صفر لما الطلب مالوش بنود قص',
+  عدد_التغييرات([ بابC('90x206 cm (custom)','',2) ]) === 0);
+
 console.log(`\nالنتيجة النهائية: ${pass} نجحت، ${fail} فشلت`);
 process.exit(fail?1:0);
