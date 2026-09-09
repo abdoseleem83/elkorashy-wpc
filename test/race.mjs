@@ -39,8 +39,15 @@ check('الكمية اللي المستخدم كتبها ما اتمسحتش', r
 const r2 = await pg.evaluate(async()=>{
   closeReportPreview_(); state.admin.items={};
   let calls=0;
-  window.jsonp = () => { calls++; return new Promise(res=>setTimeout(()=>res({ok:true, items:[
-    {type:'Door',title:'باب',code:'A01',size:'70 cm',unit:'door',qty:2,unitPrice:100,produced:0}]}), 120)); };
+  // السيرفر دلوقتي بيرجّع أصناف كذا طلب في نداء واحد (ids=a,b,c)
+  window.jsonp = (url) => { calls++;
+    const صنف = {type:'Door',title:'باب',code:'A01',size:'70 cm',unit:'door',qty:2,unitPrice:100,produced:0};
+    const m = /[?&]ids=([^&]*)/.exec(url);
+    return new Promise(res=>setTimeout(()=>{
+      if(m){ const itemsById={}; decodeURIComponent(m[1]).split(',').forEach(id=>itemsById[id]=[صنف]);
+             res({ok:true, itemsById}); }
+      else res({ok:true, items:[صنف]});
+    }, 120)); };
   previewCustomerOrder_('ع1');           // من غير await
   previewCustomerOrder_('ع1');           // ضغطة تانية فورًا
   previewCustomerOrder_('ع1');

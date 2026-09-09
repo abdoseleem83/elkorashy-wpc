@@ -433,39 +433,30 @@ function doGet(e) {
         return reply({ ok: false, error: adminPwError_() }, cb);
       }
       var shOI = sheet_(SHEET_ITEMS, HEAD_ITEMS);
-      var idOI = String(e.parameter.id || '');
-      var lastOI = shOI.getLastRow();
-      var itemsOut = [];
-      if (lastOI >= 2) {
-        var valsOI = shOI.getRange(2, 1, lastOI - 1, HEAD_ITEMS.length).getValues();
-        for (var iOI = 0; iOI < valsOI.length; iOI++) {
-          if (String(valsOI[iOI][0]) === idOI) {
-            itemsOut.push({
-              type:      valsOI[iOI][3],
-              title:     valsOI[iOI][4],
-              code:      valsOI[iOI][5],
-              size:      valsOI[iOI][6],
-              included:  valsOI[iOI][7],
-              milling:   valsOI[iOI][8],
-              unit:      valsOI[iOI][9],
-              qty:       valsOI[iOI][10],
-              unitPrice: valsOI[iOI][11],
-              lineTotal: valsOI[iOI][12],
-              avail:     valsOI[iOI][13] !== 'N',
-              frame:     valsOI[iOI][14] || '',
-              dbror:     valsOI[iOI][15] || '',
-              frameHeight: valsOI[iOI][16] || '',
-              width:     valsOI[iOI][17] || '',
-              produced:  Number(valsOI[iOI][18]) || 0,
-              doorHeight: valsOI[iOI][19] || '',
-              forDoorWidth: valsOI[iOI][20] || '',
-              itemNote:  valsOI[iOI][21] || ''
-            });
-          }
+      // ⚠️ المعاينة وتصدير طلبات عميل كانوا بينادوا الأكشن ده مرة لكل طلب.
+      // Apps Script بينفّذ نداءات نفس المستخدم واحد ورا التاني، فعميل عنده
+      // ١٠ طلبات = ١٠ تنفيذات متسلسلة، كل واحد بيفتح الشيت من الأول.
+      // دلوقتي ينفع تبعت أكتر من معرّف في نداء واحد (ids=a,b,c) ونرجّعهم
+      // كلهم مع بعض من قراية واحدة.
+      var idsParam = String(e.parameter.ids || '').trim();
+      if (idsParam) {
+        var wantOM = [];
+        var partsOM = idsParam.split(',');
+        for (var kOM = 0; kOM < partsOM.length; kOM++) {
+          var oneOM = String(partsOM[kOM]).trim();
+          if (oneOM && wantOM.indexOf(oneOM) < 0) wantOM.push(oneOM);
         }
+        var mapOM = itemRowsForMany_(shOI, wantOM);
+        var byIdOM = {};
+        for (var nOM = 0; nOM < wantOM.length; nOM++) {
+          byIdOM[wantOM[nOM]] = itemsFromRows_(mapOM[wantOM[nOM]].rows);
+        }
+        return reply({ ok: true, itemsById: byIdOM }, cb);
       }
-      return reply({ ok: true, items: itemsOut }, cb);
+      var idOI = String(e.parameter.id || '');
+      return reply({ ok: true, items: itemsFromRows_(itemRowsFor_(shOI, idOI).rows) }, cb);
     }
+
 
     // تحديد صنف معيّن جوه طلب كـ"غير متاح" أو رجّعه "متاح" — بالـ idx (ترتيبه جوه الطلب، يبدأ من صفر)
     if (action === 'setItemAvail') {
@@ -548,24 +539,30 @@ function doGet(e) {
           }
         }
         if (foundIQ < 0) return reply({ ok: false, error: 'الصنف مش موجود' }, cb);
-        var unitPriceIQ = Number(shIQ.getRange(foundIQ, 12).getValue()) || 0;   // عمود Unit Price
-        var producedIQ = Number(shIQ.getRange(foundIQ, COL_ITEM_PRODUCED).getValue()) || 0;
+        // ⚠️ كان بيقرا خانتين بنداءين، وبيكتب تلات خانات بتلات نداءات، وبيقرا
+        // الصف تاني في stockItemFromRow_ — ٦ نداءات لـ Sheets على تعديل كمية
+        // واحدة. دلوقتي: قراية واحدة للصف كله، وكتابة واحدة للمدى ١١..١٩.
+        var rowRngIQ = shIQ.getRange(foundIQ, 1, 1, HEAD_ITEMS.length);
+        var rowIQ = rowRngIQ.getValues()[0];
+        var unitPriceIQ = Number(rowIQ[11]) || 0;                      // عمود Unit Price
+        var producedIQ = Number(rowIQ[COL_ITEM_PRODUCED - 1]) || 0;
         if (producedIQ > newQtyIQ) producedIQ = newQtyIQ;   // ميفضلش "جاهز" أكبر من "مطلوب" بعد التعديل
 
         // ⚠️ باج كان هنا: الكمية بتتغيّر والرصيد ما بيتعدّلش خالص. يعني لو المصنع
         // عدّل صنف من 5 أبواب لـ 2، التلاتة الباقيين بيفضلوا مخصومين من المخزن
         // للأبد (الرصيد يبان أقل من الحقيقة). والعكس لو زوّد الكمية.
         // بنعدّل الرصيد بالفرق: القديم ناقص الجديد.
-        var stkIQ = stockItemFromRow_(shIQ, foundIQ);
+        var stkIQ = stockItemFromValues_(rowIQ);
         if (stkIQ && orderStatus_(idIQ) !== 'Delivered') {
           var diffIQ = stkIQ.qty - newQtyIQ;          // موجب = نرجّع للمخزن، سالب = نخصم زيادة
           if (diffIQ) adjustStockForItems_([{ kind:'door', code:stkIQ.code, w:stkIQ.w, qty:Math.abs(diffIQ) }],
                                            diffIQ > 0 ? +1 : -1);
         }
 
-        shIQ.getRange(foundIQ, 11).setValue(newQtyIQ);                    // Qty
-        shIQ.getRange(foundIQ, 13).setValue(unitPriceIQ * newQtyIQ);      // Line Total
-        shIQ.getRange(foundIQ, COL_ITEM_PRODUCED).setValue(producedIQ);
+        rowIQ[10] = newQtyIQ;                              // Qty
+        rowIQ[12] = unitPriceIQ * newQtyIQ;                // Line Total
+        rowIQ[COL_ITEM_PRODUCED - 1] = producedIQ;
+        rowRngIQ.setValues([rowIQ]);
         var totalsIQ = recomputeOrderTotals_(idIQ);
         return reply({ ok: true, qty: newQtyIQ, produced: producedIQ, totals: totalsIQ }, cb);
       } finally {
@@ -1064,18 +1061,14 @@ function saveOrder_(o) {
 // ويحدّثهم في سطر الطلب بتبويب Orders — بتتنادى بعد أي تعديل يدوي على كمية/حذف صنف من شاشة المصنع
 function recomputeOrderTotals_(id) {
   var shI = sheet_(SHEET_ITEMS, HEAD_ITEMS);
-  var lastI = shI.getLastRow();
   var qty = 0, rods = 0, total = 0;
-  if (lastI >= 2) {
-    var valsI = shI.getRange(2, 1, lastI - 1, HEAD_ITEMS.length).getValues();
-    for (var i = 0; i < valsI.length; i++) {
-      if (String(valsI[i][0]) !== String(id)) continue;
-      var type = String(valsI[i][3] || '');
-      var unit = String(valsI[i][9] || '');
-      var q = Number(valsI[i][10]) || 0;
-      if (type === 'Frame' || type === 'Bror') rods += (unit === 'set' ? q * 3 : q); else qty += q;
-      total += Number(valsI[i][12]) || 0;
-    }
+  var valsI = itemRowsFor_(shI, id).rows;
+  for (var i = 0; i < valsI.length; i++) {
+    var type = String(valsI[i][3] || '');
+    var unit = String(valsI[i][9] || '');
+    var q = Number(valsI[i][10]) || 0;
+    if (type === 'Frame' || type === 'Bror') rods += (unit === 'set' ? q * 3 : q); else qty += q;
+    total += Number(valsI[i][12]) || 0;
   }
   var shO = sheet_(SHEET_ORDERS, HEAD_ORDERS);
   var r = findRow_(shO, id);
@@ -1097,13 +1090,17 @@ function orderStatus_(id){
 
 // بيقرا بيانات المخزون بتاعة صف صنف واحد (كود/عرض/كمية) — بيرجّع null لو مش باب
 // أو مش متتبّع في المخزون (مقاس خاص/بدون كود).
-function stockItemFromRow_(sh, row){
-  var vals = sh.getRange(row, 1, 1, HEAD_ITEMS.length).getValues()[0];
-  if (String(vals[3]) !== 'Door') return null;
+// من صف مقروء خلاص — من غير أي نداء لـ Sheets
+function stockItemFromValues_(vals){
+  if (!vals || String(vals[3]) !== 'Door') return null;
   var code = String(vals[5] || '').trim();
   var w    = String(vals[COL_ITEM_WIDTH - 1] || '').trim();
   if (!code || !w) return null;
   return { kind: 'door', code: code, w: w, qty: Number(vals[10]) || 0 };
+}
+
+function stockItemFromRow_(sh, row){
+  return stockItemFromValues_(sh.getRange(row, 1, 1, HEAD_ITEMS.length).getValues()[0]);
 }
 
 function restoreStockForOrderId_(id){ adjustStockForOrderId_(id, +1); }
@@ -1112,9 +1109,7 @@ function restoreStockForOrderId_(id){ adjustStockForOrderId_(id, +1); }
 // فالدالة واحدة — إلغاء الطلب بيرجّع، والرجوع من الإلغاء لحالة نشطة بيخصم تاني.
 function adjustStockForOrderId_(id, dir){
   var shRS = sheet_(SHEET_ITEMS, HEAD_ITEMS);
-  var lastRS = shRS.getLastRow();
-  if (lastRS < 2) return;
-  var valsRS = shRS.getRange(2, 1, lastRS - 1, HEAD_ITEMS.length).getValues();
+  var valsRS = itemRowsFor_(shRS, id).rows;
   var itemsRS = [];
   for (var iRS = 0; iRS < valsRS.length; iRS++) {
     if (String(valsRS[iRS][0]) !== String(id)) continue;
@@ -1262,6 +1257,73 @@ function findRow_(sh, id) {
 // الجديد)، وهو نفس المسار اللي بيبطّأ الطلبات الكبيرة لحد ما الطلب يفشل.
 // سطور الطلب الواحد بتتكتب مع بعض فبتبقى متجاورة، فبنمسحها ككتلة واحدة:
 // طلب ٢٠ سطر بقى نداء واحد بدل ٢٠.
+// بيرجّع سطور طلب معيّن من تبويب الأصناف من غير ما يقرا الشيت كله.
+// ⚠️ ده كان أكبر سبب بطء في شاشة المصنع: كل نداء (جلب الأصناف، المعاينة،
+// أي تعديل على صنف) كان بيقرا **كل أعمدة كل السطور** في تبويب Order_Items
+// عشان يطلّع ١٥ سطر بتاعة طلب واحد. مع آلاف السطور دي ثواني على كل ضغطة،
+// وبتزيد كل ما الشغل يكبر.
+// دلوقتي: نقرا عمود المعرّف لوحده (عمود واحد = قراية رخيصة)، وبعدين نقرا
+// سطور الطلب نفسها بس — وهي متجاورة عادةً فبتبقى قراية واحدة.
+// بتحوّل صفوف الشيت لأصناف زي ما التطبيق مستنيها
+function itemsFromRows_(rows){
+  var out = [];
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    out.push({
+      type:      r[3],
+      title:     r[4],
+      code:      r[5],
+      size:      r[6],
+      included:  r[7],
+      milling:   r[8],
+      unit:      r[9],
+      qty:       r[10],
+      unitPrice: r[11],
+      lineTotal: r[12],
+      avail:     r[13] !== 'N',
+      frame:     r[14] || '',
+      dbror:     r[15] || '',
+      frameHeight: r[16] || '',
+      width:     r[17] || '',
+      produced:  Number(r[18]) || 0,
+      doorHeight: r[19] || '',
+      forDoorWidth: r[20] || '',
+      itemNote:  r[21] || ''
+    });
+  }
+  return out;
+}
+
+function itemRowsFor_(sh, id){
+  var m = itemRowsForMany_(sh, [id]);
+  return m[String(id)] || { rows: [], rowNums: [] };
+}
+
+// نفس الفكرة لأكتر من طلب مرة واحدة: بنقرا عمود المعرّف **مرة واحدة** للكل،
+// وبعدين بنقرا الكتل المطلوبة بس. المعاينة لعميل عنده ١٠ طلبات بقت قراية
+// واحدة للعمود بدل ١٠.
+function itemRowsForMany_(sh, ids){
+  var out = {};
+  for (var k = 0; k < ids.length; k++) out[String(ids[k])] = { rows: [], rowNums: [] };
+  var last = sh.getLastRow();
+  if (last < 2) return out;
+  var col = sh.getRange(2, 1, last - 1, 1).getValues();
+  var i = 0;
+  while (i < col.length) {
+    var key = String(col[i][0]);
+    if (!(key in out)) { i++; continue; }
+    var start = i;
+    while (i < col.length && String(col[i][0]) === key) i++;
+    var count = i - start;
+    var block = sh.getRange(start + 2, 1, count, HEAD_ITEMS.length).getValues();
+    for (var j = 0; j < count; j++) {
+      out[key].rows.push(block[j]);
+      out[key].rowNums.push(start + 2 + j);
+    }
+  }
+  return out;
+}
+
 function clearItemRows_(sh, id) {
   var last = sh.getLastRow();
   if (last < 2) return;
