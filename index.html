@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v166';
+const APP_BUILD   = 'v167';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -6095,8 +6095,10 @@ function docRowHTML_(it, idx, priced, showFrameHCol, oddFrameW, titleTxt){
     ${isCut?`<td style="text-align:center;font-size:11px;color:#9AA7B4">—</td><td style="text-align:center;font-size:11px;color:#9AA7B4">—</td>`
       :`<td style="text-align:center;font-size:11px;color:${pp.produced>=qty&&qty>0?'#1E8E52':(pp.produced>0?'#B8790A':'#6B7A8C')}">${pp.produced}</td>
     <td style="text-align:center;font-size:11px;font-weight:700;color:${pp.pending>0?'#B3261E':'#6B7A8C'}">${pp.pending}</td>`}
-    ${priced?`<td style="text-align:center">${money(it.kind==='door'?it.unitPrice:it.price)}</td>
-    <td style="text-align:center;font-weight:700">${money(linePrice(it))}</td>`:''}
+    ${priced?(it.included
+      ? `<td style="text-align:center;font-size:11px;color:#8A6512">مشمول</td><td style="text-align:center;font-size:11px;color:#8A6512">مشمول</td>`
+      : `<td style="text-align:center">${money(it.kind==='door'?it.unitPrice:it.price)}</td>
+    <td style="text-align:center;font-weight:700">${money(linePrice(it))}</td>`):''}
   </tr>`;
 }
 
@@ -6201,22 +6203,26 @@ function docTotalsHTML(o){
 function derivedCutLines_(items){
   const list = items||[];
   if(list.some(isCutLine_)) return [];
-  const out=[];
-  const byLabel={};
+  const out=[], byLabel={};
   list.forEach(it=>{
     if(!doorNeedsCut_(it)) return;
+    const label = doorSizeText_(it.sizeTxt, it.doorHeight) || '';
     const w = Number(it.w) || doorWH_(it.sizeEn, it.doorHeight).w;
-    if(!w) return;
     // الحفر مابيتنقلش كحقل في مستند المصنع — بنقراه من اسم الصنف
     const hafr = !!it.hafr || /\(حفر\)|Carved/i.test(it.title||'');
-    const std = priceForWidth(w, hafr);
-    if((Number(it.unitPrice)||0) !== std) return;   // تسعير قديم — مانلمسهوش
-    const label = doorSizeText_(it.sizeTxt, it.doorHeight) || '';
-    byLabel[label] = (byLabel[label]||0) + (Number(it.qty)||0);
+    // ⚠️ النسخ الأقدم من v164 كانت بتحط الـ٣٠٠ جوه سعر الباب. لو سعر الباب
+    // المتخزّن مش هو سعر المقاس الحالي، يبقى غالبًا القص محسوب جواه — فالسطر
+    // بيبان للمصنع بس مكتوب عليه «مشمول»، ومابيتضافش على الإجمالي تاني.
+    const included = !w || (Number(it.unitPrice)||0) !== priceForWidth(w, hafr);
+    const g = byLabel[label] || (byLabel[label] = { qty:0, included:false });
+    g.qty += (Number(it.qty)||0);
+    if(included) g.included = true;
   });
   Object.keys(byLabel).forEach(label=>{
+    const g = byLabel[label];
     out.push({ kind:'acc', id:CUT_SERVICE_CODE_, code:CUT_SERVICE_CODE_, unit:'باب',
-               title:cutServiceTitle_(label), qty:byLabel[label], price:CUSTOM_EXTRA });
+               title:cutServiceTitle_(label), qty:g.qty,
+               price: g.included ? 0 : CUSTOM_EXTRA, included: g.included });
   });
   return out;
 }
