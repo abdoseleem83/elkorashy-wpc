@@ -39,10 +39,11 @@ check('بند القص شايل مقاس الباب عشان السيرفر ير
   JSON.stringify(بندCut));
 
 // ── ٢) سطور السيرفر: نبنيها بنفس منطق newOrder ─────────────────────────
-const ctx = { String, Number, Object, Array, RegExp, CUT_SERVICE_CODE_:'CUT',
+const ctx = { String, Number, Object, Array, RegExp, Math,
+  CUT_SERVICE_CODE_:'CUT', WOOD_SERVICE_CODE_:'WOOD',
   DOOR_STD_HEIGHT_:215, HEAD_ITEMS:new Array(NCOLS).fill('') };
 vm.createContext(ctx);
-vm.runInContext(grab('itemRowsForMany_')+'\n'+grab('itemRowsFor_')+'\n'
+vm.runInContext(grab('itemRowsForMany_')+'\n'+grab('itemRowsFor_')+'\n'+grab('isServiceCode_')+'\n'
   +grab('doorRowNeedsCut_')+'\n'+grab('cutRowKey_')+'\n'+grab('syncCutRows_')
   +'\n'+grab('recomputeOrderTotals_'), ctx);
 

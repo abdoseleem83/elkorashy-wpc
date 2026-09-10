@@ -26,8 +26,13 @@
  *     متستخدمش نفس الرابط للاتنين عشان الطلبات ما تتخلطش.
  */
 
-// كود بند «خدمة قص» — بند تسعير بيتحسب في الفلوس بس، مش في عدد القطع
+// أكواد بنود الخدمة على الباب — بتتحسب في الفلوس بس، مش في عدد القطع
 var CUT_SERVICE_CODE_ = 'CUT';
+var WOOD_SERVICE_CODE_ = 'WOOD';
+function isServiceCode_(code){
+  var c = String(code || '');
+  return c === CUT_SERVICE_CODE_ || c === WOOD_SERVICE_CODE_;
+}
 var DOOR_STD_HEIGHT_ = 215;   // الارتفاع الاستاندر — أي ارتفاع غيره معناه قص
 var SHEET_ORDERS = 'Orders';
 var SHEET_ITEMS  = 'Order_Items';
@@ -1033,8 +1038,8 @@ function saveOrder_(o) {
   var rods = 0;
   for (var i = 0; i < items.length; i++) {
     var k = items[i].kind;
-    // «خدمة قص» بند تسعير مش قطعة بتتصنّع — مابتتعدّش في عدد القطع
-    if (String(items[i].code || '') === CUT_SERVICE_CODE_) continue;
+    // بنود الخدمة (قص/تدعيم) تسعير مش قطع بتتصنّع — مابتتعدّش في عدد القطع
+    if (isServiceCode_(items[i].code)) continue;
     if (k === 'frame' || k === 'bror') rods += (items[i].isSet ? (Number(items[i].qty)||0)*3 : Number(items[i].qty) || 0);
     else qty += Number(items[i].qty) || 0;
   }
@@ -1202,28 +1207,44 @@ function syncCutRows_(shI, id) {
   var rows = got.rows, rowNums = got.rowNums;   // rowNums = رقم كل سطر في الشيت
   if (!rows.length) return 0;
 
-  var need = {}, total = 0, cutRows = [];
+  // need   = كمية الأبواب المحتاجة قص لكل مقاس (القص محسوب من المقاس نفسه)
+  // group  = كمية كل أبواب المقاس مهما كانت — سقف بند التدعيم
+  // ⚠️ التدعيم اختيار من الموزّع ومش متسجّل على سطر الباب، فالسيرفر مايعرفش
+  // أنهي أبواب اتختارلها تدعيم. فبنقدر بس نتأكد إن البند مايزيدش عن أبواب
+  // مقاسه الموجودة، ونمسحه لو المقاس ما بقاش فيه أبواب خالص. الاتجاه ده آمن:
+  // مابيزوّدش على العميل أبدًا، وبيمنع إننا نحاسبه على باب اتشال.
+  var need = {}, group = {}, total = 0, svcRows = [];
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
     var type = String(r[3] || '');
     var qty = Number(r[10]) || 0;
-    if (String(r[5] || '') === CUT_SERVICE_CODE_) { cutRows.push({ i: i, row: r }); continue; }
+    if (isServiceCode_(r[5])) { svcRows.push({ i: i, row: r }); continue; }
     if (type !== 'Door') continue;
-    if (!doorRowNeedsCut_(r[6], r[19])) continue;
     var k = cutRowKey_(r[6], r[19]);
+    group[k] = (group[k] || 0) + qty;
+    if (!doorRowNeedsCut_(r[6], r[19])) continue;
     need[k] = (need[k] || 0) + qty;
     total += qty;
   }
-  if (!cutRows.length) return 0;
+  if (!svcRows.length) return 0;
 
   // بنمسح من تحت لفوق عشان أرقام السطور ما تزحلقش
-  for (var j = cutRows.length - 1; j >= 0; j--) {
-    var c = cutRows[j];
+  for (var j = svcRows.length - 1; j >= 0; j--) {
+    var c = svcRows[j];
     var key = cutRowKey_(c.row[6], c.row[19]);
-    var want = need.hasOwnProperty(key) ? need[key]
-             : (cutRows.length === 1 ? total : null);   // بند قديم من غير مقاس
-    if (want === null) continue;                        // مش قادرين نحدد — مانلمسهوش
     var cur = Number(c.row[10]) || 0;
+    var want;
+    if (String(c.row[5]) === WOOD_SERVICE_CODE_) {
+      // ⚠️ مافيش سطر للمقاس ده في group ممكن يكون معناه حاجتين: إما البند
+      // قديم ومالوش مقاس مكتوب (مانخمّنش)، وإما المقاس اتشال بالكامل من
+      // الطلب (لازم البند يتشال معاه). بنفرّق بينهم بوجود المقاس نفسه.
+      if (!String(c.row[6] || '')) continue;
+      want = Math.min(cur, group[key] || 0);
+    } else {
+      want = need.hasOwnProperty(key) ? need[key]
+           : (svcRows.length === 1 ? total : null);   // بند قديم من غير مقاس
+      if (want === null) continue;
+    }
     if (want === cur) continue;
     var rowNo = rowNums[c.i];
     if (want <= 0) { shI.deleteRow(rowNo); changed++; continue; }
@@ -1243,8 +1264,8 @@ function recomputeOrderTotals_(id) {
     var unit = String(valsI[i][9] || '');
     var q = Number(valsI[i][10]) || 0;
     var code = String(valsI[i][5] || '');
-    // بند «خدمة قص» بيتحسب في الفلوس بس — مش في عدد القطع ولا العيدان
-    if (code !== CUT_SERVICE_CODE_) {
+    // بنود الخدمة بتتحسب في الفلوس بس — مش في عدد القطع ولا العيدان
+    if (!isServiceCode_(code)) {
       if (type === 'Frame' || type === 'Bror') rods += (unit === 'set' ? q * 3 : q); else qty += q;
     }
     total += Number(valsI[i][12]) || 0;
