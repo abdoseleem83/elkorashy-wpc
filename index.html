@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v176';
+const APP_BUILD   = 'v177';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -5018,12 +5018,38 @@ function withOrder(el,fn){const o=state.orders.find(x=>x.id===el.dataset.id); if
 
 // لو رد "تابع طلبك" (list بالـphone) بيرجّع أصناف الطلب مع حقل produced، بنحطه على نسخة الطلب المحلية
 // عشان مستند/صورة العميل يوري جاهز/متبقي محدّث. لو السيرفر لسه مابيرجعش الحقل ده، محصلش تغيير (0 آمن افتراضيًا).
+// ⚠️ باج كان هنا: الدمج كان بالترتيب — الصنف رقم ١ عندي = الصنف رقم ١ عند
+// السيرفر. لكن المصنع بيحذف أصناف ويعدّل كميات من شاشته، وسطور السيرفر
+// بتزحلق ونسخة الموزّع زي ما هي. فأرقام «الجاهز» كانت بتتحط على أصناف تانية
+// خالص — الموزّع يقرا إن باب جاهز وهو لسه ما اتعملش. دلوقتي المطابقة بالهوية
+// (النوع + الكود + المقاس + الارتفاع)، والصنف اللي مالوش سطر عند السيرفر
+// مابياخدش رقم حد تاني.
+function producedKey_(type, code, size, doorHeight){
+  return [type||'', String(code||'').trim(), String(size||'').trim(),
+          String(doorHeight||'').trim()].join('|');
+}
+function cartItemKey_(it){
+  const type = it.kind==='door' ? 'Door'
+             : it.kind==='frame' ? 'Frame'
+             : it.kind==='bror'  ? 'Bror'
+             : it.kind==='panel' ? 'Panel' : 'Accessory';
+  const size = it.kind==='door' ? (it.sizeEn||it.sizeTxt||'') : (it.spec||'');
+  return producedKey_(type, it.code, size, it.doorHeight);
+}
 function mergeProducedFromTrack_(o){
   const live = (state.track.rows||[]).find(r=>String(r.id)===String(o.id));
   if(live && Array.isArray(live.items)){
-    (o.items||[]).forEach((it,idx)=>{
+    // أصناف متطابقة تمامًا (نفس الباب مرتين) بتتاخد بالترتيب — كل واحد بياخد
+    // سطر لسه محدّش خده.
+    const مأخوذ = new Set();
+    (o.items||[]).forEach(it=>{
+      const key = cartItemKey_(it);
+      const idx = live.items.findIndex((li,i)=>!مأخوذ.has(i) &&
+        producedKey_(li.type, li.code, li.size, li.doorHeight) === key);
+      if(idx<0) return;                 // مالوش سطر عند السيرفر — مانخمّنش
+      مأخوذ.add(idx);
       const li = live.items[idx];
-      if(li && li.produced!==undefined) it.produced = li.produced;
+      if(li.produced!==undefined) it.produced = li.produced;
     });
   }
   return o;
