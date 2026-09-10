@@ -19,6 +19,7 @@ const سطور = [
   سطر('Door','A02','door',4,5700),          // ٤ أبواب
   سطر('Frame','','set',2,900),              // طقم حلق = ٦ عيدان
   سطر('Accessory','CUT','باب',4,300),       // خدمة قص — مش قطعة
+  سطر('Accessory','WOOD','باب',4,300),      // تدعيم خشب — مش قطعة كمان
   سطر('Accessory','gsk','متر',5,6)          // إكسسوار عادي = ٥ قطع
 ];
 
@@ -27,7 +28,7 @@ const ctx = {
   String, Number, Object, Array,
   SHEET_ITEMS:'Order_Items', SHEET_ORDERS:'Orders',
   HEAD_ITEMS:new Array(NCOLS).fill(''), HEAD_ORDERS:new Array(20).fill(''),
-  CUT_SERVICE_CODE_:'CUT',
+  CUT_SERVICE_CODE_:'CUT', WOOD_SERVICE_CODE_:'WOOD',
   sheet_: () => ({}),
   itemRowsFor_: () => ({ rows: سطور }),
   findRow_: () => 5
@@ -36,20 +37,20 @@ ctx.sheet_ = (name) => name==='Orders'
   ? { getRange: (r,c) => ({ setValue: v => { مكتوب[c]=v; } }) }
   : {};
 vm.createContext(ctx);
-vm.runInContext(grab('recomputeOrderTotals_'), ctx);
+vm.runInContext(grab('isServiceCode_') + '\n' + grab('recomputeOrderTotals_'), ctx);
 ctx.recomputeOrderTotals_('W1');
 
 // العمود ٨ = عدد القطع، ٩ = العيدان، ١٠ = الإجمالي
-check('عدد القطع من غير بند القص', مكتوب[8] === 9, `${مكتوب[8]} (المفروض ٤ باب + ٥ إكسسوار)`);
+check('عدد القطع من غير بنود الخدمة', مكتوب[8] === 9, `${مكتوب[8]} (المفروض ٤ باب + ٥ إكسسوار)`);
 check('العيدان زي ما هي', مكتوب[9] === 6, String(مكتوب[9]));
-check('الإجمالي شامل فلوس القص',
-  مكتوب[10] === 4*5700 + 2*900 + 4*300 + 5*6, String(مكتوب[10]));
+check('الإجمالي شامل فلوس الخدمات',
+  مكتوب[10] === 4*5700 + 2*900 + 4*300 + 4*300 + 5*6, String(مكتوب[10]));
 
 // وكمان في إنشاء الطلب نفسه (newOrder) — نفس القاعدة
 const كود = /var items = o\.items \|\| \[\];[\s\S]*?\n  \}/.exec(gs)[0];
-const ctx2 = { String, Number, o:{ items:[
+const ctx2 = { String, Number, isServiceCode_: c => c==='CUT' || c==='WOOD', o:{ items:[
   {kind:'door', qty:4}, {kind:'frame', isSet:true, qty:2},
-  {kind:'acc', code:'CUT', qty:4}, {kind:'acc', code:'gsk', qty:5}
+  {kind:'acc', code:'CUT', qty:4}, {kind:'acc', code:'WOOD', qty:4}, {kind:'acc', code:'gsk', qty:5}
 ]}, CUT_SERVICE_CODE_:'CUT' };
 vm.createContext(ctx2);
 vm.runInContext(كود, ctx2);
@@ -81,10 +82,11 @@ const قصC = (size, h, qty) => { const r=new Array(NCOLS).fill('');
 function شغّل(سطور){
   const s = شيتCut(سطور);
   const c = { String, Number, Object, Array, RegExp,
-    CUT_SERVICE_CODE_:'CUT', DOOR_STD_HEIGHT_:215, HEAD_ITEMS:new Array(NCOLS).fill('') };
+    CUT_SERVICE_CODE_:'CUT', WOOD_SERVICE_CODE_:'WOOD', Math,
+    DOOR_STD_HEIGHT_:215, HEAD_ITEMS:new Array(NCOLS).fill('') };
   vm.createContext(c);
-  vm.runInContext(grab('itemRowsForMany_')+'\n'+grab('itemRowsFor_')+'\n'
-    +grab('doorRowNeedsCut_')+'\n'+grab('cutRowKey_')+'\n'+grab('syncCutRows_'), c);
+  vm.runInContext(grab('itemRowsForMany_')+'\n'+grab('itemRowsFor_')+'\n'+grab('isServiceCode_')+'\n'
+    +grab('doorRowNeedsCut_')+'\n'+grab('cutRowKey_')+'\n'+grab('syncCutRows_'), c)
   c.syncCutRows_(s.sh, 'W9');
   return s.rows;
 }
@@ -111,10 +113,11 @@ check('الارتفاع الاستاندر مالوش بند قص', r.length===1
 {
   const s = شيتCut([ بابC('90x206 cm (custom)','',2), قصC('90x206 cm (custom)','',2) ]);
   const c = { String, Number, Object, Array, RegExp,
-    CUT_SERVICE_CODE_:'CUT', DOOR_STD_HEIGHT_:215, HEAD_ITEMS:new Array(NCOLS).fill('') };
+    CUT_SERVICE_CODE_:'CUT', WOOD_SERVICE_CODE_:'WOOD', Math,
+    DOOR_STD_HEIGHT_:215, HEAD_ITEMS:new Array(NCOLS).fill('') };
   vm.createContext(c);
-  vm.runInContext(grab('itemRowsForMany_')+'\n'+grab('itemRowsFor_')+'\n'
-    +grab('doorRowNeedsCut_')+'\n'+grab('cutRowKey_')+'\n'+grab('syncCutRows_'), c);
+  vm.runInContext(grab('itemRowsForMany_')+'\n'+grab('itemRowsFor_')+'\n'+grab('isServiceCode_')+'\n'
+    +grab('doorRowNeedsCut_')+'\n'+grab('cutRowKey_')+'\n'+grab('syncCutRows_'), c)
   c.syncCutRows_(s.sh, 'W9');
   check('مفيش كتابة من غير داعي', s.عمليات.length===0, s.عمليات.join('، '));
 }
@@ -125,10 +128,11 @@ check('الارتفاع الاستاندر مالوش بند قص', r.length===1
 function عدد_التغييرات(سطور){
   const s = شيتCut(سطور);
   const c = { String, Number, Object, Array, RegExp,
-    CUT_SERVICE_CODE_:'CUT', DOOR_STD_HEIGHT_:215, HEAD_ITEMS:new Array(NCOLS).fill('') };
+    CUT_SERVICE_CODE_:'CUT', WOOD_SERVICE_CODE_:'WOOD', Math,
+    DOOR_STD_HEIGHT_:215, HEAD_ITEMS:new Array(NCOLS).fill('') };
   vm.createContext(c);
-  vm.runInContext(grab('itemRowsForMany_')+'\n'+grab('itemRowsFor_')+'\n'
-    +grab('doorRowNeedsCut_')+'\n'+grab('cutRowKey_')+'\n'+grab('syncCutRows_'), c);
+  vm.runInContext(grab('itemRowsForMany_')+'\n'+grab('itemRowsFor_')+'\n'+grab('isServiceCode_')+'\n'
+    +grab('doorRowNeedsCut_')+'\n'+grab('cutRowKey_')+'\n'+grab('syncCutRows_'), c)
   return c.syncCutRows_(s.sh, 'W9');
 }
 check('بترجّع ١ لما بند اتعدّل',
@@ -137,6 +141,35 @@ check('بترجّع صفر لما مفيش تغيير',
   عدد_التغييرات([ بابC('90x206 cm (custom)','',2), قصC('90x206 cm (custom)','',2) ]) === 0);
 check('بترجّع صفر لما الطلب مالوش بنود قص',
   عدد_التغييرات([ بابC('90x206 cm (custom)','',2) ]) === 0);
+
+
+// ── بند «تدعيم خشب» على السيرفر ────────────────────────────────────────
+// الفرق عن القص: التدعيم اختيار من الموزّع ومش متسجّل على سطر الباب، فالسيرفر
+// مايعرفش أنهي أبواب اتختارلها. أقصى اللي يقدر عليه — ومطلوب منه — إنه
+// مايحاسبش على أبواب اتشالت: البند مايزيدش عن أبواب مقاسه، ويتشال لو المقاس
+// فضي. الاتجاه ده آمن: مابيزوّدش على العميل أبدًا.
+const خشبC = (size, h, qty) => { const r=new Array(NCOLS).fill('');
+  r[0]='W9'; r[3]='Accessory'; r[5]='WOOD'; r[6]=size; r[10]=qty; r[11]=300; r[12]=qty*300; r[19]=h; return r; };
+
+// الباب نقص من ٥ لـ ٢ → بند التدعيم ينقص لـ ٢ (مايزيدش عن الأبواب الموجودة)
+let rw = شغّل([ بابC('70 cm','',2), خشبC('70 cm','',5) ]);
+check('التدعيم مايزيدش عن أبواب مقاسه', rw[1] && rw[1][10]===2 && rw[1][12]===600,
+  rw[1] ? `${rw[1][10]} × ${rw[1][11]} = ${rw[1][12]}` : 'اتشال');
+
+// الباب اتحذف → البند يتشال
+rw = شغّل([ خشبC('70 cm','',3) ]);
+check('التدعيم اتشال لما الباب اتشال', rw.length===0, String(rw.length));
+
+// الأبواب أكتر من البند (باب من غير تدعيم) → البند زي ما هو، مايزيدش
+rw = شغّل([ بابC('70 cm','',9), خشبC('70 cm','',2) ]);
+check('التدعيم مابيزيدش لوحده لما الأبواب تزيد', rw[1] && rw[1][10]===2, rw[1] ? String(rw[1][10]) : 'اتشال');
+
+// القص والتدعيم مع بعض في نفس الطلب — كل واحد بقاعدته
+rw = شغّل([ بابC('90x206 cm (custom)','',2),
+            قصC('90x206 cm (custom)','',7), خشبC('90x206 cm (custom)','',7) ]);
+check('القص بيتظبط بالضبط والتدعيم بالسقف',
+  rw[1] && rw[1][10]===2 && rw[2] && rw[2][10]===2,
+  `قص=${rw[1]&&rw[1][10]} تدعيم=${rw[2]&&rw[2][10]}`);
 
 console.log(`\nالنتيجة النهائية: ${pass} نجحت، ${fail} فشلت`);
 process.exit(fail?1:0);

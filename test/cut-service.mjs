@@ -152,14 +152,20 @@ check('ومش بيبان في رسالة الواتساب', أين.رسالة ==
 
 // ٨) سعر خدمة القص واحد في كل المستويات — «سعر عميل» مابيزوّدش عليه نص جنيه
 const مستويات = await pg.evaluate(()=>{
-  const it = { title:'خدمة قص — 90×206 سم', unitPrice:CUSTOM_EXTRA, qty:1 };
+  // زي الصنف الجاي من السيرفر بالظبط: نوع + كود + عنوان
+  const it = { type:'Accessory', code:'CUT', title:'خدمة قص — 90×206 سم', unitPrice:CUSTOM_EXTRA, qty:1 };
   const مفتاح = tierKeyFor_(it,'acc');
+  // وباب ملحوظته «خدمة قص» (طلبات v164) مالوش دعوة بمفتاح البند
+  const بابNote = tierKeyFor_({ type:'Door', code:'A02', size:'90 cm',
+    title:'باب A02 خشبي — خدمة قص' }, 'door');
   return { مفتاح,
     جملة: tierPrice(CUSTOM_EXTRA,'acc','dist',مفتاح),
     عميل: tierPrice(CUSTOM_EXTRA,'acc','showroom',مفتاح),
-    القيمة: CUSTOM_EXTRA };
+    القيمة: CUSTOM_EXTRA, بابNote };
 });
-check('البند بيتربط بمفتاح خدمة القص', مستويات.مفتاح === 'customExtra');
+check('البند بيتربط بمفتاح خدمة القص', مستويات.مفتاح === 'customExtra', String(مستويات.مفتاح));
+check('وباب ملحوظته «خدمة قص» مابياخدش مفتاح البند', مستويات.بابNote === 90,
+  String(مستويات.بابNote));
 check('سعره واحد في الجملة والعميل', مستويات.جملة === مستويات.القيمة && مستويات.عميل === مستويات.القيمة,
   `جملة=${مستويات.جملة} عميل=${مستويات.عميل}`);
 
