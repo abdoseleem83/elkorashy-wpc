@@ -1285,6 +1285,17 @@ function toLatinDigits_(v){
 }
 
 function phoneOk(p){return /^0?1[0-9]{9}$/.test(toLatinDigits_(p).replace(/\s/g,''));}
+
+// بيسمح بالأرقام (حتى لو مكتوبة بالأرقام العربية) ونقطة عشرية واحدة بس —
+// عشان حقول الأطوال/الارتفاعات (زي 110.5) تتكتب طبيعي من غير ما تتمسح.
+// مستخدمة بدل type="number" اللي كان بيصفّر الخانة أول ما تكتب النقطة.
+function decIn_(v){
+  let s = toLatinDigits_(v).replace(/[\u066B\u066C,]/g,'.');
+  s = s.replace(/[^0-9.]/g,'');
+  const i = s.indexOf('.');
+  if(i!==-1) s = s.slice(0,i+1) + s.slice(i+1).replace(/\./g,'');
+  return s;
+}
 /* ============================================================
    أرصدة المخزن — الأصناف الجاهزة تتسلّم خلال ٤٨ ساعة
    ============================================================ */
@@ -1750,11 +1761,11 @@ function viewNew(){
       <div class="miniLbl">التدعيم</div>
       <div class="miniChips">${woodMiniChips(e.wood,w)}</div>
       <label class="fld sm"><span style="color:var(--danger)">ارتفاع الفتحة المعمارية (سم)</span>
-        <input type="number" inputmode="numeric" min="1" class="hgtIn" value="${esc(e.height||'')}" placeholder="استاندر ${DOOR_STD_HEIGHT}" data-act="size-height" data-w="${w}"></label>
+        <input type="text" inputmode="decimal" class="hgtIn" value="${esc(e.height||'')}" placeholder="استاندر ${DOOR_STD_HEIGHT}" data-act="size-height" data-w="${w}"></label>
       <div class="miniLbl">الحلق</div>
       <div class="miniChips">${frameMiniChips(e.frame,w)}</div>
       ${e.frame?`<label class="fld sm"><span>ارتفاع الحلق (سم) — اختياري</span>
-        <input type="number" inputmode="numeric" min="1" class="hgtIn" value="${esc(e.frameHeight||'')}" placeholder="سيبها فاضية لو عادي" data-act="size-frame-height" data-w="${w}"></label>`:''}
+        <input type="text" inputmode="decimal" class="hgtIn" value="${esc(e.frameHeight||'')}" placeholder="سيبها فاضية لو عادي" data-act="size-frame-height" data-w="${w}"></label>`:''}
       <div class="miniLbl">البرور</div>
       <div class="miniChips">${dbrorMiniChips(e.dbror,w)}</div>
     </div>`;
@@ -1763,8 +1774,8 @@ function viewNew(){
   const customCard = p.customOn ? `<div class="sizeCard">
       <div class="scHead"><b>مقاس خاص</b></div>
       <div class="row2">
-        <label class="fld"><span>العرض (سم)</span><input type="number" inputmode="numeric" min="1" value="${esc(p.custom.w)}" placeholder="مثال 85" data-act="cust" data-k="w"></label>
-        <label class="fld"><span>الارتفاع (سم)</span><input type="number" inputmode="numeric" min="1" value="${esc(p.custom.h)}" placeholder="مثال 215" data-act="cust" data-k="h"></label>
+        <label class="fld"><span>العرض (سم)</span><input type="text" inputmode="decimal" value="${esc(p.custom.w)}" placeholder="مثال 85" data-act="cust" data-k="w"></label>
+        <label class="fld"><span>الارتفاع (سم)</span><input type="text" inputmode="decimal" value="${esc(p.custom.h)}" placeholder="مثال 215" data-act="cust" data-k="h"></label>
       </div>
       <div class="grp" style="margin-top:6px">الكمية</div>
       <div class="qty">
@@ -1780,7 +1791,7 @@ function viewNew(){
       <div class="miniLbl">الحلق</div>
       <div class="miniChips">${frameMiniChips(p.custom.frame,'custom')}</div>
       ${p.custom.frame?`<label class="fld sm"><span>ارتفاع الحلق (سم) — اختياري</span>
-        <input type="number" inputmode="numeric" min="1" class="hgtIn" value="${esc(p.custom.frameHeight||'')}" placeholder="سيبها فاضية لو عادي" data-act="cust-frame-height"></label>`:''}
+        <input type="text" inputmode="decimal" class="hgtIn" value="${esc(p.custom.frameHeight||'')}" placeholder="سيبها فاضية لو عادي" data-act="cust-frame-height"></label>`:''}
       <div class="miniLbl">البرور</div>
       <div class="miniChips">${dbrorMiniChips(p.custom.dbror,'custom')}</div>
     </div>` : '';
@@ -1790,12 +1801,12 @@ function viewNew(){
   const frNonStd=!!state.fr.nonStd;
   const frJamb=frKind==='full' ? frQty*2 : Math.max(0,Number(state.fr.jamb)||0);
   const frHeader=frKind==='full' ? frQty*1 : Math.max(0,Number(state.fr.header)||0);
-  const frJambCm=Math.max(1,Math.round(Number(state.fr.jambCm)||220));
-  const frHeaderCm=Math.max(1,Math.round(Number(state.fr.headerCm)||110));
-  const frExtra=(state.fr.extra||[]).map(x=>({cm:Math.max(0,Math.round(Number(x.cm)||0)), qty:Math.max(0,Math.round(Number(x.qty)||0))}));
+  const frJambCm=Math.max(1,Number(state.fr.jambCm)||220);
+  const frHeaderCm=Math.max(1,Number(state.fr.headerCm)||110);
+  const frExtra=(state.fr.extra||[]).map(x=>({cm:Math.max(0,Number(x.cm)||0), qty:Math.max(0,Math.round(Number(x.qty)||0))}));
   const frExtraRods=frExtra.reduce((s,x)=>s+(x.cm>0?x.qty:0),0);
   const frRodsQty=Math.max(0,Math.round(Number(state.fr.rods)||0));
-  const frRodsCm=Math.max(0,Math.round(Number(state.fr.rodsCm)||0));
+  const frRodsCm=Math.max(0,Number(state.fr.rodsCm)||0);
   const frRods=frKind==='full' ? (frJamb+frHeader+frExtraRods) : frRodsQty;
   const frSel=FRAMES.find(f=>f.cm===state.fr.cm)||FRAMES[0];
   // سعر كل مقاس على حدة حسب طوله الفعلي
@@ -1915,7 +1926,7 @@ function viewNew(){
     <div class="rodbox">
       <div class="rl">عود إضافي<small>ارتفاع مخصوص</small></div>
       <div class="row2" style="gap:6px">
-        <input type="number" inputmode="numeric" min="1" step="1" placeholder="سم" value="${esc(state.fr.extra[idx].cm)}" data-act="fr-extra-cm" data-i="${idx}">
+        <input type="text" inputmode="decimal" placeholder="سم" value="${esc(state.fr.extra[idx].cm)}" data-act="fr-extra-cm" data-i="${idx}">
         <input type="number" inputmode="numeric" min="0" step="1" placeholder="عدد" value="${esc(state.fr.extra[idx].qty)}" data-act="fr-extra-qty" data-i="${idx}">
       </div>
       ${x.cm>0&&pricesVisible()?`<div class="rp">${money(rodPrice(frSel.price,x.cm))} ج/عود</div>`:''}
@@ -1947,11 +1958,11 @@ function viewNew(){
     <div class="rodrow" style="margin-top:9px">
       <div class="rodbox">
         <div class="rl">الطول الأول<small>افتراضي ٢٢٠سم</small></div>
-        <input type="number" inputmode="numeric" min="1" step="1" placeholder="سم" value="${esc(state.fr.jambCm)}" data-act="fr-jambCm">
+        <input type="text" inputmode="decimal" placeholder="سم" value="${esc(state.fr.jambCm)}" data-act="fr-jambCm">
       </div>
       <div class="rodbox">
         <div class="rl">الطول التاني<small>افتراضي ١١٠سم</small></div>
-        <input type="number" inputmode="numeric" min="1" step="1" placeholder="سم" value="${esc(state.fr.headerCm)}" data-act="fr-headerCm">
+        <input type="text" inputmode="decimal" placeholder="سم" value="${esc(state.fr.headerCm)}" data-act="fr-headerCm">
       </div>
       ${frExtraRows}
     </div>
@@ -1964,7 +1975,7 @@ function viewNew(){
       <div class="rodbox">
         <div class="rl">أعواد حرة<small>حدد العدد والطول</small></div>
         <div class="row2" style="gap:6px">
-          <input type="number" inputmode="numeric" min="1" step="1" placeholder="الطول (سم)" value="${esc(state.fr.rodsCm)}" data-act="fr-rodsCm">
+          <input type="text" inputmode="decimal" placeholder="الطول (سم)" value="${esc(state.fr.rodsCm)}" data-act="fr-rodsCm">
           <input type="number" inputmode="numeric" min="0" step="1" placeholder="العدد" value="${esc(state.fr.rods)}" data-act="fr-rods">
         </div>
         ${(pricesVisible() && frRodsCm>0)?`<div class="rp">${money(rodPrice(frSel.price,frRodsCm))} ج/عود</div>`:''}
@@ -2139,6 +2150,7 @@ function viewCart(){
       if(it.note) spec+='<br><span style="color:#8A6512">'+esc(it.note)+'</span>';
     } else if(it.kind==='frame'||it.kind==='bror'){
       spec = it.isSet ? (it.qty+' طقم'+(priced?' — '+money(it.price)+' ج/طقم':''))
+                       : it.customSet ? (it.qty+' عود'+(priced?' — '+money(linePrice(it))+' ج':'')+'<br>'+esc(it.spec))
                        : (it.qty+' عود'+(it.rodCm?' × '+it.rodCm+' سم':'')+(priced?' — '+money(it.price)+' ج/عود':''));
     } else spec=(priced?money(it.price)+' ج × ':'× ')+it.qty;
 
@@ -5133,7 +5145,13 @@ document.addEventListener('input',e=>{
     state.profile[el.dataset.k] = (el.dataset.k==='phone') ? toLatinDigits_(el.value) : el.value;
     save(LS_PROFILE,state.profile); return;
   }
-  if(a==='cust'){ state.pick.custom[el.dataset.k]=el.value; refreshSummary(); return; }
+  if(a==='cust'){
+    const k=el.dataset.k;
+    const v = (k==='w'||k==='h') ? decIn_(el.value) : el.value;
+    state.pick.custom[k]=v;
+    if(el.value!==v) el.value=v;
+    refreshSummary(); return;
+  }
   if(a==='pick-note'){ state.pick.note=el.value; return; }
   if(a==='cust-name'){ state.customer.name=el.value; return; }
   if(a==='cust-phone'){ state.customer.phone=toLatinDigits_(el.value); return; }
@@ -5147,9 +5165,9 @@ document.addEventListener('input',e=>{
     return;
   }
   if(a==='ord-note'){ state.orderNote=el.value; return; }
-  if(a==='size-height'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.height=el.value; refreshSummary(); return; }
-  if(a==='size-frame-height'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.frameHeight=el.value; return; }
-  if(a==='cust-frame-height'){ state.pick.custom.frameHeight=el.value; return; }
+  if(a==='size-height'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.height=decIn_(el.value); if(el.value!==e.height) el.value=e.height; refreshSummary(); return; }
+  if(a==='size-frame-height'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.frameHeight=decIn_(el.value); if(el.value!==e.frameHeight) el.value=e.frameHeight; return; }
+  if(a==='cust-frame-height'){ state.pick.custom.frameHeight=decIn_(el.value); if(el.value!==state.pick.custom.frameHeight) el.value=state.pick.custom.frameHeight; return; }
   if(a==='size-frame-rodqty'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.frameRodQty=el.value; return; }
   if(a==='cust-frame-rodqty'){ state.pick.custom.frameRodQty=el.value; return; }
   if(a==='size-frame-fordoors'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.frameForDoors=el.value; return; }
@@ -5159,12 +5177,12 @@ document.addEventListener('input',e=>{
   if(a==='acc-set'){ state.acc[el.dataset.id]=Math.max(0,parseFloat(el.value)||0); refreshAccBtn(); return; }
   if(a==='fr-jamb'){ state.fr.jamb=el.value; render(); return; }
   if(a==='fr-header'){ state.fr.header=el.value; render(); return; }
-  if(a==='fr-jambCm'){ state.fr.jambCm=el.value; render(); return; }
-  if(a==='fr-headerCm'){ state.fr.headerCm=el.value; render(); return; }
+  if(a==='fr-jambCm'){ state.fr.jambCm=decIn_(el.value); render(); return; }
+  if(a==='fr-headerCm'){ state.fr.headerCm=decIn_(el.value); render(); return; }
   if(a==='fr-qty'){ state.fr.qty=el.value; render(); return; }
   if(a==='fr-rods'){ state.fr.rods=el.value; render(); return; }
-  if(a==='fr-rodsCm'){ state.fr.rodsCm=el.value; render(); return; }
-  if(a==='fr-extra-cm'){ state.fr.extra[Number(el.dataset.i)].cm=el.value; render(); return; }
+  if(a==='fr-rodsCm'){ state.fr.rodsCm=decIn_(el.value); render(); return; }
+  if(a==='fr-extra-cm'){ state.fr.extra[Number(el.dataset.i)].cm=decIn_(el.value); render(); return; }
   if(a==='fr-extra-qty'){ state.fr.extra[Number(el.dataset.i)].qty=el.value; render(); return; }
   if(a==='fr-note'){ state.fr.note=el.value; return; }
   if(a==='br-rods'){ state.br.rods=el.value; refreshRodBtn('add-br'); return; }
@@ -5342,9 +5360,9 @@ function addRod(kind){
     const frameMode = st.kind==='rods' ? 'rods' : 'full';
     if(frameMode==='full'){
       const qty = Math.max(0, Math.round(Number(st.qty)||0));
-      const jambCm = Math.max(1, Math.round(Number(st.jambCm)||220));
-      const headerCm = Math.max(1, Math.round(Number(st.headerCm)||110));
-      const extra = (st.extra||[]).map(x=>({cm:Math.max(0,Math.round(Number(x.cm)||0)), qty:Math.max(0,Math.round(Number(x.qty)||0))})).filter(x=>x.cm>0 && x.qty>0);
+      const jambCm = Math.max(1, Number(st.jambCm)||220);
+      const headerCm = Math.max(1, Number(st.headerCm)||110);
+      const extra = (st.extra||[]).map(x=>({cm:Math.max(0,Number(x.cm)||0), qty:Math.max(0,Math.round(Number(x.qty)||0))})).filter(x=>x.cm>0 && x.qty>0);
       const isStd = (jambCm===220 && headerCm===110 && !extra.length);
       if(qty<=0){toast('اكتب الكمية');return;}
       if(isStd){
@@ -5355,7 +5373,7 @@ function addRod(kind){
         if(ex){ ex.qty += qty; }
         else{
           state.cart.push({
-            kind:'frame', key, qty, code:st.code, rodCm:0, isSet:true, perM:f.price, price:setPrice,
+            kind:'frame', key, qty, code:st.code, rodCm:0, isSet:true, perM:f.price, price:setPrice, frCm:f.cm,
             spec: 'حلق كامل '+f.cm+' سم'+(st.code?' — '+st.code:''),
             title: 'حلق كامل باب '+f.cm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
             titleEn: 'Full Door Frame '+f.cm+' cm'+(st.code?' - '+st.code:''),
@@ -5365,32 +5383,44 @@ function addRod(kind){
         added += qty;
         addedIsSet = true;
       } else {
+        // ⚠️ كان بيتقسّم لسطرين/تلاتة (قائم لوحده، عارضة حلق علوية لوحدها، أي عود إضافي لوحده)
+        // كل واحد بمقاسه في سطر مستقل بالسلة. طلب إن ده يبقى سطر واحد بعدد الأعواد
+        // الإجمالي (زي "٣ أعواد")، والأطوال المختلفة تتكتب في وصف السطر نفسه.
         const jamb = qty*JAMBS_PER_SET;
         const header = qty*HEADERS_PER_SET;
-        if(jamb){
-          push(f.cm+' سم', jambCm, jamb, f.price,
-            'حلق باب '+f.cm+' سم — قائم '+jambCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
-            'Door Frame '+f.cm+' cm - jamb '+jambCm+'cm'+(st.code?' - '+st.code:''));
-          added += jamb;
+        const parts = [];
+        if(jamb)   parts.push({label:'قائم',        cm:jambCm,   qty:jamb});
+        if(header) parts.push({label:'عارضة حلق علوية', cm:headerCm, qty:header});
+        extra.forEach(x=>{ if(x.qty>0) parts.push({label:'عود', cm:x.cm, qty:x.qty}); });
+
+        const totalQty = parts.reduce((s,p)=>s+p.qty,0);
+        if(totalQty>0){
+          const totalPrice = parts.reduce((s,p)=>s+rodPrice(f.price,p.cm)*p.qty,0);
+          const avgPrice = Math.round((totalPrice/totalQty)*100)/100;
+          const breakdown = parts.map(p=>p.label+' '+p.cm+' سم × '+p.qty).join(' + ');
+          const sig = parts.map(p=>p.cm+':'+p.qty).join(',');
+          const key = 'frame|customset|'+f.cm+'|'+sig+'|'+st.code+'|'+(st.doorW||'');
+          const ex = state.cart.find(it=>it.kind===kind && it.key===key);
+          if(ex){ ex.qty += totalQty; ex.setsQty=(ex.setsQty||0)+qty; }
+          else{
+            state.cart.push({
+              kind:'frame', key, qty:totalQty, code:st.code, rodCm:jambCm, perM:f.price, price:avgPrice, frCm:f.cm,
+              customSet:true, setsQty:qty, jambCm, headerCm, extra,
+              spec: breakdown+(st.code?' — '+st.code:''),
+              title: 'حلق باب '+f.cm+' سم — '+breakdown+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
+              titleEn: 'Door Frame '+f.cm+' cm - '+parts.map(p=>p.label+' '+p.cm+'cm x'+p.qty).join(' + ')+(st.code?' - '+st.code:''),
+              doorW: st.doorW||'', note: st.note||''
+            });
+          }
+          added += totalQty;
         }
-        if(header){
-          push(f.cm+' سم', headerCm, header, f.price,
-            'حلق باب '+f.cm+' سم — عارضة حلق علوية '+headerCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
-            'Door Frame '+f.cm+' cm - header '+headerCm+'cm'+(st.code?' - '+st.code:''));
-          added += header;
-        }
-        extra.forEach(x=>{
-          push(f.cm+' سم', x.cm, x.qty, f.price,
-            'حلق باب '+f.cm+' سم — عود '+x.cm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
-            'Door Frame '+f.cm+' cm - rod '+x.cm+'cm'+(st.code?' - '+st.code:''));
-          added += x.qty;
-        });
       }
     } else {
       const rods = Math.max(0, Math.round(Number(st.rods)||0));
       const rodsCm = Math.max(0, Math.round(Number(st.rodsCm)||0));
       if(rods<=0 || rodsCm<=0){toast('اكتب عدد الأعواد وطولها');return;}
       push(f.cm+' سم', rodsCm, rods, f.price,
+
         'حلق باب '+f.cm+' سم — عود '+rodsCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):'')+forDoor+(st.note?' — ملاحظة: '+st.note:''),
         'Door Frame '+f.cm+' cm - rod '+rodsCm+'cm'+(st.code?' - '+st.code:''));
       added += rods;
@@ -5531,12 +5561,19 @@ function editCartLine(i){
     if(isFr){
       let cm = FRAMES[0].cm;
       const mm=/^(\d+)/.exec(it.spec||''); if(mm) cm=Number(mm[1]);
+      if(it.frCm!=null) cm = it.frCm;
       if(it.isSet){
         // سطر "حلق كامل" الموحّد — بنرجّع الكمية (عدد الأطقم) زي ما هي
         state.fr = {cm, code:it.code||'', doorW: it.doorW||'', note: it.note||'', kind:'full',
                     qty: it.qty||1, nonStd:false,
                     jamb:2, jambCm:220, header:1, headerCm:110,
                     extra: [], rods:'', rodsCm:''};
+      } else if(it.customSet){
+        // سطر "حلق كامل — أطوال مخصوصة" الموحّد — بنرجّع الأطوال والكمية زي ما هي
+        state.fr = {cm, code:it.code||'', doorW: it.doorW||'', note: it.note||'', kind:'full',
+                    qty: it.setsQty||1, nonStd:true,
+                    jamb:2, jambCm: it.jambCm||220, header:1, headerCm: it.headerCm||110,
+                    extra: (it.extra||[]).map(x=>({cm:x.cm, qty:x.qty})), rods:'', rodsCm:''};
       } else {
         const rodCm = Number(it.rodCm)||220;
         // بنرجّع العدد في خانة المقاس الصح حسب طول العود المحفوظ — قائم/عارضة حلق علوية لو الطول قياسي، وإلا سطر أعواد حرة
