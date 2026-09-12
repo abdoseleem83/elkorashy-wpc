@@ -6063,6 +6063,9 @@ async function cancelOldOrder_(info){
       toast('✅ الطلب الجديد #'+info.newId+' اتسجّل — والقديم #'+info.prevId+' اتحطت عليه علامة "معدّل" عشان المصنع يحذفه', 5500);
       return true;
     }
+    // القديم أصلًا مش موجود عند المصنع (اتمسح قبل كده بأي طريقة) — مفيش داعي
+    // نفضل نحاول نمسحه للأبد وننبّه المستخدم بحاجة خلصت خلاص.
+    if(d && d.error === 'الطلب مش موجود') return true;
     toast('⚠️ الطلب الجديد #'+info.newId+' اتسجّل، بس القديم #'+info.prevId+' لسه موجود عند المصنع: '+((d&&d.error)||'خطأ غير معروف'), 5500);
     return false;
   }catch(err){
@@ -6792,9 +6795,38 @@ if(_storeProblems_.length){
   }, 1200);
 }
 
+// بيمسح أي "نيات إلغاء" فضلت معلّقة من مرة سابقة — حتى لو الطلب الجديد
+// بتاعها كان اتبعت واتأكد من زمن. ده بيغطي حالة إن cancelOldOrder_ فشل
+// لظرف عابر (النت قطع لحظة استدعاء المسح بالذات) بعد ما الطلب الجديد
+// خلاص وصل ولم يعد في قايمة "لسه معلّق" — يعني الحلقة العادية
+// (retryPendingOrders_) ما كانتش هتحاول تمسح القديم تاني أبدًا، فالطلب
+// القديم يفضل ظاهر جنب الجديد للأبد من غير أي تنبيه واضح.
+let _retryCancelsRunning = false;
+async function retryPendingCancels_(){
+  if(_retryCancelsRunning) return;
+  if(!APPS_SCRIPT_URL || !navigator.onLine) return;
+  const list = loadPendingCancels_();
+  if(!list.length) return;
+  _retryCancelsRunning = true;
+  try{
+    const نجح = [];
+    for(const hit of list){
+      if(await cancelOldOrder_(hit)) نجح.push(hit);
+    }
+    if(نجح.length){
+      save(LS_PENDING_CANCEL, loadPendingCancels_().filter(c=>
+        !نجح.some(h=>String(h.newId)===String(c.newId) && String(h.prevId)===String(c.prevId))));
+    }
+  } finally {
+    _retryCancelsRunning = false;
+  }
+}
+
 retryPendingOrders_();   // لو فيه طلبات اتسجلت على الجهاز بس ما وصلتش المصنع، نحاول تاني
+retryPendingCancels_();  // لو فيه طلبات قديمة اتعدّلت وفشل مسحها من عند المصنع، نحاول تاني
 syncPricesFromServer_(); // أحدث أسعار من المصنع — بتشتغل في الخلفية ومابتوقفش حاجة
 window.addEventListener('online', retryPendingOrders_);
+window.addEventListener('online', retryPendingCancels_);
 window.addEventListener('online', ()=>{ if(load(LS_PRICES_DIRTY,false)) syncPricesFromServer_(); });
 // التطبيق اتقفل أو راح للخلفية وفيه صنف مسحوب للتعديل؟ نرجّعه للسلة قبل ما يضيع
 window.addEventListener('pagehide', ()=>restorePulledLine_(true));
