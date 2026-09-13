@@ -5624,15 +5624,29 @@ async function adminEditOrder(o){
   return loaded;
 }
 function adminEditOrderWith_(o, its){
+  // ⚠️ باج كان هنا: «تدعيم خشب» بند مستقل (مش حقل على سطر الباب)، والسيرفر
+  // مش بيسجّل علامة "الباب ده عليه تدعيم" في صف الباب نفسه (زي ما بيسجّل
+  // "milling" للحفر). فلو حد فتح تعديل الطلب من شاشة المصنع، كنا بنرجّع كل
+  // الأبواب من غير wood خالص، وأول ما يتحفظ التعديل، saveCart_() كانت
+  // بتمسح "تدعيم خشب" بصمت لأنها مش لاقيه أي باب معلّم عليه محتاج تدعيم.
+  // الحل: نلمّ مقاسات الأبواب اللي أصلاً عندها سطر "تدعيم خشب" في الطلب،
+  // ونعلّم عليها تاني وقت ما نرجّع الأبواب.
+  const woodLabels = new Set(
+    (its||[]).filter(x=>x.type==='Accessory' && /^تدعيم خشب\s*—\s*/.test(String(x.title||'')))
+      .map(x=>String(x.title).replace(/^تدعيم خشب\s*—\s*/,'').trim())
+  );
   state.cart = its.map(it=>{
     const qty = Number(it.qty)||0;
     const price = Number(it.unitPrice)||0;
     if(it.type==='Door'){
+      const sizeTxt = arabicSizeText_(it.size);
+      const doorHeight = Number(it.doorHeight)||0;
+      const label = doorSizeText_(sizeTxt, doorHeight);
       return { kind:'door', title:arabicItemTitle_(it), titleEn:it.title||'', code:it.code||'',
                img:(DOORS.find(d=>d.code===it.code)||{}).img || '',
-               sizeTxt:arabicSizeText_(it.size), sizeEn:it.size||'', unitPrice:price, qty,
+               sizeTxt, sizeEn:it.size||'', unitPrice:price, qty,
                w:it.width||'', frame:Number(it.frame)||0, dbror:it.dbror||'', frameHeight:Number(it.frameHeight)||0,
-               doorHeight:Number(it.doorHeight)||0, hafr:/\(حفر\)|\(Carved\)/i.test((it.title||'')),
+               doorHeight, hafr:/\(حفر\)|\(Carved\)/i.test((it.title||'')), wood:woodLabels.has(label),
                note: it.itemNote||'' };
     }
     if(it.type==='Frame' || it.type==='Bror'){
@@ -6217,7 +6231,13 @@ function submitOrder(){
       // بيعدّي منه ويمسح الطلب القديم. دلوقتي مفيش null أصلًا، بس بنتشدّد:
       // القديم مايتمسحش غير لما الجديد يتأكد وصوله بالظبط.
       if(sent !== true){ savePendingCancel_(cancelInfo); return; }   // لسه ما وصلش — سيب القديم
-      await cancelOldOrder_(cancelInfo);
+      const cancelled = await cancelOldOrder_(cancelInfo);
+      // ⚠️ باج كان هنا: لو المسح فشل هنا (مش لأن الطلب الجديد لسه ما وصلش،
+      // لكن لأن استدعاء المسح نفسه فشل — النت قطع لحظته أو أي خطأ عابر)،
+      // المحاولة دي كانت تروح في الهوا من غير أي تسجيل، فمفيش حد كان
+      // هيحاول يمسح القديم تاني أبدًا — وده كان بيخلّي القديم والجديد
+      // يفضلوا الاتنين ظاهرين عند المصنع للأبد.
+      if(!cancelled) savePendingCancel_(cancelInfo);
       // ولو كانت فيه نية إلغاء اتنقلت للطلب ده (تعديل ورا تعديل والنت واقع)،
       // دلوقتي بعد ما وصل بقى ينفع تتنفّذ.
       await runPendingCancelFor_(o.id);
