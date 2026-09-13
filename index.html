@@ -2929,9 +2929,9 @@ function arabicItemTitle_(it){
 // العميل العربية ("70 سم" أو "80×210 سم (مقاس خاص)") قبل ما نعرضه في أي مستند
 function arabicSizeText_(sizeEn){
   const s = String(sizeEn||'').trim();
-  let m = /^(\d+)\s*cm$/i.exec(s);
+  let m = /^(\d+(?:\.\d+)?)\s*cm$/i.exec(s);
   if(m) return m[1]+' سم';
-  m = /^(\d+)\s*x\s*(\d+)\s*cm\s*\(custom\)$/i.exec(s);
+  m = /^(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*cm\s*\(custom\)$/i.exec(s);
   if(m) return m[1]+'×'+m[2]+' سم (مقاس خاص — مقاس الفتحة المعمارية)';
   return s;
 }
@@ -5545,7 +5545,7 @@ function editCartLine(i){
         frameKind: it.frameKind||null, frameRodQty: it.frameRodQty||'', frameForDoors: it.frameForDoors||''
       };
     } else {
-      m = /^(\d+)\s*x\s*(\d+)\s*cm\s*\(custom\)$/i.exec(it.sizeEn||'');
+      m = /^(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*cm\s*\(custom\)$/i.exec(it.sizeEn||'');
       if(m){
         customOn=true; customW=m[1]; customH=m[2]; customQty=it.qty||1;
         customFrame=it.frame||0; customFrameHeight=it.frameHeight?String(it.frameHeight):''; customDbror=it.dbror||'';
@@ -6281,9 +6281,9 @@ function itemProdPending_(it){
 // بيرجّع عرض وارتفاع الفتحة المعمارية للباب من نص المقاس الإنجليزي (زي "80 cm" أو "75x209 cm (custom)")
 // بيشتغل مع شكل عربة العميل (sizeEn) وشكل بيانات السيرفر الخام (size) لأنهم بنفس الصيغة الإنجليزية الثابتة
 function doorWH_(sizeEn, doorHeight){
-  let m = /^(\d+)\s*cm$/i.exec(sizeEn||'');
+  let m = /^(\d+(?:\.\d+)?)\s*cm$/i.exec(sizeEn||'');
   if(m) return { w:Number(m[1]), h: doorHeight?Number(doorHeight):DOOR_STD_HEIGHT };
-  m = /^(\d+)\s*x\s*(\d+)\s*cm\s*\(custom\)$/i.exec(sizeEn||'');
+  m = /^(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*cm\s*\(custom\)$/i.exec(sizeEn||'');
   if(m) return { w:Number(m[1]), h:Number(m[2]) };
   return { w:'', h:'' };
 }
@@ -6400,10 +6400,15 @@ function docTotalsHTML(o){
   if(!doorItems.length) return '';
   const perSize={}, sizeW={};
   doorItems.forEach(it=>{ const k=doorSizeText_(it.sizeTxt,it.doorHeight)||''; perSize[k]=(perSize[k]||0)+(Number(it.qty)||0); if(sizeW[k]==null) sizeW[k]=Number(it.w)||0; });
-  const keys=sortSizeKeys_(Object.keys(perSize));
+  // ⚠️ الكروت دي كانت بترتيب المصفوفة الطبيعي، واللغة عربي RTL — يعني أول
+  // عنصر (نفس ترتيب أول مجموعة في الجدول فوق) كان بيظهر على الشمال، مش
+  // اليمين، فبان كإن ترتيب الكروت معكوس عن الجدول. .reverse() بيرجّع أول
+  // مجموعة في الجدول لأول كارت من الشمال (بما إن الفلكس RTL بيرسم آخر
+  // عنصر في المصفوفة على الشمال).
+  const keys=sortSizeKeys_(Object.keys(perSize)).reverse();
   const cards=keys.map(k=>{ const c=sizeColor_(sizeW[k]);
     return `<div style="flex:1;min-width:96px;background:${c.bg};border:1px solid ${c.border};border-radius:9px;padding:8px 10px;text-align:center">
-    <div style="font-size:10.5px;color:${c.text};opacity:.75">${esc(k)}</div>
+    <div style="font-size:10.5px;color:#1E8E52;font-weight:700">${esc(k)}</div>
     <div style="font-size:15px;font-weight:700;color:${c.text}">${perSize[k]}</div>
   </div>`; }).join('');
   const doorsTotal=keys.reduce((s,k)=>s+perSize[k],0);
