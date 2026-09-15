@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ELKORASHI DOORS — طلبات أبواب WPC</title>
-<meta name="theme-color" content="#002050">
+<meta name="theme-color" content="#F7F2EC">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
@@ -21,34 +21,39 @@
 <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
 <style>
 :root{
-  --navy:#002050;
-  --navy-2:#003060;
-  --brand:#1080C0;
-  --brand-lt:#4FA8DC;
+  /* ---- هوية «الخشب الدافي» (v185) ----
+     ألوان الأبواب نفسها بقت ألوان التطبيق: بيج دافي خلفية، بُني للتمييز،
+     وبُني غامق جدًا للشرايط. أسماء المتغيّرات زي ما هي عشان كل الشاشات
+     تتحوّل مرة واحدة من غير ما نلمس كل قاعدة على حدة.
+     (مستندات الـPDF ألوانها مكتوبة جواها بالنص — فهي زي ما هي كحلي.) */
+  --navy:#3A2A1D;
+  --navy-2:#543C28;
+  --brand:#A6642F;
+  --brand-lt:#C98A54;
   --wood:#A6642F;
   --wood-lt:#C98A54;
   --wood-bg:#FBF1E7;
   --wood-line:#E8C9A8;
-  --bg:#F3F6FA;
+  --bg:#F7F2EC;
   --card:#FFFFFF;
-  --ink:#14243A;
-  --muted:#6B7A8C;
-  --line:#DCE4EC;
+  --ink:#33231A;
+  --muted:#9C8877;
+  --line:#EADFD1;
   --ok:#1E7A54;
   --ok-bg:#E7F3EE;
   --warn-bg:#FFF6E5;
   --warn-line:#E8C77A;
   --danger:#B3261E;
   --r:16px;
-  --shadow:0 4px 18px rgba(0,32,80,.09);
+  --shadow:0 4px 18px rgba(120,80,40,.10);
   --mark:none;
 
   /* ---- توكنز التصميم المحدّثة (v108) ----
      سلّم ظلال متدرّج بدل ظل واحد لكل حاجة، وسلّم زوايا، ومنحنيات حركة موحّدة.
      ده اللي بيخلي الشاشة تبان مرتّبة وفيها عمق بدل ما كل الكروت في نفس المستوى. */
-  --e1:0 1px 2px rgba(12,32,64,.06), 0 1px 3px rgba(12,32,64,.05);
-  --e2:0 2px 6px rgba(12,32,64,.06), 0 6px 16px rgba(12,32,64,.07);
-  --e3:0 6px 14px rgba(12,32,64,.08), 0 16px 34px rgba(12,32,64,.10);
+  --e1:0 1px 2px rgba(120,80,40,.07), 0 1px 3px rgba(120,80,40,.05);
+  --e2:0 2px 6px rgba(120,80,40,.07), 0 6px 16px rgba(120,80,40,.08);
+  --e3:0 6px 14px rgba(120,80,40,.09), 0 16px 34px rgba(120,80,40,.12);
   --r-sm:10px;
   --r-md:14px;
   --r-lg:18px;
@@ -57,8 +62,9 @@
   --ease-out:cubic-bezier(.16,1,.3,1);      /* خروج سريع في الأول وبطيء في الآخر */
   --t-fast:.13s;
   --t-med:.22s;
-  --surface-2:#F8FAFD;                       /* سطح تاني للتمييز جوه الكروت */
-  --line-soft:#E7EDF4;
+  --surface-2:#FCF8F3;                       /* سطح تاني للتمييز جوه الكروت */
+  --line-soft:#F1E8DD;
+  --navh:64px;                               /* ارتفاع شريط التبويبات السفلي */
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
@@ -621,6 +627,160 @@ input.bad{box-shadow:0 0 0 3px rgba(179,38,30,.1)}
   width:794px;transform-origin:top left;background:#fff;
 }
 @media (min-width:860px){ .rpv-scroll{padding:20px} }
+
+/* ============================================================
+   v185 — طبقة «الخشب الدافي + الزجاج»
+   ------------------------------------------------------------
+   طبقة فوق التصميم القديم (زي طبقة v108) — أي حاجة مش مذكورة هنا
+   بتفضل شغّالة زي ما هي. اللي اتغيّر في الشكل:
+   • التبويبات نزلت تحت الشاشة (قريبة من الصباع) بدل ما تكون فوق
+   • الهيدر بقى شريط زجاجي فاتح بدل البلوك الكحلي، والإصدار جوّه
+   • ألوان الخشب بقت هوية التطبيق (الجدول فوق في :root)
+   • الكروت والأزرار بقى لها دفء: زوايا أكبر وظل بُني خفيف
+   ============================================================ */
+
+/* ---------- الهيدر الزجاجي ---------- */
+#appbar{background:transparent}
+#appbar::after{
+  height:2px;
+  background:linear-gradient(90deg,var(--wood),var(--wood-lt) 55%,rgba(201,138,84,0));
+}
+.top{
+  background:rgba(255,255,255,.74);
+  -webkit-backdrop-filter:blur(16px) saturate(1.5);
+  backdrop-filter:blur(16px) saturate(1.5);
+  color:var(--ink);
+  box-shadow:0 1px 14px rgba(120,80,40,.10);
+  padding:calc(9px + env(safe-area-inset-top)) 14px 9px;
+}
+.top-row{gap:8px;flex-wrap:nowrap}
+.top .ttl{min-width:0;flex:1 1 auto;overflow:hidden}
+.top .t1{color:var(--ink);font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .t2{color:var(--muted);font-size:10.5px;display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden}
+.top img.logo{height:36px;border-radius:11px;box-shadow:0 2px 8px rgba(120,80,40,.16);background:#fff}
+.wh-chip{
+  background:var(--wood-bg);border:1px solid var(--wood-line);color:#8A5A28;
+  border-radius:var(--r-sm);padding:4px 8px;font-size:9.5px;white-space:nowrap;
+}
+.wh-chip b{font-size:11px}
+.wh-chip b{color:#6B3F18}
+/* الإصدار بقى جوه سطر العنوان، والتحديث/التثبيت زراير صغيرة جنب المخزن */
+.verstrip{margin-top:0;gap:5px;flex:0 0 auto;flex-wrap:nowrap}
+/* على الموبايل الضيّق «تثبيت» بتبقى أيقونة بس — العنوان أهم من الكلمة */
+@media (max-width:430px){ .verstrip button.vs-install{font-size:0;padding:0;min-width:36px} }
+.verstrip .vs-ver{color:var(--muted);font-size:10px;flex:0 0 auto}
+.top .t2 .vs-ver{
+  background:#F4EDE4;border-radius:var(--r-pill);padding:1px 7px;font-size:9.5px;color:#8A7461;
+}
+.verstrip button{
+  background:#fff;border:1.5px solid var(--line);color:var(--wood);
+  min-height:36px;min-width:36px;padding:0 9px;display:inline-flex;align-items:center;
+  justify-content:center;gap:5px;font-size:11px;
+}
+.verstrip button .i{width:16px;height:16px;margin:0}
+.verstrip button.vs-install{
+  background:linear-gradient(180deg,var(--wood-lt),var(--wood));border-color:transparent;color:#fff;
+  box-shadow:0 2px 8px rgba(166,100,47,.28);
+}
+
+/* ---------- التبويبات: شريط سفلي زجاجي ---------- */
+.tabs{
+  position:fixed;bottom:0;inset-inline:0;z-index:60;
+  background:rgba(255,255,255,.86);
+  -webkit-backdrop-filter:blur(16px) saturate(1.5);
+  backdrop-filter:blur(16px) saturate(1.5);
+  border-top:1px solid var(--line);border-bottom:0;
+  box-shadow:0 -2px 18px rgba(120,80,40,.10);
+  padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));
+  max-width:660px;margin:0 auto;border-radius:0;
+}
+.tabs button{min-height:50px;padding:6px 2px 5px}
+/* القرص المتحرّك بقى دافي بدل الأزرق */
+.tabs button::before{background:linear-gradient(180deg,#FBF1E7,#F3E3D2)}
+.tabs button.on{color:var(--wood)}
+.tabs button.on .i{color:var(--wood)}
+.tabs .badge{background:linear-gradient(180deg,#D4614E,#B3261E);box-shadow:0 1px 4px rgba(179,38,30,.4);
+  top:0;inset-inline-end:calc(50% - 24px)}
+
+/* المحتوى لازم ينتهي فوق الشريط السفلي — وإلا آخر كارت بيتغطّى */
+body{padding-bottom:calc(var(--navh) + env(safe-area-inset-bottom,0px))}
+/* لما شريط الإجمالي يبان، المحتوى لازم يزيد مسافته عشان آخر كارت ما يتغطّاش */
+body:has(#bar:not([hidden])){padding-bottom:calc(var(--navh) + 76px + env(safe-area-inset-bottom,0px))}
+.wrap{padding-bottom:18px}
+
+/* ---------- شريط الإجمالي: فوق التبويبات مباشرة ---------- */
+.bar{
+  bottom:calc(var(--navh) + env(safe-area-inset-bottom,0px));
+  background:linear-gradient(180deg,#3E2C1E,#33231A);
+  border-top:0;color:#F6EDE3;
+  padding:11px 14px;
+  box-shadow:0 -6px 22px rgba(51,35,26,.22);
+}
+.bar .sum b{color:#fff;font-size:17px}
+.bar .sum span{color:#C9B6A4}
+.bar .btn.brand{
+  background:linear-gradient(180deg,#D1975F,#A6642F);
+  box-shadow:0 2px 10px rgba(0,0,0,.25);
+}
+
+/* ---------- الكروت والأسطح ---------- */
+.card{border-radius:var(--r-lg);border-color:var(--line);box-shadow:var(--e2)}
+.ord{border-radius:var(--r-lg);border-color:var(--line);box-shadow:var(--e2)}
+.step .n{background:linear-gradient(160deg,var(--wood-lt),var(--wood));box-shadow:0 2px 8px rgba(166,100,47,.3)}
+.secnav button.on{background:linear-gradient(180deg,#fff,var(--wood-bg));border-color:var(--wood)}
+.secnav button.on .tx{color:var(--wood)}
+.secnav button.on{box-shadow:0 0 0 1.5px var(--wood),var(--e2)}
+.doorpanel{background:#FDF8F2;border-color:var(--wood-lt)}
+.sizeCard{background:#FDF8F2;border-color:var(--wood-line)}
+.sizeCard .scHead b{color:var(--wood)}
+.chip,.miniChip,.specol .colchip,.qty,.accgrid .ac{background:#FDFBF8}
+.chip.on,.miniChip.on,.specol .colchip.on{background:var(--wood);border-color:var(--wood);color:#FFF6EC}
+.chip.on .sub,.specol .colchip.on .sub{color:#F0D9C2}
+input[type=text],input[type=tel],input[type=number],input[type=password],input[type=date],input[type=search],select,textarea{background:#FDFBF8}
+input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(166,100,47,.13)}
+input::placeholder,textarea::placeholder,.hgtIn::placeholder{color:#C0AE9C}
+.qty button{color:var(--wood)}
+.qty button:active{background:var(--wood-bg)}
+.line .ic{background:var(--wood-bg)}
+.line img{border-color:var(--line)}
+.door .leaf{background:#F0E6DA;border-color:var(--line);box-shadow:0 1px 4px rgba(120,80,40,.12)}
+.door .leaf.noimg{background:linear-gradient(160deg,#D9A873,#9A6432)}
+.btn.brand{
+  background:linear-gradient(180deg,var(--wood-lt),var(--wood));
+  box-shadow:0 2px 4px rgba(166,100,47,.18),0 6px 16px rgba(166,100,47,.24);
+}
+.btn.primary{background:var(--navy);box-shadow:0 2px 4px rgba(51,35,26,.2),0 6px 16px rgba(51,35,26,.18)}
+.btn.ghost{color:var(--wood)}
+.btn.act-tool{color:var(--wood)}
+.stktbl th{background:var(--navy)}
+.stktbl tbody tr:nth-child(even){background:#FBF7F2}
+#busy{background:rgba(51,35,26,.55)}
+#busy .b{background:var(--navy)}
+/* التوست بقى فوق الشريط السفلي — كان هيتغطّى بالتبويبات */
+#toast{
+  background:var(--navy);color:#F6EDE3;box-shadow:0 6px 22px rgba(51,35,26,.35);
+  bottom:calc(var(--navh) + 16px + env(safe-area-inset-bottom,0px));
+}
+body:has(#bar:not([hidden])) #toast{bottom:calc(var(--navh) + 88px + env(safe-area-inset-bottom,0px))}
+:focus-visible{outline-color:var(--wood)}
+.stockbar.out{background:#F6F1EA;border-color:var(--line)}
+.grp-all{background:#FBF7F2;color:var(--muted)}
+.grp-list,.grp-ord{border-color:var(--line)}
+.grp-ord{border-top-color:#F0E7DC}
+.empty{color:var(--muted)}
+.note b{color:var(--wood)}
+.total{border-top-color:var(--wood)}
+.focusrow{border-bottom-color:var(--line)}
+.acc,.line{border-bottom-color:var(--line)}
+.rpv{background:rgba(28,18,10,.96)}
+.rpv-pdf{background:linear-gradient(180deg,var(--wood-lt),var(--wood))}
+.rpv-x{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.28);color:#F6EDE3}
+
+/* ---------- شاشات أكبر: الشريط السفلي يفضل في نص الشاشة ---------- */
+@media (min-width:720px){
+  .tabs{inset-inline:auto;left:50%;transform:translateX(-50%);
+        border-radius:var(--r-lg) var(--r-lg) 0 0;border-inline:1px solid var(--line)}
+}
 </style>
 </head>
 <body>
@@ -630,19 +790,21 @@ input.bad{box-shadow:0 0 0 3px rgba(179,38,30,.1)}
 <header class="top">
   <div class="top-row">
     <img class="logo" id="hdrLogo" alt="ELKORASHI DOORS">
-    <div>
+    <div class="ttl">
       <div class="t1">أبواب WPC</div>
-      <div class="t2">طلب أوردر أبواب</div>
+      <div class="t2">طلب أوردر أبواب <span class="vs-ver" id="vsVer"></span></div>
     </div>
     <div class="wh-chip">المخزن<b>مصنع إنشاص</b></div>
-  </div>
-
-  <div class="verstrip">
-    <span class="vs-ver" id="vsVer"></span>
-    <button data-act="update"><svg class="i" viewBox="0 0 24 24"><path d="M20.4 12a8.4 8.4 0 1 1-2.5-6"/><path d="M20.9 3.6v5h-5"/></svg>تحديث</button>
-    <button data-act="install" id="vsInstall" class="vs-install"><svg class="i" viewBox="0 0 24 24"><path d="M12 3.4v11.2"/><path d="m7.4 10.4 4.6 4.6 4.6-4.6"/><path d="M4 17.6v1.4a1.6 1.6 0 0 0 1.6 1.6h12.8a1.6 1.6 0 0 0 1.6-1.6v-1.4"/></svg>تثبيت</button>
+    <div class="verstrip">
+      <button data-act="update" aria-label="تحديث" title="تحديث التطبيق"><svg class="i" viewBox="0 0 24 24"><path d="M20.4 12a8.4 8.4 0 1 1-2.5-6"/><path d="M20.9 3.6v5h-5"/></svg></button>
+      <button data-act="install" id="vsInstall" class="vs-install" title="تثبيت التطبيق"><svg class="i" viewBox="0 0 24 24"><path d="M12 3.4v11.2"/><path d="m7.4 10.4 4.6 4.6 4.6-4.6"/><path d="M4 17.6v1.4a1.6 1.6 0 0 0 1.6 1.6h12.8a1.6 1.6 0 0 0 1.6-1.6v-1.4"/></svg>تثبيت</button>
+    </div>
   </div>
 </header>
+</div>
+
+
+<main class="wrap" id="view"></main>
 
 <nav class="tabs" id="tabs">
   <button data-tab="new" class="on"><svg class="i lg" viewBox="0 0 24 24"><path d="M12 4.6v14.8M4.6 12h14.8"/></svg><span>طلب جديد</span></button>
@@ -650,9 +812,6 @@ input.bad{box-shadow:0 0 0 3px rgba(179,38,30,.1)}
   <button data-tab="orders"><svg class="i lg" viewBox="0 0 24 24"><path d="M2.5 6.5h11v9h-11z"/><path d="M13.5 9.5h4l3 3v3h-7z"/><circle cx="6.4" cy="17.6" r="1.7"/><circle cx="17.2" cy="17.6" r="1.7"/></svg><span>تابع طلبك</span></button>
   <button data-tab="admin"><svg class="i lg" viewBox="0 0 24 24"><path d="M2.8 20.5V10l5.6 3.6V10l5.6 3.6V6.5l5.2-2v16z"/><path d="M2.8 20.5h18.4"/></svg><span>المصنع</span><span class="badge" id="admBadge" hidden>0</span></button>
 </nav>
-</div>
-
-<main class="wrap" id="view"></main>
 
 <div class="bar" id="bar" hidden>
   <div class="inner">
@@ -793,7 +952,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v184';
+const APP_BUILD   = 'v185';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -6887,7 +7046,7 @@ const savedPw = sessionStorage.getItem('wpc_adm');
 if(savedPw){ state.admin.pw = savedPw; adminLoad(); startAdminPolling(); }
 document.getElementById('hdrLogo').src = ASSETS.logo;
 document.documentElement.style.setProperty('--mark', 'url('+ASSETS.mark+')');
-document.getElementById('vsVer').textContent = 'الإصدار ' + APP_BUILD;
+document.getElementById('vsVer').textContent = APP_BUILD;
 
 // خانة أي رقم — لما تدوس عليها تتحدد كلها عشان تكتب على طول من غير ما تمسح بإيدك
 document.addEventListener('focusin', e => {
@@ -6986,7 +7145,7 @@ async function checkServerVersion(){
     const serverVer = m[1];
     if(serverVer && serverVer !== APP_BUILD){
       const el = document.getElementById('vsVer');
-      if(el) el.textContent = 'الإصدار ' + APP_BUILD + ' → متاح ' + serverVer;
+      if(el) el.textContent = APP_BUILD + ' → ' + serverVer;
       const btn = document.querySelector('.verstrip [data-act="update"]');
       if(btn) btn.classList.add('vs-install');
       toast('في إصدار ' + serverVer + ' جاهز — اضغط 🔄 تحديث');
