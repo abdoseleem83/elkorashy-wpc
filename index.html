@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v180';
+const APP_BUILD   = 'v181';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3989,6 +3989,9 @@ function itemUnitAr_(u){
   const s = String(u||'').trim();
   if(s==='door') return 'باب';
   if(s==='pc') return 'قطعة';
+  // السطر المدموج فيه أعواد بأطوال مختلفة — مالوش طول واحد يتكتب جنب الوحدة،
+  // الأطوال مكتوبة في وصف الصنف نفسه.
+  if(s==='rods') return 'عود';
   if(/^rod\s/.test(s)) return 'عود '+s.replace(/^rod\s/,'')+ (/م$/.test(s)?'':'م');
   return s || '—';
 }
@@ -5655,10 +5658,19 @@ function adminEditOrderWith_(o, its){
     }
     if(it.type==='Frame' || it.type==='Bror'){
       const isFr = it.type==='Frame';
-      const rodCm = (String(it.unit||'').match(/^rod\s+(\d+)/)||[])[1];
+      // ⚠️ باج كان هنا: السطر المدموج (قوائم + عوارض بأطوال مختلفة في سطر
+      // واحد) كان بيرجع من السيرفر من غير علامته، فالسلة بتعرضه «٩ عود × ٢٠٠ سم»
+      // — والحقيقة إن ٣ منهم عوارض ١٢٠ سم. التفصيل موجود في وصف الصنف بس
+      // مكانش بيتعرض. يعني المصنع ممكن يقطّع ٣ أعواد أطول ٨٠ سم من اللازم.
+      // بنعرف السطر المدموج من وحدته الجديدة ('rods')، ومن وصفه كمان عشان
+      // الطلبات اللي اتسجّلت قبل التعديل ده تتعرض صح برضه.
+      // («سم × عدد» — البرور «6×9» مابيتلخبطش معاها لأن مفيش «سم» قبل الـ×)
+      const مدموج = String(it.unit||'')==='rods' || /سم\s*×\s*\d+/.test(String(it.size||''));
+      const rodCm = مدموج ? null : (String(it.unit||'').match(/^rod\s+(\d+)/)||[])[1];
       return { kind:isFr?'frame':'bror', key:(isFr?'حلق':'برور')+(it.size||'')+'|'+(it.code||''),
                title:arabicItemTitle_(it), titleEn:it.title||'', code:it.code||'',
                spec:it.size||'', price, qty, rodCm:rodCm?Number(rodCm):undefined,
+               customSet: مدموج || undefined,
                doorW: it.forDoorWidth||'', note: it.itemNote||'' };
     }
     if(it.type==='Panel'){

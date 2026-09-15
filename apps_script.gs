@@ -1141,7 +1141,13 @@ function saveOrder_(o) {
              : (it.kind === 'bror'  ? 'Bror'
              : (it.kind === 'panel' ? 'Panel' : 'Accessory')));
 
-    var unit = isDoor ? 'door' : (it.isSet ? 'set' : (isRod ? ('rod ' + (it.rodCm || 220) + 'cm') : (it.unit || 'pc')));
+    // ⚠️ السطر المدموج فيه أعواد بأطوال مختلفة (قوائم + عوارض). كتابة
+    // 'rod 200cm' عليه بتكدب على ٣ أعواد من التسعة. بنكتب 'rods' من غير طول —
+    // والأطوال مكتوبة في عمود المقاس (spec) بالتفصيل.
+    var unit = isDoor ? 'door'
+             : (it.isSet ? 'set'
+             : (it.customSet ? 'rods'
+             : (isRod ? ('rod ' + (it.rodCm || 220) + 'cm') : (it.unit || 'pc'))));
 
     lines.push([
       o.id,
