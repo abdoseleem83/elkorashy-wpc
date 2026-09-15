@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v179';
+const APP_BUILD   = 'v180';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -4790,6 +4790,10 @@ function viewAdmin(){
         ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}
         <br>${esc(dateStr2_(o.date))} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''} · ${money(o.total||0)} ج</div>
       ${o.ordNote?`<div class="ordnote">${ico("warn")}<span><b>ملاحظات:</b> ${esc(o.ordNote)}</span></div>`:''}
+      ${o.superseded?`<div style="margin-top:8px;padding:9px 12px;background:#FBE9E7;border:1.5px solid #E8A9A0;border-radius:9px;
+        font-size:12px;font-weight:700;color:#B3261E;display:flex;align-items:flex-start;gap:6px;line-height:1.6">
+        ${ico("warn")}<span>الطلب ده <b>اتعدّل وعنده نسخة جديدة</b> — كان دخل التنفيذ فمقدرناش نلغيه تلقائي.
+        راجع النسخة الجديدة واحذف السطر ده بنفسك من زرار «حذف» تحت.</span></div>`:''}
       <div class="chips" style="margin-top:10px;gap:6px;flex-wrap:nowrap">${btns}</div>
       ${busy?'<div class="note">جارٍ الحفظ…</div>':''}
       <div class="cardacts">${actionBtns}</div>
@@ -5884,10 +5888,16 @@ async function sendOrderToServer_(o){
 // بنسأل السيرفر: الطلب وصل ولا لأ؟ بنجرّب أكتر من مرة لأن Apps Script بياخد
 // وقت لحد ما يكتب في الشيت. لو ما قدرناش نتأكد بنعتبره ما وصلش — والإرسال
 // تاني آمن لأن السيرفر بيحدّث الصف بنفس الـid بدل ما يضيف صف جديد.
+// ⚠️ كانت ٣ محاولات بفواصل ١.٥ + ٣ + ٤.٥ = ٩ ثواني إجمالي. ودي كفاية لطلب
+// صغير، لكن الطلب الكبير (٦٠+ صنف) Apps Script بياخد وقت أطول وهو بيكتب سطوره
+// في الشيت — فالتأكيد كان بيفشل، والتطبيق يستنتج «ما وصلش» ومايلغيش الطلب
+// القديم. يعني بالظبط الطلبات الكبيرة اللي تعديلها أهم هي اللي كانت بتفشل.
+// بقت ٦ محاولات (١.٥+٣+٤.٥+٦+٦+٦ ≈ ٢٧ ثانية) مع سقف للانتظار عشان
+// ماتطولش بلا نهاية.
 async function verifyOrderArrived_(o, tries){
-  const مرات = tries || 3;
+  const مرات = tries || 6;
   for(let i = 0; i < مرات; i++){
-    await new Promise(r=>setTimeout(r, 1500 * (i + 1)));
+    await new Promise(r=>setTimeout(r, Math.min(6000, 1500 * (i + 1))));
     try{
       const d = await jsonp(APPS_SCRIPT_URL + '?action=list&dev=' + encodeURIComponent(deviceId_())
         + '&phone=' + encodeURIComponent(o.phone||''));
@@ -6224,13 +6234,18 @@ function submitOrder(){
         shareOrderImage(o);
       })();
     }
-    (async ()=>{
+    // ⚠️ باج كان هنا: الكتلة دي بتشتغل في الخلفية، وتحتها على طول كان بيتعمل
+    // adminLoad() — يعني شاشة المصنع بتجيب القايمة من السيرفر **قبل** ما الطلب
+    // الجديد يتبعت وقبل ما القديم يتمسح. فالمصنع يشوف القديم لسه موجود، وشاشته
+    // عمرها ما بتصحّح نفسها بعد كده (adminPoll بيحدّث الشارة والإشعارات بس، مش
+    // القايمة). بنمسك الوعد هنا وناخده تحت عشان نستنّاه قبل التحديث.
+    const إلغاء_القديم = (async ()=>{
       const sent = await syncing;
-      if(!cancelInfo) return;
+      if(!cancelInfo) return 'لا-داعي';
       // ⚠️ الشرط ده كان `sent === false` بس، و null (اتبعت من غير تأكيد) كان
       // بيعدّي منه ويمسح الطلب القديم. دلوقتي مفيش null أصلًا، بس بنتشدّد:
       // القديم مايتمسحش غير لما الجديد يتأكد وصوله بالظبط.
-      if(sent !== true){ savePendingCancel_(cancelInfo); return; }   // لسه ما وصلش — سيب القديم
+      if(sent !== true){ savePendingCancel_(cancelInfo); return 'مؤجّل'; }   // لسه ما وصلش — سيب القديم
       const cancelled = await cancelOldOrder_(cancelInfo);
       // ⚠️ باج كان هنا: لو المسح فشل هنا (مش لأن الطلب الجديد لسه ما وصلش،
       // لكن لأن استدعاء المسح نفسه فشل — النت قطع لحظته أو أي خطأ عابر)،
@@ -6241,6 +6256,7 @@ function submitOrder(){
       // ولو كانت فيه نية إلغاء اتنقلت للطلب ده (تعديل ورا تعديل والنت واقع)،
       // دلوقتي بعد ما وصل بقى ينفع تتنفّذ.
       await runPendingCancelFor_(o.id);
+      return cancelled ? 'اتلغى' : 'مؤجّل';
     })();
   } else if(!wasAdminEdit){
     shareOrderImage(o);
@@ -6248,10 +6264,22 @@ function submitOrder(){
   if(wasAdminEdit){
     // المصنع رجع لشاشته، والقايمة بتتحدّث من السيرفر عشان تبان بالأصناف الجديدة
     state.tab='admin'; render();
-    toast(wasEditing
-      ? ('✅ اتلغى الطلب القديم '+prevOrderNoText_(o)+' واتعمل طلب جديد '+orderNoText_(o))
-      : ('✅ اتحدّث الطلب '+orderNoText_(o)));
-    adminLoad();
+    (async ()=>{
+      // ⚠️ التوست كان بيقول «اتلغى الطلب القديم» قبل ما الإلغاء يحصل أصلاً —
+      // فلو فشل أو اتأجّل، المصنع اتقاله إنه نجح. دلوقتي بنستنى النتيجة الحقيقية
+      // ونقولها زي ما هي، وبعدين بنحدّث القايمة عشان تبان الحقيقة.
+      busy(true, wasEditing ? 'جارٍ حفظ التعديل وإلغاء الطلب القديم…' : 'جارٍ حفظ التعديل…');
+      let نتيجة = 'لا-داعي';
+      try{ نتيجة = await إلغاء_القديم; }catch(e){}
+      finally{ busy(false); }
+      if(!wasEditing) toast('✅ اتحدّث الطلب '+orderNoText_(o));
+      else if(نتيجة === 'اتلغى')
+        toast('✅ اتلغى الطلب القديم '+prevOrderNoText_(o)+' واتعمل طلب جديد '+orderNoText_(o));
+      else
+        toast('⚠️ الطلب الجديد '+orderNoText_(o)+' اتسجّل، بس القديم '+prevOrderNoText_(o)+
+              ' لسه موجود — هنحاول نلغيه تاني تلقائي، ولو فضل شيله بنفسك من زرار «حذف»', 7000);
+      adminLoad();
+    })();
     return;
   }
   state.tab='orders'; render();

@@ -70,7 +70,10 @@ const r3 = await pg.evaluate(async(o)=>{
   state.editingId='W260907-OLD002'; state.editingDate=isoLocal_();
   state.editingDisplayNo=70; state.editingEditCount=2; state.editingMeta=null;
   submitOrder();
-  await new Promise(r=>setTimeout(r,13000));   // التأكيد بياخد ٩ ثواني (٣ محاولات)
+  // ⚠️ الانتظار ده لازم يفضل أطول من نافذة التأكد في verifyOrderArrived_.
+  // كانت ٣ محاولات (٩ ثواني) والاختبار بيستنى ١٣. بقت ٦ محاولات بسقف ٦ ثواني
+  // (١.٥+٣+٤.٥+٦+٦+٦ ≈ ٢٧ ثانية) عشان الطلبات الكبيرة، فالانتظار اتظبط معاها.
+  await new Promise(r=>setTimeout(r,32000));
   return { نداءات, معلّق: loadPendingSync_(),
            حذف_مؤجّل: JSON.parse(localStorage.getItem('wpc_pending_cancel')||'[]').length };
 }, o);

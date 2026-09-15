@@ -499,6 +499,11 @@ function doGet(e) {
           displayNo: rows[i][COL_DISPLAY_NO - 1] || '',
           editCount: rows[i][COL_EDIT_COUNT - 1] || 0,
           editedAt: fmtDate_(rows[i][COL_EDITED_AT - 1]),
+          // ⚠️ علامة «الطلب ده اتعدّل وعنده نسخة جديدة» كانت بتتكتب في الشيت
+          // وخلاص — عمرها ما رجعت للتطبيق. فالمصنع كان بيشوف الطلب القديم
+          // والجديد جنب بعض في شاشته من غير أي تفسير، ومش عارف إن المفروض
+          // يحذف القديم. دلوقتي بترجع وبتتعرض عليه صراحة.
+          superseded: isAdmin ? String(rows[i][COL_SUPERSEDED - 1] || '') : '',
           archived: isAdmin ? (String(rows[i][COL_ARCHIVED - 1] || '') === 'Y') : undefined
         });
       }
