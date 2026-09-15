@@ -1,4 +1,5 @@
-// شكل v185: التبويبات نزلت تحت الشاشة والهيدر بقى شريط زجاجي.
+// شكل v186 (الداكن الأنيق): التبويبات تحت على الموبايل وفوق على الكمبيوتر،
+// والهيدر شريط زجاجي غامق.
 // أي حاجة ثابتة تحت (التبويبات / شريط الإجمالي / التوست) ممكن تغطّي محتوى
 // المستخدم محتاجه — الاختبار ده بيتأكد إنهم متراصّين فوق بعض من غير تغطية.
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
@@ -78,11 +79,39 @@ check('التوست بيبان فوق شريط الإجمالي/التبويبا
 // ═══ الهوية: ألوان الخشب ═══
 const ألوان = await pg.evaluate(()=>{
   const cs=getComputedStyle(document.documentElement);
+  const رقم = c=>{ const m=c.match(/\d+/g)||[]; return m.slice(0,3).map(Number); };
   return { brand:cs.getPropertyValue('--brand').trim(), bg:cs.getPropertyValue('--bg').trim(),
-           body:getComputedStyle(document.body).backgroundColor };
+           body:رقم(getComputedStyle(document.body).backgroundColor),
+           نص:رقم(getComputedStyle(document.body).color) };
 });
-check('اللون الأساسي بقى بُني الخشب', ألوان.brand.toUpperCase()==='#A6642F', ألوان.brand);
-check('وخلفية التطبيق بيج دافي', ألوان.bg.toUpperCase()==='#F7F2EC', ألوان.bg);
+check('اللون الأساسي بقى الأزرق الفاتح', ألوان.brand.toUpperCase()==='#3FA9F5', ألوان.brand);
+check('وخلفية التطبيق كحلي غامق', ألوان.bg.toUpperCase()==='#0C1524', ألوان.bg);
+// الغامق الحقيقي: الخلفية أغمق من النص — لو حاجة اتقلبت غلط الاختبار ده بيمسكها
+check('الخلفية أغمق من لون الكلام (مش العكس)',
+  ألوان.body.reduce((a,b)=>a+b,0) < ألوان.نص.reduce((a,b)=>a+b,0),
+  JSON.stringify(ألوان.body)+' مقابل '+JSON.stringify(ألوان.نص));
+
+// ═══ على الكمبيوتر التبويبات ترجع فوق ═══
+const شاشة_كبيرة = await b.newContext({viewport:{width:1280,height:800}});
+const pc = await شاشة_كبيرة.newPage();
+await pc.goto(process.env.APP_URL || 'http://localhost:8100/index.html',{waitUntil:'domcontentloaded'});
+await pc.waitForTimeout(1300);
+const مكان = await pc.evaluate(()=>{
+  const n=document.getElementById('tabs').getBoundingClientRect();
+  const v=document.getElementById('view').getBoundingClientRect();
+  return {navTop:Math.round(n.top), navBottom:Math.round(n.bottom), viewTop:Math.round(v.top),
+          vh:window.innerHeight};
+});
+check('على الكمبيوتر التبويبات فوق مش تحت', مكان.navTop < مكان.vh/2, JSON.stringify(مكان));
+check('وفوق المحتوى مش راكبة عليه', مكان.navBottom <= مكان.viewTop + 1, JSON.stringify(مكان));
+// أهم حاجة: مايبقاش فيه شريط ثابت تحت بيغطّي أزرار الأقسام
+const تغطية = await pc.evaluate(()=>{
+  const عناصر=[...document.querySelectorAll('.secnav button')];
+  const n=document.getElementById('tabs').getBoundingClientRect();
+  return عناصر.filter(e=>{ const r=e.getBoundingClientRect();
+    return r.top < n.bottom && r.bottom > n.top; }).length;
+});
+check('وأزرار الأقسام مش متغطّية بالتبويبات', تغطية===0, String(تغطية));
 
 check('مفيش أخطاء JS', errs.length===0, errs.join(' | '));
 await b.close();
