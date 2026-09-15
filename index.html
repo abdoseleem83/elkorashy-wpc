@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v183';
+const APP_BUILD   = 'v184';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -6402,7 +6402,6 @@ function docRowHTML_(it, idx, priced, showFrameHCol, oddFrameW, titleTxt){
     unit = itemUnitAr_(it.unit) || 'قطعة';
     if(unit==='—') unit='قطعة';
   }
-  const pp = itemProdPending_(it);
   const isCut = isCutLine_(it);
   // لو مقاس الحلق (البرور) في السطر ده مختلف عن باقي أسطر الطلب، نبرز الخلية دي
   // بخلفية تلفت النظر عشان المصنع ما يلخبطش بين حلق 15 وحلق 20 مثلًا في نفس الأوردر.
@@ -6422,9 +6421,6 @@ function docRowHTML_(it, idx, priced, showFrameHCol, oddFrameW, titleTxt){
     <td style="text-align:center;font-size:11px;${frameWStyle}">${esc(frameW)}</td>
     ${showFrameHCol?`<td style="text-align:center;font-size:11px;color:${frameH==='استاندر'?'#8A6512':'#5B6B7D'}">${esc(frameH)}</td>`:''}
     <td style="text-align:center;font-size:11px;color:#5B6B7D">${esc(brorTxt)}</td>
-    ${isCut?`<td style="text-align:center;font-size:11px;color:#9AA7B4">—</td><td style="text-align:center;font-size:11px;color:#9AA7B4">—</td>`
-      :`<td style="text-align:center;font-size:11px;color:${pp.produced>=qty&&qty>0?'#1E8E52':(pp.produced>0?'#B8790A':'#6B7A8C')}">${pp.produced}</td>
-    <td style="text-align:center;font-size:11px;font-weight:700;color:${pp.pending>0?'#B3261E':'#6B7A8C'}">${pp.pending}</td>`}
     ${priced?(it.included
       ? `<td style="text-align:center;font-size:11px;color:#8A6512">مشمول</td><td style="text-align:center;font-size:11px;color:#8A6512">مشمول</td>`
       : `<td style="text-align:center">${money(it.kind==='door'?it.unitPrice:it.price)}</td>
@@ -6447,7 +6443,9 @@ function docRows(o, priced, showFrameHCol){
   const items=o.items||[];
   const doorItems=items.filter(it=>it.kind==='door');
   const otherItems=items.filter(it=>it.kind!=='door');
-  const colspan=(priced?11:9)+(showFrameHCol?1:0);
+  // ⚠️ عمودين «جاهز/متبقي» اتشالوا من ورقة الأوردر — الأرقام دي شغل مصنع
+  // مش بيانات أوردر، ومكانها شاشة متابعة الإنتاج.
+  const colspan=(priced?9:7)+(showFrameHCol?1:0);
 
   // نحدّد مقاس الحلق (البرور) الأكتر تكرارًا في كل أبواب الطلب، عشان أي سطر
   // بمقاس حلق مختلف عنه (زي حلق 20 وسط حلق 15) يبان بخلفية صفراء تلفت النظر.
@@ -6509,11 +6507,9 @@ function docTotalsHTML(o){
     <div style="font-size:15px;font-weight:700;color:${c.text}">${perSize[k]}</div>
   </div>`; }).join('');
   const doorsTotal=keys.reduce((s,k)=>s+perSize[k],0);
-  // «خدمة قص» بند فلوس مش قطعة تتقطع — مابتتعدّش في إجمالي القطع ولا في الجاهز/المتبقي
+  // «خدمة قص» بند فلوس مش قطعة تتقطع — مابتتعدّش في إجمالي القطع
   const counted=items.filter(it=>!isCutLine_(it));
   const overallTotal=counted.reduce((s,it)=>s+(Number(it.qty)||0),0);
-  const overallProduced=counted.reduce((s,it)=>s+itemProdPending_(it).produced,0);
-  const overallPending=overallTotal-overallProduced;
   // ⚠️ «الإجمالي الكلي» بيعدّ طقم الحلق كقطعة واحدة — وهو فعليًا ٣ عيدان.
   // المصنع بيقطّع على أساس الرقم ده، فسطر واحد ملخبط معناه خشب مقطوع غلط.
   // مابنغيّرش الحساب (المصنع اتعوّد عليه) — بنوضّح الطقم كام عود صراحة.
@@ -6527,8 +6523,6 @@ function docTotalsHTML(o){
     <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0"><span><b>إجمالي الأبواب</b></span><b>${doorsTotal} باب</b></div>
     <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span><b>الإجمالي الكلي</b></span><b>${overallTotal} قطعة</b></div>
     ${setsNote}
-    <div style="display:flex;justify-content:space-between;font-size:11.5px;padding:2px 0;color:#1E8E52"><span>جاهز</span><b>${overallProduced} قطعة</b></div>
-    <div style="display:flex;justify-content:space-between;font-size:11.5px;padding:2px 0;color:#B3261E"><span>متبقي</span><b>${overallPending} قطعة</b></div>
   </div>`;
 }
 
@@ -6668,8 +6662,6 @@ function docHTML(o,mode,priced){
             <th style="padding:9px 3px;width:50px">عرض الحلق</th>
             ${showFrameHCol?`<th style="padding:9px 3px;width:56px">ارتفاع الحلق</th>`:''}
             <th style="padding:9px 5px;width:48px">البرور</th>
-            <th style="padding:9px 5px;width:44px">جاهز</th>
-            <th style="padding:9px 5px;width:48px">متبقي</th>
             ${priced?`<th style="padding:9px 5px;width:64px">السعر</th>
             <th style="padding:9px 5px;width:74px">الإجمالي</th>`:''}
           </tr>

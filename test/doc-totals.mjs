@@ -36,10 +36,12 @@ const t3 = await txt([باب(70,2), {kind:'frame', qty:6, rodCm:220, title:'قا
 check('العيدان المفكوكة مالهاش سطر أطقم', !/طقم/.test(t3), t3);
 check('وبتتعدّ عادي في الإجمالي', /الإجمالي الكلي\s*8 قطعة/.test(t3), t3);
 
-// ٤) الجاهز والمتبقي
+// ٤) «جاهز/متبقي» اتشالوا من ورقة الأوردر — دول أرقام متابعة إنتاج، مكانها
+// شاشة المصنع مش المستند اللي بيروح للموزّع.
 const t4 = await txt([باب(70,5,2), باب(80,3,3)]);
-check('الجاهز = مجموع المنتَج', /جاهز\s*5 قطعة/.test(t4), t4);
-check('المتبقي = الكلي − الجاهز', /متبقي\s*3 قطعة/.test(t4), t4);
+check('ورقة الأوردر مافيهاش «جاهز»', !/جاهز/.test(t4), t4);
+check('ولا «متبقي»', !/متبقي/.test(t4), t4);
+check('لكن الإجمالي لسه موجود', /الإجمالي الكلي\s*8 قطعة/.test(t4), t4);
 
 // ٥) مفيش أبواب خالص → المربّع مابيظهرش
 const t5 = await txt([{kind:'frame', isSet:true, qty:2}]);
@@ -57,6 +59,35 @@ const r6 = await pg.evaluate(()=>{
 });
 check('٤ أطقم مفكوكة = ٤ × الثابت من العيدان',
   r6.عيدان === r6.متوقع && r6.متوقع === 12, `${r6.عيدان} مقابل ${r6.متوقع}`);
+
+// وجدول الأصناف نفسه كمان: مافيش عمود جاهز ولا متبقي، والصفوف ما اتزحلقتش
+const ورقةـبـ = (priced, frameHeight) => pg.evaluate(({priced, frameHeight})=>{
+  const o = { id:'D1', dist:'م', phone:'01000000000', customer:'ع', date:'2026-09-15',
+    items:[{kind:'door', sizeTxt:'70 سم', sizeEn:'70 cm', w:70, qty:5, produced:2, unitPrice:100,
+            title:'باب A01', frame:10, frameHeight, dbror:'6×9'}] };
+  const el = document.createElement('div');
+  el.innerHTML = docHTML(o, 'order', priced);
+  const جدول = el.querySelector('table:has(thead)') || el.querySelector('thead').closest('table');
+  const رؤوس = [...جدول.querySelectorAll('thead th')].map(x=>x.textContent.trim());
+  const أعمدة = [...جدول.querySelectorAll('tbody tr')].map(tr=>tr.children.length);
+  const مجموعة = جدول.querySelector('tbody td[colspan]');
+  return { رؤوس, أعمدة, colspan: مجموعة ? Number(مجموعة.getAttribute('colspan')) : 0 };
+}, {priced, frameHeight});
+const ورقة = await ورقةـبـ(false, 0);
+const ورقةُ_مسعّرة = await ورقةـبـ(true, 205);
+check('مفيش عمود «جاهز» ولا «متبقي» في جدول الأوردر',
+  !ورقة.رؤوس.includes('جاهز') && !ورقة.رؤوس.includes('متبقي'), ورقة.رؤوس.join(' | '));
+check('عدد خلايا الصف = عدد الأعمدة بالظبط',
+  ورقة.أعمدة.filter(n=>n>1).length>0 && ورقة.أعمدة.filter(n=>n>1).every(n=>n===ورقة.رؤوس.length),
+  ورقة.رؤوس.length+' رؤوس مقابل '+JSON.stringify(ورقة.أعمدة));
+check('وعنوان المجموعة بيغطّي الجدول كله', ورقة.colspan===ورقة.رؤوس.length,
+  ورقة.colspan+' مقابل '+ورقة.رؤوس.length);
+
+check('ونفس الكلام في النسخة المسعّرة (بارتفاع حلق وسعر)',
+  !ورقةُ_مسعّرة.رؤوس.includes('جاهز') && !ورقةُ_مسعّرة.رؤوس.includes('متبقي')
+  && ورقةُ_مسعّرة.colspan===ورقةُ_مسعّرة.رؤوس.length
+  && ورقةُ_مسعّرة.أعمدة.filter(n=>n>1).every(n=>n===ورقةُ_مسعّرة.رؤوس.length),
+  ورقةُ_مسعّرة.رؤوس.join(' | ')+' — colspan '+ورقةُ_مسعّرة.colspan);
 
 check('مفيش أخطاء', errs.length===0, errs.join(' | '));
 console.log(`\nالنتيجة: ${pass} نجحت، ${fail} فشلت`);
