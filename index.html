@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ELKORASHI DOORS — طلبات أبواب WPC</title>
-<meta name="theme-color" content="#F7F2EC">
+<meta name="theme-color" content="#0C1524">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
@@ -21,39 +21,39 @@
 <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
 <style>
 :root{
-  /* ---- هوية «الخشب الدافي» (v185) ----
-     ألوان الأبواب نفسها بقت ألوان التطبيق: بيج دافي خلفية، بُني للتمييز،
-     وبُني غامق جدًا للشرايط. أسماء المتغيّرات زي ما هي عشان كل الشاشات
-     تتحوّل مرة واحدة من غير ما نلمس كل قاعدة على حدة.
-     (مستندات الـPDF ألوانها مكتوبة جواها بالنص — فهي زي ما هي كحلي.) */
-  --navy:#3A2A1D;
-  --navy-2:#543C28;
-  --brand:#A6642F;
-  --brand-lt:#C98A54;
-  --wood:#A6642F;
-  --wood-lt:#C98A54;
-  --wood-bg:#FBF1E7;
-  --wood-line:#E8C9A8;
-  --bg:#F7F2EC;
-  --card:#FFFFFF;
-  --ink:#33231A;
-  --muted:#9C8877;
-  --line:#EADFD1;
-  --ok:#1E7A54;
-  --ok-bg:#E7F3EE;
-  --warn-bg:#FFF6E5;
-  --warn-line:#E8C77A;
-  --danger:#B3261E;
+  /* ---- هوية «الداكن الأنيق» (v186) ----
+     كحلي غامق خلفية، أزرق فاتح للأزرار، وذهبي للمسات المهمة.
+     أسماء المتغيّرات زي ما هي عشان كل الشاشات تتحوّل مرة واحدة من غير ما
+     نلمس كل قاعدة على حدة.
+     (مستندات الـPDF ألوانها مكتوبة جواها بالنص — فهي زي ما هي أبيض وكحلي.) */
+  --navy:#16233A;          /* سطح مرتفع (شرايط/كروت غامقة) */
+  --navy-2:#0C1524;
+  --brand:#3FA9F5;
+  --brand-lt:#6FC1FA;
+  --wood:#D9A441;          /* الذهبي — لمسة التمييز */
+  --wood-lt:#E7BE6E;
+  --wood-bg:rgba(217,164,65,.10);
+  --wood-line:rgba(217,164,65,.38);
+  --bg:#0C1524;
+  --card:#141F32;
+  --ink:#E8EEF6;
+  --muted:#8FA3BD;
+  --line:#22304A;
+  --ok:#4FC08A;
+  --ok-bg:rgba(79,192,138,.13);
+  --warn-bg:rgba(217,164,65,.12);
+  --warn-line:rgba(217,164,65,.42);
+  --danger:#F0736A;
   --r:16px;
-  --shadow:0 4px 18px rgba(120,80,40,.10);
+  --shadow:0 4px 18px rgba(0,0,0,.38);
   --mark:none;
 
   /* ---- توكنز التصميم المحدّثة (v108) ----
      سلّم ظلال متدرّج بدل ظل واحد لكل حاجة، وسلّم زوايا، ومنحنيات حركة موحّدة.
      ده اللي بيخلي الشاشة تبان مرتّبة وفيها عمق بدل ما كل الكروت في نفس المستوى. */
-  --e1:0 1px 2px rgba(120,80,40,.07), 0 1px 3px rgba(120,80,40,.05);
-  --e2:0 2px 6px rgba(120,80,40,.07), 0 6px 16px rgba(120,80,40,.08);
-  --e3:0 6px 14px rgba(120,80,40,.09), 0 16px 34px rgba(120,80,40,.12);
+  --e1:0 1px 2px rgba(0,0,0,.30), 0 1px 3px rgba(0,0,0,.22);
+  --e2:0 2px 6px rgba(0,0,0,.30), 0 6px 16px rgba(0,0,0,.30);
+  --e3:0 6px 14px rgba(0,0,0,.34), 0 16px 34px rgba(0,0,0,.42);
   --r-sm:10px;
   --r-md:14px;
   --r-lg:18px;
@@ -62,8 +62,8 @@
   --ease-out:cubic-bezier(.16,1,.3,1);      /* خروج سريع في الأول وبطيء في الآخر */
   --t-fast:.13s;
   --t-med:.22s;
-  --surface-2:#FCF8F3;                       /* سطح تاني للتمييز جوه الكروت */
-  --line-soft:#F1E8DD;
+  --surface-2:#18233A;                       /* سطح تاني للتمييز جوه الكروت */
+  --line-soft:#1E2B44;
   --navh:64px;                               /* ارتفاع شريط التبويبات السفلي */
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -629,158 +629,214 @@ input.bad{box-shadow:0 0 0 3px rgba(179,38,30,.1)}
 @media (min-width:860px){ .rpv-scroll{padding:20px} }
 
 /* ============================================================
-   v185 — طبقة «الخشب الدافي + الزجاج»
+   v186 — طبقة «الداكن الأنيق»
    ------------------------------------------------------------
-   طبقة فوق التصميم القديم (زي طبقة v108) — أي حاجة مش مذكورة هنا
-   بتفضل شغّالة زي ما هي. اللي اتغيّر في الشكل:
-   • التبويبات نزلت تحت الشاشة (قريبة من الصباع) بدل ما تكون فوق
-   • الهيدر بقى شريط زجاجي فاتح بدل البلوك الكحلي، والإصدار جوّه
-   • ألوان الخشب بقت هوية التطبيق (الجدول فوق في :root)
-   • الكروت والأزرار بقى لها دفء: زوايا أكبر وظل بُني خفيف
+   طبقة فوق التصميم القديم — أي حاجة مش مذكورة هنا بتفضل زي ما هي.
+   • خلفية كحلي غامق، كروت أغمق شوية، حدود خفيفة، وذهبي للمسات
+   • التبويبات تحت الشاشة على الموبايل، وفوق على الكمبيوتر (من 900px)
+     — على الشاشة الكبيرة الشريط السفلي كان بيركب على أزرار الأقسام
+   • كل خلفية بيضا كانت مكتوبة بالنص في التصميم القديم اتظبطت هنا
    ============================================================ */
 
-/* ---------- الهيدر الزجاجي ---------- */
+/* ---------- الأساس ---------- */
+body{background:var(--bg);color:var(--ink);
+     padding-bottom:calc(var(--navh) + env(safe-area-inset-bottom,0px))}
+body:has(#bar:not([hidden])){padding-bottom:calc(var(--navh) + 76px + env(safe-area-inset-bottom,0px))}
+.wrap{padding-bottom:18px}
+::selection{background:rgba(63,169,245,.3)}
+:focus-visible{outline-color:var(--brand)}
+
+/* ---------- الهيدر ---------- */
 #appbar{background:transparent}
-#appbar::after{
-  height:2px;
-  background:linear-gradient(90deg,var(--wood),var(--wood-lt) 55%,rgba(201,138,84,0));
-}
+#appbar::after{height:2px;background:linear-gradient(90deg,var(--brand),var(--wood) 55%,rgba(217,164,65,0))}
 .top{
-  background:rgba(255,255,255,.74);
-  -webkit-backdrop-filter:blur(16px) saturate(1.5);
-  backdrop-filter:blur(16px) saturate(1.5);
-  color:var(--ink);
-  box-shadow:0 1px 14px rgba(120,80,40,.10);
+  background:linear-gradient(180deg,rgba(24,38,63,.94),rgba(12,21,36,.90));
+  -webkit-backdrop-filter:blur(16px) saturate(1.3);
+  backdrop-filter:blur(16px) saturate(1.3);
+  color:var(--ink);box-shadow:0 2px 18px rgba(0,0,0,.45);
   padding:calc(9px + env(safe-area-inset-top)) 14px 9px;
 }
 .top-row{gap:8px;flex-wrap:nowrap}
 .top .ttl{min-width:0;flex:1 1 auto;overflow:hidden}
-.top .t1{color:var(--ink);font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .t1{color:#fff;font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .top .t2{color:var(--muted);font-size:10.5px;display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden}
-.top img.logo{height:36px;border-radius:11px;box-shadow:0 2px 8px rgba(120,80,40,.16);background:#fff}
+.top img.logo{height:36px;border-radius:11px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.4)}
 .wh-chip{
-  background:var(--wood-bg);border:1px solid var(--wood-line);color:#8A5A28;
+  background:rgba(63,169,245,.12);border:1px solid rgba(63,169,245,.32);color:#9BCDF3;
   border-radius:var(--r-sm);padding:4px 8px;font-size:9.5px;white-space:nowrap;
 }
-.wh-chip b{font-size:11px}
-.wh-chip b{color:#6B3F18}
-/* الإصدار بقى جوه سطر العنوان، والتحديث/التثبيت زراير صغيرة جنب المخزن */
+.wh-chip b{color:#fff;font-size:11px}
+.top .t2 .vs-ver{background:rgba(255,255,255,.08);border-radius:var(--r-pill);padding:1px 7px;font-size:9.5px;color:#9FB3CC}
 .verstrip{margin-top:0;gap:5px;flex:0 0 auto;flex-wrap:nowrap}
-/* على الموبايل الضيّق «تثبيت» بتبقى أيقونة بس — العنوان أهم من الكلمة */
-@media (max-width:430px){ .verstrip button.vs-install{font-size:0;padding:0;min-width:36px} }
-.verstrip .vs-ver{color:var(--muted);font-size:10px;flex:0 0 auto}
-.top .t2 .vs-ver{
-  background:#F4EDE4;border-radius:var(--r-pill);padding:1px 7px;font-size:9.5px;color:#8A7461;
-}
 .verstrip button{
-  background:#fff;border:1.5px solid var(--line);color:var(--wood);
+  background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.14);color:#CFE2F4;
   min-height:36px;min-width:36px;padding:0 9px;display:inline-flex;align-items:center;
   justify-content:center;gap:5px;font-size:11px;
 }
 .verstrip button .i{width:16px;height:16px;margin:0}
 .verstrip button.vs-install{
-  background:linear-gradient(180deg,var(--wood-lt),var(--wood));border-color:transparent;color:#fff;
-  box-shadow:0 2px 8px rgba(166,100,47,.28);
+  background:linear-gradient(180deg,var(--brand-lt),var(--brand));border-color:transparent;color:#06131F;
+  box-shadow:0 2px 10px rgba(63,169,245,.35);
 }
+@media (max-width:430px){ .verstrip button.vs-install{font-size:0;padding:0;min-width:36px} }
 
-/* ---------- التبويبات: شريط سفلي زجاجي ---------- */
+/* ---------- التبويبات: تحت على الموبايل ---------- */
 .tabs{
   position:fixed;bottom:0;inset-inline:0;z-index:60;
-  background:rgba(255,255,255,.86);
-  -webkit-backdrop-filter:blur(16px) saturate(1.5);
-  backdrop-filter:blur(16px) saturate(1.5);
+  background:rgba(12,21,36,.92);
+  -webkit-backdrop-filter:blur(16px) saturate(1.4);
+  backdrop-filter:blur(16px) saturate(1.4);
   border-top:1px solid var(--line);border-bottom:0;
-  box-shadow:0 -2px 18px rgba(120,80,40,.10);
+  box-shadow:0 -2px 20px rgba(0,0,0,.5);
   padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));
-  max-width:660px;margin:0 auto;border-radius:0;
+  max-width:660px;margin:0 auto;
 }
-.tabs button{min-height:50px;padding:6px 2px 5px}
-/* القرص المتحرّك بقى دافي بدل الأزرق */
-.tabs button::before{background:linear-gradient(180deg,#FBF1E7,#F3E3D2)}
-.tabs button.on{color:var(--wood)}
-.tabs button.on .i{color:var(--wood)}
-.tabs .badge{background:linear-gradient(180deg,#D4614E,#B3261E);box-shadow:0 1px 4px rgba(179,38,30,.4);
-  top:0;inset-inline-end:calc(50% - 24px)}
+.tabs button{min-height:50px;padding:6px 2px 5px;color:var(--muted)}
+.tabs button::before{background:linear-gradient(180deg,rgba(63,169,245,.20),rgba(63,169,245,.10))}
+.tabs button.on{color:#fff}
+.tabs button.on .i{color:var(--brand)}
+.tabs .badge{background:linear-gradient(180deg,#E2574C,#C0392B);border-color:transparent;
+  box-shadow:0 1px 6px rgba(0,0,0,.5);top:0;inset-inline-end:calc(50% - 24px)}
 
-/* المحتوى لازم ينتهي فوق الشريط السفلي — وإلا آخر كارت بيتغطّى */
-body{padding-bottom:calc(var(--navh) + env(safe-area-inset-bottom,0px))}
-/* لما شريط الإجمالي يبان، المحتوى لازم يزيد مسافته عشان آخر كارت ما يتغطّاش */
-body:has(#bar:not([hidden])){padding-bottom:calc(var(--navh) + 76px + env(safe-area-inset-bottom,0px))}
-.wrap{padding-bottom:18px}
+/* ---------- الكمبيوتر: التبويبات ترجع فوق ----------
+   على الشاشة الكبيرة الشريط الثابت تحت كان بيركب على محتوى الصفحة
+   (أزرار الأقسام) — فبيرجع صف عادي فوق تحت الهيدر على طول. */
+@media (min-width:820px){
+  body{display:flex;flex-direction:column;min-height:100vh;padding-bottom:0}
+  #appbar{order:-2;position:static}
+  .tabs{
+    order:-1;position:sticky;top:0;bottom:auto;inset-inline:auto;
+    max-width:none;margin:0;border-top:0;border-bottom:1px solid var(--line);
+    box-shadow:0 2px 18px rgba(0,0,0,.45);padding:6px 10px;
+  }
+  .tabs{justify-content:center;gap:6px}
+  .tabs button{flex:0 1 180px}
+  main.wrap{order:0;flex:1 0 auto}
+  body:has(#bar:not([hidden])){padding-bottom:86px}
+  .bar{bottom:0}
+  #toast{bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+  body:has(#bar:not([hidden])) #toast{bottom:104px}
+}
 
-/* ---------- شريط الإجمالي: فوق التبويبات مباشرة ---------- */
+/* ---------- شريط الإجمالي ---------- */
 .bar{
   bottom:calc(var(--navh) + env(safe-area-inset-bottom,0px));
-  background:linear-gradient(180deg,#3E2C1E,#33231A);
-  border-top:0;color:#F6EDE3;
-  padding:11px 14px;
-  box-shadow:0 -6px 22px rgba(51,35,26,.22);
+  background:linear-gradient(180deg,rgba(22,35,58,.97),rgba(12,21,36,.97));
+  border-top:1px solid var(--line);color:var(--ink);
+  padding:11px 14px;box-shadow:0 -6px 26px rgba(0,0,0,.5);
 }
 .bar .sum b{color:#fff;font-size:17px}
-.bar .sum span{color:#C9B6A4}
-.bar .btn.brand{
-  background:linear-gradient(180deg,#D1975F,#A6642F);
-  box-shadow:0 2px 10px rgba(0,0,0,.25);
-}
+.bar .sum span{color:var(--muted)}
+.bar .btn.brand{background:linear-gradient(180deg,#4FC08A,#2E9C6A);color:#04140D;
+  box-shadow:0 2px 12px rgba(46,156,106,.35)}
 
 /* ---------- الكروت والأسطح ---------- */
-.card{border-radius:var(--r-lg);border-color:var(--line);box-shadow:var(--e2)}
-.ord{border-radius:var(--r-lg);border-color:var(--line);box-shadow:var(--e2)}
-.step .n{background:linear-gradient(160deg,var(--wood-lt),var(--wood));box-shadow:0 2px 8px rgba(166,100,47,.3)}
-.secnav button.on{background:linear-gradient(180deg,#fff,var(--wood-bg));border-color:var(--wood)}
-.secnav button.on .tx{color:var(--wood)}
-.secnav button.on{box-shadow:0 0 0 1.5px var(--wood),var(--e2)}
-.doorpanel{background:#FDF8F2;border-color:var(--wood-lt)}
-.sizeCard{background:#FDF8F2;border-color:var(--wood-line)}
+.card,.ord{background:var(--card);border-color:var(--line);border-radius:var(--r-lg);box-shadow:var(--e2)}
+/* العلامة المائية (اللوجو) خلفيتها بيضا — على الغامق كانت بتبان كمربّع فاتح */
+.card::before{display:none}
+.step .n{background:linear-gradient(160deg,var(--brand-lt),var(--brand));color:#06131F;
+  box-shadow:0 2px 10px rgba(63,169,245,.3)}
+.step h2{color:#fff}
+.grp{color:var(--wood)}
+.secnav button{background:var(--card);border-color:var(--line)}
+.secnav button .tx{color:var(--muted)}
+.secnav button.on{background:linear-gradient(180deg,#1B2B46,#16233A);border-color:var(--brand);
+  box-shadow:0 0 0 1.5px var(--brand),var(--e2)}
+.secnav button.on .i,.secnav button.on .tx{color:var(--brand)}
+.doorpanel{background:#111C2E;border-color:rgba(63,169,245,.45)}
+.doorpanel .dphead b{color:#fff}
+.sizeCard{background:#111C2E;border-color:var(--line)}
 .sizeCard .scHead b{color:var(--wood)}
-.chip,.miniChip,.specol .colchip,.qty,.accgrid .ac{background:#FDFBF8}
-.chip.on,.miniChip.on,.specol .colchip.on{background:var(--wood);border-color:var(--wood);color:#FFF6EC}
-.chip.on .sub,.specol .colchip.on .sub{color:#F0D9C2}
-input[type=text],input[type=tel],input[type=number],input[type=password],input[type=date],input[type=search],select,textarea{background:#FDFBF8}
-input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(166,100,47,.13)}
-input::placeholder,textarea::placeholder,.hgtIn::placeholder{color:#C0AE9C}
-.qty button{color:var(--wood)}
-.qty button:active{background:var(--wood-bg)}
-.line .ic{background:var(--wood-bg)}
-.line img{border-color:var(--line)}
-.door .leaf{background:#F0E6DA;border-color:var(--line);box-shadow:0 1px 4px rgba(120,80,40,.12)}
-.door .leaf.noimg{background:linear-gradient(160deg,#D9A873,#9A6432)}
-.btn.brand{
-  background:linear-gradient(180deg,var(--wood-lt),var(--wood));
-  box-shadow:0 2px 4px rgba(166,100,47,.18),0 6px 16px rgba(166,100,47,.24);
-}
-.btn.primary{background:var(--navy);box-shadow:0 2px 4px rgba(51,35,26,.2),0 6px 16px rgba(51,35,26,.18)}
-.btn.ghost{color:var(--wood)}
-.btn.act-tool{color:var(--wood)}
-.stktbl th{background:var(--navy)}
-.stktbl tbody tr:nth-child(even){background:#FBF7F2}
-#busy{background:rgba(51,35,26,.55)}
-#busy .b{background:var(--navy)}
-/* التوست بقى فوق الشريط السفلي — كان هيتغطّى بالتبويبات */
-#toast{
-  background:var(--navy);color:#F6EDE3;box-shadow:0 6px 22px rgba(51,35,26,.35);
-  bottom:calc(var(--navh) + 16px + env(safe-area-inset-bottom,0px));
-}
-body:has(#bar:not([hidden])) #toast{bottom:calc(var(--navh) + 88px + env(safe-area-inset-bottom,0px))}
-:focus-visible{outline-color:var(--wood)}
-.stockbar.out{background:#F6F1EA;border-color:var(--line)}
-.grp-all{background:#FBF7F2;color:var(--muted)}
-.grp-list,.grp-ord{border-color:var(--line)}
-.grp-ord{border-top-color:#F0E7DC}
-.empty{color:var(--muted)}
-.note b{color:var(--wood)}
-.total{border-top-color:var(--wood)}
-.focusrow{border-bottom-color:var(--line)}
-.acc,.line{border-bottom-color:var(--line)}
-.rpv{background:rgba(28,18,10,.96)}
-.rpv-pdf{background:linear-gradient(180deg,var(--wood-lt),var(--wood))}
-.rpv-x{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.28);color:#F6EDE3}
+.accgrid .ac,.rodbox{background:var(--surface-2);border-color:var(--line)}
+.rodbox .rl{color:var(--ink)}
+.rodbox .rl b{color:var(--wood)}
 
-/* ---------- شاشات أكبر: الشريط السفلي يفضل في نص الشاشة ---------- */
-@media (min-width:720px){
-  .tabs{inset-inline:auto;left:50%;transform:translateX(-50%);
-        border-radius:var(--r-lg) var(--r-lg) 0 0;border-inline:1px solid var(--line)}
-}
+/* ---------- الشرايح والعدادات والإدخال ---------- */
+.chip,.miniChip,.specol .colchip,.qty,.hgtIn,.stkin{background:var(--surface-2);border-color:var(--line);color:var(--ink)}
+.chip.on,.miniChip.on,.specol .colchip.on{background:var(--brand);border-color:var(--brand);color:#06131F}
+.chip.on .sub,.specol .colchip.on .sub{color:#0B2138}
+.specol .sol-h,.miniLbl,.prow3 .tcell b{color:var(--muted)}
+input[type=text],input[type=tel],input[type=number],input[type=password],input[type=date],input[type=search],select,textarea,.fld textarea,.prow3 input{
+  background:var(--surface-2);border-color:var(--line);color:var(--ink)}
+input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(63,169,245,.18)}
+input::placeholder,textarea::placeholder,.hgtIn::placeholder{color:#6B7F98}
+input.bad{border-color:var(--danger);background:rgba(240,115,106,.12);box-shadow:0 0 0 3px rgba(240,115,106,.12)}
+.qty button{color:var(--brand)}
+.qty button:active{background:rgba(63,169,245,.14)}
+.qty input{background:transparent;border-inline-color:var(--line)}
+label.fld span{color:var(--muted)}
+
+/* ---------- الأبواب ---------- */
+.door .leaf{background:#16233A;border-color:var(--line);box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.door.on .leaf{border-color:var(--wood);box-shadow:-6px 4px 20px rgba(217,164,65,.28)}
+.door.on .code{color:var(--wood)}
+.door .nm{color:var(--muted)}
+
+/* ---------- الأزرار ---------- */
+.btn.brand{background:linear-gradient(180deg,var(--brand-lt),var(--brand));color:#06131F;
+  box-shadow:0 2px 4px rgba(63,169,245,.2),0 6px 16px rgba(63,169,245,.24)}
+.btn.wood{background:linear-gradient(180deg,var(--wood-lt),var(--wood));color:#1B1405;
+  box-shadow:0 2px 10px rgba(217,164,65,.3)}
+.btn.primary{background:#22304A;color:#EAF2FA;box-shadow:var(--e1)}
+.btn.ghost{background:var(--surface-2);border-color:var(--line);color:#CFE2F4}
+.btn.act-edit  {background:rgba(63,169,245,.13);border-color:rgba(63,169,245,.4);color:#9BCDF3}
+.btn.act-send  {background:rgba(79,192,138,.13);border-color:rgba(79,192,138,.4);color:#7FD8AE}
+.btn.act-arch  {background:rgba(217,164,65,.13);border-color:rgba(217,164,65,.4);color:#E3BE79}
+.btn.act-del   {background:rgba(240,115,106,.13);border-color:rgba(240,115,106,.4);color:#F3968F}
+.btn.act-tool  {background:var(--surface-2);border-color:var(--line);color:#CFE2F4}
+.btn.act-report{background:rgba(150,130,225,.14);border-color:rgba(150,130,225,.4);color:#BBAAEE}
+.btn.act-money {background:rgba(217,164,65,.13);border-color:rgba(217,164,65,.4);color:#E3BE79}
+
+/* ---------- السلة والإجماليات ---------- */
+.line,.acc,.prow3,.grp-list,.grp-ord,.focusrow{border-color:var(--line)}
+.line .ic{background:var(--surface-2)}
+.line img{border-color:var(--line)}
+.line .info2 .spec{color:var(--muted)}
+.line .info2 .pr{color:var(--wood)}
+.total{border-top-color:var(--wood)}
+.total .val{color:var(--wood)}
+.total .lbl,.total .val small,.note,.empty{color:var(--muted)}
+.note b{color:var(--brand)}
+.ord .oid{color:var(--brand)}
+.ord .od,.ord .os{color:var(--muted)}
+
+/* ---------- الجداول والمخزن ---------- */
+.stktbl th{background:#1B2B46;color:#CFE2F4}
+.stktbl td{border-bottom-color:var(--line)}
+.stktbl tbody tr:nth-child(even){background:rgba(255,255,255,.025)}
+.stkin.dirty{border-color:var(--wood);background:rgba(217,164,65,.12)}
+.specol .colchip.instock{background:rgba(79,192,138,.14);border-color:rgba(79,192,138,.45);color:#7FD8AE}
+.specol .colchip.instock .sub,.specol .colchip.instock .stk{color:#69C79B}
+.specol .colchip.instock.on{background:#2E9C6A;border-color:#4FC08A;color:#04140D}
+.specol .colchip.instock.on .sub,.specol .colchip.instock.on .stk{color:#0A2418}
+.colchip .stk{color:#69C79B}
+.door .rdy{background:rgba(79,192,138,.14);color:#7FD8AE}
+.stockbar.ok{background:rgba(79,192,138,.12);border-color:rgba(79,192,138,.4);color:#7FD8AE}
+.stockbar.part{background:rgba(217,164,65,.12);border-color:rgba(217,164,65,.4);color:#E3BE79}
+.stockbar.out{background:var(--surface-2);border-color:var(--line);color:var(--muted)}
+
+/* ---------- صناديق الملاحظات ---------- */
+.ordnote-box,.ordnote{background:rgba(217,164,65,.10);border-color:rgba(217,164,65,.4);color:#E3BE79}
+.ordnote-ta{background:var(--surface-2)!important;border-color:rgba(217,164,65,.4)!important;color:var(--ink)}
+.grp-all{background:rgba(255,255,255,.03);color:var(--muted);border-top-color:var(--line)}
+.grp-no{background:rgba(63,169,245,.14);border-color:rgba(63,169,245,.4);color:#9BCDF3}
+.grp-no.nn{background:rgba(255,255,255,.06);border-color:var(--line);color:var(--muted)}
+.grp-dt{color:#7FA6C9}
+.grp-dy{color:#E3BE79}
+.grp-note{background:rgba(217,164,65,.10);border-color:rgba(217,164,65,.4);
+  border-inline-start-color:var(--wood);color:#E3BE79}
+.grp-chev{color:var(--muted)}
+
+/* ---------- التوست واللودر والمعاينة ---------- */
+#toast{background:#1B2B46;color:#EAF2FA;border:1px solid var(--line);box-shadow:var(--e3);
+  bottom:calc(var(--navh) + 16px + env(safe-area-inset-bottom,0px))}
+body:has(#bar:not([hidden])) #toast{bottom:calc(var(--navh) + 88px + env(safe-area-inset-bottom,0px))}
+#busy{background:rgba(6,14,26,.7)}
+#busy .b{background:#16233A;border:1px solid var(--line)}
+.rpv{background:rgba(4,10,20,.97)}
+.rpv-bar{background:linear-gradient(180deg,#1B2B46,#0C1524);color:#EAF2FA}
+.rpv-pdf{background:linear-gradient(180deg,var(--brand-lt),var(--brand));color:#06131F}
+
 </style>
 </head>
 <body>
@@ -952,7 +1008,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v185';
+const APP_BUILD   = 'v186';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1558,7 +1614,7 @@ function stockReportHTML_(){
         <div style="font-size:11px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} — ${dateStr} — الساعة ${timeStr}</div>
       </div>
     </div>
-    <div style="margin-top:12px;padding:8px 12px;background:#F7F9FB;border-radius:8px;font-size:10.5px;color:#4B5A6B;line-height:1.7">
+    <div style="margin-top:12px;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px;font-size:10.5px;color:#8FA3BD;line-height:1.7">
       <b style="color:#233246">الرصيد</b> = الكمية الجاهزة فعليًا بالمخزن (قبل خصم أي حجز).
       <b style="color:#B3261E">مطلوب</b> = منها مطلوب لطلبات عملاء معلّقة (لسه ما اتصنّعتش/ما اتسلّمتش).
       <b style="color:#1E8E52">متبقي</b> = الرصيد الفاضي فعليًا بعد خصم المطلوب (اللي تقدر تبيعه لعميل جديد دلوقتي). لو رقم بالسالب معناه المطلوب أكتر من الرصيد الموجود.
@@ -2330,7 +2386,7 @@ function viewCart(){
   return `
   <section class="card">
     <div class="step"><span class="n">✓</span><h2>مراجعة الطلب</h2></div>
-    ${editing?`<div class="note" style="margin-top:0;background:#FFF6E5;color:#8A6512;border-radius:8px;padding:9px 12px">
+    ${editing?`<div class="note" style="margin-top:0;background:rgba(217,164,65,.12);color:#E3BE79;border:1px solid rgba(217,164,65,.35);border-radius:8px;padding:9px 12px">
       ${ico("edit")} بتعدّل الطلب <b title="الكود الداخلي: ${esc(state.editingId)}">${esc(orderNoText_({displayNo:state.editingDisplayNo, editCount:state.editingEditCount, id:state.editingId}))}</b>${state.editingMeta?' — العميل: <b>'+esc(state.editingMeta.name||'')+'</b>':''} — الحفظ هيلغي الطلب القديم ده وهيعمل طلب جديد بالأصناف المعدّلة.
       ${state.editingMeta?`
       <div class="row2" style="margin-top:9px">
@@ -2401,9 +2457,9 @@ function viewOrders(){
     // شايفه في قايمته وفاكر إنه عند المصنع — والمصنع مايعرفش عنه حاجة خالص.
     const معلّق = pendingIds.has(String(o.id));
     return `
-    <div class="ord"${معلّق?' style="border:1.5px solid #E8A33D;background:#FFFBF2"':''}>
+    <div class="ord"${معلّق?' style="border:1.5px solid rgba(217,164,65,.55);background:rgba(217,164,65,.09)"':''}>
       ${معلّق?`<div style="font-size:11.5px;font-weight:700;color:#8A6512;margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}لسه ما وصلش المصنع — هيتبعت تلقائي أول ما النت يرجع</div>`:''}
-      <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:#8A6512;background:#FFF6E5;border:1px solid #E8C77A;border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${live?statusPill(live.status):''}</div>
+      <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:#E3BE79;background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:#F3968F;background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${live?statusPill(live.status):''}</div>
       <div class="os">${esc(dateStr(o.ts))} · ${(o.items||[]).filter(x=>!isCutLine_(x)).length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
         ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}<br>
         ${esc((o.items||[]).filter(x=>x&&!isCutLine_(x)).map(x=>x.title).filter(Boolean).slice(0,3).join('، '))}${(o.items||[]).filter(x=>x&&!isCutLine_(x)).length>3?'…':''}
@@ -2637,12 +2693,12 @@ function ico(name, cls){
 }
 
 const STATUS = {
-  'New':        {ar:'طلب جديد',        ic:'newDoc',  bg:'#EDF0F3', fg:'#5B6B7D'},
-  'Received':   {ar:'تم استلام الطلب',  ic:'inbox',   bg:'#EAF2FA', fg:'#0B4A7A'},
-  'In Progress':{ar:'تحت التنفيذ',      ic:'factory', bg:'#FFF6E5', fg:'#8A6512'},
-  'Ready':      {ar:'جاهز للتحميل',     ic:'checkC',  bg:'#E7F3EE', fg:'#1E7A54'},
-  'Delivered':  {ar:'تم التسليم',       ic:'truck',   bg:'#EDF0F3', fg:'#5B6B7D'},
-  'Cancelled':  {ar:'ملغي',             ic:'xC',      bg:'#FDECEA', fg:'#B3261E'}
+  'New':        {ar:'طلب جديد',        ic:'newDoc',  bg:'rgba(255,255,255,.07)',  fg:'#A9BCD4'},
+  'Received':   {ar:'تم استلام الطلب',  ic:'inbox',   bg:'rgba(63,169,245,.15)',   fg:'#9BCDF3'},
+  'In Progress':{ar:'تحت التنفيذ',      ic:'factory', bg:'rgba(217,164,65,.15)',   fg:'#E3BE79'},
+  'Ready':      {ar:'جاهز للتحميل',     ic:'checkC',  bg:'rgba(79,192,138,.16)',   fg:'#7FD8AE'},
+  'Delivered':  {ar:'تم التسليم',       ic:'truck',   bg:'rgba(255,255,255,.07)',  fg:'#A9BCD4'},
+  'Cancelled':  {ar:'ملغي',             ic:'xC',      bg:'rgba(240,115,106,.16)',  fg:'#F3968F'}
 };
 // المراحل اللي المصنع بيحرّكها — بالترتيب
 const FLOW = ['Received','In Progress','Ready','Delivered'];
@@ -2680,7 +2736,7 @@ function shortIdText_(id){
 }
 
 function statusPill(v){
-  const st = STATUS[v] || {ar:(v||'—'), ic:'doc', bg:'#EDF0F3', fg:'#5B6B7D'};
+  const st = STATUS[v] || {ar:(v||'—'), ic:'doc', bg:'rgba(255,255,255,.07)', fg:'#A9BCD4'};
   return `<span style="display:inline-block;padding:3px 11px;border-radius:20px;font-size:11.5px;
     font-weight:600;background:${st.bg};color:${st.fg};display:inline-flex;align-items:center;gap:5px">${ico(st.ic)}${esc(st.ar)}</span>`;
 }
@@ -3814,7 +3870,7 @@ function pendingDoorsHTML(data){
       <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#B3261E;margin-left:4px"></span>غير متاح بالمخزن</span>
     </div>
     ${cards}
-    <div style="margin-top:18px;padding:10px 14px;background:#F7F9FB;border-radius:9px;font-size:10px;color:#6B7A8C;border:1px solid #EEF1F4">
+    <div style="margin-top:18px;padding:10px 14px;background:rgba(255,255,255,.04);border-radius:9px;font-size:10px;color:#8FA3BD;border:1px solid #22304A">
       الأكواد المتاحة: ${esc(codesTxt)}  |  المقاسات المتاحة (سم): 60، 70، 80، 90، 100
     </div>
   </div>`;
@@ -4601,7 +4657,7 @@ function viewAdminPrices(){
         ? ' <span style="color:#B3261E;font-weight:700">⚠️ آخر تعديل لسه ما وصلش للموزّعين — هيترفع تلقائي أول ما النت يرجع.</span>'
         : (_pricesSyncedAt ? ' <span style="color:#6B7A8C">(آخر تحديث من السيرفر: '+esc(_pricesSyncedAt)+')</span>' : '')
     }</div>
-    <div class="note" style="background:#EAF2FA;color:#0B4A7A;border-radius:8px;padding:9px 12px">
+    <div class="note" style="background:rgba(63,169,245,.12);color:#9BCDF3;border:1px solid rgba(63,169,245,.32);border-radius:8px;padding:9px 12px">
       عمود <b>${esc(PRICE_TIERS.dist.label)}</b> هو الأساسي وهو اللي بيتحسب بيه الأوردر الفعلي. وعمود <b>${esc(PRICE_TIERS.showroom.label)}</b> بتقدر تعدّله بحرية لكل صنف، وبيُستخدم لما تعمل عرض سعر وتختار المستوى المناسب.
     </div>
 
@@ -4707,7 +4763,7 @@ function prodTableHTML_(oid, its, a, qtyMode){
         ${availBusy?'disabled':''} title="${avail?'اضغط لتعليمه «غير متاح»':'اضغط لتعليمه «متاح»'}"
         style="font-size:9.5px;padding:3px 5px;min-height:0;width:auto">${availBusy?'…':(avail?ico('check'):ico('warn'))}</button>`;
 
-    return `<tr data-act="${editing?'':'adm-prod-edit-open'}" data-id="${esc(oid)}" data-idx="${idx}" style="cursor:${editing?'default':'pointer'};${avail?'':'background:#FDECEA'}">
+    return `<tr data-act="${editing?'':'adm-prod-edit-open'}" data-id="${esc(oid)}" data-idx="${idx}" style="cursor:${editing?'default':'pointer'};${avail?'':'background:rgba(240,115,106,.13)'}">
       <td style="padding:6px 7px;text-align:right;font-size:11px">${avail?'':'<span style="color:#B3261E;font-weight:700">غير متاح — </span>'}${title}</td>
       <td style="padding:6px 5px;text-align:center;font-size:11px;color:#4B5A6B;white-space:nowrap">${esc(sizeText_(it))}</td>
       <td style="padding:6px 5px;text-align:center;font-size:11.5px">${qty}</td>
@@ -4783,11 +4839,11 @@ function viewAdmin(){
   // قرار على أرقام قديمة وهو فاكرها لحظية
   const staleBar = (a.staleAt && a.loading)
     ? `<div class="note" style="margin:0 0 10px;display:flex;align-items:center;gap:7px;
-            background:#FFF6E5;border:1px solid var(--warn-line);color:#8A6512">
+            background:rgba(217,164,65,.12);border:1px solid var(--warn-line);color:#E3BE79">
          ${ico('clock')} بيعرض آخر نسخة محفوظة — بيتحدّث من المصنع دلوقتي…</div>`
     : (a.staleAt
       ? `<div class="note" style="margin:0 0 10px;display:flex;align-items:center;gap:7px;
-              background:#FDECEA;border:1px solid #E8A9A3;color:#8A3A32">
+              background:rgba(240,115,106,.13);border:1px solid rgba(240,115,106,.4);color:#F3968F">
            ${ico('warn')} النت مقطوع — دي آخر نسخة محفوظة، اضغط «تحديث» لما النت يرجع</div>`
       : '');
 
@@ -4909,7 +4965,7 @@ function viewAdmin(){
       if(qtyMode){
         const meta = a.metaEdit[o.id] || {customer:o.customer||'', date:o.date||''};
         const metaBusy = a.metaBusy === o.id;
-        itemsHtml += `<div style="margin-top:8px;padding:9px 10px;background:#F7F9FB;border:1px solid var(--line);border-radius:10px">
+        itemsHtml += `<div style="margin-top:8px;padding:9px 10px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px">
           <div style="font-size:11px;color:#6B7A8C;font-weight:700;margin-bottom:6px">بيانات الطلب:</div>
           <div style="display:flex;gap:7px;flex-wrap:wrap">
             <label style="flex:1;min-width:140px;display:flex;flex-direction:column;gap:3px">
@@ -4950,12 +5006,12 @@ function viewAdmin(){
          <button class="btn act-del sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}>${ico("trash")}${delBusy?'…':'حذف'}</button>`;
 
     return `<div class="ord">
-      <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:#8A6512;background:#FFF6E5;border:1px solid #E8C77A;border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:#B3261E;background:#FBE9E7;border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${statusPill(o.status)}</div>
+      <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:#E3BE79;background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:#F3968F;background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${statusPill(o.status)}</div>
       <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}
         ${o.customer?`<br><b style="color:#0B4A7A">صاحب الأوردر: ${esc(o.customer)}</b>`:''}
         <br>${esc(dateStr2_(o.date))} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''} · ${money(o.total||0)} ج</div>
       ${o.ordNote?`<div class="ordnote">${ico("warn")}<span><b>ملاحظات:</b> ${esc(o.ordNote)}</span></div>`:''}
-      ${o.superseded?`<div style="margin-top:8px;padding:9px 12px;background:#FBE9E7;border:1.5px solid #E8A9A0;border-radius:9px;
+      ${o.superseded?`<div style="margin-top:8px;padding:9px 12px;background:rgba(240,115,106,.13);border:1.5px solid rgba(240,115,106,.42);border-radius:9px;
         font-size:12px;font-weight:700;color:#B3261E;display:flex;align-items:flex-start;gap:6px;line-height:1.6">
         ${ico("warn")}<span>الطلب ده <b>اتعدّل وعنده نسخة جديدة</b> — كان دخل التنفيذ فمقدرناش نلغيه تلقائي.
         راجع النسخة الجديدة واحذف السطر ده بنفسك من زرار «حذف» تحت.</span></div>`:''}
