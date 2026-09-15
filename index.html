@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v182';
+const APP_BUILD   = 'v183';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2909,16 +2909,15 @@ function arabicItemTitle_(it){
   }
   // المقاس محفوظ إنجليزي في الشيت ('10 cm' / '6x9')، والمستند عربي —
   // arabicSizeText_ بتحوّله لـ '10 سم' وبتسيب اللي مش على الصيغة دي زي ما هو.
-  if(it.type==='Frame'){
-    let t = 'حلق '+arabicSizeText_(it.size||'')+(it.code?' — '+it.code:'');
-    if(it.forDoorWidth) t += ' — لباب '+it.forDoorWidth+' سم';
-    if(it.itemNote) t += ' — '+it.itemNote;
-    return t;
-  }
-  if(it.type==='Bror'){
-    let t = 'برور '+arabicSizeText_(it.size||'')+(it.code?' — '+it.code:'');
-    if(it.forDoorWidth) t += ' — لباب '+it.forDoorWidth+' سم';
-    if(it.itemNote) t += ' — '+it.itemNote;
+  // ⚠️ وصف الحلق اللي على الشيت بقى عربي كامل ('حلق كامل 10 سم — A01')، فالسطر
+  // كان بيطلع في المستندات «حلق حلق كامل 10 سم — A01 — A01» — الاسم والكود متكررين.
+  if(it.type==='Frame' || it.type==='Bror'){
+    const بادئة = it.type==='Frame' ? 'حلق' : 'برور';
+    const sz = arabicSizeText_(it.size||'');
+    let t = sz.indexOf(بادئة)===0 ? sz : (بادئة+' '+sz);
+    if(it.code && t.indexOf(it.code)<0) t += ' — '+it.code;
+    if(it.forDoorWidth && t.indexOf('لباب '+it.forDoorWidth)<0) t += ' — لباب '+it.forDoorWidth+' سم';
+    if(it.itemNote && t.indexOf(it.itemNote)<0) t += ' — '+it.itemNote;
     return t;
   }
   if(it.type==='Panel') return 'لوح بروديوم'+(it.code?' — '+it.code:'');
@@ -5407,7 +5406,9 @@ function addRod(kind){
         const totalQty = parts.reduce((s,p)=>s+p.qty,0);
         if(totalQty>0){
           const totalPrice = parts.reduce((s,p)=>s+rodPrice(f.price,p.cm)*p.qty,0);
-          const avgPrice = Math.round((totalPrice/totalQty)*100)/100;
+          // ⚠️ التقريب لقرشين هنا كان بيخلي (سعر العود × العدد) ≠ مجموع الأعواد
+          // الحقيقي — ٤ قروش فرق على سطر واحد، وبتكبر مع الطلبات الكبيرة.
+          const avgPrice = Math.round((totalPrice/totalQty)*10000)/10000;
           const breakdown = parts.map(p=>p.label+' '+p.cm+' سم × '+p.qty).join(' + ');
           const sig = parts.map(p=>p.cm+':'+p.qty).join(',');
           const key = 'frame|customset|'+f.cm+'|'+sig+'|'+st.code+'|'+(st.doorW||'');
@@ -5537,6 +5538,37 @@ function restorePulledLine_(silent){
 // بيتنده بعد أي إضافة ناجحة — يعني التعديل خلص فعلاً ومفيش حاجة نرجّعها
 function clearPulledLine_(){ _pulledLine = null; }
 
+// ⚠️ السطر المدموج (قوائم + عوارض + أعواد إضافية) بيتخزّن على الشيت بوصفه بس:
+// «قائم 200 سم × 4 + عارضة حلق علوية 120 سم × 2 + عود 180.5 سم × 2».
+// لما الطلب كان بيرجع للتعديل، الأطوال دي مكانتش بتترجع لشاشة الحلق — فأول ما
+// حد يسحب السطر ليعدّله بيتحوّل لطقم ٢٢٠/١١٠ استاندر من غير ما حد ياخد باله،
+// والمصنع يقطّع الحلق غلط. الدالة دي بتقرأ التفصيل من النص وترجّعه زي ما كان.
+function parseFrameBreakdown_(txt){
+  const re = /(قائم|عارضة حلق علوية|عارضة|عود)\s+(\d+(?:\.\d+)?)\s*سم\s*(?:×|x)\s*(\d+)/g;
+  const out = { jambCm:0, jambQty:0, headerCm:0, headerQty:0, extra:[] };
+  let m, found=false;
+  while((m = re.exec(String(txt||'')))){
+    found = true;
+    const cm = Number(m[2]), q = Math.max(0, Math.round(Number(m[3])||0));
+    if(!(cm>0) || q<=0) continue;
+    if(m[1]==='قائم'){ out.jambCm = cm; out.jambQty += q; }
+    else if(m[1].indexOf('عارضة')===0){ out.headerCm = cm; out.headerQty += q; }
+    else out.extra.push({cm, qty:q});
+  }
+  if(!found) return null;
+  const jSets = Math.floor(out.jambQty/JAMBS_PER_SET), hSets = Math.floor(out.headerQty/HEADERS_PER_SET);
+  const sets = (out.jambQty && out.headerQty) ? Math.min(jSets, hSets) : Math.max(jSets, hSets);
+  out.setsQty = Math.max(1, sets);
+  // أي عود زيادة عن الأطقم الكاملة بيتحط كعود إضافي بطوله — ما يضيعش من الطلب
+  const restJ = out.jambQty - out.setsQty*JAMBS_PER_SET;
+  if(restJ>0 && out.jambCm) out.extra.push({cm:out.jambCm, qty:restJ});
+  const restH = out.headerQty - out.setsQty*HEADERS_PER_SET;
+  if(restH>0 && out.headerCm) out.extra.push({cm:out.headerCm, qty:restH});
+  if(!out.jambCm) out.jambCm = 220;
+  if(!out.headerCm) out.headerCm = 110;
+  return out;
+}
+
 function editCartLine(i){
   const it = state.cart[i];
   if(!it) return;
@@ -5582,11 +5614,17 @@ function editCartLine(i){
                     jamb:2, jambCm:220, header:1, headerCm:110,
                     extra: [], rods:'', rodsCm:''};
       } else if(it.customSet){
-        // سطر "حلق كامل — أطوال مخصوصة" الموحّد — بنرجّع الأطوال والكمية زي ما هي
+        // سطر "حلق كامل — أطوال مخصوصة" الموحّد — بنرجّع الأطوال والكمية زي ما هي.
+        // السطور الراجعة من السيرفر (ومن سلات محفوظة قديمة) مافيهاش الحقول دي،
+        // فبنقرا الأطوال من وصف السطر نفسه بدل ما نرجّع ٢٢٠/١١٠ غلط.
+        const br = (it.jambCm || it.headerCm || (it.extra||[]).length)
+                     ? null : parseFrameBreakdown_(it.spec || it.title || '');
         state.fr = {cm, code:it.code||'', doorW: it.doorW||'', note: it.note||'', kind:'full',
-                    qty: it.setsQty||1, nonStd:true,
-                    jamb:2, jambCm: it.jambCm||220, header:1, headerCm: it.headerCm||110,
-                    extra: (it.extra||[]).map(x=>({cm:x.cm, qty:x.qty})), rods:'', rodsCm:''};
+                    qty: it.setsQty || (br && br.setsQty) || 1, nonStd:true,
+                    jamb:2, jambCm: it.jambCm || (br && br.jambCm) || 220,
+                    header:1, headerCm: it.headerCm || (br && br.headerCm) || 110,
+                    extra: ((it.extra && it.extra.length ? it.extra : (br ? br.extra : []))||[])
+                             .map(x=>({cm:x.cm, qty:x.qty})), rods:'', rodsCm:''};
       } else {
         const rodCm = Number(it.rodCm)||220;
         // بنرجّع العدد في خانة المقاس الصح حسب طول العود المحفوظ — قائم/عارضة حلق علوية لو الطول قياسي، وإلا سطر أعواد حرة
@@ -5675,10 +5713,21 @@ function adminEditOrderWith_(o, its){
       // ⚠️ الوحدة بقت ممكن تكون بطول كسري ('rod 220.5cm')، والـregex كان
       // بياخد الجزء الصحيح بس — فالطول بيرجع ٢٢٠ والنص سنتي بيضيع من الطلب.
       const rodCm = مدموج ? null : (String(it.unit||'').match(/^rod\s+(\d+(?:\.\d+)?)/)||[])[1];
+      // ⚠️ سطر «الحلق الكامل» كان بيرجع من السيرفر من غير علامة الطقم، فالسلة
+      // تعرضه «٥ عود» بدل «٥ طقم» — ولو الطلب اتبعت تاني بيتسجّل ٥ أعواد بدل ١٥.
+      const طقم = isFr && (String(it.unit||'')==='set' || /^حلق كامل/.test(String(it.size||'')));
+      // سُمك الحلق (١٠ سم…) مش موجود في وصف السطر المدموج — بناخده من الاسم الإنجليزي
+      const frCm = isFr ? Number((String(it.title||'').match(/Frame\s+(\d+(?:\.\d+)?)\s*cm/i)||[])[1]) : 0;
+      // وتفصيل الأطوال بيترجع من الوصف عشان تعديل السطر ما يحوّلوش لطقم استاندر
+      const br = (isFr && مدموج) ? parseFrameBreakdown_(it.size||'') : null;
       return { kind:isFr?'frame':'bror', key:(isFr?'حلق':'برور')+(it.size||'')+'|'+(it.code||''),
                title:arabicItemTitle_(it), titleEn:it.title||'', code:it.code||'',
-               spec:it.size||'', price, qty, rodCm:rodCm?Number(rodCm):undefined,
-               customSet: مدموج || undefined,
+               spec:it.size||'', price, qty, rodCm: طقم ? 0 : (rodCm?Number(rodCm):undefined),
+               customSet: مدموج || undefined, isSet: طقم || undefined,
+               frCm: (isFr && frCm>0) ? frCm : undefined,
+               setsQty: br ? br.setsQty : undefined,
+               jambCm: br ? br.jambCm : undefined, headerCm: br ? br.headerCm : undefined,
+               extra: br ? br.extra : undefined,
                doorW: it.forDoorWidth||'', note: it.itemNote||'' };
     }
     if(it.type==='Panel'){
