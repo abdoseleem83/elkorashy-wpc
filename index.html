@@ -793,7 +793,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v181';
+const APP_BUILD   = 'v182';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2974,7 +2974,8 @@ function adminDocItem_(it, tierKey){
     // it.isSet عشان يكتب «طقم». الحقل ده مكانش بيتنقل خالص، فسطر فيه ٥ أطقم كان
     // بيتطبع «٥ عود» — والطقم ٣ عيدان، يعني المصنع يقطّع ٥ بدل ١٥.
     isSet: String(it.unit||'') === 'set',
-    rodCm: (String(it.unit||'').match(/^rod\s+(\d+)/)||[])[1] || '',
+    // نفس حكاية الكسور: مستند المصنع كان بياخد الجزء الصحيح من طول العود بس
+    rodCm: (String(it.unit||'').match(/^rod\s+(\d+(?:\.\d+)?)/)||[])[1] || '',
     unitPrice: price, price: price,
     frame: it.frame||'', dbror: it.dbror||'', frameHeight: it.frameHeight||'', doorHeight: it.doorHeight||'',
     produced: it.produced
@@ -3992,7 +3993,10 @@ function itemUnitAr_(u){
   // السطر المدموج فيه أعواد بأطوال مختلفة — مالوش طول واحد يتكتب جنب الوحدة،
   // الأطوال مكتوبة في وصف الصنف نفسه.
   if(s==='rods') return 'عود';
-  if(/^rod\s/.test(s)) return 'عود '+s.replace(/^rod\s/,'')+ (/م$/.test(s)?'':'م');
+  // ⚠️ كانت بترجّع «عود 220cmم»: الـcm مابتتشالش و«م» بتتزاد عليها.
+  // ده بيبان للمصنع في كشف الإكسل وفي وحدة كل صنف.
+  const rod = /^rod\s+(.+)$/i.exec(s);
+  if(rod) return 'عود ' + rod[1].replace(/\s*cm\s*$/i, '') + ' سم';
   return s || '—';
 }
 // لو الصنف باب معروف (كود من A01..A10) بنرجّع اسمه العربي بدل الاعتماد على النص الإنجليزي المخزّن
@@ -5423,8 +5427,10 @@ function addRod(kind){
         }
       }
     } else {
-      const rods = Math.max(0, Math.round(Number(st.rods)||0));
-      const rodsCm = Math.max(0, Math.round(Number(st.rodsCm)||0));
+      const rods = Math.max(0, Math.round(Number(st.rods)||0));   // عدد الأعواد صحيح دايمًا
+      // ⚠️ الطول بقى بيقبل كسور (220.5) في الشاشة، لكن الإضافة الفعلية كانت
+      // لسه بتقرّبه لصحيح — فاللي بيتحفظ في الطلب غير اللي المستخدم كتبه.
+      const rodsCm = Math.max(0, Number(st.rodsCm)||0);
       if(rods<=0 || rodsCm<=0){toast('اكتب عدد الأعواد وطولها');return;}
       push(f.cm+' سم', rodsCm, rods, f.price,
 
@@ -5666,7 +5672,9 @@ function adminEditOrderWith_(o, its){
       // الطلبات اللي اتسجّلت قبل التعديل ده تتعرض صح برضه.
       // («سم × عدد» — البرور «6×9» مابيتلخبطش معاها لأن مفيش «سم» قبل الـ×)
       const مدموج = String(it.unit||'')==='rods' || /سم\s*×\s*\d+/.test(String(it.size||''));
-      const rodCm = مدموج ? null : (String(it.unit||'').match(/^rod\s+(\d+)/)||[])[1];
+      // ⚠️ الوحدة بقت ممكن تكون بطول كسري ('rod 220.5cm')، والـregex كان
+      // بياخد الجزء الصحيح بس — فالطول بيرجع ٢٢٠ والنص سنتي بيضيع من الطلب.
+      const rodCm = مدموج ? null : (String(it.unit||'').match(/^rod\s+(\d+(?:\.\d+)?)/)||[])[1];
       return { kind:isFr?'frame':'bror', key:(isFr?'حلق':'برور')+(it.size||'')+'|'+(it.code||''),
                title:arabicItemTitle_(it), titleEn:it.title||'', code:it.code||'',
                spec:it.size||'', price, qty, rodCm:rodCm?Number(rodCm):undefined,
