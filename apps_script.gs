@@ -781,7 +781,10 @@ function doGet(e) {
           return reply({ ok: false, error: 'الطلب دخل التنفيذ في المصنع، اتحطت عليه علامة "معدّل" عشان يتحذف يدويًا', marked: true }, cb);
         }
         shCO.deleteRow(rCO);
-        if (stCO !== 'Delivered') restoreStockForOrderId_(e.parameter.id);   // المُسلَّم فعليًا ميترجّعش رصيده
+        // المُسلَّم فعليًا ميترجّعش رصيده. والملغي رصيده رجع خلاص وقت ما اتلغى
+        // (setStatus بيرجّعه) — فلو رجّعناه تاني هنا الرصيد هيزيد على الحقيقة
+        // والمصنع يبيع حاجة مش موجودة.
+        if (stCO !== 'Delivered' && stCO !== 'Cancelled') restoreStockForOrderId_(e.parameter.id);
         var shICO = sheet_(SHEET_ITEMS, HEAD_ITEMS);
         clearItemRows_(shICO, e.parameter.id);
         return reply({ ok: true, id: e.parameter.id }, cb);
@@ -803,7 +806,8 @@ function doGet(e) {
         if (rDO < 0) return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
         var stDO = String(shDO.getRange(rDO, COL_STATUS).getValue() || '');
         shDO.deleteRow(rDO);
-        if (stDO !== 'Delivered') restoreStockForOrderId_(e.parameter.id);   // المُسلَّم فعليًا ميترجّعش رصيده
+        // زي cancelOrder: المسلَّم مالوش رصيد يرجع، والملغي رصيده رجع قبل كده
+        if (stDO !== 'Delivered' && stDO !== 'Cancelled') restoreStockForOrderId_(e.parameter.id);
         var shIDO = sheet_(SHEET_ITEMS, HEAD_ITEMS);
         clearItemRows_(shIDO, e.parameter.id);
         return reply({ ok: true, id: e.parameter.id }, cb);
@@ -1134,7 +1138,9 @@ function saveOrder_(o) {
     // الباب: سعره بس — الحلق اللي جاي معاه مواصفة من غير سعر.
     // الحلق والبرور الإضافي: بيتباعوا بالعود (2.15 م) والسعر سعر العود.
     var unitPrice = isDoor ? (Number(it.unitPrice) || 0) : (Number(it.price) || 0);
-    var lineTotal = unitPrice * (Number(it.qty) || 0);
+    // ⚠️ سعر العود المتوسط بقى بأربع خانات عشرية، فحاصل الضرب كان بيتكتب في
+    // الشيت 7199.499999999999. الفلوس بالقرش — بنقرّب هنا وفي إعادة الحساب.
+    var lineTotal = Math.round(unitPrice * (Number(it.qty) || 0) * 100) / 100;
 
     var type = isDoor ? 'Door'
              : (it.kind === 'frame' ? 'Frame'
@@ -1281,6 +1287,7 @@ function recomputeOrderTotals_(id) {
     }
     total += Number(valsI[i][12]) || 0;
   }
+  total = Math.round(total * 100) / 100;
   var shO = sheet_(SHEET_ORDERS, HEAD_ORDERS);
   var r = findRow_(shO, id);
   if (r > 0) {

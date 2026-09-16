@@ -127,6 +127,34 @@ check('سطور عرض السعر بتجمع على الإجمالي المكت�
   عرض.مجموع_السطور === عرض.المكتوب, `${عرض.مجموع_السطور} مقابل ${عرض.المكتوب}`);
 
 check('مفيش أخطاء JS', errs.length===0, errs.join(' | '));
+
+// ⚠️ الطلبات القديمة (قبل ما القص يبقى بند) بيتولّد لها سطر قص في عرض السعر.
+// السطر ده كان بياخد سعر الجملة دايمًا حتى لو العرض بسعر العميل — يعني ورقة
+// واحدة فيها سطور بسعرين مختلفين.
+const مستويات = await pg.evaluate(()=>{
+  window.toast=()=>{}; window.render=()=>{};
+  TIER_OVERRIDES.showroom.customExtra = 450;          // المصنع حطّ سعر قص للعميل
+  const قديم = { id:'X1', dist:'م', phone:'01', customer:'ع', date:'2026-09-15', total:5400,
+    items:[{ type:'Door', code:'A01', title:'Door A01', size:'85x225 cm (custom)',
+             unit:'door', qty:1, unitPrice:priceForWidth(85,false), produced:0, width:85 }] };
+  const بسعر = tier => {
+    const doc = buildAdminDocOrder_(قديم, قديم.items, tier);
+    const مع = withCutLines_(doc);
+    const سطر = (مع.items||[]).find(it=>/خدمة قص/.test(it.title||''));
+    return { سعر: سطر ? سطر.price : null, إجمالي: مع.total };
+  };
+  const r = { جملة: بسعر('dist'), عميل: بسعر('showroom') };
+  TIER_OVERRIDES.showroom.customExtra = null;
+  return r;
+});
+check('سطر القص المولّد بياخد سعر الجملة في عرض الجملة',
+  مستويات.جملة.سعر === 300, JSON.stringify(مستويات.جملة));
+check('وبياخد سعر العميل في عرض العميل', مستويات.عميل.سعر === 450, JSON.stringify(مستويات.عميل));
+check('والإجمالي بيتحسب بنفس السعر',
+  Math.abs(مستويات.عميل.إجمالي - (مستويات.عميل.إجمالي - 450 + 450)) < 0.001 &&
+  مستويات.عميل.إجمالي > مستويات.جملة.إجمالي - 1000,
+  JSON.stringify([مستويات.جملة.إجمالي, مستويات.عميل.إجمالي]));
+
 await b.close();
 console.log(`\nالنتيجة: ${pass} نجحت، ${fail} فشلت`);
 process.exit(fail?1:0);

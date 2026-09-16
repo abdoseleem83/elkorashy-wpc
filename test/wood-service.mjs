@@ -1,6 +1,7 @@
 // «تدعيم خشب»: اختيار على الباب بيتحوّل لبند مستقل بكميته وسعره.
 // الفرق عن «خدمة قص»: القص المصنع بيعرفه من المقاس نفسه، لكن التدعيم مش باين
 // من أي حاجة — فلازم يوصل للمصنع في ورقة الشغل، مش في عرض السعر بس.
+import fs from 'node:fs';
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 let pass=0, fail=0;
 const check=(n,ok,x='')=>{ console.log((ok?'✅':'❌')+' '+n+(x?'  — '+x:'')); ok?pass++:fail++; };
@@ -95,6 +96,39 @@ check('إجمالي القطع بيعدّ الأبواب بس', عدّ.قطع &&
   عدّ.قطع ? عدّ.قطع[1] : 'مالقيناش');
 
 check('مفيش أخطاء JS', errs.length===0, errs.join(' | '));
+
+// ⚠️ رسالة الواتساب وملف الإكسل كانوا بيشيلوا «تدعيم خشب» زي «خدمة قص» —
+// والمصنع بيشتغل من الاتنين دول. يعني باب متحاسب عليه تدعيم ويتنفّذ من غيره.
+const كشوف = await pg.evaluate(()=>{
+  window.toast=()=>{}; window.render=()=>{};
+  state.cart=[];
+  state.pick={code:'A01',sizes:{},customOn:true,note:'',
+    custom:{w:'85',h:'225',qty:2,frame:10,frameHeight:'',dbror:'6×9',hafr:false,wood:true,
+            frameKind:null,frameRodQty:'',frameForDoors:''}};
+  addDoor();
+  const o = draftOrder();
+  const رسالة = buildMessage(o);
+  const ورقة = docHTML(o,'order',true).replace(/<[^>]*>/g,' ');
+  const عرض   = docHTML(o,'quote',true).replace(/<[^>]*>/g,' ');
+  return { رسالة, ورقة, عرض,
+           أصناف_الإكسل: (o.items||[]).filter(it=>!quoteOnlyLine_(it)).map(it=>it.title) };
+});
+check('رسالة الواتساب فيها «تدعيم خشب»', /تدعيم خشب/.test(كشوف.رسالة),
+  كشوف.رسالة.split('\n').filter(l=>/تدعيم|قص/.test(l)).join(' | '));
+check('ومفيهاش «خدمة قص» (بند تسعير)', !/خدمة قص/.test(كشوف.رسالة));
+check('كشف الإكسل فيه التدعيم ومفيهوش القص',
+  كشوف.أصناف_الإكسل.some(t=>/تدعيم خشب/.test(t)) && !كشوف.أصناف_الإكسل.some(t=>/خدمة قص/.test(t)),
+  JSON.stringify(كشوف.أصناف_الإكسل));
+// ملف الإكسل نفسه محتاج مكتبة خارجية عشان يتبني، فبنتأكد من الفلتر في الكود:
+// لازم يستعمل quoteOnlyLine_ (القص بس) مش isCutLine_ (اللي بيشيل التدعيم كمان)
+const مصدر = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const كتلة_الإكسل = /async function exportExcel\(orders,fname\)[\s\S]*?\n\}/.exec(مصدر)[0];
+check('exportExcel بيفلتر ببند «عرض السعر بس» مش بكل بنود الخدمة',
+  /filter\(it=>!quoteOnlyLine_\(it\)\)/.test(كتلة_الإكسل) && !/filter\(it=>!isCutLine_\(it\)\)/.test(كتلة_الإكسل));
+check('ورقة الأوردر برضه فيها التدعيم من غير القص',
+  /تدعيم خشب/.test(كشوف.ورقة) && !/خدمة قص/.test(كشوف.ورقة));
+check('وعرض السعر فيه الاتنين', /تدعيم خشب/.test(كشوف.عرض) && /خدمة قص/.test(كشوف.عرض));
+
 await b.close();
 console.log(`\nالنتيجة: ${pass} نجحت، ${fail} فشلت`);
 process.exit(fail?1:0);

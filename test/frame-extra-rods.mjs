@@ -93,6 +93,31 @@ check('والسلة بتقول «٥ طقم» مش «٥ عود»', /5 طقم/.tes
 check('واسم الصنف في المستندات مش مكرر («حلق حلق كامل … — A01 — A01»)',
   طقم.اسم === 'حلق كامل 10 سم — A01', طقم.اسم);
 
+// ═══ الفلوس اللي بتتخزّن لازم تبقى بالقرش — مش 7199.499999999999 ═══
+const فلوس = await pg.evaluate(()=>{
+  window.toast=()=>{}; window.render=()=>{};
+  const f=FRAMES[0];
+  state.cart=[];
+  state.fr={cm:f.cm,code:DOORS[0].code,kind:'full',qty:3,nonStd:true,jamb:2,header:1,
+            jambCm:200,headerCm:120,extra:[{cm:180.5,qty:1}],rods:'',rodsCm:'',doorW:'',note:''};
+  addRod('frame');
+  const خانات = n => { const p=String(n).split('.')[1]; return p ? p.length : 0; };
+  const مضبوط_الحلق = Math.abs(cartTotal() - (rodPrice(f.price,200)*6 + rodPrice(f.price,120)*3
+                                              + rodPrice(f.price,180.5)));
+  // سلة بأسعار بتطلّع كسور تايهة من ضرب الفاصلة العائمة (0.1×3 = 0.30000000000000004)
+  state.cart = [{kind:'acc', id:'X', code:'X', title:'صنف', price:205.0483, qty:7, unit:'قطعة'},
+                {kind:'acc', id:'Y', code:'Y', title:'صنف٢', price:0.1, qty:3, unit:'قطعة'},
+                {kind:'acc', id:'Z', code:'Z', title:'صنف٣', price:0.2, qty:1, unit:'قطعة'}];
+  const o = draftOrder();
+  return { سطر:خانات(linePrice(state.cart[0])), إجمالي:خانات(cartTotal()),
+           طلب:خانات(o.total), قيمة:cartTotal(),
+           مضبوط: مضبوط_الحلق };
+});
+check('إجمالي السطر بالقرش (خانتين عشريتين على الأكتر)', فلوس.سطر<=2, String(فلوس.سطر));
+check('وإجمالي السلة كمان', فلوس.إجمالي<=2, String(فلوس.إجمالي)+' — '+فلوس.قيمة);
+check('والمبلغ اللي بيتبعت للسيرفر', فلوس.طلب<=2, String(فلوس.طلب));
+check('والتقريب ما ضيّعش قرش من المجموع الحقيقي', فلوس.مضبوط < 0.01, String(فلوس.مضبوط));
+
 check('مفيش أخطاء JS', errs.length===0, errs.join(' | '));
 await b.close();
 console.log(`\nالنتيجة: ${pass} نجحت، ${fail} فشلت`);

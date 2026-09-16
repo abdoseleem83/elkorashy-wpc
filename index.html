@@ -911,6 +911,18 @@ input[type=text],input[type=tel],input[type=number],input[type=password],input[t
 .stktbl th{font-size:12px}
 .empty{font-size:15px}
 
+/* ⚠️ شبكة الإكسسوارات كانت ٣ أعمدة ثابتة، وعدّاد الكمية جوّه الكارت عرضه
+   ثابت (١٣٤px) أكبر من عرض العمود — فالشبكة كانت بتتمدّ برّه الشاشة والكارت
+   التالت في كل صف يتقص من على الشمال. الموزّع مكانش شايف تلت الإكسسوارات
+   أصلاً. الحل: أعمدة مرنة حسب عرض الشاشة، والعدّاد يصغّر فعليًا (مش بـscale
+   اللي بيسيب مساحته الأصلية محجوزة في التخطيط). */
+.accgrid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.accgrid .ac b{font-size:12.5px;min-height:32px}
+.accgrid .ac .pr{font-size:11.5px}
+.accgrid .ac .qty{transform:none;width:fit-content}
+.accgrid .ac .qty button{width:34px;height:36px;font-size:18px}
+.accgrid .ac .qty input{width:40px;padding:7px 0;font-size:14.5px}
+
 /* الكلام الباهت: نرفع التباين شوية على الغامق */
 :root{--muted:#A3B6CE}
 .top .t2{color:#A3B6CE}
@@ -1087,7 +1099,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v187';
+const APP_BUILD   = 'v188';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1170,6 +1182,11 @@ function isServiceLine_(it){ return !!serviceDefFor_(it); }
 // ⚠️ isCutLine_ فاضلة بالاسم ده لأن كود كتير بينده عليها، بس بقت بتغطّي كل
 // بنود الخدمة — أي مكان بيستبعد القص من عدّ القطع لازم يستبعد التدعيم زيه.
 function isCutLine_(it){ return isServiceLine_(it); }
+// ⚠️ فرق مهم: «خدمة قص» بند تسعير بيبان في عرض السعر بس، لكن «تدعيم خشب»
+// شغل حقيقي بيتعمل في الباب. أي كشف أصناف بيروح للمصنع (رسالة الواتساب،
+// ملف الإكسل، ورقة الأوردر) لازم يفضل مبيّن التدعيم — وإلا المصنع ينفّذ
+// الباب من غير تدعيم وهو متحاسب عليه. عدّ القطع بس هو اللي بيستبعد الاتنين.
+function quoteOnlyLine_(it){ const d = serviceDefFor_(it); return !!(d && d.quoteOnly); }
 function serviceTitle_(label, sizeLabel){ return label + ' — ' + sizeLabel; }
 function cutServiceTitle_(label){ return serviceTitle_(CUT_SERVICE_NOTE_, label); }
 function cutLineLabel_(it){
@@ -1562,8 +1579,13 @@ function customReady_(p){
 }
 function priceForWidth(w, hafr){const n=Number(w)||0;let p=SIZES[SIZES.length-1].price;for(const s of SIZES) if(n<=s.w){p=s.price;break;}return p+(hafr?HAFR_EXTRA:0);}
 function rodPrice(perMetre, cm){return Math.round(perMetre*((Number(cm)||220)/100)*100)/100;}
-function linePrice(it){return (it.kind==='door'?it.unitPrice:it.price)*it.qty;}
-function cartTotal(){return state.cart.reduce((s,it)=>s+linePrice(it),0);}
+// ⚠️ الفلوس بتتخزّن وبتتبعت زي ما هي — مش بس بتتعرض. سعر العود المتوسط بقى
+// بأربع خانات عشرية (عشان إجمالي السطر يطلع مظبوط بالقرش)، فحاصل الضرب كان
+// بيطلع 7199.499999999999 ويتسجّل كده في الشيت وفي الطلب المبعوت.
+// بنقرّب لأقرب قرش عند حساب السطر والإجمالي — الفلوس متقاس بالقرش مش أكتر.
+const قرش_ = n => Math.round((Number(n)||0)*100)/100;
+function linePrice(it){return قرش_((it.kind==='door'?it.unitPrice:it.price)*it.qty);}
+function cartTotal(){return قرش_(state.cart.reduce((s,it)=>s+linePrice(it),0));}
 function cartCount(){return state.cart.length;}
 // ⚠️ الكيبورد العربي على الموبايل بيكتب أرقام هندية (٠١٢٣٤٥٦٧٨٩) مش لاتينية.
 // الموزع بيكتب رقمه ٠١٠١٢٣٤٥٦٧٨ — رقم صح تمامًا — والتطبيق كان بيقوله «رقم غلط»
@@ -1607,7 +1629,10 @@ async function loadReserved(force){
     const orders = await fetchPendingOrders_();
     const map = {};
     (orders||[]).forEach(o=>{
-      if(o.status==='Cancelled') return;
+      // «المحجوز لعملاء» = اللي لسه مطلوب فعلاً. الملغي مش مطلوب، والمُسلَّم
+      // خلاص خرج. (المسلَّم بيتأرشف أوتوماتيك فمابيجيش أصلاً — إلا لو حد غيّر
+      // الحالة بإيده على الشيت، وساعتها كان بيتحسب محجوز وهو مسلَّم.)
+      if(o.status==='Cancelled' || o.status==='Delivered') return;
       (o.items||[]).forEach(it=>{
         if(it.type!=='Door') return;
         const qty = Number(it.qty)||0;
@@ -3236,7 +3261,7 @@ function buildAdminDocOrder_(o, its, tierKey){
   // اللي بيروح للعميل سطوره مابتجمعش على الإجمالي المكتوب تحتها، والإجمالي أقل
   // من مجموعها. بنحسبه من نفس السطور اللي اتطبعت.
   const total = tierKey && tierKey !== 'dist'
-    ? items.reduce((sum,it)=>sum + (Number(it.unitPrice)||0) * (Number(it.qty)||0), 0)
+    ? قرش_(items.reduce((sum,it)=>sum + قرش_((Number(it.unitPrice)||0) * (Number(it.qty)||0)), 0))
     : o.total;
   return {
     id:o.id, ts:o.date?new Date(o.date).getTime():Date.now(),
@@ -3248,6 +3273,7 @@ function buildAdminDocOrder_(o, its, tierKey){
     displayNo: o.displayNo || '', editCount: Number(o.editCount)||0, replacesId: o.replacesId || '',
     editedAt: o.editedAt || '',
     priceTierLabel: tierKey ? (PRICE_TIERS[tierKey]||PRICE_TIERS.dist).label : '',
+    priceTier: tierKey || '',
     items
   };
 }
@@ -3757,10 +3783,12 @@ async function exportAdminFullReport(){
 
 // ============================================================
 // تقرير الأبواب المعلّقة — كل عميل، كل طلب بتاريخه، الأبواب مقسّمة حسب المقاس
-// (الطلبات المؤرشفة مستبعدة أصلًا من listWithItems؛ هنا كمان بنستبعد الملغي)
+// (الطلبات المؤرشفة مستبعدة أصلًا من listWithItems؛ هنا كمان بنستبعد الملغي
+//  والمُسلَّم — التقرير ده «اللي لسه ما اتسلّمش»، والمسلَّم اللي مااتأرشفش
+//  بالغلط كان بيظهر فيه وكإنه لسه مطلوب)
 // ============================================================
 function buildPendingDoorsData_(orders){
-  const pending = orders.filter(o=>o.status!=='Cancelled');
+  const pending = orders.filter(o=>o.status!=='Cancelled' && o.status!=='Delivered');
   const byCustomer = {}, order = [];
   pending.forEach(o=>{
     // التقرير ده للأبواب بس — الطلبات اللي مفيهاش أبواب (إكسسوارات أو حلق/برور فقط)
@@ -4437,7 +4465,7 @@ async function buildAdminOrdersExcel_(orders){
       const hdr = wsDet.addRow(hdrCells);
       hdr.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}}; c.font={bold:true,color:{argb:NAVY},name:FONT,size:10}; c.alignment={horizontal:'center'}; c.border=border; });
 
-      (o.items||[]).filter(it=>!isCutLine_(it)).forEach(it=>{
+      (o.items||[]).filter(it=>!quoteOnlyLine_(it)).forEach(it=>{
         const sp = itemSpecCells_(it);
         const wh = {w:sp.w, h:sp.h}, frameW = sp.frameW, frameH = sp.frameH, brorTxt = sp.bror;
         const pp = itemProdPending_(it);
@@ -6144,8 +6172,9 @@ function buildMessage(o){
   m+='المخزن: '+WAREHOUSE+'\n';
   if(o.note) m+='ملاحظات: '+o.note+'\n';
   m+='——————\n';
-  // بنود «خدمة قص» بتبان في عرض السعر بس — الرسالة دي ملخّص الأوردر
-  (o.items||[]).filter(it=>!isCutLine_(it)).forEach((it,i)=>{
+  // «خدمة قص» بتبان في عرض السعر بس. «تدعيم خشب» بيفضل — دي رسالة بتروح
+  // للمصنع كمان، ولازم يعرف إن الباب ده عليه تدعيم.
+  (o.items||[]).filter(it=>!quoteOnlyLine_(it)).forEach((it,i)=>{
     m+=(i+1)+'. '+it.title+'\n';
     if(it.kind==='door'){
       m+='   المقاس: '+doorSizeText_(it.sizeTxt,it.doorHeight)+' — الكمية: '+it.qty+'\n';
@@ -6826,7 +6855,9 @@ function docTotalsHTML(o){
 // ⚠️ بشرط واحد: سعر الباب المتخزّن يكون هو سعر المقاس الحالي بالظبط. النسخ
 // الأقدم من v164 كانت بتحط الـ٣٠٠ جوه سعر الباب — لو ولّدنا سطر كمان هنحسب
 // القص مرتين على العميل. لو السعر مش مطابق بنسيب الطلب زي ما هو.
-function derivedCutLines_(items){
+// tierKey: مستوى السعر المختار لعرض السعر — البند المولّد لازم يتسعّر بنفس
+// المستوى زي باقي السطور، وإلا العرض بيخلط سعر عميل بسعر جملة في ورقة واحدة.
+function derivedCutLines_(items, tierKey){
   const list = items||[];
   if(list.some(isCutLine_)) return [];
   const out=[], byLabel={};
@@ -6839,7 +6870,11 @@ function derivedCutLines_(items){
     // ⚠️ النسخ الأقدم من v164 كانت بتحط الـ٣٠٠ جوه سعر الباب. لو سعر الباب
     // المتخزّن مش هو سعر المقاس الحالي، يبقى غالبًا القص محسوب جواه — فالسطر
     // بيبان للمصنع بس مكتوب عليه «مشمول»، ومابيتضافش على الإجمالي تاني.
-    const included = !w || (Number(it.unitPrice)||0) !== priceForWidth(w, hafr);
+    // ⚠️ المقارنة لازم تبقى بسعر نفس المستوى المطبوع. في عرض سعر العميل
+    // السطور بتتسعّر بسعر العميل، والمقارنة بسعر الجملة كانت بتفشل دايمًا —
+    // فالبند بيطلع «مشمول» بصفر جنيه وخدمة القص بتضيع من العرض كله.
+    const سعر_المقاس = tierPrice(priceForWidth(w, hafr), 'door', tierKey, w);
+    const included = !w || (Number(it.unitPrice)||0) !== سعر_المقاس;
     const g = byLabel[label] || (byLabel[label] = { qty:0, included:false });
     g.qty += (Number(it.qty)||0);
     if(included) g.included = true;
@@ -6848,25 +6883,25 @@ function derivedCutLines_(items){
     const g = byLabel[label];
     out.push({ kind:'acc', id:CUT_SERVICE_CODE_, code:CUT_SERVICE_CODE_, unit:'باب',
                title:cutServiceTitle_(label), qty:g.qty,
-               price: g.included ? 0 : CUSTOM_EXTRA, included: g.included });
+               price: g.included ? 0 : tierPrice(CUSTOM_EXTRA, 'acc', tierKey, 'customExtra'),
+               included: g.included });
   });
   return out;
 }
 // بيرجّع نسخة من الطلب فيها بنود القص (المتخزّنة أو المولّدة) وإجماليها متحسوب
 function withCutLines_(o){
-  const derived = derivedCutLines_(o && o.items);
+  const derived = derivedCutLines_(o && o.items, o && o.priceTier);
   if(!derived.length) return o;
-  const add = derived.reduce((s,it)=>s+(Number(it.price)||0)*(Number(it.qty)||0), 0);
+  const add = derived.reduce((s,it)=>s+قرش_((Number(it.price)||0)*(Number(it.qty)||0)), 0);
   return Object.assign({}, o, { items:(o.items||[]).concat(derived),
-                                total:(Number(o.total)||0) + add });
+                                total:قرش_((Number(o.total)||0) + add) });
 }
 // بيشيل بنود «عرض السعر بس» من نسخة الطلب (زي خدمة القص) من غير ما يلمس
 // الإجمالي. «تدعيم خشب» مش منهم — المصنع مايعرفهوش من أي حاجة تانية في
 // الورقة، فلازم يفضل باين في ورقة الشغل زي ما هو.
 function withoutCutLines_(o){
-  const quoteOnly = it=>{ const d = serviceDefFor_(it); return !!(d && d.quoteOnly); };
-  if(!o || !(o.items||[]).some(quoteOnly)) return o;
-  return Object.assign({}, o, { items:(o.items||[]).filter(it=>!quoteOnly(it)) });
+  if(!o || !(o.items||[]).some(quoteOnlyLine_)) return o;
+  return Object.assign({}, o, { items:(o.items||[]).filter(it=>!quoteOnlyLine_(it)) });
 }
 function docHTML(o,mode,priced){
   const isQuote = mode==='quote';
@@ -7012,7 +7047,8 @@ async function exportExcel(orders,fname){
 
     orders.forEach(o=>{
       // بنود «خدمة قص» بتبان في عرض السعر بس — الإكسل ده كشف أصناف للمصنع
-      const its = (o.items||[]).filter(it=>!isCutLine_(it));
+      // كشف أصناف للمصنع: القص (بند تسعير) بيتشال، والتدعيم بيفضل
+      const its = (o.items||[]).filter(it=>!quoteOnlyLine_(it));
       const sumRow=[o.id, xlDate_(o.ts), o.name||'', String(o.phone||''), o.region||'', o.warehouse||WAREHOUSE, o.status||'', its.length];
       if(priced) sumRow.push(Number(o.total)||0);
       sum.push(sumRow);
