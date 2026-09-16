@@ -28,5 +28,17 @@ check('restoreStockForOrderId_ لسه شغّالة (الإلغاء والحذف 
 check('الإلغاء والحذف لسه بيرجّعوا الرصيد',
   (gs.match(/restoreStockForOrderId_\(e\.parameter\.id\)/g)||[]).length === 2);
 
+// ⚠️ الطلب اللي اتلغى (setStatus → Cancelled) رصيده رجع خلاص. لو المصنع بعد
+// كده حذف السطر، الحذف كان بيرجّع الرصيد تاني — زيادة وهمية في المخزن،
+// والمصنع يبيع أبواب مش موجودة.
+const cancelBlock = /if \(action === 'cancelOrder'\)[\s\S]*?\n    \}\n/.exec(gs)[0];
+const deleteBlock = /if \(action === 'deleteOrder'\)[\s\S]*?\n    \}\n/.exec(gs)[0];
+check('الإلغاء مابيرجّعش رصيد طلب ملغي أصلاً (مفيش رجوع مزدوج)',
+  /stCO !== 'Delivered' && stCO !== 'Cancelled'/.test(cancelBlock), '');
+check('والحذف كمان',
+  /stDO !== 'Delivered' && stDO !== 'Cancelled'/.test(deleteBlock), '');
+check('والاتنين لسه بيستثنوا المُسلَّم',
+  /stCO !== 'Delivered'/.test(cancelBlock) && /stDO !== 'Delivered'/.test(deleteBlock));
+
 console.log(`\nالنتيجة: ${pass} نجحت، ${fail} فشلت`);
 process.exit(fail?1:0);
