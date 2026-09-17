@@ -45,6 +45,41 @@ check('من غير مستوى: الإجمالي زي ما هو برضه', r.بد
 });
 
 check('مفيش أخطاء', errs.length===0, errs.join(' | '));
+
+// ⚠️ باج: أول ما المصنع يحفظ «سعر عميل» لمقاس، الباب الحفر كان بياخد نفس
+// السعر — يعني زيادة الحفر (٦٠٠ ج للباب) بتختفي من عرض سعر العميل بالكامل.
+const حفر = await pg.evaluate(()=>{
+  window.toast=()=>{}; window.render=()=>{};
+  const w = SIZES[0].w;
+  const طلب = { id:'H1', dist:'م', phone:'01', customer:'ع', date:'2026-09-17', total:0,
+    items:[
+      { type:'Door', code:'A01', title:'WPC Door A01 (Carved)', milling:'Carved', size:w+' cm',
+        unit:'door', qty:2, unitPrice:priceForWidth(w,true), produced:0, width:w },
+      { type:'Door', code:'A01', title:'WPC Door A01', milling:'', size:w+' cm',
+        unit:'door', qty:1, unitPrice:priceForWidth(w,false), produced:0, width:w }
+    ] };
+  const أسعار = () => {
+    const doc = buildAdminDocOrder_(طلب, طلب.items, 'showroom');
+    return { حفر: doc.items[0].unitPrice, عادي: doc.items[1].unitPrice, إجمالي: doc.total };
+  };
+  const بدون_حفظ = أسعار();
+  TIER_OVERRIDES.showroom.sizes[w] = 6000;          // المصنع حفظ سعر عميل للمقاس
+  const بعد_حفظ = أسعار();
+  TIER_OVERRIDES.showroom.hafrExtra = 800;          // وحفظ زيادة حفر للعميل كمان
+  const بزيادة_حفر = أسعار();
+  TIER_OVERRIDES.showroom.sizes = {}; TIER_OVERRIDES.showroom.hafrExtra = null;
+  return { بدون_حفظ, بعد_حفظ, بزيادة_حفر, HAFR: HAFR_EXTRA };
+});
+check('من غير أسعار محفوظة: الحفر أغلى من العادي بزيادة الحفر',
+  حفر.بدون_حفظ.حفر - حفر.بدون_حفظ.عادي === حفر.HAFR, JSON.stringify(حفر.بدون_حفظ));
+check('وبعد ما المصنع يحفظ سعر عميل للمقاس، الحفر لسه أغلى',
+  حفر.بعد_حفظ.حفر - حفر.بعد_حفظ.عادي === حفر.HAFR, JSON.stringify(حفر.بعد_حفظ));
+check('ولو حفظ زيادة حفر للعميل، بتتستعمل هي',
+  حفر.بزيادة_حفر.حفر - حفر.بزيادة_حفر.عادي === 800, JSON.stringify(حفر.بزيادة_حفر));
+check('وإجمالي المستند بيتحسب بنفس الأسعار',
+  Math.abs(حفر.بعد_حفظ.إجمالي - (حفر.بعد_حفظ.حفر*2 + حفر.بعد_حفظ.عادي)) < 0.01,
+  JSON.stringify(حفر.بعد_حفظ));
+
 console.log(`\nالنتيجة: ${pass} نجحت، ${fail} فشلت`);
 await b.close();
 process.exit(fail?1:0);

@@ -1,6 +1,6 @@
 // ⚠️ مهم: غيّر رقم النسخة دي في كل مرة ترفع تحديث جديد.
 // ده اللي بيخلي المتصفح يرمي الكاش القديم ويجيب الملفات الجديدة.
-const CACHE_VERSION = 'v190';
+const CACHE_VERSION = 'v191';
 const CACHE_NAME = 'elkorashy-wpc-' + CACHE_VERSION;
 // كاش منفصل للمكتبات الخارجية — مش بيتمسح مع كل تحديث للتطبيق، لأن روابطها فيها
 // رقم إصدار ثابت. لو كانت جوه الكاش العادي كانت هتتحمّل من النت من أول وجديد
@@ -149,7 +149,8 @@ self.addEventListener('fetch', (event) => {
         //     بره الجهاز أصلًا، وبيفضل يرجّع النسخة القديمة لحد ما مدته تخلص.
         //     الحل الوحيد المضمون: نضيف باراميتر فريد للرابط، فيبقى "رابط جديد"
         //     مالوش نسخة مخزّنة عند الـ CDN فيجيبه من السيرفر مباشرة.
-        const bust = url.pathname + '?_v=' + Date.now();
+        // بنحافظ على أي باراميترات أصلية في الرابط بدل ما نرميها
+        const bust = url.pathname + (url.search ? url.search + '&' : '?') + '_v=' + Date.now();
         let fresh;
         try {
           fresh = await fetch(bust, { cache: 'no-store' });
@@ -212,6 +213,10 @@ self.addEventListener('fetch', (event) => {
   }
 
   // أي حاجة تانية: stale-while-revalidate
+  // ⚠️ باج كان هنا: `cached || network || Response(504)` — الـ504 عمرها ما
+  // اشتغلت، لأن network وعد (Promise) وهو دايمًا "صح". فلو مفيش نسخة متخزّنة
+  // والنت واقع، الـservice worker كان بيرجّع null والمتصفح يرمي خطأ شبكة
+  // بدل الرد الاحتياطي.
   event.respondWith((async () => {
     const cached = await caches.match(req);
     const network = fetch(req).then(res => {
@@ -220,6 +225,8 @@ self.addEventListener('fetch', (event) => {
       }
       return res;
     }).catch(() => null);
-    return cached || network || new Response('', { status: 504 });
+    if (cached) return cached;                 // التحديث ماشي في الخلفية
+    const res = await network;
+    return res || new Response('', { status: 504 });
   })());
 });
