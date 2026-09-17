@@ -1099,7 +1099,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v188';
+const APP_BUILD   = 'v189';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -6015,11 +6015,18 @@ function adminEditOrderWith_(o, its){
       const sizeTxt = arabicSizeText_(it.size);
       const doorHeight = Number(it.doorHeight)||0;
       const label = doorSizeText_(sizeTxt, doorHeight);
+      const حفر = /\(حفر\)|\(Carved\)/i.test(String(it.title||'')) || !!String(it.milling||'').trim();
       return { kind:'door', title:arabicItemTitle_(it), titleEn:it.title||'', code:it.code||'',
                img:(DOORS.find(d=>d.code===it.code)||{}).img || '',
                sizeTxt, sizeEn:it.size||'', unitPrice:price, qty,
                w:it.width||'', frame:Number(it.frame)||0, dbror:it.dbror||'', frameHeight:Number(it.frameHeight)||0,
-               doorHeight, hafr:/\(حفر\)|\(Carved\)/i.test((it.title||'')), wood:woodLabels.has(label),
+               doorHeight, hafr:حفر, wood:woodLabels.has(label),
+               // ⚠️ عمود «الحفر» (Milling) كان بيضيع مع كل تعديل: السلة بترجع
+               // من غير millEn، فالحفظ بيكتب الخانة فاضية. وarabicItemTitle_
+               // بتقرا الحفر من الخانة دي — فالباب بيطلع في شاشة المصنع
+               // وفي كل المستندات «باب A01» من غير «(حفر)»، وسعره لسه سعر
+               // الحفر. يعني المصنع ينفّذه سادة والعميل دافع حفر.
+               millEn: String(it.milling||'').trim() || (حفر ? 'Carved' : ''),
                note: it.itemNote||'' };
     }
     if(it.type==='Frame' || it.type==='Bror'){
