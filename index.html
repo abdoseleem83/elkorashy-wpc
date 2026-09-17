@@ -1099,7 +1099,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v190';
+const APP_BUILD   = 'v191';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1341,7 +1341,12 @@ const TIER_OVERRIDES = { showroom:{sizes:{},customExtra:null,woodExtra:null,hafr
 const ACC_EN_TO_ID_ = {}; ACCESSORIES.forEach(a=>{ ACC_EN_TO_ID_[a.en] = a.id; });
 // بيرجّع سعر الصنف على مستوى معيّن (جملة/عميل). لو الصنف ده اتحفظله سعر مخصوص لنفس المستوى بيترجع هو،
 // وإلا بيترجع سعر الجملة + الزيادة الافتراضية للمستوى (fallback للأصناف اللي لسه محدّش عدّل سعرها بنفسه).
-function tierPrice(basePrice, kind, tierKey, key){
+// opts.hafr = الباب ده حفر (سعره الأساسي شامل زيادة الحفر).
+// ⚠️ باج كان هنا: أول ما المصنع يحفظ سعر عميل لمقاس، السعر المحفوظ ده كان
+// بيرجع زي ما هو للباب الحفر كمان — يعني زيادة الحفر (٦٠٠–٨٠٠ ج للباب)
+// بتختفي من عرض سعر العميل. بنفصل سعر المقاس عن زيادة الحفر، ونحط زيادة
+// المستوى فوقه.
+function tierPrice(basePrice, kind, tierKey, key, opts){
   if(!tierKey || tierKey==='dist') return Number(basePrice)||0;
   const group = kind==='door'?'sizes':kind==='frame'?'frames':kind==='bror'?'brors':kind==='panel'?'panel':'acc';
   const ov = TIER_OVERRIDES[tierKey];
@@ -1350,13 +1355,21 @@ function tierPrice(basePrice, kind, tierKey, key){
   if(key==='customExtra' || key==='woodExtra'){
     return (ov && ov[key]!=null) ? (Number(ov[key])||0) : (Number(basePrice)||0);
   }
+  const حفر = !!(opts && opts.hafr) && kind==='door';
+  const زيادة_الحفر = حفر
+    ? ((ov && ov.hafrExtra!=null) ? (Number(ov.hafrExtra)||0) : (Number(HAFR_EXTRA)||0))
+    : 0;
+  // سعر المقاس من غير الحفر — عشان نركّب عليه زيادة الحفر بتاعة المستوى
+  const أساس = (Number(basePrice)||0) - (حفر ? (Number(HAFR_EXTRA)||0) : 0);
   if(ov){
     if(key==='hafrExtra'){ if(ov.hafrExtra!=null) return Number(ov.hafrExtra)||0; }
-    else if(key!=null && ov[group] && ov[group][key]!=null){ return Number(ov[group][key])||0; }
+    else if(key!=null && ov[group] && ov[group][key]!=null){
+      return (Number(ov[group][key])||0) + زيادة_الحفر;
+    }
   }
   const t = PRICE_TIERS[tierKey] || PRICE_TIERS.dist;
   const add = kind==='door' ? t.doorAdd : t.otherAdd;
-  return (Number(basePrice)||0) + add;
+  return أساس + زيادة_الحفر + add;
 }
 // بيستخرج مفتاح الصنف (مقاس الباب/الحلق بالرقم، مقاس البرور، أو كود الإكسسوار) من صنف الطلب —
 // المفتاح ده هو اللي بيتربط بيه سعر كل مستوى في TIER_OVERRIDES.
@@ -3293,7 +3306,12 @@ function adminDocItem_(it, tierKey){
   const sz = it.type==='Door' ? doorSizeText_(arabicSizeText_(it.size), it.doorHeight)
                               : arabicSizeText_(it.size||'');
   const kind = it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':(it.type==='Panel'?'panel':'acc')));
-  const price = tierKey ? tierPrice(it.unitPrice||0, kind, tierKey, tierKeyFor_(it, kind)) : (it.unitPrice||0);
+  // الحفر بيتعرف من عموده، ولو الطلب قديم مافيهوش العمود بنقراه من الاسم
+  const حفرـالصنف = kind==='door' &&
+    (!!String(it.milling||'').trim() || /\(حفر\)|\(Carved\)/i.test(String(it.title||'')));
+  const price = tierKey
+    ? tierPrice(it.unitPrice||0, kind, tierKey, tierKeyFor_(it, kind), {hafr:حفرـالصنف})
+    : (it.unitPrice||0);
   return {
     kind, title: (it.avail===false?'⚠️ غير متاح — ':'') + arabicItemTitle_(it),
     code: it.code||'',
@@ -6894,7 +6912,7 @@ function derivedCutLines_(items, tierKey){
     // ⚠️ المقارنة لازم تبقى بسعر نفس المستوى المطبوع. في عرض سعر العميل
     // السطور بتتسعّر بسعر العميل، والمقارنة بسعر الجملة كانت بتفشل دايمًا —
     // فالبند بيطلع «مشمول» بصفر جنيه وخدمة القص بتضيع من العرض كله.
-    const سعر_المقاس = tierPrice(priceForWidth(w, hafr), 'door', tierKey, w);
+    const سعر_المقاس = tierPrice(priceForWidth(w, hafr), 'door', tierKey, w, {hafr});
     const included = !w || (Number(it.unitPrice)||0) !== سعر_المقاس;
     const g = byLabel[label] || (byLabel[label] = { qty:0, included:false });
     g.qty += (Number(it.qty)||0);
