@@ -105,9 +105,12 @@ const فلوس = await pg.evaluate(()=>{
   const مضبوط_الحلق = Math.abs(cartTotal() - (rodPrice(f.price,200)*6 + rodPrice(f.price,120)*3
                                               + rodPrice(f.price,180.5)));
   // سلة بأسعار بتطلّع كسور تايهة من ضرب الفاصلة العائمة (0.1×3 = 0.30000000000000004)
+  // (0.1 + 0.2 + 0.3 في الفاصلة العائمة = 0.6000000000000001 — بيمسك تقريب
+  //  الإجمالي نفسه، مش تقريب السطر بس)
   state.cart = [{kind:'acc', id:'X', code:'X', title:'صنف', price:205.0483, qty:7, unit:'قطعة'},
-                {kind:'acc', id:'Y', code:'Y', title:'صنف٢', price:0.1, qty:3, unit:'قطعة'},
-                {kind:'acc', id:'Z', code:'Z', title:'صنف٣', price:0.2, qty:1, unit:'قطعة'}];
+                {kind:'acc', id:'Y', code:'Y', title:'صنف٢', price:0.1, qty:1, unit:'قطعة'},
+                {kind:'acc', id:'Z', code:'Z', title:'صنف٣', price:0.2, qty:1, unit:'قطعة'},
+                {kind:'acc', id:'W', code:'W', title:'صنف٤', price:0.3, qty:1, unit:'قطعة'}];
   const o = draftOrder();
   return { سطر:خانات(linePrice(state.cart[0])), إجمالي:خانات(cartTotal()),
            طلب:خانات(o.total), قيمة:cartTotal(),
