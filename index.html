@@ -1099,7 +1099,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v189';
+const APP_BUILD   = 'v190';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1606,7 +1606,12 @@ function phoneOk(p){return /^0?1[0-9]{9}$/.test(toLatinDigits_(p).replace(/\s/g,
 // عشان حقول الأطوال/الارتفاعات (زي 110.5) تتكتب طبيعي من غير ما تتمسح.
 // مستخدمة بدل type="number" اللي كان بيصفّر الخانة أول ما تكتب النقطة.
 function decIn_(v){
-  let s = toLatinDigits_(v).replace(/[\u066B\u066C,]/g,'.');
+  let s = toLatinDigits_(v);
+  // ٫ (u066B) هي العلامة العشرية العربية، و٬ (u066C) فاصلة الآلاف — مش نفس الحاجة.
+  // والفاصلة العادية بتبقى عشرية لو مفيش نقطة في النص (1,5)، وفاصلة آلاف لو
+  // فيه نقطة كمان (1,234.5) — الحالة التانية كانت بتطلّع 1.2345 بدل 1234.5.
+  s = s.replace(/\u066B/g, '.').replace(/[\u066C\u2009\s]/g, '');
+  s = /\./.test(s) ? s.replace(/[,،]/g, '') : s.replace(/[,،]/g, '.');
   s = s.replace(/[^0-9.]/g,'');
   const i = s.indexOf('.');
   if(i!==-1) s = s.slice(0,i+1) + s.slice(i+1).replace(/\./g,'');
@@ -2974,6 +2979,9 @@ async function adminLoad(){
 
 
 async function setStatus(id, st){
+  // بنمسك الرقم قبل أي حاجة: التسليم بيشيل الصف من القايمة، وبعدها مش هنلاقي
+  // رقمه التسلسلي فالرسالة كانت بترجع للكود الداخلي
+  const رقم_الطلب = adminOrderNoText_(id);
   state.admin.busy = id; render();
   try{
     const d = await jsonp(APPS_SCRIPT_URL
@@ -2987,9 +2995,9 @@ async function setStatus(id, st){
       // تسليم الطلب بيأرشفه أوتوماتيك — يتشال من القايمة النشطة على طول
       state.admin.rows = (state.admin.rows||[]).filter(o=>String(o.id)!==String(id));
       state.admin.archRows = null;   // الكاش بقى قديم، هيتحمّل تاني لما المصنع يفتح الأرشيف
-      toast('اتحدّثت حالة #' + id + ' → ' + (STATUS[st] ? STATUS[st].ar : st) + ' — واتأرشف تلقائي');
+      toast('اتحدّثت حالة الطلب ' + رقم_الطلب + ' → ' + (STATUS[st] ? STATUS[st].ar : st) + ' — واتأرشف تلقائي');
     } else {
-      toast('اتحدّثت حالة #' + id + ' → ' + (STATUS[st] ? STATUS[st].ar : st));
+      toast('اتحدّثت حالة الطلب ' + رقم_الطلب + ' → ' + (STATUS[st] ? STATUS[st].ar : st));
     }
   }catch(err){
     toast('تعذّر التحديث: ' + (err.message || err));
@@ -3023,7 +3031,7 @@ async function unarchiveOrder(id){
     const o = (a.archRows||[]).find(x=>String(x.id)===String(id));
     a.archRows = (a.archRows||[]).filter(x=>String(x.id)!==String(id));
     if(o){ a.rows = a.rows || []; a.rows.unshift(o); }
-    toast('اتحدّث الطلب #'+id+' ورجع للطلبات النشطة');
+    toast('الطلب '+(o?orderNoText_(o):('#'+id))+' رجع للطلبات النشطة');
   }catch(err){
     toast('تعذّر الإرجاع: ' + (err.message || err));
   }
@@ -3031,7 +3039,8 @@ async function unarchiveOrder(id){
 }
 
 async function deleteOrder(id){
-  if(!confirm('تأكيد حذف الطلب #'+id+'؟ الإجراء ده نهائي ومش هيترجع.')) return;
+  if(!confirm('تأكيد حذف الطلب '+adminOrderNoText_(id)+'؟ الإجراء ده نهائي ومش هيترجع.')) return;
+  const رقم_الطلب = adminOrderNoText_(id);
   state.admin.delBusy = id; render();
   try{
     const d = await jsonp(APPS_SCRIPT_URL
@@ -3041,7 +3050,7 @@ async function deleteOrder(id){
     state.admin.rows = (state.admin.rows||[]).filter(o=>String(o.id)!==String(id));
     if(state.admin.archRows) state.admin.archRows = state.admin.archRows.filter(o=>String(o.id)!==String(id));
     delete state.admin.items[id]; delete state.admin.itemsOpen[id];
-    toast('اتحذف الطلب #' + id);
+    toast('اتحذف الطلب ' + رقم_الطلب);
   }catch(err){
     toast('تعذّر الحذف: ' + (err.message || err));
   }
@@ -5507,8 +5516,6 @@ document.addEventListener('input',e=>{
   if(a==='size-qty-set'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.qty=Math.max(1,parseInt(el.value,10)||1); refreshSummary(); return; }
   if(a==='cust-qty-set'){ state.pick.custom.qty=Math.max(1,parseInt(el.value,10)||1); refreshSummary(); return; }
   if(a==='acc-set'){ state.acc[el.dataset.id]=Math.max(0,parseFloat(el.value)||0); refreshAccBtn(); return; }
-  if(a==='fr-jamb'){ state.fr.jamb=el.value; render(); return; }
-  if(a==='fr-header'){ state.fr.header=el.value; render(); return; }
   if(a==='fr-jambCm'){ state.fr.jambCm=decIn_(el.value); render(); return; }
   if(a==='fr-headerCm'){ state.fr.headerCm=decIn_(el.value); render(); return; }
   if(a==='fr-qty'){ state.fr.qty=el.value; render(); return; }
@@ -6083,6 +6090,13 @@ function adminEditOrderWith_(o, its){
 // بتدوّر في state.admin.rows بس. الأرشيف بيعرض نفس الأزرار، والطلب المؤرشف مش
 // في القايمة دي — فالزرار كان بيتضغط ومفيش أي حاجة تحصل ولا رسالة تظهر.
 // تلات أزرار بس كانوا بيدوّروا في الاتنين. بقى نداء واحد للكل.
+// ⚠️ التوستات وتأكيد الحذف كانوا بيكتبوا الكود الداخلي (#W260904-1234ABC)
+// والمصنع شايف على الكارت الرقم التسلسلي (#33) — فمش عارف الرسالة دي بتتكلم
+// عن أنهي طلب. وده على زرار حذف نهائي. بنكتب الرقم اللي هو شايفه.
+function adminOrderNoText_(id){
+  const o = adminOrderById_(id);
+  return o ? orderNoText_(o) : ('#' + id);
+}
 function adminOrderById_(id){
   const key = String(id);
   return (state.admin.rows||[]).find(x=>String(x.id)===key)

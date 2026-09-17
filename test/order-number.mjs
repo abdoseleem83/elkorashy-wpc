@@ -64,6 +64,26 @@ check('المستند بيعرض نفس الرقم «417/2»', doc.includes('417
 check('الرقم واحد في الشاشتين والمستند', dist[0] === adm[0] && adm[0] === doc[0],
       `الموزع ${dist[0]} · المصنع ${adm[0]} · المستند ${doc[0]}`);
 
+// ⚠️ الرسائل وتأكيد الحذف في شاشة المصنع كانوا لسه بيكتبوا الكود الداخلي —
+// والمصنع شايف على الكارت الرقم التسلسلي. على زرار حذف نهائي ده خطر: ممكن
+// يأكّد حذف وهو فاكر إنه طلب تاني.
+const رسائل = await pg.evaluate(async ()=>{
+  const out=[]; window.toast=t=>out.push(String(t)); window.render=()=>{}; window.busy=()=>{};
+  window.confirm = m => { out.push('تأكيد: '+m); return false; };
+  Object.assign(state.admin, {open:true, items:{}, itemsOpen:{}, archRows:[],
+    rows:[{id:'W260904-1234ABC', displayNo:33, editCount:1, dist:'محمد', status:'Ready'}]});
+  await deleteOrder('W260904-1234ABC');
+  window.jsonp = async ()=>({ok:true, archived:true});
+  await setStatus('W260904-1234ABC','Delivered');
+  return out;
+});
+check('تأكيد الحذف بيكتب الرقم اللي المصنع شايفه',
+  رسائل.some(t=>/تأكيد:/.test(t) && /33\/1/.test(t) && !/W260904/.test(t)),
+  رسائل.join(' | '));
+check('ورسالة التسليم (اللي بتأرشف الطلب) كمان',
+  رسائل.some(t=>/تم التسليم/.test(t) && /33\/1/.test(t) && !/W260904/.test(t)),
+  رسائل.join(' | '));
+
 check('مفيش أخطاء صفحة', errs.length === 0, errs.join(' | '));
 console.log(`\nالنتيجة: ${pass} نجحت، ${fail} فشلت`);
 await b.close();
