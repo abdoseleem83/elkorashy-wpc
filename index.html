@@ -1099,7 +1099,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v191';
+const APP_BUILD   = 'v192';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2938,6 +2938,20 @@ async function loadTrack(){
 // الشاشة أو يبدّل تبويب.
 // دلوقتي بنحفظ آخر قايمة وصلت، وبنعرضها فورًا وإحنا بنجيب الجديدة في الخلفية.
 // الشاشة بتفتح على طول، والأرقام بتتحدّث لوحدها أول ما الرد يوصل.
+// ⚠️ باج تاني كان بيخلّي الحذف «ما يمسكش»: الفحص الخلفي بيجيب قايمة الطلبات
+// كل ٩٠ ثانية، وبيكتبها فوق القايمة المعروضة. لو النداء ده كان طالع قبل الحذف
+// (أو طلع وقت ما الحذف لسه شغّال على السيرفر)، الرد بييجي وفيه الطلب المحذوف
+// — فالسطر بيرجع يبان تاني بعد ثواني، والمصنع يفتكر إن الحذف مش بيشتغل.
+// بنفتكر اللي اتحذف من هنا لمدة ٥ دقايق، وبنشيله من أي قايمة جاية من السيرفر.
+const _deletedIds = new Map();          // معرّف الطلب → وقت الحذف
+const DELETED_TTL_MS = 5 * 60 * 1000;
+function dropDeleted_(rows){
+  const now = Date.now();
+  _deletedIds.forEach((t,id)=>{ if(now - t > DELETED_TTL_MS) _deletedIds.delete(id); });
+  if(!_deletedIds.size) return rows || [];
+  return (rows || []).filter(o => !_deletedIds.has(String(o.id)));
+}
+
 const LS_ADM_CACHE = 'wpc_adm_rows';
 
 function saveAdminCache_(rows){
@@ -2967,7 +2981,7 @@ async function adminLoad(){
   try{
     const d = await jsonp(APPS_SCRIPT_URL + '?action=list' + admParams_());
     if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
-    state.admin.rows = d.orders || [];
+    state.admin.rows = dropDeleted_(d.orders);
     state.admin.open = true;
     state.admin.staleAt = null;         // البيانات بقت من السيرفر مباشرة
     saveAdminCache_(state.admin.rows);
@@ -3025,7 +3039,7 @@ async function loadArchive(force){
   try{
     const d = await jsonp(APPS_SCRIPT_URL + '?action=list' + admParams_() + '&archived=1');
     if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
-    a.archRows = d.orders || [];
+    a.archRows = dropDeleted_(d.orders);
   }catch(err){
     toast('تعذّر تحميل الأرشيف: ' + (err.message || err));
     a.archRows = a.archRows || [];
@@ -3051,19 +3065,54 @@ async function unarchiveOrder(id){
   a.archBusy = null; render();
 }
 
+// بيشيل الطلب من كل نسخ الشاشة (النشط + الأرشيف + الأصناف المحمّلة)
+function forgetOrderLocally_(id){
+  _deletedIds.set(String(id), Date.now());
+  state.admin.rows = (state.admin.rows||[]).filter(o=>String(o.id)!==String(id));
+  if(state.admin.archRows) state.admin.archRows = state.admin.archRows.filter(o=>String(o.id)!==String(id));
+  delete state.admin.items[id]; delete state.admin.itemsOpen[id];
+  saveAdminCache_(state.admin.rows||[]);
+}
+
+// ⚠️ «الحذف بيعلّق والسطر مش بيتمسح من الشيت»:
+// الحذف كتابة تقيلة (سطر ملخّص + كل سطور الأصناف + رجوع الرصيد)، والرد بيرجع
+// عن طريق JSONP. لو المهلة خلصت أو النت قطع بعد ما السيرفر اشتغل فعلًا،
+// التطبيق كان بيقول «تعذّر الحذف» والسطر يفضل في الشاشة — والمصنع يضغط تاني
+// ويلاقي «الطلب مش موجود»، فيفتكر إن الحذف مش شغّال.
+// دلوقتي: مهلة أطول للحذف، ومحاولة تانية أوتوماتيك لو الاتصال قطع
+// (الحذف على السيرفر بقى مُعاد التنفيذ بأمان)، و«الطلب مش موجود» =
+// يعني اتمسح خلاص، فبنشيله من الشاشة بدل ما نسيبه معلّق.
+const DELETE_TIMEOUT_MS = 60000;
+
+async function deleteOrderCall_(id){
+  const d = await jsonp(APPS_SCRIPT_URL
+    + '?action=deleteOrder' + admParams_()
+    + '&id=' + encodeURIComponent(id), DELETE_TIMEOUT_MS);
+  if(d && d.ok) return { gone:true, already:!!d.alreadyGone };
+  const msg = (d && d.error) || 'فشل الحذف';
+  if(/مش موجود/.test(msg)) return { gone:true, already:true };   // اتمسح قبل كده
+  // رد فعلي من السيرفر (كلمة سر غلط مثلاً) — إعادة المحاولة مش هتفيد
+  const err = new Error(msg); err.fromServer = true; throw err;
+}
+
 async function deleteOrder(id){
   if(!confirm('تأكيد حذف الطلب '+adminOrderNoText_(id)+'؟ الإجراء ده نهائي ومش هيترجع.')) return;
   const رقم_الطلب = adminOrderNoText_(id);
   state.admin.delBusy = id; render();
   try{
-    const d = await jsonp(APPS_SCRIPT_URL
-      + '?action=deleteOrder' + admParams_()
-      + '&id=' + encodeURIComponent(id));
-    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل الحذف');
-    state.admin.rows = (state.admin.rows||[]).filter(o=>String(o.id)!==String(id));
-    if(state.admin.archRows) state.admin.archRows = state.admin.archRows.filter(o=>String(o.id)!==String(id));
-    delete state.admin.items[id]; delete state.admin.itemsOpen[id];
-    toast('اتحذف الطلب ' + رقم_الطلب);
+    let r;
+    try{
+      r = await deleteOrderCall_(id);
+    }catch(err1){
+      // السيرفر رد برفض واضح؟ مفيش فايدة من إعادة المحاولة
+      if(err1 && err1.fromServer) throw err1;
+      // فشل اتصال/مهلة؟ نعيد النداء مرة واحدة — لو الأولى نجحت على السيرفر
+      // التانية هترجع «اتمسح خلاص»، ولو ما نجحتش هتكمّل الشغل اللي وقف
+      r = await deleteOrderCall_(id);
+    }
+    forgetOrderLocally_(id);
+    toast(r.already ? ('الطلب ' + رقم_الطلب + ' كان متحذف خلاص — اتشال من القايمة')
+                    : ('اتحذف الطلب ' + رقم_الطلب));
   }catch(err){
     toast('تعذّر الحذف: ' + (err.message || err));
   }
@@ -3082,6 +3131,10 @@ async function clearDeliveredOrders(){
     const d = await jsonp(APPS_SCRIPT_URL
       + '?action=deleteDelivered' + admParams_());
     if(!d || !d.ok) throw new Error((d && d.error) || 'فشل المسح');
+    // نفس حكاية الفحص الخلفي: اللي اتمسح دلوقتي ممكن يرجع في رد قايمة
+    // كان طالع قبل المسح — فبنفتكره ونشيله من أي قايمة جاية
+    (d.ids || list.filter(o=>o.status==='Delivered').map(o=>o.id))
+      .forEach(id=>_deletedIds.set(String(id), Date.now()));
     state.admin.archRows = list.filter(o=>o.status!=='Delivered');
     state.admin.rows = (state.admin.rows||[]).filter(o=>o.status!=='Delivered');
     Object.keys(state.admin.items||{}).forEach(id=>{
@@ -4716,7 +4769,7 @@ async function adminPoll(){
   try{
     const d = await jsonp(APPS_SCRIPT_URL + '?action=list' + admParams_());
     if(!d || !d.ok) return;
-    const rows = d.orders || [];
+    const rows = dropDeleted_(d.orders);
     const seen = loadAdminSeen_();
     // ⚠️ أول تشغيلة على جهاز جديد: مفيش أي طلب متسجّل كـ«مشوف»، فكل الطلبات
     // الموجودة هتبان جديدة والنافذة هتفتح بقايمة كاملة. markAdminSeen_ بتتنادى

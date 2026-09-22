@@ -754,7 +754,13 @@ function doGet(e) {
         lockCO.waitLock(15000);
         var shCO = sheet_(SHEET_ORDERS, HEAD_ORDERS);
         var rCO = findRow_(shCO, e.parameter.id);
-        if (rCO < 0) return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
+        if (rCO < 0) {
+          // السطر الملخّص مش موجود — يا إما اتمسح خلاص، يا إما نداء إلغاء سابق
+          // وقف في نصه وساب سطور الأصناف يتيمة في الشيت. بننضّفها هنا (سطور
+          // مالهاش طلب أصلاً، ومفيش حاجة تتفتح عليها) والرد زي ما هو.
+          clearItemRows_(sheet_(SHEET_ITEMS, HEAD_ITEMS), e.parameter.id);
+          return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
+        }
 
         var isAdminCO = isAdminPwQuiet_(e.parameter.pw);   // المستخدم العادي بيلغي طلبه برقم موبايله، مش بكلمة سر
         if (!isAdminCO && !rateOk_('cancelOrder', e.parameter.dev)) {
@@ -803,14 +809,25 @@ function doGet(e) {
         lockDO.waitLock(15000);
         var shDO = sheet_(SHEET_ORDERS, HEAD_ORDERS);
         var rDO = findRow_(shDO, e.parameter.id);
-        if (rDO < 0) return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
-        var stDO = String(shDO.getRange(rDO, COL_STATUS).getValue() || '');
-        shDO.deleteRow(rDO);
-        // زي cancelOrder: المسلَّم مالوش رصيد يرجع، والملغي رصيده رجع قبل كده
-        if (stDO !== 'Delivered' && stDO !== 'Cancelled') restoreStockForOrderId_(e.parameter.id);
+        // ⚠️ باج كان بيخلّي الحذف "يعلّق" والسطور تفضل في الشيت:
+        // الحذف بيمسح السطر الملخّص الأول وبعدين سطور الأصناف. لو النداء وقف في
+        // النص (مهلة جوجل، النت قطع، الموزع قفل الشاشة) بيبقى السطر الملخّص
+        // اتمسح وسطور الأصناف فاضلة. أول ما المصنع يضغط حذف تاني كان الرد
+        // "الطلب مش موجود" — يعني سطور الأصناف تفضل في الشيت للأبد، والسطر
+        // في الشاشة ما بيختفيش (التطبيق بيشيله بس لما الرد يبقى ok).
+        // دلوقتي الحذف بقى *مُعاد التنفيذ بأمان*: السطر الملخّص مش موجود؟
+        // يبقى اتمسح قبل كده (ورصيده رجع قبل كده) — نكمّل تنظيف الأصناف ونرد ok.
+        var stDO = rDO > 0 ? String(shDO.getRange(rDO, COL_STATUS).getValue() || '') : '';
+        if (rDO > 0) {
+          shDO.deleteRow(rDO);
+          // زي cancelOrder: المسلَّم مالوش رصيد يرجع، والملغي رصيده رجع قبل كده
+          if (stDO !== 'Delivered' && stDO !== 'Cancelled') restoreStockForOrderId_(e.parameter.id);
+        }
         var shIDO = sheet_(SHEET_ITEMS, HEAD_ITEMS);
-        clearItemRows_(shIDO, e.parameter.id);
-        return reply({ ok: true, id: e.parameter.id }, cb);
+        var nDO = clearItemRows_(shIDO, e.parameter.id);
+        // مفيش سطر ملخّص ولا سطر صنف؟ يبقى الطلب أصلاً مش في الشيت
+        if (rDO < 0 && !nDO) return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
+        return reply({ ok: true, id: e.parameter.id, alreadyGone: rDO < 0 }, cb);
       } finally {
         try { lockDO.releaseLock(); } catch (eDO) {}
       }
@@ -1577,11 +1594,14 @@ function clearItemRowsMany_(sh, ids) {
   }
 }
 
+// بترجّع عدد السطور اللي اتمسحت فعلاً — الحذف بيستعمله عشان يعرف
+// إذا كان الطلب موجود في الشيت أصلاً ولا لأ
 function clearItemRows_(sh, id) {
   var last = sh.getLastRow();
-  if (last < 2) return;
+  if (last < 2) return 0;
   var ids = sh.getRange(2, 1, last - 1, 1).getValues();
   var key = String(id);
+  var done = 0;
   // من تحت لفوق عشان أرقام السطور ما تتغيّرش وإحنا شغالين
   var i = ids.length - 1;
   while (i >= 0) {
@@ -1590,7 +1610,9 @@ function clearItemRows_(sh, id) {
     while (i >= 0 && String(ids[i][0]) === key) i--;
     var start = i + 1;                            // أول سطر فيها
     sh.deleteRows(start + 2, end - start + 1);
+    done += end - start + 1;
   }
+  return done;
 }
 
 function json(obj) {
