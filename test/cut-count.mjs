@@ -28,7 +28,7 @@ const ctx = {
   String, Number, Object, Array,
   SHEET_ITEMS:'Order_Items', SHEET_ORDERS:'Orders',
   HEAD_ITEMS:new Array(NCOLS).fill(''), HEAD_ORDERS:new Array(20).fill(''),
-  CUT_SERVICE_CODE_:'CUT', WOOD_SERVICE_CODE_:'WOOD',
+  CUT_SERVICE_CODE_:'CUT', WOOD_SERVICE_CODE_:'WOOD', PRINT_SERVICE_CODE_:'PRINT',
   sheet_: () => ({}),
   itemRowsFor_: () => ({ rows: سطور }),
   findRow_: () => 5
@@ -82,7 +82,7 @@ const قصC = (size, h, qty) => { const r=new Array(NCOLS).fill('');
 function شغّل(سطور){
   const s = شيتCut(سطور);
   const c = { String, Number, Object, Array, RegExp,
-    CUT_SERVICE_CODE_:'CUT', WOOD_SERVICE_CODE_:'WOOD', Math,
+    CUT_SERVICE_CODE_:'CUT', WOOD_SERVICE_CODE_:'WOOD', PRINT_SERVICE_CODE_:'PRINT', Math,
     DOOR_STD_HEIGHT_:215, HEAD_ITEMS:new Array(NCOLS).fill('') };
   vm.createContext(c);
   vm.runInContext(grab('itemRowsForMany_')+'\n'+grab('itemRowsFor_')+'\n'+grab('isServiceCode_')+'\n'
@@ -113,7 +113,7 @@ check('الارتفاع الاستاندر مالوش بند قص', r.length===1
 {
   const s = شيتCut([ بابC('90x206 cm (custom)','',2), قصC('90x206 cm (custom)','',2) ]);
   const c = { String, Number, Object, Array, RegExp,
-    CUT_SERVICE_CODE_:'CUT', WOOD_SERVICE_CODE_:'WOOD', Math,
+    CUT_SERVICE_CODE_:'CUT', WOOD_SERVICE_CODE_:'WOOD', PRINT_SERVICE_CODE_:'PRINT', Math,
     DOOR_STD_HEIGHT_:215, HEAD_ITEMS:new Array(NCOLS).fill('') };
   vm.createContext(c);
   vm.runInContext(grab('itemRowsForMany_')+'\n'+grab('itemRowsFor_')+'\n'+grab('isServiceCode_')+'\n'
@@ -128,7 +128,7 @@ check('الارتفاع الاستاندر مالوش بند قص', r.length===1
 function عدد_التغييرات(سطور){
   const s = شيتCut(سطور);
   const c = { String, Number, Object, Array, RegExp,
-    CUT_SERVICE_CODE_:'CUT', WOOD_SERVICE_CODE_:'WOOD', Math,
+    CUT_SERVICE_CODE_:'CUT', WOOD_SERVICE_CODE_:'WOOD', PRINT_SERVICE_CODE_:'PRINT', Math,
     DOOR_STD_HEIGHT_:215, HEAD_ITEMS:new Array(NCOLS).fill('') };
   vm.createContext(c);
   vm.runInContext(grab('itemRowsForMany_')+'\n'+grab('itemRowsFor_')+'\n'+grab('isServiceCode_')+'\n'

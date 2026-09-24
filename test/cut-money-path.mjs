@@ -40,7 +40,7 @@ check('بند القص شايل مقاس الباب عشان السيرفر ير
 
 // ── ٢) سطور السيرفر: نبنيها بنفس منطق newOrder ─────────────────────────
 const ctx = { String, Number, Object, Array, RegExp, Math,
-  CUT_SERVICE_CODE_:'CUT', WOOD_SERVICE_CODE_:'WOOD',
+  CUT_SERVICE_CODE_:'CUT', WOOD_SERVICE_CODE_:'WOOD', PRINT_SERVICE_CODE_:'PRINT',
   DOOR_STD_HEIGHT_:215, HEAD_ITEMS:new Array(NCOLS).fill('') };
 vm.createContext(ctx);
 vm.runInContext(grab('itemRowsForMany_')+'\n'+grab('itemRowsFor_')+'\n'+grab('isServiceCode_')+'\n'
