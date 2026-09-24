@@ -48,9 +48,13 @@ check('وعنوانه فيه مقاس الباب', /^طباعة\s*—\s*\d+\s*س
 check('سعره سعر الطباعة', r.سعر===r.قيمة, String(r.سعر));
 check('وبيتحسب في الإجمالي', r.إجمالي === r.أساسي*3 + r.قيمة*3, String(r.إجمالي));
 
-// ٣) بيبان في عرض السعر بس (زي القص) — مش في ورقة المصنع
+// ٣) «زيها زي الحفر والقص»:
+//    • بند مستقل بسعره في عرض السعر للعميل — زي «خدمة قص» (مش في ورقة المصنع)
+//    • وعلامة «(طباعة)» على سطر الباب نفسه — زي «(حفر)» بالظبط، فالمصنع
+//      بيشوف أنهي باب عليه طباعة في الواتساب والإكسل وورقة الأوردر
 const أين = await pg.evaluate(()=>{
-  const باب = {kind:'door', title:'باب A02 خشبي', code:'A02', sizeTxt:'70 سم', sizeEn:'70 cm',
+  const باب = {kind:'door', title:'باب A02 خشبي (طباعة)', titleEn:'WPC Door A02 - Wood (Print)',
+    code:'A02', sizeTxt:'70 سم', sizeEn:'70 cm',
     unitPrice:5200, qty:2, w:'70', frame:0, dbror:'', frameHeight:0, doorHeight:0, print:true, note:''};
   const طبع = {kind:'acc', id:'PRINT', code:'PRINT', unit:'باب', qty:2, price:200,
     title:'طباعة — 70 سم', spec:'70 cm'};
@@ -58,17 +62,46 @@ const أين = await pg.evaluate(()=>{
     title:'تدعيم خشب — 70 سم', spec:'70 cm'};
   const o = { id:'P1', no:'1/1', name:'اسلام', phone:'01000000000', date:'2026-09-10',
               items:[باب, طبع, خشب], total:5200*2+400+600 };
-  return { عرض: /طباعة/.test(docHTML(o,'quote',true)),
-           ورقة: /طباعة/.test(docHTML(o,'order',true)),
-           خشب_ورقة: /تدعيم خشب/.test(docHTML(o,'order',true)),
-           واتساب: /طباعة/.test(buildMessage(o)),
+  const ورقة = docHTML(o,'order',true), عرض = docHTML(o,'quote',true), رسالة = buildMessage(o);
+  const بند = /<b>طباعة<\/b>/;            // سطر البند المستقل بسعره في الجدول
+  const علامة = /\(طباعة\)/;              // العلامة على سطر الباب
+  return { بند_عرض: بند.test(عرض), بند_ورقة: بند.test(ورقة),
+           بند_واتساب: /طباعة\s*—\s*70/.test(رسالة),
+           علامة_ورقة: علامة.test(ورقة), علامة_واتساب: علامة.test(رسالة), علامة_عرض: علامة.test(عرض),
+           خشب_ورقة: /تدعيم خشب/.test(ورقة),
            quoteOnly: quoteOnlyLine_(طبع) };
 });
-check('الطباعة بتبان في عرض السعر للعميل', أين.عرض===true);
-check('ومابتبانش في ورقة المصنع (زي القص)', أين.ورقة===false);
+check('بند الطباعة بسعره بيبان في عرض السعر للعميل', أين.بند_عرض===true);
+check('والبند مابيتحسبش على المصنع في ورقة الأوردر (زي القص)', أين.بند_ورقة===false);
+check('ولا في رسالة الواتساب', أين.بند_واتساب===false);
+check('لكن علامة «(طباعة)» بتبان للمصنع في ورقة الأوردر (زي الحفر)', أين.علامة_ورقة===true);
+check('وفي رسالة الواتساب كمان', أين.علامة_واتساب===true);
+check('وفي عرض السعر برضه', أين.علامة_عرض===true);
 check('والتدعيم فاضل بيبان في ورقة المصنع زي ما هو', أين.خشب_ورقة===true);
-check('ومابتتبعتش في رسالة الواتساب للمصنع', أين.واتساب===false);
-check('quoteOnlyLine_ شايفاها بند عرض سعر', أين.quoteOnly===true);
+check('quoteOnlyLine_ شايفة البند بند عرض سعر', أين.quoteOnly===true);
+
+// ٣ب) العلامة بتتكتب على الباب وقت الإضافة، وبترجع من الاسم المخزّن في الشيت
+const علامة = await pg.evaluate(()=>{
+  state.cart = [];
+  const d = DOORS[0], w = SIZES[0].w;
+  state.pick = { code:d.code, sizes:{ [w]:{qty:1, height:'', frame:0, dbror:'', hafr:true, wood:false, print:true,
+                   frameKind:null, frameRodQty:'', frameForDoors:''} },
+    customOn:false, custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,
+      frameKind:null,frameRodQty:'',frameForDoors:''} };
+  const old=window.toast; window.toast=()=>{}; addDoor(); window.toast=old;
+  const باب = state.cart.find(it=>it.kind==='door');
+  const out = { ar:باب.title, en:باب.titleEn,
+    // ده اللي السيرفر بيرجّعه: الاسم الإنجليزي + عمود الحفر
+    من_الشيت: arabicItemTitle_({type:'Door', code:d.code, title:باب.titleEn, milling:'Carved'}),
+    بدون: arabicItemTitle_({type:'Door', code:d.code, title:'WPC Door '+d.code+' - '+d.en, milling:''}) };
+  state.cart = [];
+  return out;
+});
+check('العلامة بتتكتب على اسم الباب عربي', /\(طباعة\)/.test(علامة.ar), علامة.ar);
+check('وإنجليزي (ده اللي بيتخزّن في الشيت)', /\(Print\)/.test(علامة.en), علامة.en);
+check('والحفر والطباعة بيتجمّعوا على نفس السطر', /\(حفر\).*\(طباعة\)/.test(علامة.ar), علامة.ar);
+check('والاسم العربي بيترجع من الشيت بالعلامتين', علامة.من_الشيت===علامة.ar, علامة.من_الشيت);
+check('وباب من غير طباعة مافيهوش علامة', !/طباعة/.test(علامة.بدون), علامة.بدون);
 
 // ٤) بتمشي مع الباب: الكمية تتغيّر، والبند يتشال لما الاختيار يتلغي
 const مزامنة = await pg.evaluate(()=>{
