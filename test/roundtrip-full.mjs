@@ -74,7 +74,7 @@ const ctx = {
   sheet_: n => mkSheet(n), adjustStockForItems_: ()=>{},
   nextOrderDisplayNo_: ()=>501, findRow_: ()=>-1, clearItemRows_: ()=>{}
 };
-['TZ','SHEET_ORDERS','SHEET_ITEMS','CUT_SERVICE_CODE_','WOOD_SERVICE_CODE_','PRICE_NOTE',
+['TZ','SHEET_ORDERS','SHEET_ITEMS','CUT_SERVICE_CODE_','WOOD_SERVICE_CODE_','PRINT_SERVICE_CODE_','PRICE_NOTE',
  'COL_STATUS','COL_NOTE','COL_REPLACES','COL_DISPLAY_NO','COL_EDITED_AT'].forEach(n=>{
   const m = new RegExp('var '+n+'\\s*=\\s*(.+?);').exec(gs); if(m) ctx[n]=eval(m[1]);
 });
