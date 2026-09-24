@@ -29,9 +29,10 @@
 // أكواد بنود الخدمة على الباب — بتتحسب في الفلوس بس، مش في عدد القطع
 var CUT_SERVICE_CODE_ = 'CUT';
 var WOOD_SERVICE_CODE_ = 'WOOD';
+var PRINT_SERVICE_CODE_ = 'PRINT';
 function isServiceCode_(code){
   var c = String(code || '');
-  return c === CUT_SERVICE_CODE_ || c === WOOD_SERVICE_CODE_;
+  return c === CUT_SERVICE_CODE_ || c === WOOD_SERVICE_CODE_ || c === PRINT_SERVICE_CODE_;
 }
 var DOOR_STD_HEIGHT_ = 215;   // الارتفاع الاستاندر — أي ارتفاع غيره معناه قص
 var SHEET_ORDERS = 'Orders';
@@ -1268,7 +1269,10 @@ function syncCutRows_(shI, id) {
     var key = cutRowKey_(c.row[6], c.row[19]);
     var cur = Number(c.row[10]) || 0;
     var want;
-    if (String(c.row[5]) === WOOD_SERVICE_CODE_) {
+    // القص السيرفر بيستنتجه من المقاس نفسه. أي بند خدمة تاني (تدعيم/طباعة)
+    // اختيار من الموزّع ومش متسجّل على سطر الباب — فبيتعامل بنفس الطريقة:
+    // نقدر نقصّه لعدد أبواب مقاسه، مانقدرش نستنتجه.
+    if (String(c.row[5]) !== CUT_SERVICE_CODE_) {
       // ⚠️ مافيش سطر للمقاس ده في group ممكن يكون معناه حاجتين: إما البند
       // قديم ومالوش مقاس مكتوب (مانخمّنش)، وإما المقاس اتشال بالكامل من
       // الطلب (لازم البند يتشال معاه). بنفرّق بينهم بوجود المقاس نفسه.

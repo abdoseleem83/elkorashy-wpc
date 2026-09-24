@@ -1099,7 +1099,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v192';
+const APP_BUILD   = 'v193';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1153,6 +1153,8 @@ function doorNeedsCut_(it){
 }
 // تدعيم الخشب اختيار من الموزّع على الباب نفسه (مش محسوب من المقاس زي القص).
 function doorNeedsWood_(it){ return !!(it && it.kind==='door' && it.wood); }
+// الطباعة زي التدعيم: اختيار صريح من الموزّع على الباب نفسه.
+function doorNeedsPrint_(it){ return !!(it && it.kind==='door' && it.print); }
 
 /* ---------- بنود الخدمة على الباب ----------
    بند الخدمة صنف حقيقي في الطلب بكميته وسعره، بيتولّد تلقائي من الأبواب
@@ -1161,11 +1163,21 @@ function doorNeedsWood_(it){ return !!(it && it.kind==='door' && it.wood); }
    quoteOnly: القص المصنع بيعرفه من المقاس نفسه فمالوش لازمة في ورقة الشغل.
    لكن التدعيم مش باين من أي حاجة — لازم يوصل للمصنع، فبيتكتب في الورقتين. */
 const SERVICE_LINES_ = [
-  { code:'CUT',  label:'خدمة قص',  needs:doorNeedsCut_,  priceKey:'customExtra', quoteOnly:true  },
-  { code:'WOOD', label:'تدعيم خشب', needs:doorNeedsWood_, priceKey:'woodExtra',   quoteOnly:false }
+  { code:'CUT',   label:'خدمة قص',  needs:doorNeedsCut_,   priceKey:'customExtra', quoteOnly:true  },
+  { code:'WOOD',  label:'تدعيم خشب', needs:doorNeedsWood_,  priceKey:'woodExtra',   quoteOnly:false },
+  { code:'PRINT', label:'طباعة',    needs:doorNeedsPrint_, priceKey:'printExtra',  quoteOnly:true  }
 ];
+// ⚠️ كانت ثلاثية (قص وإلا تدعيم) — أي بند خدمة جديد كان بياخد سعر التدعيم
+// من غير ما حد ياخد باله. بقت بتقرا من الجدول نفسه.
+const SERVICE_PRICE_GETTERS_ = {
+  customExtra: () => CUSTOM_EXTRA,
+  woodExtra:   () => WOOD_EXTRA,
+  printExtra:  () => PRINT_EXTRA
+};
 function servicePrice_(code){
-  return code===CUT_SERVICE_CODE_ ? CUSTOM_EXTRA : WOOD_EXTRA;
+  const def = SERVICE_LINES_.find(d=>d.code===code);
+  const get = def && SERVICE_PRICE_GETTERS_[def.priceKey];
+  return get ? (Number(get())||0) : 0;
 }
 function serviceDefFor_(it){
   if(!it) return null;
@@ -1295,6 +1307,7 @@ function sizeColor_(w){ return SIZE_COLOR_PALETTE[SIZE_COLOR_OVERRIDES[w]] || SI
 let CUSTOM_EXTRA = 300;
 let HAFR_EXTRA = 600;   // باب حفر — زيادة ثابتة فوق سعر الباب العادي لنفس المقاس
 let WOOD_EXTRA = 300;   // تدعيم خشب — بند مستقل تحت الباب، بيتحسب لكل باب متختار له
+let PRINT_EXTRA = 200;  // طباعة — بند مستقل تحت الباب، بيتحسب لكل باب متختار له
 
 /* الحلق — سعر المتر الطولي، وبيتباع بالعود 2.15 م */
 const FRAMES = [{cm:10,price:117.81},{cm:15,price:144.14},{cm:20,price:170.47}];
@@ -1337,7 +1350,7 @@ const PRICE_TIERS = {
 };
 // كل مستوى سعر (جملة/عميل) بيتخزّن كقيمة مستقلة لكل صنف — مش بيتحسب تلقائي من زيادة ثابتة.
 // الزيادات فوق (doorAdd/otherAdd) بتُستخدم بس كقيمة مبدئية أول مرة تفتح فيها شاشة تعديل الأسعار قبل ما تحفظ حاجة بنفسك.
-const TIER_OVERRIDES = { showroom:{sizes:{},customExtra:null,woodExtra:null,hafrExtra:null,frames:{},brors:{},acc:{},panel:{}} };
+const TIER_OVERRIDES = { showroom:{sizes:{},customExtra:null,woodExtra:null,printExtra:null,hafrExtra:null,frames:{},brors:{},acc:{},panel:{}} };
 const ACC_EN_TO_ID_ = {}; ACCESSORIES.forEach(a=>{ ACC_EN_TO_ID_[a.en] = a.id; });
 // بيرجّع سعر الصنف على مستوى معيّن (جملة/عميل). لو الصنف ده اتحفظله سعر مخصوص لنفس المستوى بيترجع هو،
 // وإلا بيترجع سعر الجملة + الزيادة الافتراضية للمستوى (fallback للأصناف اللي لسه محدّش عدّل سعرها بنفسه).
@@ -1352,7 +1365,7 @@ function tierPrice(basePrice, kind, tierKey, key, opts){
   const ov = TIER_OVERRIDES[tierKey];
   // «خدمة قص» سعرها واحد في كل المستويات إلا لو المصنع حفظ للمستوى ده قيمة
   // بنفسه. الزيادة الافتراضية للمستوى مالهاش لازمة هنا — كانت بتطلّع 300.5.
-  if(key==='customExtra' || key==='woodExtra'){
+  if(key==='customExtra' || key==='woodExtra' || key==='printExtra'){
     return (ov && ov[key]!=null) ? (Number(ov[key])||0) : (Number(basePrice)||0);
   }
   const حفر = !!(opts && opts.hafr) && kind==='door';
@@ -1396,6 +1409,7 @@ function applyPriceOverrides(){
   if(dist.sizes) SIZES.forEach(s=>{ if(dist.sizes[s.w]!=null) s.price=Number(dist.sizes[s.w])||0; });
   if(dist.customExtra!=null) CUSTOM_EXTRA = Number(dist.customExtra)||0;
   if(dist.woodExtra!=null) WOOD_EXTRA = Number(dist.woodExtra)||0;
+  if(dist.printExtra!=null) PRINT_EXTRA = Number(dist.printExtra)||0;
   if(dist.hafrExtra!=null) HAFR_EXTRA = Number(dist.hafrExtra)||0;
   if(dist.frames) FRAMES.forEach(f=>{ if(dist.frames[f.cm]!=null) f.price=Number(dist.frames[f.cm])||0; });
   if(dist.brors) BRORS.forEach(b=>{ if(dist.brors[b.size]!=null) b.price=Number(dist.brors[b.size])||0; });
@@ -1406,6 +1420,7 @@ function applyPriceOverrides(){
     if(t.sizes) TIER_OVERRIDES[tk].sizes = {...t.sizes};
     if(t.customExtra!=null) TIER_OVERRIDES[tk].customExtra = t.customExtra;
     if(t.woodExtra!=null) TIER_OVERRIDES[tk].woodExtra = t.woodExtra;
+    if(t.printExtra!=null) TIER_OVERRIDES[tk].printExtra = t.printExtra;
     if(t.hafrExtra!=null) TIER_OVERRIDES[tk].hafrExtra = t.hafrExtra;
     if(t.frames) TIER_OVERRIDES[tk].frames = {...t.frames};
     if(t.brors) TIER_OVERRIDES[tk].brors = {...t.brors};
@@ -1462,7 +1477,7 @@ const state = {
   profile: load(LS_PROFILE, {name:'', phone:'', region:''}),
   cart:    load(LS_CART, []),
   orders:  load(LS_ORDERS, []),
-  pick:{code:'', sizes:{}, customOn:false, note:'', custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,frameKind:null,frameRodQty:'',frameForDoors:''}},
+  pick:{code:'', sizes:{}, customOn:false, note:'', custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,frameKind:null,frameRodQty:'',frameForDoors:''}},
   newSection: load(LS_SECTION, ''),   // '' (لسه محددش) | doors | acc | frame | bror | prodium
   fr:{cm:10, code:'', doorW:'', kind:'full', qty:1, nonStd:false, jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:''},   // حلق منفصل: kind = 'full' (طقم كامل — الكمية × [٢ قائم ٢٢٠سم + ١ عارضة حلق علوية ١١٠سم]، والارتفاع يتغيّر بس لو nonStd=true) أو 'rods' (أعواد حرة — عدد وطول بيحددهم المستخدم من غير قيمة افتراضية). doorW = مقاس الباب اللي الحلق ده ليه (70/80/90/100) — اختياري. note: ملحوظة اختيارية
   br:{size:'6×9', code:'', rods:1, lenM:BROR_ROD_M_DEFAULT}, // برور إضافي بالعود — code = كود/لون الباب (إجباري زي الحلق)، lenM = طول العود بالمتر (قابل للتغيير لو حد طلب مقاس تكملة)
@@ -1592,6 +1607,14 @@ function customReady_(p){
 }
 function priceForWidth(w, hafr){const n=Number(w)||0;let p=SIZES[SIZES.length-1].price;for(const s of SIZES) if(n<=s.w){p=s.price;break;}return p+(hafr?HAFR_EXTRA:0);}
 function rodPrice(perMetre, cm){return Math.round(perMetre*((Number(cm)||220)/100)*100)/100;}
+// ⚠️ طول عود البرور كان بيتقرّب لسنتي صحيح (Math.round(lenM*100)) — فطلب
+// ٢.٢٦٥ م بيتسجّل ٢٢٧ سم، ونص سنتي بيضيع من كل عود والسعر يطلع غلط. الحلق
+// بقى بيقبل الكسور من زمان، والبرور لأ. بقى زيه بالظبط: بنسيب الكسر ونقرّب
+// لأقرب جزء من مية من السنتي بس (عشان float مايطلّعش 226.49999999).
+function brRodCm_(lenM){
+  const cm = (Number(lenM)||0) * 100;
+  return Math.max(0.1, Math.round(cm*100)/100);
+}
 // ⚠️ الفلوس بتتخزّن وبتتبعت زي ما هي — مش بس بتتعرض. سعر العود المتوسط بقى
 // بأربع خانات عشرية (عشان إجمالي السطر يطلع مظبوط بالقرش)، فحاصل الضرب كان
 // بيطلع 7199.499999999999 ويتسجّل كده في الشيت وفي الطلب المبعوت.
@@ -2075,6 +2098,14 @@ function viewNew(){
       +`<button class="miniChip ${sel?'on':''}" data-act="${act}"${wAttr} data-v="1">تدعيم خشب${pricesVisible()?` (+${WOOD_EXTRA}ج)`:''}</button>`;
   };
 
+  // الطباعة: اختيار صريح على الباب زي التدعيم، وبيتحوّل لبند مستقل بسعره تحت الصنف
+  const printMiniChips=(sel,w)=>{
+    const act = w==='custom' ? 'cust-print' : 'size-print';
+    const wAttr = w==='custom' ? '' : ` data-w="${w}"`;
+    return `<button class="miniChip ${!sel?'on':''}" data-act="${act}"${wAttr} data-v="0">بدون</button>`
+      +`<button class="miniChip ${sel?'on':''}" data-act="${act}"${wAttr} data-v="1">طباعة${pricesVisible()?` (+${PRINT_EXTRA}ج)`:''}</button>`;
+  };
+
   const sizeCards = selWidths.map(w=>{
     const e=p.sizes[w];
     const st = stockFor(p.code, w);
@@ -2097,6 +2128,8 @@ function viewNew(){
       <div class="miniChips">${hafrMiniChips(e.hafr,w)}</div>
       <div class="miniLbl">التدعيم</div>
       <div class="miniChips">${woodMiniChips(e.wood,w)}</div>
+      <div class="miniLbl">الطباعة</div>
+      <div class="miniChips">${printMiniChips(e.print,w)}</div>
       <label class="fld sm"><span style="color:var(--danger)">ارتفاع الفتحة المعمارية (سم)</span>
         <input type="text" inputmode="decimal" class="hgtIn" value="${esc(e.height||'')}" placeholder="استاندر ${DOOR_STD_HEIGHT}" data-act="size-height" data-w="${w}"></label>
       <div class="miniLbl">الحلق</div>
@@ -2125,6 +2158,8 @@ function viewNew(){
       <div class="miniChips">${hafrMiniChips(p.custom.hafr,'custom')}</div>
       <div class="miniLbl">التدعيم</div>
       <div class="miniChips">${woodMiniChips(p.custom.wood,'custom')}</div>
+      <div class="miniLbl">الطباعة</div>
+      <div class="miniChips">${printMiniChips(p.custom.print,'custom')}</div>
       <div class="miniLbl">الحلق</div>
       <div class="miniChips">${frameMiniChips(p.custom.frame,'custom')}</div>
       ${p.custom.frame?`<label class="fld sm"><span>ارتفاع الحلق (سم) — اختياري</span>
@@ -2167,7 +2202,7 @@ function viewNew(){
     <button class="chip ${state.br.code===d.code?'on':''}" data-act="br-code" data-code="${d.code}"${doorChipStyle_(d.code,state.br.code===d.code)}>${d.code} — ${esc(d.name)}</button>`).join('');
   // طول العود المطلوب بالمتر — افتراضيًا الطول القياسي، وقابل للتعديل لو حد طلب مقاس تكملة (زي ٣م)
   const brLenM=Number(state.br.lenM)||BROR_ROD_M_DEFAULT;
-  const brRodCm=Math.max(1,Math.round(brLenM*100));
+  const brRodCm=brRodCm_(brLenM);
   const brLinePrice=rodPrice(brSel.price, brRodCm);
 
   const pdQty=Math.max(0,Math.round(Number(state.pd.qty)||0));
@@ -2345,9 +2380,9 @@ function viewNew(){
       <label class="fld"><span>عدد العيدان</span>
         <input type="number" inputmode="numeric" min="0" step="1" value="${esc(state.br.rods)}" placeholder="مثال 3" data-act="br-rods"></label>
       <label class="fld"><span>طول العود (م)</span>
-        <input type="number" inputmode="decimal" min="0.1" step="0.05" value="${esc(state.br.lenM)}" placeholder="مثال 3" data-act="br-lenM"></label>
+        <input type="text" inputmode="decimal" value="${esc(state.br.lenM)}" placeholder="مثال 2.255" data-act="br-lenM"></label>
     </div>
-    <div class="note" style="margin-top:9px">الطول القياسي ${BROR_ROD_M_DEFAULT} م — غيّره لو حد طلب عيدان مقاس مختلف (مثلاً ١٠ عيدان مقاس ٣م).${pricesVisible()?' السعر: '+money(brLinePrice)+' ج/عود':''}</div>
+    <div class="note" style="margin-top:9px">الطول القياسي ${BROR_ROD_M_DEFAULT} م — غيّره لو حد طلب عيدان مقاس مختلف (مثلاً ١٠ عيدان مقاس ٣م). الطول بيقبل الكسور زي الحلق — الطول الحالي ${brRodCm} سم.${pricesVisible()?' السعر: '+money(brLinePrice)+' ج/عود':''}</div>
     <button class="btn ghost sm" style="margin-top:9px" data-act="add-br" ${brRods>0&&state.br.code?'':'disabled'}>
       ${!state.br.code ? 'اختر كود الباب أولاً' : (brRods>0 ? `أضف ${brRods} عود برور ${brSel.size} — ${brRodCm} سم — ${esc(state.br.code)}` : 'اكتب عدد العيدان')}</button>
   </section>`;
@@ -2437,10 +2472,12 @@ function currentSummary(){
     // ارتفاع غير الاستاندر = خدمة قص، والتدعيم اختيار — الاتنين بنود بتتحسب
     if(Number(e.height)) totalPrice+=CUSTOM_EXTRA*qty;
     if(e.wood) totalPrice+=WOOD_EXTRA*qty;
+    if(e.print) totalPrice+=PRINT_EXTRA*qty;
     let line=doorSizeText_(w+' سم',e.height)+' × '+qty;
     const bits=[];
     if(Number(e.height)) bits.push(CUT_SERVICE_NOTE_);
     if(e.wood) bits.push('تدعيم خشب');
+    if(e.print) bits.push('طباعة');
     if(e.hafr) bits.push('حفر');
     if(e.frame) bits.push('حلق '+frameText_(e.frame,e.frameHeight));
     if(e.dbror) bits.push('برور '+e.dbror);
@@ -2451,10 +2488,12 @@ function currentSummary(){
     const w=Number(p.custom.w), h=Number(p.custom.h), qty=Number(p.custom.qty)||1;
     // خدمة القص بند مستقل — بتتحسب في الإجمالي زي أي صنف
     totalQty+=qty; totalPrice+=(priceForWidth(w,p.custom.hafr)*qty)+(CUSTOM_EXTRA*qty)
-                              +(p.custom.wood?WOOD_EXTRA*qty:0);
+                              +(p.custom.wood?WOOD_EXTRA*qty:0)
+                              +(p.custom.print?PRINT_EXTRA*qty:0);
     let line=w+'×'+h+' سم (خاص) × '+qty;
     const bits=[CUT_SERVICE_NOTE_];
     if(p.custom.wood) bits.push('تدعيم خشب');
+    if(p.custom.print) bits.push('طباعة');
     if(p.custom.hafr) bits.push('حفر');
     if(p.custom.frame) bits.push('حلق '+frameText_(p.custom.frame,p.custom.frameHeight));
     if(p.custom.dbror) bits.push('برور '+p.custom.dbror);
@@ -3395,6 +3434,7 @@ function openAdminPrices(){
     sizes: Object.fromEntries(SIZES.map(s=>[s.w, triFor_(s.price,'door',s.w)])),
     customExtra: triFor_(CUSTOM_EXTRA,'acc','customExtra'),
     woodExtra: triFor_(WOOD_EXTRA,'acc','woodExtra'),
+    printExtra: triFor_(PRINT_EXTRA,'acc','printExtra'),
     hafrExtra: triFor_(HAFR_EXTRA,'door','hafrExtra'),
     frames: Object.fromEntries(FRAMES.map(f=>[f.cm, triFor_(f.price,'frame',f.cm)])),
     brors: Object.fromEntries(BRORS.map(b=>[b.size, triFor_(b.price,'bror',b.size)])),
@@ -3410,6 +3450,7 @@ function saveAdminPrices(){
   SIZES.forEach(s=>{ if(pe.sizes[s.w]) s.price=Number(pe.sizes[s.w].dist)||0; });
   CUSTOM_EXTRA = Number(pe.customExtra.dist)||0;
   WOOD_EXTRA = Number(pe.woodExtra.dist)||0;
+  if(pe.printExtra) PRINT_EXTRA = Number(pe.printExtra.dist)||0;
   if(pe.hafrExtra) HAFR_EXTRA = Number(pe.hafrExtra.dist)||0;
   FRAMES.forEach(f=>{ if(pe.frames[f.cm]) f.price=Number(pe.frames[f.cm].dist)||0; });
   BRORS.forEach(b=>{ if(pe.brors[b.size]) b.price=Number(pe.brors[b.size].dist)||0; });
@@ -3423,6 +3464,7 @@ function saveAdminPrices(){
       sizes: pickGroup(pe.sizes, tier),
       customExtra: Number(pe.customExtra[tier])||0,
       woodExtra: Number(pe.woodExtra[tier])||0,
+      printExtra: Number((pe.printExtra||{})[tier])||0,
       hafrExtra: Number((pe.hafrExtra||{})[tier])||0,
       frames: pickGroup(pe.frames, tier),
       brors: pickGroup(pe.brors, tier),
@@ -3433,7 +3475,7 @@ function saveAdminPrices(){
   // ⚠️ لو مساحة الجهاز مليانة، الحفظ بيفشل. من غير الفحص ده الرسالة كانت بتقول
   // «اتحفظت الأسعار الجديدة» والأسعار ترجع القديمة أول ما يقفل التطبيق.
   const pricesSaved = save(LS_PRICES, out);
-  TIER_OVERRIDES.showroom = { sizes:{...out.showroom.sizes}, customExtra:out.showroom.customExtra, woodExtra:out.showroom.woodExtra, hafrExtra:out.showroom.hafrExtra, frames:{...out.showroom.frames}, brors:{...out.showroom.brors}, acc:{...out.showroom.acc}, panel:{...out.showroom.panel} };
+  TIER_OVERRIDES.showroom = { sizes:{...out.showroom.sizes}, customExtra:out.showroom.customExtra, woodExtra:out.showroom.woodExtra, printExtra:out.showroom.printExtra, hafrExtra:out.showroom.hafrExtra, frames:{...out.showroom.frames}, brors:{...out.showroom.brors}, acc:{...out.showroom.acc}, panel:{...out.showroom.panel} };
   state.admin.pricesOpen=false; state.admin.priceEdit=null;
   render();
 
@@ -4853,6 +4895,7 @@ function viewAdminPrices(){
     ${rowsSizes}
     ${priTri_(CUT_SERVICE_NOTE_+' (لكل باب)', 'customExtra', 'customExtra', pe.customExtra)}
     ${priTri_('تدعيم خشب (لكل باب)', 'woodExtra', 'woodExtra', pe.woodExtra)}
+    ${priTri_('طباعة (لكل باب)', 'printExtra', 'printExtra', pe.printExtra)}
     ${priTri_('إضافة باب حفر', 'hafrExtra', 'hafrExtra', pe.hafrExtra)}
     <div class="note">سعر الباب مابيتغيّرش بالمقاس الخاص. «${CUT_SERVICE_NOTE_}» بند مستقل بيتضاف تحت الباب بالكمية والسعر — للمقاس الخاص وللارتفاع غير الاستاندر.</div>
 
@@ -5293,7 +5336,7 @@ document.addEventListener('click',e=>{
       break;
     case 'toggle-size': {
       const w=Number(el.dataset.w);
-      if(p.sizes[w]!=null) delete p.sizes[w]; else p.sizes[w]={qty:1,height:'',frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,frameKind:null,frameRodQty:'',frameForDoors:''};
+      if(p.sizes[w]!=null) delete p.sizes[w]; else p.sizes[w]={qty:1,height:'',frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,frameKind:null,frameRodQty:'',frameForDoors:''};
       render(); break;
     }
     case 'toggle-custom': p.customOn=!p.customOn; render(); break;
@@ -5309,6 +5352,8 @@ document.addEventListener('click',e=>{
     case 'cust-hafr': p.custom.hafr=(el.dataset.v==='1'); render(); break;
     case 'size-wood': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.wood=(el.dataset.v==='1'); render(); break; }
     case 'cust-wood': p.custom.wood=(el.dataset.v==='1'); render(); break;
+    case 'size-print': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.print=(el.dataset.v==='1'); render(); break; }
+    case 'cust-print': p.custom.print=(el.dataset.v==='1'); render(); break;
     case 'cust-frame': p.custom.frame=Number(el.dataset.cm); render(); break;
     case 'cust-dbror': p.custom.dbror=el.dataset.size; render(); break;
     case 'fr-cm': state.fr.cm=Number(el.dataset.cm); render(); break;
@@ -5596,13 +5641,14 @@ document.addEventListener('input',e=>{
   if(a==='fr-extra-qty'){ state.fr.extra[Number(el.dataset.i)].qty=el.value; render(); return; }
   if(a==='fr-note'){ state.fr.note=el.value; return; }
   if(a==='br-rods'){ state.br.rods=el.value; refreshRodBtn('add-br'); return; }
-  if(a==='br-lenM'){ state.br.lenM=el.value; render(); return; }
+  if(a==='br-lenM'){ state.br.lenM=decIn_(el.value); render(); return; }
   if(a==='pd-qty'){ state.pd.qty=el.value; refreshPanelBtn(); return; }
   if(a==='price-set'){
     const pe=state.admin.priceEdit; if(!pe) return;
     const v=parseFloat(el.value)||0, g=el.dataset.group, k=el.dataset.key, tier=el.dataset.tier;
     if(g==='customExtra') pe.customExtra[tier]=v;
-  else if(g==='woodExtra') pe.woodExtra[tier]=v;
+    else if(g==='woodExtra') pe.woodExtra[tier]=v;
+    else if(g==='printExtra'){ pe.printExtra = pe.printExtra || {dist:0,showroom:0}; pe.printExtra[tier]=v; }
     else if(g==='hafrExtra') pe.hafrExtra[tier]=v;
     else if(pe[g][k]) pe[g][k][tier]=v;
     return;
@@ -5702,7 +5748,7 @@ function addDoor(){
       frame:e.frame||0, dbror:e.dbror||'', frameHeight:e.frameHeight?Number(e.frameHeight):0,
       frameKind, frameRodQty:frameKind==='rods'?(e.frameRodQty||''):'', frameForDoors:frameKind==='rods'?(e.frameForDoors||''):'',
       note: [frameKind==='rods' ? frameKindNote_('rods', e.frameRodQty, e.frameForDoors) : '', (p.note||'').trim()].filter(Boolean).join(' — '),
-      doorHeight, hafr:!!e.hafr, wood:!!e.wood, millEn:e.hafr?'Carved':''
+      doorHeight, hafr:!!e.hafr, wood:!!e.wood, print:!!e.print, millEn:e.hafr?'Carved':''
     });
     addedTxts.push(doorSizeText_(sizeTxt,doorHeight)+' × '+qty);
   });
@@ -5725,7 +5771,7 @@ function addDoor(){
       // «خدمة قص» مابقتش ملحوظة — بقت بند مستقل بسعره تحت الباب (syncCutServiceLines_)
       note: [customFrameKind==='rods' ? frameKindNote_('rods', p.custom.frameRodQty, p.custom.frameForDoors) : '',
              (p.note||'').trim()].filter(Boolean).join(' — '),
-      doorHeight:0, hafr:!!p.custom.hafr, wood:!!p.custom.wood, millEn:p.custom.hafr?'Carved':''
+      doorHeight:0, hafr:!!p.custom.hafr, wood:!!p.custom.wood, print:!!p.custom.print, millEn:p.custom.hafr?'Carved':''
     });
     addedTxts.push(sizeTxt+' × '+qty);
   }
@@ -5734,7 +5780,7 @@ function addDoor(){
   clearPulledLine_();
   toast('اتضاف للسلة: '+d.code+' — '+addedTxts.join('، '));
   // نلمّ الاختيارات ونقفل اللوحة عشان يختار باب تاني بارتياح
-  state.pick={code:'', sizes:{}, customOn:false, note:'', custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,frameKind:null,frameRodQty:'',frameForDoors:''}};
+  state.pick={code:'', sizes:{}, customOn:false, note:'', custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,frameKind:null,frameRodQty:'',frameForDoors:''}};
   render();
 }
 
@@ -5846,7 +5892,7 @@ function addRod(kind){
     if(rods<=0){toast('اكتب عدد العيدان');return;}
     // طول العود قابل للتغيير (افتراضيًا الطول القياسي) — عشان لو حد طلب عيدان مقاس مختلف زي ٣م
     const lenM = Number(st.lenM)||BROR_ROD_M_DEFAULT;
-    const rodCm = Math.max(1, Math.round(lenM*100));
+    const rodCm = brRodCm_(lenM);
     push(b.size, rodCm, rods, b.price,
       'برور '+b.size+' — عود '+rodCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):''),
       'Bror '+b.size+' - '+rodCm+'cm rod'+(st.code?' - '+st.code:''));
@@ -5910,7 +5956,7 @@ let _pulledLine = null;
 function resetPickerFor_(kind){
   if(kind==='door'){
     state.pick = {code:'', sizes:{}, customOn:false, note:'',
-      custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,
+      custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,
               frameKind:null,frameRodQty:'',frameForDoors:''}};
   } else if(kind==='frame'){
     state.fr = {cm:10, code:'', doorW:'', kind:'full', qty:1, nonStd:false,
@@ -5980,13 +6026,14 @@ function editCartLine(i){
   if(it.kind==='door'){
     const isHafr = !!it.hafr || /\(حفر\)|\(Carved\)/i.test((it.title||'')+(it.titleEn||''));
     const isWood = !!it.wood;
+    const isPrint = !!it.print;
     let sizes={}, customOn=false, customW='', customH='', customQty=1, customFrame=null, customFrameHeight='', customDbror=null;
     let customFrameKind=null, customFrameRodQty='', customFrameForDoors='';
     let m = /^(\d+)\s*cm$/i.exec(it.sizeEn||'');
     if(m){
       sizes[Number(m[1])] = {
         qty:it.qty||1, height: it.doorHeight?String(it.doorHeight):'',
-        frame: it.frame||0, frameHeight: it.frameHeight?String(it.frameHeight):'', dbror: it.dbror||'', hafr:isHafr, wood:isWood,
+        frame: it.frame||0, frameHeight: it.frameHeight?String(it.frameHeight):'', dbror: it.dbror||'', hafr:isHafr, wood:isWood, print:isPrint,
         frameKind: it.frameKind||null, frameRodQty: it.frameRodQty||'', frameForDoors: it.frameForDoors||''
       };
     } else {
@@ -5998,7 +6045,7 @@ function editCartLine(i){
       }
     }
     state.pick = {code:it.code||'', sizes, customOn, note:it.note||'',
-      custom:{w:customW,h:customH,qty:customQty,frame:customFrame,frameHeight:customFrameHeight,dbror:customDbror,hafr:isHafr,wood:isWood,
+      custom:{w:customW,h:customH,qty:customQty,frame:customFrame,frameHeight:customFrameHeight,dbror:customDbror,hafr:isHafr,wood:isWood,print:isPrint,
         frameKind:customFrameKind,frameRodQty:customFrameRodQty,frameForDoors:customFrameForDoors}};
     state.newSection='doors'; save(LS_SECTION,state.newSection);
   } else if(it.kind==='frame' || it.kind==='bror'){
@@ -6082,10 +6129,20 @@ function adminEditOrderWith_(o, its){
   // بتمسح "تدعيم خشب" بصمت لأنها مش لاقيه أي باب معلّم عليه محتاج تدعيم.
   // الحل: نلمّ مقاسات الأبواب اللي أصلاً عندها سطر "تدعيم خشب" في الطلب،
   // ونعلّم عليها تاني وقت ما نرجّع الأبواب.
-  const woodLabels = new Set(
-    (its||[]).filter(x=>x.type==='Accessory' && /^تدعيم خشب\s*—\s*/.test(String(x.title||'')))
-      .map(x=>String(x.title).replace(/^تدعيم خشب\s*—\s*/,'').trim())
-  );
+  // ⚠️ نفس الحكاية بالظبط بتنطبق على «طباعة» وعلى أي بند خدمة اختياري جاي.
+  // كانت مكتوبة للتدعيم بالاسم — فأي بند جديد كان هيضيع بصمت مع أول تعديل.
+  // بقت بتتبني من جدول SERVICE_LINES_ نفسه.
+  const serviceLabels_ = {};
+  SERVICE_LINES_.forEach(def=>{
+    const re = new RegExp('^'+def.label.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*—\\s*');
+    serviceLabels_[def.code] = new Set(
+      (its||[]).filter(x=>x.type==='Accessory' && (String(x.code||'')===def.code || re.test(String(x.title||''))))
+        .map(x=>String(x.title||'').replace(re,'').trim())
+        .filter(Boolean)
+    );
+  });
+  const woodLabels = serviceLabels_.WOOD;
+  const printLabels = serviceLabels_.PRINT;
   state.cart = its.map(it=>{
     const qty = Number(it.qty)||0;
     const price = Number(it.unitPrice)||0;
@@ -6098,7 +6155,7 @@ function adminEditOrderWith_(o, its){
                img:(DOORS.find(d=>d.code===it.code)||{}).img || '',
                sizeTxt, sizeEn:it.size||'', unitPrice:price, qty,
                w:it.width||'', frame:Number(it.frame)||0, dbror:it.dbror||'', frameHeight:Number(it.frameHeight)||0,
-               doorHeight, hafr:حفر, wood:woodLabels.has(label),
+               doorHeight, hafr:حفر, wood:woodLabels.has(label), print:printLabels.has(label),
                // ⚠️ عمود «الحفر» (Milling) كان بيضيع مع كل تعديل: السلة بترجع
                // من غير millEn، فالحفظ بيكتب الخانة فاضية. وarabicItemTitle_
                // بتقرا الحفر من الخانة دي — فالباب بيطلع في شاشة المصنع
