@@ -1099,7 +1099,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v193';
+const APP_BUILD   = 'v194';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3334,11 +3334,17 @@ async function setItemProduced(id, idx, produced){
 // السيرفر بيخزّن اسم الصنف بالإنجليزي بس (Order_Items عمود Item). بنعيد بناء الاسم العربي
 // من نفس الكتالوجات اللي التطبيق أصلًا شغال بيها (DOORS/ACCESSORIES)، مش نص إنجليزي متسيّب.
 const ACC_EN_TO_AR_ = {}; ACCESSORIES.forEach(a=>{ ACC_EN_TO_AR_[a.en] = a.name; });
+// الحفر ليه عمود خاص في الشيت (Milling)، والطباعة علامتها متكتوبة في اسم
+// الصنف نفسه («(Print)») — الاتنين بيرجعوا للاسم العربي عشان المصنع يشوفهم
+// على سطر الباب في كل مستند، مش في بند تحته بس.
+const PRINT_MARK_RE_ = /\(طباعة\)|\(Print\)/i;
 function arabicItemTitle_(it){
   if(it.type==='Door'){
     const d = DOORS.find(x=>x.code===it.code);
     const base = d ? ('باب '+d.code+' '+d.name) : (it.code||it.title||'');
-    return base + (String(it.milling||'').trim() ? ' (حفر)' : '') + (it.itemNote ? ' — '+it.itemNote : '');
+    return base + (String(it.milling||'').trim() ? ' (حفر)' : '')
+                + (PRINT_MARK_RE_.test(String(it.title||'')) ? ' (طباعة)' : '')
+                + (it.itemNote ? ' — '+it.itemNote : '');
   }
   // المقاس محفوظ إنجليزي في الشيت ('10 cm' / '6x9')، والمستند عربي —
   // arabicSizeText_ بتحوّله لـ '10 سم' وبتسيب اللي مش على الصيغة دي زي ما هو.
@@ -5741,8 +5747,8 @@ function addDoor(){
     const frameKind = e.frame ? (e.frameKind||'full') : null;
     state.cart.push({
       kind:'door',
-      title:'باب '+d.code+' '+d.name+(e.hafr?' (حفر)':''),
-      titleEn:'WPC Door '+d.code+' - '+d.en+(e.hafr?' (Carved)':''),
+      title:'باب '+d.code+' '+d.name+(e.hafr?' (حفر)':'')+(e.print?' (طباعة)':''),
+      titleEn:'WPC Door '+d.code+' - '+d.en+(e.hafr?' (Carved)':'')+(e.print?' (Print)':''),
       code:d.code, img:d.img, sizeTxt, sizeEn, unitPrice, qty,
       w,   // العرض بالسم كرقم خام — لخصم الرصيد بدقة
       frame:e.frame||0, dbror:e.dbror||'', frameHeight:e.frameHeight?Number(e.frameHeight):0,
@@ -5762,8 +5768,8 @@ function addDoor(){
     const customFrameKind = p.custom.frame ? (p.custom.frameKind||'full') : null;
     state.cart.push({
       kind:'door',
-      title:'باب '+d.code+' '+d.name+(p.custom.hafr?' (حفر)':''),
-      titleEn:'WPC Door '+d.code+' - '+d.en+(p.custom.hafr?' (Carved)':''),
+      title:'باب '+d.code+' '+d.name+(p.custom.hafr?' (حفر)':'')+(p.custom.print?' (طباعة)':''),
+      titleEn:'WPC Door '+d.code+' - '+d.en+(p.custom.hafr?' (Carved)':'')+(p.custom.print?' (Print)':''),
       code:d.code, img:d.img, sizeTxt, sizeEn, unitPrice, qty,
       w:'',   // مقاس خاص مش متتبّع في المخزون
       frame:p.custom.frame||0, dbror:p.custom.dbror||'', frameHeight:p.custom.frameHeight?Number(p.custom.frameHeight):0,
@@ -6026,7 +6032,7 @@ function editCartLine(i){
   if(it.kind==='door'){
     const isHafr = !!it.hafr || /\(حفر\)|\(Carved\)/i.test((it.title||'')+(it.titleEn||''));
     const isWood = !!it.wood;
-    const isPrint = !!it.print;
+    const isPrint = !!it.print || PRINT_MARK_RE_.test((it.title||'')+(it.titleEn||''));
     let sizes={}, customOn=false, customW='', customH='', customQty=1, customFrame=null, customFrameHeight='', customDbror=null;
     let customFrameKind=null, customFrameRodQty='', customFrameForDoors='';
     let m = /^(\d+)\s*cm$/i.exec(it.sizeEn||'');
@@ -6155,7 +6161,9 @@ function adminEditOrderWith_(o, its){
                img:(DOORS.find(d=>d.code===it.code)||{}).img || '',
                sizeTxt, sizeEn:it.size||'', unitPrice:price, qty,
                w:it.width||'', frame:Number(it.frame)||0, dbror:it.dbror||'', frameHeight:Number(it.frameHeight)||0,
-               doorHeight, hafr:حفر, wood:woodLabels.has(label), print:printLabels.has(label),
+               doorHeight, hafr:حفر,
+               wood:woodLabels.has(label),
+               print:printLabels.has(label) || PRINT_MARK_RE_.test(String(it.title||'')),
                // ⚠️ عمود «الحفر» (Milling) كان بيضيع مع كل تعديل: السلة بترجع
                // من غير millEn، فالحفظ بيكتب الخانة فاضية. وarabicItemTitle_
                // بتقرا الحفر من الخانة دي — فالباب بيطلع في شاشة المصنع
