@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ELKORASHI DOORS — طلبات أبواب WPC</title>
-<meta name="theme-color" content="#0C1524">
+<meta name="theme-color" content="#F6F8FB">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
@@ -924,9 +924,196 @@ input[type=text],input[type=tel],input[type=number],input[type=password],input[t
 .accgrid .ac .qty input{width:40px;padding:7px 0;font-size:14.5px}
 
 /* الكلام الباهت: نرفع التباين شوية على الغامق */
-:root{--muted:#A3B6CE}
+/* ⚠️ الألوان دي كانت مكتوبة بالنص جوّه قوالب الجافاسكريبت (style="color:#E3BE79")،
+   فالـCSS مش قادرة تغيّرها مع تغيير الشكل — على الفاتح كانت بتطلع باهتة
+   لدرجة إنها شبه مخفية. بقت توكنز، وكل شكل بيحطلها قيمته. */
+:root{--muted:#A3B6CE;--warn-ink:#E3BE79;--info-ink:#9BCDF3;--ok-ink:#7FD8AE;--danger-ink:#F3968F}
 .top .t2{color:#A3B6CE}
 
+/* ============================================================
+   v197 — الشكل ١ «نظيف وهادي»
+   ------------------------------------------------------------
+   أبيض، أزرق واحد، ظلال خفيفة. نفس الشكل اللي اخترته من الاقتراحات
+   التلاتة: أوضح حاجة للقراءة في نور الورشة وللموزّعين الكبار في السن.
+
+   مكتوبة كطبقة فوق طبقة «الداكن الأنيق» (v186) — الخطوات والأزرار
+   والمسارات كلها زي ما هي بالظبط، اللون والسطح بس هما اللي بيتغيّروا.
+
+   ⚠️ أهم حاجة هنا: طبقة الداكن كان فيها ألوان مكتوبة بالنص (نصوص بيضا،
+   شرايط شبه شفافة غامقة، ظلال سودة قوية). التوكنز لوحدها مش كفاية —
+   لو سيبنا الألوان دي زي ما هي، هنطلع حروف بيضا على خلفية بيضا. فكل
+   قاعدة فيها لون مكتوب بالنص متظبّطة تحت واحدة واحدة.
+
+   • لون تمييز واحد (أزرق) — الذهبي بقى نفس الأزرق عشان الشكل يفضل هادي
+   • التحذيرات فاضلة بلون كهرماني (دلالة، مش زينة)
+   • مستندات الـPDF ألوانها جواها بالنص — ما اتغيّرتش (كانت أبيض أصلاً)
+   ============================================================ */
+:root{
+  --navy:#0F2C4F;
+  --navy-2:#1D5E96;
+  --brand:#0E7BD1;
+  --brand-lt:#3C9BE0;
+  /* الذهبي بقى نفس الأزرق: «أزرق واحد» هو أصل الشكل ده */
+  --wood:#0E7BD1;
+  --wood-lt:#3C9BE0;
+  --wood-bg:rgba(14,123,209,.07);
+  --wood-line:rgba(14,123,209,.28);
+  --bg:#F6F8FB;
+  --card:#FFFFFF;
+  --surface-2:#F4F7FB;
+  --ink:#0F2740;
+  --muted:#7A8AA0;
+  --line:#E8EDF3;
+  --ok:#12805C;
+  --ok-bg:rgba(18,128,92,.10);
+  --warn-bg:#FFF6E5;
+  --warn-line:#EBCF9B;
+  --danger:#C6362D;
+  --shadow:0 2px 10px rgba(15,39,64,.07);
+  --e1:0 1px 2px rgba(15,39,64,.05), 0 1px 3px rgba(15,39,64,.05);
+  --e2:0 1px 3px rgba(15,39,64,.05), 0 4px 14px rgba(15,39,64,.07);
+  --e3:0 6px 16px rgba(15,39,64,.10), 0 18px 40px rgba(15,39,64,.13);
+}
+
+/* ---------- الأساس ---------- */
+::selection{background:rgba(14,123,209,.16)}
+
+/* ---------- الهيدر ---------- */
+#appbar::after{height:1px;background:var(--line)}
+.top{
+  background:#fff;
+  -webkit-backdrop-filter:none;backdrop-filter:none;
+  color:var(--ink);box-shadow:0 1px 0 var(--line);
+}
+.top .t1{color:var(--ink)}
+.top .t2,.top .t2 .vs-ver{color:var(--muted)}
+.top .t2 .vs-ver{background:var(--surface-2)}
+.top img.logo{box-shadow:none;border:1px solid var(--line)}
+.wh-chip{background:#F1F6FB;border-color:#DCE9F5;color:#4A7FA8}
+.wh-chip b{color:var(--navy)}
+.verstrip button{background:#fff;border-color:var(--line);color:#42536B}
+.verstrip button.vs-install{
+  background:linear-gradient(180deg,var(--brand-lt),var(--brand));border-color:transparent;color:#fff;
+  box-shadow:0 2px 8px rgba(14,123,209,.24);
+}
+
+/* ---------- التبويبات ---------- */
+.tabs{
+  background:rgba(255,255,255,.94);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  box-shadow:0 -1px 0 var(--line);
+}
+.tabs button{color:var(--muted)}
+.tabs button::before{background:rgba(14,123,209,.08)}
+.tabs button.on{color:var(--brand)}
+.tabs button.on .i{color:var(--brand)}
+.tabs .badge{background:var(--danger);box-shadow:0 1px 4px rgba(198,54,45,.30)}
+@media (min-width:820px){
+  .tabs{box-shadow:0 1px 0 var(--line)}
+}
+
+/* ---------- شريط الإجمالي ---------- */
+.bar{
+  background:rgba(255,255,255,.97);border-top-color:var(--line);color:var(--ink);
+  box-shadow:0 -4px 18px rgba(15,39,64,.08);
+}
+.bar .sum b{color:var(--ink)}
+.bar .btn.brand{background:linear-gradient(180deg,var(--brand-lt),var(--brand));color:#fff;
+  box-shadow:0 2px 10px rgba(14,123,209,.26)}
+
+/* ---------- الكروت والأسطح ---------- */
+.card,.ord{background:var(--card);box-shadow:var(--e2)}
+.step .n{background:linear-gradient(160deg,var(--brand-lt),var(--brand));color:#fff;
+  box-shadow:0 2px 8px rgba(14,123,209,.22)}
+.step h2{color:var(--ink)}
+.grp{color:var(--brand)}
+.secnav button{background:#fff}
+.secnav button.on{background:#F1F7FD;border-color:var(--brand);
+  box-shadow:0 0 0 1.5px var(--brand),var(--e1)}
+.doorpanel{background:#FBFCFE;border-color:rgba(14,123,209,.28)}
+.doorpanel .dphead b{color:var(--ink)}
+.sizeCard{background:#FBFCFE}
+.sizeCard .scHead b{color:var(--ink)}
+.rodbox .rl b{color:var(--brand)}
+
+/* ---------- الشرايح والإدخال ---------- */
+.chip,.miniChip,.specol .colchip,.qty,.hgtIn,.stkin{background:#fff}
+input[type=text],input[type=tel],input[type=number],input[type=password],input[type=date],input[type=search],select,textarea,.fld textarea,.prow3 input{background:#fff}
+.chip.on,.miniChip.on,.specol .colchip.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.chip.on .sub,.specol .colchip.on .sub{color:#DCEBF8}
+input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(14,123,209,.13)}
+input::placeholder,textarea::placeholder,.hgtIn::placeholder{color:#9FAEC2}
+input.bad{background:#FFF3F2;box-shadow:0 0 0 3px rgba(198,54,45,.10)}
+.qty button:active{background:rgba(14,123,209,.08)}
+
+/* ---------- الأبواب ---------- */
+.door .leaf{background:#fff;box-shadow:var(--e1)}
+.door.on .leaf{border-color:var(--brand);box-shadow:-4px 3px 14px rgba(14,123,209,.18)}
+.door.on .code{color:var(--brand)}
+
+/* ---------- الأزرار ---------- */
+.btn.brand{background:linear-gradient(180deg,var(--brand-lt),var(--brand));color:#fff;
+  box-shadow:0 1px 2px rgba(14,123,209,.16),0 4px 12px rgba(14,123,209,.18)}
+.btn.wood{background:linear-gradient(180deg,var(--brand-lt),var(--brand));color:#fff;
+  box-shadow:0 2px 8px rgba(14,123,209,.22)}
+.btn.primary{background:var(--navy);color:#fff;box-shadow:var(--e1)}
+.btn.ghost{background:#fff;color:#42536B}
+.btn.act-edit  {background:#F1F7FD;border-color:#CFE3F5;color:#1466A8}
+.btn.act-send  {background:#EFF8F3;border-color:#C4E4D5;color:#0E6B4D}
+.btn.act-arch  {background:var(--surface-2);border-color:var(--line);color:#4A5C74}
+.btn.act-del   {background:#FDF2F1;border-color:#F0CFCC;color:#A82D25}
+.btn.act-tool  {background:#fff;border-color:var(--line);color:#42536B}
+.btn.act-report{background:#F4F2FD;border-color:#D9D2F3;color:#5945A8}
+.btn.act-money {background:#F1F7FD;border-color:#CFE3F5;color:#1466A8}
+
+/* ---------- السلة والإجماليات ---------- */
+.line .ic{background:var(--surface-2)}
+.line .info2 .pr{color:var(--brand)}
+.total{border-top-color:var(--brand)}
+.total .val{color:var(--brand)}
+.note b{color:var(--brand)}
+.ord .oid{color:var(--brand)}
+
+/* ---------- الجداول والمخزن ---------- */
+.stktbl th{background:var(--surface-2);color:#42536B}
+.stktbl tbody tr:nth-child(even){background:#FAFCFE}
+.stkin.dirty{border-color:var(--brand);background:#F1F7FD}
+.specol .colchip.instock{background:#EFF8F3;border-color:#C4E4D5;color:#0E6B4D}
+.specol .colchip.instock .sub,.specol .colchip.instock .stk{color:#12805C}
+.specol .colchip.instock.on{background:#12805C;border-color:#12805C;color:#fff}
+.specol .colchip.instock.on .sub,.specol .colchip.instock.on .stk{color:#D8EFE5}
+.colchip .stk{color:#12805C}
+.door .rdy{background:#EFF8F3;color:#0E6B4D}
+.stockbar.ok{background:#EFF8F3;border-color:#C4E4D5;color:#0E6B4D}
+.stockbar.part{background:var(--warn-bg);border-color:var(--warn-line);color:#8A5A0B}
+.stockbar.out{background:var(--surface-2);border-color:var(--line);color:#5B6B82}
+
+/* ---------- صناديق الملاحظات ---------- */
+.ordnote-box,.ordnote{background:var(--warn-bg);border-color:var(--warn-line);color:#8A5A0B}
+.ordnote-ta{background:#fff!important;border-color:var(--warn-line)!important;color:var(--ink)}
+.grp-all{background:var(--surface-2);color:#5B6B82;border-top-color:var(--line)}
+.grp-no{background:#F1F7FD;border-color:#CFE3F5;color:#1466A8}
+.grp-no.nn{background:var(--surface-2);border-color:var(--line);color:#5B6B82}
+.grp-dt{color:#5B6B82}
+.grp-dy{color:#8A5A0B}
+.grp-note{background:var(--warn-bg);border-color:var(--warn-line);
+  border-inline-start-color:#D9A441;color:#8A5A0B}
+.grp-chev{color:var(--muted)}
+.grp-hd b{color:var(--ink)!important}
+
+/* ---------- التوست واللودر والمعاينة ---------- */
+#toast{background:var(--navy);color:#fff;border-color:transparent;box-shadow:var(--e3)}
+#busy{background:rgba(15,39,64,.28)}
+#busy .b{background:#fff}
+.rpv{background:rgba(15,39,64,.55)}
+.rpv-bar{background:#fff;color:var(--ink);border-bottom:1px solid var(--line)}
+.rpv-pdf{background:linear-gradient(180deg,var(--brand-lt),var(--brand));color:#fff}
+
+/* ---------- الكلام الباهت: تباين مظبوط على الفاتح ---------- */
+:root{--muted:#5B6B82;--warn-ink:#8A5A0B;--info-ink:#1466A8;--ok-ink:#0E6B4D;--danger-ink:#A82D25}
+.top .t2{color:#5B6B82}
+.specol .sol-h,.miniLbl,.prow3 .tcell b,label.fld span{color:#4A5C74}
+.line .info2 .spec,.ord .od,.ord .os,.note,.empty,.total .lbl{color:#5B6B82}
 
 </style>
 </head>
@@ -1099,7 +1286,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v196';
+const APP_BUILD   = 'v197';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2491,7 +2678,7 @@ function viewNew(){
 // هو اللي بيتبعت مع الطلب.
 function ordNoteBoxHTML_(extraStyle){
   return `<div class="ordnote-box"${extraStyle?` style="${extraStyle}"`:''}>
-    <label class="fld" style="margin:0"><span style="color:#E3BE79">${ico("warn")} ملاحظات عامة على الأوردر <span style="font-weight:400;color:#C9A96B">(بتظهر للمصنع على الطلب والمستند)</span></span>
+    <label class="fld" style="margin:0"><span style="color:var(--warn-ink)">${ico("warn")} ملاحظات عامة على الأوردر <span style="font-weight:400;color:var(--warn-ink)">(بتظهر للمصنع على الطلب والمستند)</span></span>
       <textarea rows="2" class="ordnote-ta" placeholder="أي تفاصيل إضافية عن الطلب — لون، مواعيد، تسليم…" data-act="ord-note">${esc(state.orderNote)}</textarea></label>
   </div>`;
 }
@@ -2571,7 +2758,7 @@ function viewCart(){
       spec=doorSizeText_(it.sizeTxt,it.doorHeight)+(priced?' · '+money(it.unitPrice)+' ج':'')+' × '+it.qty;
       const inc=[]; if(it.frame) inc.push('حلق '+frameText_(it.frame,it.frameHeight)); if(it.dbror) inc.push('برور '+it.dbror);
       if(inc.length) spec+='<br>شامل: '+inc.join(' + ')+(priced?' — بدون سعر':'');
-      if(it.note) spec+='<br><span style="color:#E3BE79">'+esc(it.note)+'</span>';
+      if(it.note) spec+='<br><span style="color:var(--warn-ink)">'+esc(it.note)+'</span>';
     } else if(it.kind==='frame'||it.kind==='bror'){
       spec = it.isSet ? (it.qty+' طقم'+(priced?' — '+money(it.price)+' ج/طقم':''))
                        : it.customSet ? (it.qty+' عود'+(priced?' — '+money(linePrice(it))+' ج':'')+'<br>'+esc(it.spec))
@@ -2582,7 +2769,7 @@ function viewCart(){
     // شغالة عليه، الحذف كان بيشيله والحفظ بيرجّعه في نفس اللحظة — زرار بيوهم
     // المستخدم إنه عمل حاجة وهي مش بتحصل. بيتشال بشيل الباب اللي طالبه.
     const cut = isCutLine_(it);
-    if(cut) spec += '<br><span style="color:#E3BE79">بيتحسب تلقائي مع الباب — بيتشال لما الباب يتشال</span>';
+    if(cut) spec += '<br><span style="color:var(--warn-ink)">بيتحسب تلقائي مع الباب — بيتشال لما الباب يتشال</span>';
     return `<div class="line">${th}<div class="info2"><b>${esc(it.title)}</b>
       <div class="spec">${spec}</div>${priced?`<div class="pr">${money(linePrice(it))} ج</div>`:''}</div>
       ${cut?'':`<div class="lineacts">
@@ -2595,7 +2782,7 @@ function viewCart(){
   return `
   <section class="card">
     <div class="step"><span class="n">✓</span><h2>مراجعة الطلب</h2></div>
-    ${editing?`<div class="note" style="margin-top:0;background:rgba(217,164,65,.12);color:#E3BE79;border:1px solid rgba(217,164,65,.35);border-radius:8px;padding:9px 12px">
+    ${editing?`<div class="note" style="margin-top:0;background:rgba(217,164,65,.12);color:var(--warn-ink);border:1px solid rgba(217,164,65,.35);border-radius:8px;padding:9px 12px">
       ${ico("edit")} بتعدّل الطلب <b title="الكود الداخلي: ${esc(state.editingId)}">${esc(orderNoText_({displayNo:state.editingDisplayNo, editCount:state.editingEditCount, id:state.editingId}))}</b>${state.editingMeta?' — العميل: <b>'+esc(state.editingMeta.name||'')+'</b>':''} — الحفظ هيلغي الطلب القديم ده وهيعمل طلب جديد بالأصناف المعدّلة.
       ${state.editingMeta?`
       <div class="row2" style="margin-top:9px">
@@ -2649,7 +2836,7 @@ function viewOrders(){
     ${t.loading?ico('clock')+' جارٍ تحديث الحالة…':ico('refresh')+' تحديث حالة الطلبات من المصنع'}</button>`;
   const errNote = t.err ? `<div class="note" style="color:var(--danger);margin-bottom:10px">${esc(t.err)}</div>` : '';
   const pendingNote = pendingIds.size ? `<div class="note" style="margin-bottom:10px;background:#FFF6E5;
-      border:1px solid var(--warn-line);color:#E3BE79;border-radius:8px;padding:9px 12px;font-weight:700">
+      border:1px solid var(--warn-line);color:var(--warn-ink);border-radius:8px;padding:9px 12px;font-weight:700">
       ${ico('warn')} فيه ${pendingIds.size} طلب لسه ما وصلش المصنع — التطبيق بيحاول يبعتهم تلقائي.
       خلّي النت شغّال وسيب التطبيق مفتوح شوية.</div>` : '';
 
@@ -2667,10 +2854,10 @@ function viewOrders(){
     const معلّق = pendingIds.has(String(o.id));
     return `
     <div class="ord"${معلّق?' style="border:1.5px solid rgba(217,164,65,.55);background:rgba(217,164,65,.09)"':''}>
-      ${معلّق?`<div style="font-size:11.5px;font-weight:700;color:#E3BE79;margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}لسه ما وصلش المصنع — هيتبعت تلقائي أول ما النت يرجع</div>`:''}
-      <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:#E3BE79;background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:#F3968F;background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${live?statusPill(live.status):''}</div>
+      ${معلّق?`<div style="font-size:11.5px;font-weight:700;color:var(--warn-ink);margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}لسه ما وصلش المصنع — هيتبعت تلقائي أول ما النت يرجع</div>`:''}
+      <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:var(--warn-ink);background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:var(--danger-ink);background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${live?statusPill(live.status):''}</div>
       <div class="os">${esc(dateStr(o.ts))} · ${(o.items||[]).filter(x=>!isCutLine_(x)).length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
-        ${o.customer?`<br><b style="color:#9BCDF3">صاحب الأوردر: ${esc(o.customer)}</b>`:''}<br>
+        ${o.customer?`<br><b style="color:var(--info-ink)">صاحب الأوردر: ${esc(o.customer)}</b>`:''}<br>
         ${esc((o.items||[]).filter(x=>x&&!isCutLine_(x)).map(x=>x.title).filter(Boolean).slice(0,3).join('، '))}${(o.items||[]).filter(x=>x&&!isCutLine_(x)).length>3?'…':''}
         ${live && live.note?('<br><b style="color:var(--brand)">'+esc(live.note)+'</b>'):''}</div>
       ${o.note?('<div class="ordnote">'+ico("warn")+'<span><b>ملاحظات:</b> '+esc(o.note)+'</span></div>'):''}
@@ -2903,11 +3090,11 @@ function ico(name, cls){
 
 const STATUS = {
   'New':        {ar:'طلب جديد',        ic:'newDoc',  bg:'rgba(255,255,255,.07)',  fg:'#A9BCD4'},
-  'Received':   {ar:'تم استلام الطلب',  ic:'inbox',   bg:'rgba(63,169,245,.15)',   fg:'#9BCDF3'},
-  'In Progress':{ar:'تحت التنفيذ',      ic:'factory', bg:'rgba(217,164,65,.15)',   fg:'#E3BE79'},
-  'Ready':      {ar:'جاهز للتحميل',     ic:'checkC',  bg:'rgba(79,192,138,.16)',   fg:'#7FD8AE'},
+  'Received':   {ar:'تم استلام الطلب',  ic:'inbox',   bg:'rgba(63,169,245,.15)',   fg:'var(--info-ink)'},
+  'In Progress':{ar:'تحت التنفيذ',      ic:'factory', bg:'rgba(217,164,65,.15)',   fg:'var(--warn-ink)'},
+  'Ready':      {ar:'جاهز للتحميل',     ic:'checkC',  bg:'rgba(79,192,138,.16)',   fg:'var(--ok-ink)'},
   'Delivered':  {ar:'تم التسليم',       ic:'truck',   bg:'rgba(255,255,255,.07)',  fg:'#A9BCD4'},
-  'Cancelled':  {ar:'ملغي',             ic:'xC',      bg:'rgba(240,115,106,.16)',  fg:'#F3968F'}
+  'Cancelled':  {ar:'ملغي',             ic:'xC',      bg:'rgba(240,115,106,.16)',  fg:'var(--danger-ink)'}
 };
 // المراحل اللي المصنع بيحرّكها — بالترتيب
 const FLOW = ['Received','In Progress','Ready','Delivered'];
@@ -4796,9 +4983,9 @@ function showNewOrdersPopup_(list){
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;background:#1B2B46;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;text-align:right">
       <div>
         <div style="font-weight:800;font-size:16px;color:#fff">${esc(orderNoText_(o))}</div>
-        <div style="font-size:12.5px;color:#9FB3CC;margin-top:2px">${esc(o.dist||'')}${o.customer?' · '+esc(o.customer):''}</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:2px">${esc(o.dist||'')}${o.customer?' · '+esc(o.customer):''}</div>
       </div>
-      <div style="font-size:12.5px;color:#9BCDF3;white-space:nowrap">${esc(o.qty||0)} قطعة</div>
+      <div style="font-size:12.5px;color:var(--info-ink);white-space:nowrap">${esc(o.qty||0)} قطعة</div>
     </div>`).join('');
   const باقي = عدد > 6 ? `<div style="font-size:12px;color:#B9CBDD;margin-bottom:10px">و${عدد-6} طلب كمان…</div>` : '';
   ov.innerHTML = `
@@ -4937,10 +5124,10 @@ function viewAdminPrices(){
     <div class="step"><span class="n">${ico("money","lg")}</span><h2>تعديل الأسعار</h2></div>
     <div class="note" style="margin-top:0">التعديل بيتنشر على <b>كل الأجهزة</b> — الموزّعين هيشوفوا الأسعار الجديدة أول ما يفتحوا التطبيق. وبيتطبّق فورًا على أي طلب جديد وأي مستند PDF بعد كده.${
       load(LS_PRICES_DIRTY,false)
-        ? ' <span style="color:#F3968F;font-weight:700">⚠️ آخر تعديل لسه ما وصلش للموزّعين — هيترفع تلقائي أول ما النت يرجع.</span>'
-        : (_pricesSyncedAt ? ' <span style="color:#9FB3CC">(آخر تحديث من السيرفر: '+esc(_pricesSyncedAt)+')</span>' : '')
+        ? ' <span style="color:var(--danger-ink);font-weight:700">⚠️ آخر تعديل لسه ما وصلش للموزّعين — هيترفع تلقائي أول ما النت يرجع.</span>'
+        : (_pricesSyncedAt ? ' <span style="color:var(--muted)">(آخر تحديث من السيرفر: '+esc(_pricesSyncedAt)+')</span>' : '')
     }</div>
-    <div class="note" style="background:rgba(63,169,245,.12);color:#9BCDF3;border:1px solid rgba(63,169,245,.32);border-radius:8px;padding:9px 12px">
+    <div class="note" style="background:rgba(63,169,245,.12);color:var(--info-ink);border:1px solid rgba(63,169,245,.32);border-radius:8px;padding:9px 12px">
       عمود <b>${esc(PRICE_TIERS.dist.label)}</b> هو الأساسي وهو اللي بيتحسب بيه الأوردر الفعلي. وعمود <b>${esc(PRICE_TIERS.showroom.label)}</b> بتقدر تعدّله بحرية لكل صنف، وبيُستخدم لما تعمل عرض سعر وتختار المستوى المناسب.
     </div>
 
@@ -5028,14 +5215,14 @@ function prodTableHTML_(oid, its, a, qtyMode){
             data-act="prod-set" data-id="${esc(oid)}" data-idx="${idx}"
             style="width:44px;text-align:center;border:1px solid var(--line);border-radius:6px;padding:4px 2px;font-size:13px;font-weight:700">
         </div>`
-      : `<b style="color:${full?'#6FD3A3':(produced>0?'#E3BE79':'#9FB3CC')}">${produced}</b>`;
+      : `<b style="color:${full?'var(--ok-ink)':(produced>0?'var(--warn-ink)':'var(--muted)')}">${produced}</b>`;
 
     const lastCell = editing
       ? `<div style="display:flex;gap:4px;justify-content:center">
           <button class="btn sm" data-act="adm-prod-save" data-id="${esc(oid)}" data-idx="${idx}" ${busy?'disabled':''} style="font-size:11.5px;padding:4px 6px">${busy?'…':ico('check')}</button>
           <button class="btn ghost sm" data-act="adm-prod-cancel" data-id="${esc(oid)}" data-idx="${idx}" ${busy?'disabled':''} style="font-size:11.5px;padding:4px 6px">${ico('x')}</button>
         </div>`
-      : `<b style="color:${pending>0?'#F3968F':'#9FB3CC'}">${pending}</b>`;
+      : `<b style="color:${pending>0?'var(--danger-ink)':'var(--muted)'}">${pending}</b>`;
 
     // ⚠️ علامة «غير متاح» بتتطبع في مستند الطلب (شوف buildAdminDocOrder_) بس مكانش
     // فيه أي طريقة المصنع يعلّمها بيها — الدالة setItemAvail والمعالج موجودين من
@@ -5048,7 +5235,7 @@ function prodTableHTML_(oid, its, a, qtyMode){
         style="font-size:11px;padding:3px 5px;min-height:0;width:auto">${availBusy?'…':(avail?ico('check'):ico('warn'))}</button>`;
 
     return `<tr data-act="${editing?'':'adm-prod-edit-open'}" data-id="${esc(oid)}" data-idx="${idx}" style="cursor:${editing?'default':'pointer'};${avail?'':'background:rgba(240,115,106,.13)'}">
-      <td style="padding:6px 7px;text-align:right;font-size:12.5px">${avail?'':'<span style="color:#F3968F;font-weight:700">غير متاح — </span>'}${title}</td>
+      <td style="padding:6px 7px;text-align:right;font-size:12.5px">${avail?'':'<span style="color:var(--danger-ink);font-weight:700">غير متاح — </span>'}${title}</td>
       <td style="padding:6px 5px;text-align:center;font-size:12.5px;color:#A9BCD4;white-space:nowrap">${esc(sizeText_(it))}</td>
       <td style="padding:6px 5px;text-align:center;font-size:12.5px">${qty}</td>
       <td style="padding:6px 5px;text-align:center;font-size:12.5px">${readyCell}</td>
@@ -5123,11 +5310,11 @@ function viewAdmin(){
   // قرار على أرقام قديمة وهو فاكرها لحظية
   const staleBar = (a.staleAt && a.loading)
     ? `<div class="note" style="margin:0 0 10px;display:flex;align-items:center;gap:7px;
-            background:rgba(217,164,65,.12);border:1px solid var(--warn-line);color:#E3BE79">
+            background:rgba(217,164,65,.12);border:1px solid var(--warn-line);color:var(--warn-ink)">
          ${ico('clock')} بيعرض آخر نسخة محفوظة — بيتحدّث من المصنع دلوقتي…</div>`
     : (a.staleAt
       ? `<div class="note" style="margin:0 0 10px;display:flex;align-items:center;gap:7px;
-              background:rgba(240,115,106,.13);border:1px solid rgba(240,115,106,.4);color:#F3968F">
+              background:rgba(240,115,106,.13);border:1px solid rgba(240,115,106,.4);color:var(--danger-ink)">
            ${ico('warn')} النت مقطوع — دي آخر نسخة محفوظة، اضغط «تحديث» لما النت يرجع</div>`
       : '');
 
@@ -5170,7 +5357,7 @@ function viewAdmin(){
           <input type="number" inputmode="numeric" min="0" value="${esc(val)}"
             data-act="stock-in" data-code="${esc(d.code)}" data-w="${sz.w}"
             class="stkin ${dirty?'dirty':''}" ${busy?'disabled':''}>
-          ${res>0?`<div style="text-align:center;font-size:11px;margin-top:2px"><span style="color:#F3968F">مطلوب ${res}</span> · <span style="color:${free<0?'#F3968F':'#6FD3A3'};font-weight:700">متبقي ${free}</span></div>`:''}
+          ${res>0?`<div style="text-align:center;font-size:11px;margin-top:2px"><span style="color:var(--danger-ink)">مطلوب ${res}</span> · <span style="color:${free<0?'var(--danger-ink)':'var(--ok-ink)'};font-weight:700">متبقي ${free}</span></div>`:''}
         </td>`;
       }).join('');
       const total = stockTotalFor(d.code)||0;
@@ -5181,8 +5368,8 @@ function viewAdmin(){
           <span style="color:var(--muted);font-size:12.5px"> ${esc(d.name)}</span></td>
         ${cells}
         <td style="padding:5px 7px;text-align:center;color:var(--muted);font-size:12.5px">${total}</td>
-        <td style="padding:5px 7px;text-align:center;font-size:12.5px;color:${resTotal>0?'#F3968F':'var(--muted)'}">${resTotal||'—'}</td>
-        <td style="padding:5px 7px;text-align:center;font-size:12.5px;font-weight:700;color:${freeTotal>0?'#6FD3A3':'#F3968F'}">${freeTotal}</td>
+        <td style="padding:5px 7px;text-align:center;font-size:12.5px;color:${resTotal>0?'var(--danger-ink)':'var(--muted)'}">${resTotal||'—'}</td>
+        <td style="padding:5px 7px;text-align:center;font-size:12.5px;font-weight:700;color:${freeTotal>0?'var(--ok-ink)':'var(--danger-ink)'}">${freeTotal}</td>
       </tr>`;
     }).join('');
 
@@ -5250,15 +5437,15 @@ function viewAdmin(){
         const meta = a.metaEdit[o.id] || {customer:o.customer||'', date:o.date||''};
         const metaBusy = a.metaBusy === o.id;
         itemsHtml += `<div style="margin-top:8px;padding:9px 10px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px">
-          <div style="font-size:12.5px;color:#9FB3CC;font-weight:700;margin-bottom:6px">بيانات الطلب:</div>
+          <div style="font-size:12.5px;color:var(--muted);font-weight:700;margin-bottom:6px">بيانات الطلب:</div>
           <div style="display:flex;gap:7px;flex-wrap:wrap">
             <label style="flex:1;min-width:140px;display:flex;flex-direction:column;gap:3px">
-              <span style="font-size:12px;color:#9FB3CC">صاحب الأوردر</span>
+              <span style="font-size:12px;color:var(--muted)">صاحب الأوردر</span>
               <input type="text" value="${esc(meta.customer)}" data-act="meta-customer" data-id="${esc(o.id)}"
                 style="border:1px solid var(--line);border-radius:8px;padding:7px 8px;font-size:13px">
             </label>
             <label style="flex:1;min-width:120px;display:flex;flex-direction:column;gap:3px">
-              <span style="font-size:12px;color:#9FB3CC">تاريخ الطلب</span>
+              <span style="font-size:12px;color:var(--muted)">تاريخ الطلب</span>
               <input type="date" value="${esc(meta.date)}" data-act="meta-date" data-id="${esc(o.id)}"
                 style="border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13px">
             </label>
@@ -5268,7 +5455,7 @@ function viewAdmin(){
       }
       if(its && its.length){
         itemsHtml += `<div style="margin-top:8px">
-          <div style="font-size:12.5px;color:#9FB3CC;font-weight:700;margin-bottom:4px">${qtyMode?'تعديل الكمية المطلوبة أو حذف صنف من الطلب:':'تتبّع الإنتاج (لمسة على أي صف لتحديث الكمية الجاهزة):'}</div>
+          <div style="font-size:12.5px;color:var(--muted);font-weight:700;margin-bottom:4px">${qtyMode?'تعديل الكمية المطلوبة أو حذف صنف من الطلب:':'تتبّع الإنتاج (لمسة على أي صف لتحديث الكمية الجاهزة):'}</div>
           ${prodTableHTML_(o.id, its, a, qtyMode)}
         </div>`;
       } else {
@@ -5290,13 +5477,13 @@ function viewAdmin(){
          <button class="btn act-del sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}>${ico("trash")}${delBusy?'…':'حذف'}</button>`;
 
     return `<div class="ord">
-      <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:11.5px;font-weight:700;color:#E3BE79;background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:12px;font-weight:700;color:#F3968F;background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${statusPill(o.status)}</div>
+      <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:11.5px;font-weight:700;color:var(--warn-ink);background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:12px;font-weight:700;color:var(--danger-ink);background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${statusPill(o.status)}</div>
       <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}
-        ${o.customer?`<br><b style="color:#9BCDF3">صاحب الأوردر: ${esc(o.customer)}</b>`:''}
+        ${o.customer?`<br><b style="color:var(--info-ink)">صاحب الأوردر: ${esc(o.customer)}</b>`:''}
         <br>${esc(dateStr2_(o.date))} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''} · ${money(o.total||0)} ج</div>
       ${o.ordNote?`<div class="ordnote">${ico("warn")}<span><b>ملاحظات:</b> ${esc(o.ordNote)}</span></div>`:''}
       ${o.superseded?`<div style="margin-top:8px;padding:9px 12px;background:rgba(240,115,106,.13);border:1.5px solid rgba(240,115,106,.42);border-radius:9px;
-        font-size:13px;font-weight:700;color:#F3968F;display:flex;align-items:flex-start;gap:6px;line-height:1.6">
+        font-size:13px;font-weight:700;color:var(--danger-ink);display:flex;align-items:flex-start;gap:6px;line-height:1.6">
         ${ico("warn")}<span>الطلب ده <b>اتعدّل وعنده نسخة جديدة</b> — كان دخل التنفيذ فمقدرناش نلغيه تلقائي.
         راجع النسخة الجديدة واحذف السطر ده بنفسك من زرار «حذف» تحت.</span></div>`:''}
       <div class="chips" style="margin-top:10px;gap:6px;flex-wrap:nowrap">${btns}</div>
@@ -5329,7 +5516,7 @@ function viewAdmin(){
       <div class="grp-hd" data-act="adm-toggle-group" data-name="${esc(name)}">
         <span style="flex:1;min-width:0">
           <b style="font-size:13.5px;color:#FFFFFF">${esc(name)}</b>
-          <div style="font-size:11px;color:#9FB3CC;margin-top:2px">${orders.length} طلب · ${totalQty} قطعة · ${money(totalMoney)} ج</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${orders.length} طلب · ${totalQty} قطعة · ${money(totalMoney)} ج</div>
         </span>
         <span class="grp-chev" style="transform:rotate(${open?90:0}deg)">‹</span>
       </div>
