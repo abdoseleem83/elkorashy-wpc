@@ -1099,7 +1099,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v194';
+const APP_BUILD   = 'v195';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1479,8 +1479,14 @@ const state = {
   orders:  load(LS_ORDERS, []),
   pick:{code:'', sizes:{}, customOn:false, note:'', custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,frameKind:null,frameRodQty:'',frameForDoors:''}},
   newSection: load(LS_SECTION, ''),   // '' (لسه محددش) | doors | acc | frame | bror | prodium
-  fr:{cm:10, code:'', doorW:'', kind:'full', qty:1, nonStd:false, jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:''},   // حلق منفصل: kind = 'full' (طقم كامل — الكمية × [٢ قائم ٢٢٠سم + ١ عارضة حلق علوية ١١٠سم]، والارتفاع يتغيّر بس لو nonStd=true) أو 'rods' (أعواد حرة — عدد وطول بيحددهم المستخدم من غير قيمة افتراضية). doorW = مقاس الباب اللي الحلق ده ليه (70/80/90/100) — اختياري. note: ملحوظة اختيارية
-  br:{size:'6×9', code:'', rods:1, lenM:BROR_ROD_M_DEFAULT}, // برور إضافي بالعود — code = كود/لون الباب (إجباري زي الحلق)، lenM = طول العود بالمتر (قابل للتغيير لو حد طلب مقاس تكملة)
+  // ⚠️ الأطوال (jambCm/headerCm/extra[].cm/rodsCm) بتتخزّن **بالوحدة المكتوبة**
+  // (state.fr.unit) مش بالسنتي دايمًا — عشان اللي الموزّع بيكتبه يفضل زي ما هو
+  // وهو بيكتب. التحويل لسنتي بيحصل في مكان واحد بس: frCm_().
+  // أي مكان بيرجّع أطوال جاهزة بالسنتي (تعديل سطر من السلة) لازم يحط unit:'cm'.
+  fr:{cm:10, code:'', doorW:'', kind:'full', qty:1, nonStd:false, jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:'', unit:'cm'},   // حلق منفصل: kind = 'full' (طقم كامل — الكمية × [٢ قائم ٢٢٠سم + ١ عارضة حلق علوية ١١٠سم]، والارتفاع يتغيّر بس لو nonStd=true) أو 'rods' (أعواد حرة — عدد وطول بيحددهم المستخدم من غير قيمة افتراضية). doorW = مقاس الباب اللي الحلق ده ليه (70/80/90/100) — اختياري. note: ملحوظة اختيارية
+  // len = طول العود **بالوحدة المكتوبة** (state.br.unit: 'm' افتراضيًا أو 'cm')،
+  // والتحويل لسنتي في brRodCm_() بس. code = كود/لون الباب (إجباري زي الحلق).
+  br:{size:'6×9', code:'', rods:1, len:BROR_ROD_M_DEFAULT, unit:'m'},
   pd:{code:'', qty:1}, // ألواح بروديوم — code = كود/لون الباب (إجباري زي البرور)، qty = عدد الألواح
   acc:{},
   touched:false,             // اتضغط إرسال؟ عشان نوضّح الحقول الناقصة
@@ -1607,13 +1613,48 @@ function customReady_(p){
 }
 function priceForWidth(w, hafr){const n=Number(w)||0;let p=SIZES[SIZES.length-1].price;for(const s of SIZES) if(n<=s.w){p=s.price;break;}return p+(hafr?HAFR_EXTRA:0);}
 function rodPrice(perMetre, cm){return Math.round(perMetre*((Number(cm)||220)/100)*100)/100;}
-// ⚠️ طول عود البرور كان بيتقرّب لسنتي صحيح (Math.round(lenM*100)) — فطلب
-// ٢.٢٦٥ م بيتسجّل ٢٢٧ سم، ونص سنتي بيضيع من كل عود والسعر يطلع غلط. الحلق
-// بقى بيقبل الكسور من زمان، والبرور لأ. بقى زيه بالظبط: بنسيب الكسر ونقرّب
-// لأقرب جزء من مية من السنتي بس (عشان float مايطلّعش 226.49999999).
-function brRodCm_(lenM){
-  const cm = (Number(lenM)||0) * 100;
-  return Math.max(0.1, Math.round(cm*100)/100);
+/* ---------- وحدة الطول في شاشة «حلق فقط» و«برور فقط» ----------
+   فيه موزّعين بيفكّروا بالسنتي (٢٢٠ سم) وفيه بالمتر (٢.٢ م). بدل ما كل شاشة
+   تفرض وحدة واحدة والموزّع يحسب في دماغه (وده مصدر غلطات في الأطوال)، فيه
+   زرار وحدة جنب الخانات. التطبيق بيحسب وبيسجّل بالسنتي دايمًا — الوحدة
+   اختيار كتابة وعرض بس، مابتأثرش على الطلب المتسجّل ولا على السعر. */
+const LEN_UNITS_ = { cm:{lbl:'سم', f:1, ar:'سنتيمتر'}, m:{lbl:'م', f:100, ar:'متر'} };
+function lenUnit_(u){ return LEN_UNITS_[u] || LEN_UNITS_.cm; }
+function lenUnitLbl_(u){ return lenUnit_(u).lbl; }
+// من اللي المستخدم كتبه (بالوحدة المختارة) لسنتيمتر.
+// ⚠️ التقريب لجزء من مية من السنتي مقصود: من غيره ٢.٢٦٥ م بتطلع
+// 226.49999999999997 وبتتسجّل كده في الشيت وفي الطلب المبعوت.
+function lenToCm_(v, u){
+  const n = Number(decIn_(String(v==null?'':v))) || 0;
+  return Math.round(n * lenUnit_(u).f * 100) / 100;
+}
+// والعكس — لما الموزّع يبدّل الوحدة، اللي مكتوب يتحوّل بدل ما معناه يتغيّر
+// (٢٢٠ سم تبقى ٢.٢ م، مش ٢٢٠ م).
+function lenFromCm_(cm, u){
+  const v = (Number(cm)||0) / lenUnit_(u).f;
+  if(!v) return '';
+  return String(Math.round(v * 10000) / 10000);
+}
+// ⚠️ عدد الأعواد كان بيتقرّب لصحيح (Math.round) في كل مكان — فنص عود أو ربع
+// عود (تكملة) مكانش ينفع يتطلب أصلاً، والزرار كان بيقول «أضف ٣» والمستخدم
+// كاتب ٢.٥. بقى بيقبل الكسور زي الأطوال.
+function rodQty_(v){
+  const n = Number(decIn_(String(v==null?'':v))) || 0;
+  return n > 0 ? Math.round(n*100)/100 : 0;
+}
+// طول عود البرور بالسنتي من اللي مكتوب في الشاشة (بالوحدة المختارة).
+// كان بيتقرّب لسنتي صحيح — فعود ٢.٢٦٥ م يتسجّل ٢٢٧ سم، نص سنتي يضيع من كل
+// عود والسعر (سعر المتر × الطول) يطلع غلط على الطلب كله.
+function brRodCm_(v, unit){
+  return Math.max(0.1, lenToCm_(v, unit===undefined ? 'm' : unit));
+}
+// طول من شاشة «حلق فقط» بالسنتي — المكان الوحيد اللي بيقرا وحدة الشاشة
+function frCm_(v){ return lenToCm_(v, (state.fr||{}).unit); }
+// شرايح اختيار الوحدة (سنتيمتر / متر)
+function unitChips_(cur, act){
+  return ['cm','m'].map(u=>
+    `<button class="miniChip ${cur===u?'on':''}" data-act="${act}" data-u="${u}">${LEN_UNITS_[u].ar}</button>`
+  ).join('');
 }
 // ⚠️ الفلوس بتتخزّن وبتتبعت زي ما هي — مش بس بتتعرض. سعر العود المتوسط بقى
 // بأربع خانات عشرية (عشان إجمالي السطر يطلع مظبوط بالقرش)، فحاصل الضرب كان
@@ -2169,16 +2210,17 @@ function viewNew(){
     </div>` : '';
 
   const frKind=state.fr.kind==='rods'?'rods':'full';
-  const frQty=Math.max(0,Math.round(Number(state.fr.qty)||0));
+  const frUnit=lenUnit_(state.fr.unit).lbl;
+  const frQty=rodQty_(state.fr.qty);
   const frNonStd=!!state.fr.nonStd;
   const frJamb=frKind==='full' ? frQty*2 : Math.max(0,Number(state.fr.jamb)||0);
   const frHeader=frKind==='full' ? frQty*1 : Math.max(0,Number(state.fr.header)||0);
-  const frJambCm=Math.max(1,Number(state.fr.jambCm)||220);
-  const frHeaderCm=Math.max(1,Number(state.fr.headerCm)||110);
-  const frExtra=(state.fr.extra||[]).map(x=>({cm:Math.max(0,Number(x.cm)||0), qty:Math.max(0,Math.round(Number(x.qty)||0))}));
+  const frJambCm=Math.max(1,frCm_(state.fr.jambCm)||220);
+  const frHeaderCm=Math.max(1,frCm_(state.fr.headerCm)||110);
+  const frExtra=(state.fr.extra||[]).map(x=>({cm:Math.max(0,frCm_(x.cm)), qty:rodQty_(x.qty)}));
   const frExtraRods=frExtra.reduce((s,x)=>s+(x.cm>0?x.qty:0),0);
-  const frRodsQty=Math.max(0,Math.round(Number(state.fr.rods)||0));
-  const frRodsCm=Math.max(0,Number(state.fr.rodsCm)||0);
+  const frRodsQty=rodQty_(state.fr.rods);
+  const frRodsCm=Math.max(0,frCm_(state.fr.rodsCm));
   const frRods=frKind==='full' ? (frJamb+frHeader+frExtraRods) : frRodsQty;
   const frSel=FRAMES.find(f=>f.cm===state.fr.cm)||FRAMES[0];
   // سعر كل مقاس على حدة حسب طوله الفعلي
@@ -2193,7 +2235,8 @@ function viewNew(){
     <button class="chip ${String(state.fr.doorW)===String(s.w)?'on':''}" data-act="fr-doorw" data-w="${s.w}">${s.w} سم</button>`).join('')
     +`<button class="chip ${!state.fr.doorW?'on':''}" data-act="fr-doorw" data-w="">مش محدد</button>`;
 
-  const brRods=Number(state.br.rods)||0;
+  const brRods=rodQty_(state.br.rods);
+  const brUnit=lenUnit_(state.br.unit).lbl;
   const brSel=BRORS.find(b=>b.size===state.br.size)||BRORS[0];
   const brChips=BRORS.map(b=>`
     <button class="chip ${state.br.size===b.size?'on':''}" data-act="br-size" data-size="${esc(b.size)}">برور ${esc(b.size)}</button>`).join('');
@@ -2201,8 +2244,7 @@ function viewNew(){
   const brCodeChips=DOORS.map(d=>`
     <button class="chip ${state.br.code===d.code?'on':''}" data-act="br-code" data-code="${d.code}"${doorChipStyle_(d.code,state.br.code===d.code)}>${d.code} — ${esc(d.name)}</button>`).join('');
   // طول العود المطلوب بالمتر — افتراضيًا الطول القياسي، وقابل للتعديل لو حد طلب مقاس تكملة (زي ٣م)
-  const brLenM=Number(state.br.lenM)||BROR_ROD_M_DEFAULT;
-  const brRodCm=brRodCm_(brLenM);
+  const brRodCm=brRodCm_(state.br.len===''||state.br.len==null ? BROR_ROD_M_DEFAULT : state.br.len, state.br.unit);
   const brLinePrice=rodPrice(brSel.price, brRodCm);
 
   const pdQty=Math.max(0,Math.round(Number(state.pd.qty)||0));
@@ -2298,8 +2340,8 @@ function viewNew(){
     <div class="rodbox">
       <div class="rl">عود إضافي<small>ارتفاع مخصوص</small></div>
       <div class="row2" style="gap:6px">
-        <input type="text" inputmode="decimal" placeholder="سم" value="${esc(state.fr.extra[idx].cm)}" data-act="fr-extra-cm" data-i="${idx}">
-        <input type="number" inputmode="numeric" min="0" step="1" placeholder="عدد" value="${esc(state.fr.extra[idx].qty)}" data-act="fr-extra-qty" data-i="${idx}">
+        <input type="text" inputmode="decimal" placeholder="${lenUnit_(state.fr.unit).lbl}" value="${esc(state.fr.extra[idx].cm)}" data-act="fr-extra-cm" data-i="${idx}">
+        <input type="text" inputmode="decimal" placeholder="عدد" value="${esc(state.fr.extra[idx].qty)}" data-act="fr-extra-qty" data-i="${idx}">
       </div>
       ${x.cm>0&&pricesVisible()?`<div class="rp">${money(rodPrice(frSel.price,x.cm))} ج/عود</div>`:''}
       <button class="btn ghost sm" style="margin-top:6px;padding:4px 10px" data-act="fr-extra-del" data-i="${idx}">${ico("x")} حذف</button>
@@ -2314,6 +2356,8 @@ function viewNew(){
     <div class="chips">${frCodeChips}</div>
     <div class="sol-h" style="margin:12px 0 6px">لباب مقاس كام؟ <span style="font-weight:400;color:var(--muted)">(اختياري — يوضح للمصنع)</span></div>
     <div class="chips">${frDoorWChips}</div>
+    <div class="sol-h" style="margin:12px 0 6px">وحدة الطول <span style="font-weight:400;color:var(--muted)">(اكتب بالسم أو بالمتر — زي ما يريحك)</span></div>
+    <div class="miniChips">${unitChips_(state.fr.unit==='m'?'m':'cm','fr-unit')}</div>
     <div class="sol-h" style="margin:12px 0 6px">نوع الحلق</div>
     <div class="miniChips">
       <button class="miniChip iconChip ${frKind==='full'?'on':''}" data-act="fr-kind" data-k="full">${ico('door')}<span>حلق كامل</span></button>
@@ -2322,19 +2366,19 @@ function viewNew(){
     ${frKind==='full' ? `
     <div class="sol-h" style="margin:12px 0 6px">الكمية <span style="font-weight:400;color:var(--muted)">(عدد الأطقم — الطقم = ٢ عود ٢٢٠سم + ١ عود ١١٠سم)</span></div>
     <div class="row2" style="gap:6px;max-width:220px">
-      <input type="number" inputmode="numeric" min="0" step="1" placeholder="العدد" value="${esc(state.fr.qty)}" data-act="fr-qty">
+      <input type="text" inputmode="decimal" placeholder="العدد" value="${esc(state.fr.qty)}" data-act="fr-qty">
     </div>
     ${pricesVisible()&&frQty>0?`<div class="rp" style="margin-top:6px">${money(frJambPrice)} ج/عود ٢٢٠سم — ${money(frHeaderPrice)} ج/عود ١١٠سم</div>`:''}
     <button class="btn ghost sm" style="margin-top:9px" data-act="fr-nonstd-toggle">${frNonStd?'إخفاء الارتفاع المخصوص':'الارتفاع مش استاندر؟'}</button>
     ${frNonStd ? `
     <div class="rodrow" style="margin-top:9px">
       <div class="rodbox">
-        <div class="rl">الطول الأول<small>افتراضي ٢٢٠سم</small></div>
-        <input type="text" inputmode="decimal" placeholder="سم" value="${esc(state.fr.jambCm)}" data-act="fr-jambCm">
+        <div class="rl">الطول الأول<small>افتراضي ٢٢٠سم = ${esc(frJambCm)} سم</small></div>
+        <input type="text" inputmode="decimal" placeholder="${frUnit}" value="${esc(state.fr.jambCm)}" data-act="fr-jambCm">
       </div>
       <div class="rodbox">
-        <div class="rl">الطول التاني<small>افتراضي ١١٠سم</small></div>
-        <input type="text" inputmode="decimal" placeholder="سم" value="${esc(state.fr.headerCm)}" data-act="fr-headerCm">
+        <div class="rl">الطول التاني<small>افتراضي ١١٠سم = ${esc(frHeaderCm)} سم</small></div>
+        <input type="text" inputmode="decimal" placeholder="${frUnit}" value="${esc(state.fr.headerCm)}" data-act="fr-headerCm">
       </div>
       ${frExtraRows}
     </div>
@@ -2347,13 +2391,13 @@ function viewNew(){
       <div class="rodbox">
         <div class="rl">أعواد حرة<small>حدد العدد والطول</small></div>
         <div class="row2" style="gap:6px">
-          <input type="text" inputmode="decimal" placeholder="الطول (سم)" value="${esc(state.fr.rodsCm)}" data-act="fr-rodsCm">
-          <input type="number" inputmode="numeric" min="0" step="1" placeholder="العدد" value="${esc(state.fr.rods)}" data-act="fr-rods">
+          <input type="text" inputmode="decimal" placeholder="الطول (${frUnit})" value="${esc(state.fr.rodsCm)}" data-act="fr-rodsCm">
+          <input type="text" inputmode="decimal" placeholder="العدد" value="${esc(state.fr.rods)}" data-act="fr-rods">
         </div>
-        ${(pricesVisible() && frRodsCm>0)?`<div class="rp">${money(rodPrice(frSel.price,frRodsCm))} ج/عود</div>`:''}
+        ${frRodsCm>0?`<div class="rp">${esc(frRodsCm)} سم${(pricesVisible())?' — '+money(rodPrice(frSel.price,frRodsCm))+' ج/عود':''}</div>`:''}
       </div>
     </div>
-    <div class="note" style="margin-top:9px">اكتب عدد الأعواد وطولها اللي محتاجها — مفيش قيمة افتراضية.</div>
+    <div class="note" style="margin-top:9px">اكتب عدد الأعواد وطولها اللي محتاجها — مفيش قيمة افتراضية. الطول والعدد الاتنين بيقبلوا كسور (٢.٥ عود، ٢٢٠.٥ سم).</div>
     `}
     <label class="fld" style="margin-top:9px">
       <span>ملحوظة <span style="font-weight:400;color:var(--muted)">(اختياري)</span></span>
@@ -2376,13 +2420,15 @@ function viewNew(){
     <div class="chips">${brChips}</div>
     <div class="sol-h" style="margin:12px 0 6px">كود الباب (اللون) <b class="req">*</b></div>
     <div class="chips">${brCodeChips}</div>
+    <div class="sol-h" style="margin:12px 0 6px">وحدة الطول <span style="font-weight:400;color:var(--muted)">(اكتب بالسم أو بالمتر — زي ما يريحك)</span></div>
+    <div class="miniChips">${unitChips_(state.br.unit==='cm'?'cm':'m','br-unit')}</div>
     <div class="rodrow">
       <label class="fld"><span>عدد العيدان</span>
-        <input type="number" inputmode="numeric" min="0" step="1" value="${esc(state.br.rods)}" placeholder="مثال 3" data-act="br-rods"></label>
-      <label class="fld"><span>طول العود (م)</span>
-        <input type="text" inputmode="decimal" value="${esc(state.br.lenM)}" placeholder="مثال 2.255" data-act="br-lenM"></label>
+        <input type="text" inputmode="decimal" value="${esc(state.br.rods)}" placeholder="مثال 3 أو 2.5" data-act="br-rods"></label>
+      <label class="fld"><span>طول العود (${brUnit})</span>
+        <input type="text" inputmode="decimal" value="${esc(state.br.len)}" placeholder="${state.br.unit==='m'?'مثال 2.265':'مثال 226.5'}" data-act="br-len"></label>
     </div>
-    <div class="note" style="margin-top:9px">الطول القياسي ${BROR_ROD_M_DEFAULT} م — غيّره لو حد طلب عيدان مقاس مختلف (مثلاً ١٠ عيدان مقاس ٣م). الطول بيقبل الكسور زي الحلق — الطول الحالي ${brRodCm} سم.${pricesVisible()?' السعر: '+money(brLinePrice)+' ج/عود':''}</div>
+    <div class="note" style="margin-top:9px">الطول القياسي ${BROR_ROD_M_DEFAULT} م — غيّره لو حد طلب عيدان مقاس مختلف (مثلاً ١٠ عيدان مقاس ٣م). الطول والعدد الاتنين بيقبلوا كسور — الطول الحالي ${brRodCm} سم.${pricesVisible()?' السعر: '+money(brLinePrice)+' ج/عود':''}</div>
     <button class="btn ghost sm" style="margin-top:9px" data-act="add-br" ${brRods>0&&state.br.code?'':'disabled'}>
       ${!state.br.code ? 'اختر كود الباب أولاً' : (brRods>0 ? `أضف ${brRods} عود برور ${brSel.size} — ${brRodCm} سم — ${esc(state.br.code)}` : 'اكتب عدد العيدان')}</button>
   </section>`;
@@ -5366,8 +5412,35 @@ document.addEventListener('click',e=>{
     case 'fr-code': state.fr.code=el.dataset.code; render(); break;
     case 'fr-doorw': state.fr.doorW=el.dataset.w; render(); break;
     case 'fr-kind': state.fr.kind=el.dataset.k; render(); break;
-    case 'fr-nonstd-toggle': state.fr.nonStd=!state.fr.nonStd; if(!state.fr.nonStd){state.fr.jambCm=220; state.fr.headerCm=110; state.fr.extra=[];} render(); break;
+    case 'fr-nonstd-toggle': state.fr.nonStd=!state.fr.nonStd;
+      if(!state.fr.nonStd){ state.fr.jambCm=lenFromCm_(220, state.fr.unit); state.fr.headerCm=lenFromCm_(110, state.fr.unit); state.fr.extra=[]; }
+      render(); break;
     case 'fr-extra-add': state.fr.extra=[...(state.fr.extra||[]), {cm:'',qty:1}]; render(); break;
+    // ⚠️ تبديل الوحدة لازم يحوّل اللي مكتوب: لو ٢٢٠ سم فضلت ٢٢٠ وإحنا بقينا
+    // بالمتر، الطلب يطلع ٢٢٠ متر. بنحوّل كل خانة طول في الشاشة مرة واحدة.
+    case 'fr-unit': {
+      const قديم = state.fr.unit==='m' ? 'm' : 'cm';
+      const جديد = el.dataset.u==='m' ? 'm' : 'cm';
+      if(قديم !== جديد){
+        const حوّل = v => (v==='' || v==null) ? '' : lenFromCm_(lenToCm_(v, قديم), جديد);
+        state.fr.jambCm  = حوّل(state.fr.jambCm);
+        state.fr.headerCm = حوّل(state.fr.headerCm);
+        state.fr.rodsCm  = حوّل(state.fr.rodsCm);
+        state.fr.extra = (state.fr.extra||[]).map(x=>({...x, cm:حوّل(x.cm)}));
+        state.fr.unit = جديد;
+      }
+      render(); break;
+    }
+    case 'br-unit': {
+      const قديمB = state.br.unit==='cm' ? 'cm' : 'm';
+      const جديدB = el.dataset.u==='cm' ? 'cm' : 'm';
+      if(قديمB !== جديدB){
+        state.br.len = (state.br.len==='' || state.br.len==null)
+          ? '' : lenFromCm_(lenToCm_(state.br.len, قديمB), جديدB);
+        state.br.unit = جديدB;
+      }
+      render(); break;
+    }
     case 'fr-extra-del': { const i=Number(el.dataset.i); state.fr.extra.splice(i,1); render(); break; }
     case 'br-size': state.br.size=el.dataset.size; render(); break;
     case 'br-code': state.br.code=el.dataset.code; render(); break;
@@ -5647,7 +5720,7 @@ document.addEventListener('input',e=>{
   if(a==='fr-extra-qty'){ state.fr.extra[Number(el.dataset.i)].qty=el.value; render(); return; }
   if(a==='fr-note'){ state.fr.note=el.value; return; }
   if(a==='br-rods'){ state.br.rods=el.value; refreshRodBtn('add-br'); return; }
-  if(a==='br-lenM'){ state.br.lenM=decIn_(el.value); render(); return; }
+  if(a==='br-len'){ state.br.len=decIn_(el.value); render(); return; }
   if(a==='pd-qty'){ state.pd.qty=el.value; refreshPanelBtn(); return; }
   if(a==='price-set'){
     const pe=state.admin.priceEdit; if(!pe) return;
@@ -5716,7 +5789,7 @@ function refreshRodBtn(act){
   // ⚠️ addRod بتقرّب العدد (Math.round) لكن الزرار كان بيعرض الرقم زي ما اتكتب.
   // يعني «أضف 2.5 عود» وبتتضاف ٣ — الزرار كان بيوعد بحاجة والإضافة تعمل غيرها.
   // نفس تقريب البروديوم بالظبط.
-  const r=Math.max(0,Math.round(Number(state.br.rods)||0)), s=BRORS.find(x=>x.size===state.br.size)||BRORS[0];
+  const r=rodQty_(state.br.rods), s=BRORS.find(x=>x.size===state.br.size)||BRORS[0];
   b.disabled=!(r>0 && state.br.code);
   b.textContent = !state.br.code ? 'اختر كود الباب أولاً'
     : (r>0 ? `أضف ${r} عود برور ${s.size} — ${state.br.code}` : 'اكتب عدد العيدان');
@@ -5821,10 +5894,10 @@ function addRod(kind){
     // يستعمل kind هنا كان هيقارن بـ'full' من غير ما حد ياخد باله.
     const frameMode = st.kind==='rods' ? 'rods' : 'full';
     if(frameMode==='full'){
-      const qty = Math.max(0, Math.round(Number(st.qty)||0));
-      const jambCm = Math.max(1, Number(st.jambCm)||220);
-      const headerCm = Math.max(1, Number(st.headerCm)||110);
-      const extra = (st.extra||[]).map(x=>({cm:Math.max(0,Number(x.cm)||0), qty:Math.max(0,Math.round(Number(x.qty)||0))})).filter(x=>x.cm>0 && x.qty>0);
+      const qty = rodQty_(st.qty);
+      const jambCm = Math.max(1, frCm_(st.jambCm)||220);
+      const headerCm = Math.max(1, frCm_(st.headerCm)||110);
+      const extra = (st.extra||[]).map(x=>({cm:Math.max(0,frCm_(x.cm)), qty:rodQty_(x.qty)})).filter(x=>x.cm>0 && x.qty>0);
       const isStd = (jambCm===220 && headerCm===110 && !extra.length);
       if(qty<=0){toast('اكتب الكمية');return;}
       if(isStd){
@@ -5880,10 +5953,10 @@ function addRod(kind){
         }
       }
     } else {
-      const rods = Math.max(0, Math.round(Number(st.rods)||0));   // عدد الأعواد صحيح دايمًا
+      const rods = rodQty_(st.rods);   // بيقبل الكسور — نص عود/ربع عود تكملة
       // ⚠️ الطول بقى بيقبل كسور (220.5) في الشاشة، لكن الإضافة الفعلية كانت
       // لسه بتقرّبه لصحيح — فاللي بيتحفظ في الطلب غير اللي المستخدم كتبه.
-      const rodsCm = Math.max(0, Number(st.rodsCm)||0);
+      const rodsCm = Math.max(0, frCm_(st.rodsCm));
       if(rods<=0 || rodsCm<=0){toast('اكتب عدد الأعواد وطولها');return;}
       push(f.cm+' سم', rodsCm, rods, f.price,
 
@@ -5891,19 +5964,22 @@ function addRod(kind){
         'Door Frame '+f.cm+' cm - rod '+rodsCm+'cm'+(st.code?' - '+st.code:''));
       added += rods;
     }
-    state.fr.jamb=2; state.fr.header=1; state.fr.jambCm=220; state.fr.headerCm=110; state.fr.extra=[]; state.fr.rods=''; state.fr.rodsCm=''; state.fr.doorW=''; state.fr.note=''; state.fr.qty=1; state.fr.nonStd=false;
+    // ⚠️ الافتراضيات ٢٢٠/١١٠ بالسنتي — لو الشاشة واقفة على المتر لازم تتكتب
+    // بالمتر، وإلا الطلب اللي بعده يطلع «٢٢٠ متر».
+    state.fr.jamb=2; state.fr.header=1;
+    state.fr.jambCm=lenFromCm_(220, state.fr.unit); state.fr.headerCm=lenFromCm_(110, state.fr.unit);
+    state.fr.extra=[]; state.fr.rods=''; state.fr.rodsCm=''; state.fr.doorW=''; state.fr.note=''; state.fr.qty=1; state.fr.nonStd=false;
   } else {
     const b = BRORS.find(x=>x.size===st.size)||BRORS[0];
-    const rods = Math.max(0, Math.round(Number(st.rods)||0));
+    const rods = rodQty_(st.rods);
     if(rods<=0){toast('اكتب عدد العيدان');return;}
     // طول العود قابل للتغيير (افتراضيًا الطول القياسي) — عشان لو حد طلب عيدان مقاس مختلف زي ٣م
-    const lenM = Number(st.lenM)||BROR_ROD_M_DEFAULT;
-    const rodCm = brRodCm_(lenM);
+    const rodCm = brRodCm_(st.len===''||st.len==null ? BROR_ROD_M_DEFAULT : st.len, st.unit);
     push(b.size, rodCm, rods, b.price,
       'برور '+b.size+' — عود '+rodCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):''),
       'Bror '+b.size+' - '+rodCm+'cm rod'+(st.code?' - '+st.code:''));
     added = rods;
-    state.br.rods=1; state.br.lenM=BROR_ROD_M_DEFAULT;
+    state.br.rods=1; state.br.len=lenFromCm_(rodCm, state.br.unit) || BROR_ROD_M_DEFAULT;
   }
 
   saveCart_();
@@ -5966,9 +6042,9 @@ function resetPickerFor_(kind){
               frameKind:null,frameRodQty:'',frameForDoors:''}};
   } else if(kind==='frame'){
     state.fr = {cm:10, code:'', doorW:'', kind:'full', qty:1, nonStd:false,
-                jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:''};
+                jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:'', unit:'cm'};
   } else if(kind==='bror'){
-    state.br = {size:'6×9', code:'', rods:1, lenM:BROR_ROD_M_DEFAULT};
+    state.br = {size:'6×9', code:'', rods:1, len:BROR_ROD_M_DEFAULT, unit:'m'};
   } else if(kind==='panel'){
     state.pd = {code:'', qty:1};
   } else if(kind==='acc'){
@@ -5996,12 +6072,15 @@ function clearPulledLine_(){ _pulledLine = null; }
 // حد يسحب السطر ليعدّله بيتحوّل لطقم ٢٢٠/١١٠ استاندر من غير ما حد ياخد باله،
 // والمصنع يقطّع الحلق غلط. الدالة دي بتقرأ التفصيل من النص وترجّعه زي ما كان.
 function parseFrameBreakdown_(txt){
-  const re = /(قائم|عارضة حلق علوية|عارضة|عود)\s+(\d+(?:\.\d+)?)\s*سم\s*(?:×|x)\s*(\d+)/g;
+  // ⚠️ العدد كان `(\d+)` بأرقام صحيحة بس، والتقريب بعديه. بعد ما عدد الأعواد
+  // بقى يقبل كسور، الوصف بيبقى فيه «× 1.5» — والـregex كان بياخد «1» ويسيب
+  // «.5»، يعني نص عود يضيع من الطلب وإحنا بنفتحه للتعديل.
+  const re = /(قائم|عارضة حلق علوية|عارضة|عود)\s+(\d+(?:\.\d+)?)\s*سم\s*(?:×|x)\s*(\d+(?:\.\d+)?)/g;
   const out = { jambCm:0, jambQty:0, headerCm:0, headerQty:0, extra:[] };
   let m, found=false;
   while((m = re.exec(String(txt||'')))){
     found = true;
-    const cm = Number(m[2]), q = Math.max(0, Math.round(Number(m[3])||0));
+    const cm = Number(m[2]), q = rodQty_(m[3]);
     if(!(cm>0) || q<=0) continue;
     if(m[1]==='قائم'){ out.jambCm = cm; out.jambQty += q; }
     else if(m[1].indexOf('عارضة')===0){ out.headerCm = cm; out.headerQty += q; }
@@ -6057,7 +6136,7 @@ function editCartLine(i){
   } else if(it.kind==='frame' || it.kind==='bror'){
     const isFr = it.kind==='frame';
     if(isFr){
-      let cm = FRAMES[0].cm;
+      let cm = FRAMES[0].cm;   // سُمك الحلق — مش طول، مالوش دعوة بوحدة الشاشة
       const mm=/^(\d+)/.exec(it.spec||''); if(mm) cm=Number(mm[1]);
       if(it.frCm!=null) cm = it.frCm;
       if(it.isSet){
@@ -6065,7 +6144,7 @@ function editCartLine(i){
         state.fr = {cm, code:it.code||'', doorW: it.doorW||'', note: it.note||'', kind:'full',
                     qty: it.qty||1, nonStd:false,
                     jamb:2, jambCm:220, header:1, headerCm:110,
-                    extra: [], rods:'', rodsCm:''};
+                    extra: [], rods:'', rodsCm:'', unit:'cm'};
       } else if(it.customSet){
         // سطر "حلق كامل — أطوال مخصوصة" الموحّد — بنرجّع الأطوال والكمية زي ما هي.
         // السطور الراجعة من السيرفر (ومن سلات محفوظة قديمة) مافيهاش الحقول دي،
@@ -6077,23 +6156,26 @@ function editCartLine(i){
                     jamb:2, jambCm: it.jambCm || (br && br.jambCm) || 220,
                     header:1, headerCm: it.headerCm || (br && br.headerCm) || 110,
                     extra: ((it.extra && it.extra.length ? it.extra : (br ? br.extra : []))||[])
-                             .map(x=>({cm:x.cm, qty:x.qty})), rods:'', rodsCm:''};
+                             .map(x=>({cm:x.cm, qty:x.qty})), rods:'', rodsCm:'', unit:'cm'};
       } else {
         const rodCm = Number(it.rodCm)||220;
         // بنرجّع العدد في خانة المقاس الصح حسب طول العود المحفوظ — قائم/عارضة حلق علوية لو الطول قياسي، وإلا سطر أعواد حرة
         const isStdCm = (rodCm===220 || rodCm===110);
-        const restoredQty = rodCm===220 ? Math.round((it.qty||2)/2) : (it.qty||1);
+        const restoredQty = rodCm===220 ? rodQty_((it.qty||2)/2) : (it.qty||1);
         state.fr = {cm, code:it.code||'', doorW: it.doorW||'', note: it.note||'', kind: isStdCm?'full':'rods',
                     qty: isStdCm?restoredQty:1, nonStd:false,
                     jamb:   rodCm===220 ? (it.qty||1) : 0, jambCm:220,
                     header: rodCm===110 ? (it.qty||1) : 0, headerCm:110,
-                    extra: [], rods: isStdCm?'':(it.qty||1), rodsCm: isStdCm?'':rodCm};
+                    extra: [], rods: isStdCm?'':(it.qty||1), rodsCm: isStdCm?'':rodCm, unit:'cm'};
       }
     } else {
       let size = BRORS[0].size;
       const mm=/^([\d×xX]+)/.exec(it.spec||''); if(mm) size=mm[1].replace(/x|X/,'×');
-      const lenM = it.rodCm ? Number(it.rodCm)/100 : BROR_ROD_M_DEFAULT;
-      state.br = {size, code:it.code||'', rods:it.qty||1, lenM};
+      // الطول الراجع من السلة بالسنتي دايمًا — بنرجّعه بوحدة السنتي عشان
+      // يتعرض زي ما هو من غير أي تحويل يضيّع كسر
+      state.br = {size, code:it.code||'', rods:it.qty||1,
+                  len: it.rodCm ? String(Number(it.rodCm)) : BROR_ROD_M_DEFAULT,
+                  unit: it.rodCm ? 'cm' : 'm'};
     }
     state.newSection = isFr?'frame':'bror'; save(LS_SECTION,state.newSection);
   } else if(it.kind==='panel'){
