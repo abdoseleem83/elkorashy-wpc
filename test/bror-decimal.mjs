@@ -33,7 +33,7 @@ check('صفر/سالب مابيبقاش طول سالب', تحويل.فاضي>0 
 // ٢) الإضافة للسلة بتحفظ الكسر — في الطول والسعر والوصف
 const سطر = await pg.evaluate(()=>{
   state.cart = [];
-  state.br = {size:'6×9', code:'A01', rods:3, lenM:'2.265'};
+  state.br = {size:'6×9', code:'A01', rods:3, len:'2.265', unit:'m'};
   const old=window.toast; window.toast=()=>{}; addRod('bror'); window.toast=old;
   const it = state.cart.find(x=>x.kind==='bror');
   const perM = (BRORS.find(x=>x.size==='6×9')||{}).price;
@@ -62,7 +62,7 @@ check('والأرقام العربية', كتابة.أرقام_عربية==='3',
 await pg.click('[data-act="sec"][data-s="bror"]');
 await pg.waitForTimeout(250);
 const خانة = await pg.evaluate(()=>{
-  const el = document.querySelector('[data-act="br-lenM"]');
+  const el = document.querySelector('[data-act="br-len"]');
   return el ? { type:el.getAttribute('type'), mode:el.getAttribute('inputmode'),
                 step:el.getAttribute('step'), موجودة:true } : { موجودة:false };
 });
@@ -73,18 +73,18 @@ check('ومفيش step بيقصّ الكسر', !خانة.step, String(خانة.s
 
 // والخانة بتعدّي القيمة على decIn_ (مش على el.value خام)
 const مرّرت = await pg.evaluate(()=>{
-  state.br.lenM = '';
-  const el = document.querySelector('[data-act="br-lenM"]');
+  state.br.len = '';
+  const el = document.querySelector('[data-act="br-len"]');
   el.value = '٢٫٢٦٥';
   el.dispatchEvent(new Event('input', {bubbles:true}));
-  return state.br.lenM;
+  return state.br.len;
 });
 check('الكتابة بالعربي بتتحوّل لرقم صالح في الحال', مرّرت==='2.265', String(مرّرت));
 
 // ٥) الرحلة كاملة: الطلب المبعوت للسيرفر بيحمل الطول الكسري، والتعديل بيرجّعه
 const رحلة = await pg.evaluate(()=>{
   state.cart = [];
-  state.br = {size:'6×9', code:'A01', rods:2, lenM:'2.265'};
+  state.br = {size:'6×9', code:'A01', rods:2, len:'2.265', unit:'m'};
   const old=window.toast; window.toast=()=>{}; addRod('bror'); window.toast=old;
   const it = state.cart.find(x=>x.kind==='bror');
   const unit = 'rod ' + (it.rodCm||220) + 'cm';
@@ -102,16 +102,23 @@ check('الوحدة اللي بتتسجّل فيها الكسر', رحلة.unit=
 check('وبتتعرّب صح للمصنع', رحلة.عربي==='عود 226.5 سم', رحلة.عربي);
 check('والتعديل بيرجّع نفس الطول مش ٢٢٦', رحلة.رجع===226.5, String(رحلة.رجع));
 
-// ٦) عدد العيدان فاضل صحيح (زي الحلق بالظبط — العدد مش بيتكسّر)
+// ٦) ومن v195 عدد العيدان بقى يقبل كسور كمان (نص عود تكملة) — كان بيتقرّب
+//    لصحيح، فاللي بيتطلب غير اللي بيتضاف
 const عدد = await pg.evaluate(()=>{
-  state.cart = [];
-  state.br = {size:'6×9', code:'A01', rods:'2.6', lenM:'2.26'};
-  const old=window.toast; window.toast=()=>{}; addRod('bror'); window.toast=old;
-  const it = state.cart.find(x=>x.kind==='bror');
-  state.cart = [];
-  return it && it.qty;
+  const جرّب = rods => {
+    state.cart = [];
+    state.br = {size:'6×9', code:'A01', rods, len:'2.26', unit:'m'};
+    const old=window.toast; window.toast=()=>{}; addRod('bror'); window.toast=old;
+    const it = state.cart.find(x=>x.kind==='bror');
+    state.cart = [];
+    return it ? it.qty : null;
+  };
+  return { كسر: جرّب('2.6'), نص: جرّب('2.5'), صحيح: جرّب('3'), صفر: جرّب('0') };
 });
-check('عدد العيدان فاضل رقم صحيح', عدد===3, String(عدد));
+check('عدد العيدان بيتسجّل بكسره زي ما اتكتب', عدد.كسر===2.6 && عدد.نص===2.5,
+  `${عدد.كسر} / ${عدد.نص}`);
+check('والعدد الصحيح زي ما هو', عدد.صحيح===3, String(عدد.صحيح));
+check('وصفر مابيضيفش حاجة', عدد.صفر===null, String(عدد.صفر));
 
 check('مفيش أخطاء JS', errs.length===0, errs.join(' | '));
 await b.close();
