@@ -963,7 +963,7 @@ input[type=text],input[type=tel],input[type=number],input[type=password],input[t
 <div class="bar" id="bar" hidden>
   <div class="inner">
     <div class="sum"><b id="barTotal">0</b><span id="barCount">لا يوجد أصناف</span></div>
-    <button class="btn brand" data-act="go-cart">مراجعة الطلب</button>
+    <button class="btn brand" data-act="go-cart">مراجعة الطلب وإرساله</button>
   </div>
 </div>
 
@@ -1099,7 +1099,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v195';
+const APP_BUILD   = 'v196';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2350,9 +2350,10 @@ function viewNew(){
   const secFrame = `
   <section class="card">
     <div class="step"><span class="n">${ico("frame","lg")}</span><h2>حلق فقط</h2><span class="hint">ارتفاع الأعواد قابل للتعديل</span></div>
+    <div class="note" style="margin:0 0 10px">الحلق بيتطلب لوحده — <b>مش لازم تختار باب</b>. اللي لازم تحدده هو <b>اللون</b> (كود الباب) عشان المصنع يعرف يصنّعه بأنهي لون. عايز حتة حلق متر بس؟ اختار «أعواد»، خلّي الوحدة «متر»، واكتب الطول ١ والعدد ١.</div>
     <div class="sol-h" style="margin-bottom:6px">المقاس</div>
     <div class="chips">${frChips}</div>
-    <div class="sol-h" style="margin:12px 0 6px">كود الباب (اللون) <b class="req">*</b></div>
+    <div class="sol-h" style="margin:12px 0 6px">اللون (كود الباب) <b class="req">*</b></div>
     <div class="chips">${frCodeChips}</div>
     <div class="sol-h" style="margin:12px 0 6px">لباب مقاس كام؟ <span style="font-weight:400;color:var(--muted)">(اختياري — يوضح للمصنع)</span></div>
     <div class="chips">${frDoorWChips}</div>
@@ -2404,7 +2405,7 @@ function viewNew(){
       <input type="text" placeholder="مثال: عارضة حلق علوية تكملة 60 سم" value="${esc(state.fr.note||'')}" data-act="fr-note">
     </label>
     <button class="btn ghost sm" style="margin-top:9px" data-act="add-fr" ${frRods>0&&state.fr.code?'':'disabled'}>
-      ${!state.fr.code ? 'اختر كود الباب أولاً'
+      ${!state.fr.code ? 'اختر اللون الأول (كود الباب)'
         : (frRods>0 ? (
             (frKind==='full' && !frNonStd)
               ? `أضف ${frQty} طقم — حلق كامل ${frSel.cm} سم ${esc(state.fr.code)}${state.fr.doorW?' — لباب '+state.fr.doorW+' سم':''}`
@@ -2416,9 +2417,10 @@ function viewNew(){
   const secBror = `
   <section class="card">
     <div class="step"><span class="n">${ico("bror","lg")}</span><h2>برور فقط</h2><span class="hint">العود ${BROR_ROD_M_DEFAULT} م افتراضيًا</span></div>
+    <div class="note" style="margin:0 0 10px">البرور بيتطلب لوحده — <b>مش لازم تختار باب</b>. اللي لازم تحدده هو <b>اللون</b> (كود الباب).</div>
     <div class="sol-h" style="margin-bottom:6px">المقاس</div>
     <div class="chips">${brChips}</div>
-    <div class="sol-h" style="margin:12px 0 6px">كود الباب (اللون) <b class="req">*</b></div>
+    <div class="sol-h" style="margin:12px 0 6px">اللون (كود الباب) <b class="req">*</b></div>
     <div class="chips">${brCodeChips}</div>
     <div class="sol-h" style="margin:12px 0 6px">وحدة الطول <span style="font-weight:400;color:var(--muted)">(اكتب بالسم أو بالمتر — زي ما يريحك)</span></div>
     <div class="miniChips">${unitChips_(state.br.unit==='cm'?'cm':'m','br-unit')}</div>
@@ -2430,18 +2432,18 @@ function viewNew(){
     </div>
     <div class="note" style="margin-top:9px">الطول القياسي ${BROR_ROD_M_DEFAULT} م — غيّره لو حد طلب عيدان مقاس مختلف (مثلاً ١٠ عيدان مقاس ٣م). الطول والعدد الاتنين بيقبلوا كسور — الطول الحالي ${brRodCm} سم.${pricesVisible()?' السعر: '+money(brLinePrice)+' ج/عود':''}</div>
     <button class="btn ghost sm" style="margin-top:9px" data-act="add-br" ${brRods>0&&state.br.code?'':'disabled'}>
-      ${!state.br.code ? 'اختر كود الباب أولاً' : (brRods>0 ? `أضف ${brRods} عود برور ${brSel.size} — ${brRodCm} سم — ${esc(state.br.code)}` : 'اكتب عدد العيدان')}</button>
+      ${!state.br.code ? 'اختر اللون الأول (كود الباب)' : (brRods>0 ? `أضف ${brRods} عود برور ${brSel.size} — ${brRodCm} سم — ${esc(state.br.code)}` : 'اكتب عدد العيدان')}</button>
   </section>`;
 
   const secProdium = `
   <section class="card">
     <div class="step"><span class="n">${ico("panel","lg")}</span><h2>ألواح بروديوم</h2><span class="hint">اللوح ${money(PRODIUM_PRICE)} ج</span></div>
-    <div class="sol-h" style="margin-bottom:6px">كود الباب (اللون) <b class="req">*</b></div>
+    <div class="sol-h" style="margin-bottom:6px">اللون (كود الباب) <b class="req">*</b></div>
     <div class="chips">${pdCodeChips}</div>
     <label class="fld" style="margin-top:12px"><span>عدد الألواح</span>
       <input type="number" inputmode="numeric" min="0" step="1" value="${esc(state.pd.qty)}" placeholder="مثال 2" data-act="pd-qty"></label>
     <button class="btn ghost sm" data-act="add-pd" ${pdQty>0&&state.pd.code?'':'disabled'}>
-      ${!state.pd.code ? 'اختر كود الباب أولاً' : (pdQty>0 ? `أضف ${pdQty} لوح بروديوم — ${esc(state.pd.code)}` : 'اكتب عدد الألواح')}</button>
+      ${!state.pd.code ? 'اختر اللون الأول (كود الباب)' : (pdQty>0 ? `أضف ${pdQty} لوح بروديوم — ${esc(state.pd.code)}` : 'اكتب عدد الألواح')}</button>
   </section>`;
 
   const secEmpty = `
@@ -5778,7 +5780,7 @@ function refreshPanelBtn(){
   const b=document.querySelector('[data-act="add-pd"]'); if(!b) return;
   const q=Math.max(0,Math.round(Number(state.pd.qty)||0));
   b.disabled=!(q>0 && state.pd.code);
-  b.textContent = !state.pd.code ? 'اختر كود الباب أولاً'
+  b.textContent = !state.pd.code ? 'اختر اللون الأول (كود الباب)'
     : (q>0 ? `أضف ${q} لوح بروديوم — ${state.pd.code}` : 'اكتب عدد الألواح');
 }
 
@@ -5791,7 +5793,7 @@ function refreshRodBtn(act){
   // نفس تقريب البروديوم بالظبط.
   const r=rodQty_(state.br.rods), s=BRORS.find(x=>x.size===state.br.size)||BRORS[0];
   b.disabled=!(r>0 && state.br.code);
-  b.textContent = !state.br.code ? 'اختر كود الباب أولاً'
+  b.textContent = !state.br.code ? 'اختر اللون الأول (كود الباب)'
     : (r>0 ? `أضف ${r} عود برور ${s.size} — ${state.br.code}` : 'اكتب عدد العيدان');
 }
 
@@ -5866,7 +5868,7 @@ function addDoor(){
 function addRod(kind){
   const isFrame = kind==='frame';
   const st = isFrame?state.fr:state.br;
-  if(!st.code){toast('اختر كود الباب (اللون) الأول');return;}
+  if(!st.code){toast('اختر اللون (كود الباب) الأول — الحلق/البرور بيتصنّع بلون');return;}
   const dName = (DOORS.find(x=>x.code===st.code)||{}).name || '';
 
   // بيضيف/بيجمّع سطر عود واحد في السلة (كل مقاس سطر مستقل)
@@ -5990,7 +5992,7 @@ function addRod(kind){
 
 function addPanel(){
   const st = state.pd;
-  if(!st.code){toast('اختر كود الباب (اللون) الأول');return;}
+  if(!st.code){toast('اختر اللون (كود الباب) الأول — الحلق/البرور بيتصنّع بلون');return;}
   const qty = Math.max(0, Math.round(Number(st.qty)||0));
   if(qty<=0){toast('اكتب عدد الألواح');return;}
   const dName = (DOORS.find(x=>x.code===st.code)||{}).name || '';
