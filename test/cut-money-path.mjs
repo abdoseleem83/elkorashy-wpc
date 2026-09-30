@@ -4,6 +4,7 @@
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { ثوابت } from './_srv-consts.mjs';
 let pass=0, fail=0;
 const check=(n,ok,x='')=>{ console.log((ok?'✅':'❌')+' '+n+(x?'  — '+x:'')); ok?pass++:fail++; };
 const gs = fs.readFileSync(new URL('../apps_script.gs', import.meta.url), 'utf8');
@@ -43,6 +44,7 @@ const ctx = { String, Number, Object, Array, RegExp, Math,
   CUT_SERVICE_CODE_:'CUT', WOOD_SERVICE_CODE_:'WOOD', PRINT_SERVICE_CODE_:'PRINT',
   DOOR_STD_HEIGHT_:215, HEAD_ITEMS:new Array(NCOLS).fill('') };
 vm.createContext(ctx);
+vm.runInContext(ثوابت, ctx);
 vm.runInContext(grab('itemRowsForMany_')+'\n'+grab('itemRowsFor_')+'\n'+grab('isServiceCode_')+'\n'
   +grab('doorRowNeedsCut_')+'\n'+grab('cutRowKey_')+'\n'+grab('syncCutRows_')
   +'\n'+grab('recomputeOrderTotals_'), ctx);

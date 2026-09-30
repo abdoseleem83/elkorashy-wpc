@@ -3,6 +3,7 @@
 // الاختبار بيشغّل كود السيرفر نفسه (recomputeOrderTotals_) على شيت وهمي.
 import fs from 'fs';
 import vm from 'node:vm';
+import { ثوابت } from './_srv-consts.mjs';
 let pass=0, fail=0;
 const check=(n,ok,x='')=>{ console.log((ok?'✅':'❌')+' '+n+(x?'  — '+x:'')); ok?pass++:fail++; };
 const gs = fs.readFileSync(new URL('../apps_script.gs', import.meta.url), 'utf8');
@@ -37,6 +38,8 @@ ctx.sheet_ = (name) => name==='Orders'
   ? { getRange: (r,c) => ({ setValue: v => { مكتوب[c]=v; } }) }
   : {};
 vm.createContext(ctx);
+vm.runInContext(ثوابت, ctx);
+vm.runInContext(ثوابت, ctx);
 vm.runInContext(grab('isServiceCode_') + '\n' + grab('recomputeOrderTotals_'), ctx);
 ctx.recomputeOrderTotals_('W1');
 
@@ -53,6 +56,7 @@ const ctx2 = { String, Number, isServiceCode_: c => c==='CUT' || c==='WOOD', o:{
   {kind:'acc', code:'CUT', qty:4}, {kind:'acc', code:'WOOD', qty:4}, {kind:'acc', code:'gsk', qty:5}
 ]}, CUT_SERVICE_CODE_:'CUT' };
 vm.createContext(ctx2);
+vm.runInContext(ثوابت, ctx2);
 vm.runInContext(كود, ctx2);
 check('نفس القاعدة وقت إنشاء الطلب', ctx2.qty === 9, `${ctx2.qty}`);
 check('والعيدان', ctx2.rods === 6, String(ctx2.rods));
@@ -85,6 +89,7 @@ function شغّل(سطور){
     CUT_SERVICE_CODE_:'CUT', WOOD_SERVICE_CODE_:'WOOD', PRINT_SERVICE_CODE_:'PRINT', Math,
     DOOR_STD_HEIGHT_:215, HEAD_ITEMS:new Array(NCOLS).fill('') };
   vm.createContext(c);
+  vm.runInContext(ثوابت, c);
   vm.runInContext(grab('itemRowsForMany_')+'\n'+grab('itemRowsFor_')+'\n'+grab('isServiceCode_')+'\n'
     +grab('doorRowNeedsCut_')+'\n'+grab('cutRowKey_')+'\n'+grab('syncCutRows_'), c)
   c.syncCutRows_(s.sh, 'W9');
@@ -116,6 +121,7 @@ check('الارتفاع الاستاندر مالوش بند قص', r.length===1
     CUT_SERVICE_CODE_:'CUT', WOOD_SERVICE_CODE_:'WOOD', PRINT_SERVICE_CODE_:'PRINT', Math,
     DOOR_STD_HEIGHT_:215, HEAD_ITEMS:new Array(NCOLS).fill('') };
   vm.createContext(c);
+  vm.runInContext(ثوابت, c);
   vm.runInContext(grab('itemRowsForMany_')+'\n'+grab('itemRowsFor_')+'\n'+grab('isServiceCode_')+'\n'
     +grab('doorRowNeedsCut_')+'\n'+grab('cutRowKey_')+'\n'+grab('syncCutRows_'), c)
   c.syncCutRows_(s.sh, 'W9');
@@ -131,6 +137,7 @@ function عدد_التغييرات(سطور){
     CUT_SERVICE_CODE_:'CUT', WOOD_SERVICE_CODE_:'WOOD', PRINT_SERVICE_CODE_:'PRINT', Math,
     DOOR_STD_HEIGHT_:215, HEAD_ITEMS:new Array(NCOLS).fill('') };
   vm.createContext(c);
+  vm.runInContext(ثوابت, c);
   vm.runInContext(grab('itemRowsForMany_')+'\n'+grab('itemRowsFor_')+'\n'+grab('isServiceCode_')+'\n'
     +grab('doorRowNeedsCut_')+'\n'+grab('cutRowKey_')+'\n'+grab('syncCutRows_'), c)
   return c.syncCutRows_(s.sh, 'W9');

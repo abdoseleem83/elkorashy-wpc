@@ -60,9 +60,57 @@ check('فجوة readOrderRows_ على الأعمدة التقيلة بالظبط
   HEAD_ORDERS[12]==='Pricing Terms' && HEAD_ORDERS[13]==='Message' && HEAD_ORDERS[14]==='Status Updated',
   HEAD_ORDERS.slice(12,15).join(' | '));
 const كتلة_القراية = /function readOrderRows_\([\s\S]*?\n\}/.exec(gs)[0];
-check('بتقرا ١٢ عمود أول وبتبدأ التاني من ١٦',
-  /getRange\(2, 1, n, 12\)/.test(كتلة_القراية) && /getRange\(2, 16, n, HEAD_ORDERS\.length - 15\)/.test(كتلة_القراية));
-check('والفجوة ٣ خانات', /concat\(\['', '', ''\]/.test(كتلة_القراية));
+// ⚠️ القراية بقت مشتقّة من الأسامي مش أرقام مكتوبة. الفحص بقى: مفيش أي رقم
+// عمود مكتوب بالنص جواها، والفجوة بتتحسب من GAP_COLS_.
+check('مفيش رقم عمود مكتوب بالنص في readOrderRows_',
+  !/getRange\(2,\s*(?!1,)\d+/.test(كتلة_القراية) && !/n,\s*\d+\)/.test(كتلة_القراية),
+  (كتلة_القراية.match(/getRange\([^)]*\)/g)||[]).join(' · '));
+check('والفجوة بتتحسب من GAP_COLS_ مش خانات مكتوبة',
+  /GAP_FIRST_COL_/.test(كتلة_القراية) && /GAP_COLS_\.length/.test(كتلة_القراية)
+  && !/concat\(\['', '', ''\]/.test(كتلة_القراية));
+check('ولو الفجوة مش ورا بعض، بتقرا الجدول كله بدل ما تترزّع',
+  /if \(!GAP_FIRST_COL_\) return sh\.getRange\(2, 1, n, HEAD_ORDERS\.length\)/.test(كتلة_القراية));
+
+// GAP_FIRST_COL_ مشتق فعلاً — بننفّذه على جدول فيه عمود زيادة ونشوف بيزحزح
+const كتلة_الفجوة = /var GAP_COLS_[\s\S]*?\n\}\)\(\);/.exec(gs)[0];
+const فجوة = H => new Function('HEAD_ORDERS', كتلة_الفجوة + ' return GAP_FIRST_COL_;')(H);
+check('موضع الفجوة مشتق: بيطابق الجدول الحالي', فجوة(HEAD_ORDERS) === 13, String(فجوة(HEAD_ORDERS)));
+check('وبيزحزح لوحده لو عمود زاد قبلها',
+  فجوة(['X'].concat(HEAD_ORDERS)) === 14, String(فجوة(['X'].concat(HEAD_ORDERS))));
+check('وبيرجّع صفر (= اقرا الكل) لو الأعمدة ماعادتش ورا بعض',
+  فجوة(['Pricing Terms','Z','Message','Status Updated']) === 0);
+
+// ⚠️ الأعمدة اللي كانت أرقام مكتوبة جوه getRange. دي بقت مسمّاة، وهنا
+// بنربط كل واحدة باسم عمودها — ده الفحص اللي كان ناقص وسمح بالثقب.
+const أعمدة_مسمّاة = { COL_DATE:'Date', COL_PHONE:'Phone', COL_TOTAL_QTY:'Total Qty',
+  COL_TOTAL_RODS:'Total Rods', COL_TOTAL_AMT:'Total Amount' };
+Object.keys(أعمدة_مسمّاة).forEach(k=>{
+  check(`${k} على عمود «${أعمدة_مسمّاة[k]}»`, HEAD_ORDERS[cols[k]-1] === أعمدة_مسمّاة[k],
+    `${cols[k]} → ${HEAD_ORDERS[cols[k]-1]}`);
+});
+check('COL_ITEM_QTY على عمود «Qty»', HEAD_ITEMS[cols.COL_ITEM_QTY-1] === 'Qty',
+  `${cols.COL_ITEM_QTY} → ${HEAD_ITEMS[cols.COL_ITEM_QTY-1]}`);
+// الكتابة بتحط تلات خانات ورا بعض من COL_ITEM_QTY — لازم يكونوا التلاتة دول
+check('والتلاتة ورا بعض: Qty / Unit Price / Line Total',
+  HEAD_ITEMS.slice(cols.COL_ITEM_QTY-1, cols.COL_ITEM_QTY+2).join('|') === 'Qty|Unit Price|Line Total',
+  HEAD_ITEMS.slice(cols.COL_ITEM_QTY-1, cols.COL_ITEM_QTY+2).join('|'));
+
+const HEAD_STOCK = arr('HEAD_STOCK');
+check('COL_STOCK_QTY على عمود «Qty»', HEAD_STOCK[cols.COL_STOCK_QTY-1] === 'Qty',
+  String(HEAD_STOCK[cols.COL_STOCK_QTY-1]));
+check('COL_STOCK_UPDATED على عمود «Updated»', HEAD_STOCK[cols.COL_STOCK_UPDATED-1] === 'Updated',
+  String(HEAD_STOCK[cols.COL_STOCK_UPDATED-1]));
+
+// ═══ وأخيرًا: مفيش رقم عمود جديد متناثر تاني ═══
+// أي getRange(<صف>, <رقم>) برقم صريح مكان العمود هو نفس الثقب من أول الأول.
+// العمود ١ مستثنى: قراية/كتابة صف كامل من أوله، مافيهاش أي افتراض عن ترتيب
+// الأعمدة. واللي بره ده لازم يبقى ثابت مسمّى. والتعليقات بتتشال الأول عشان
+// شرح زي «(getRange(r, 8)…)» ما يعدّيش كأنه كود.
+const كود = gs.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+const متناثر = [...كود.matchAll(/getRange\(\s*[A-Za-z_$][\w$]*\s*,\s*(\d+)\s*[,)]/g)]
+  .filter(m=>m[1] !== '1').map(m=>m[0].trim());
+check('مفيش getRange برقم عمود مكتوب بالنص (غير العمود ١)',
+  متناثر.length===0, متناثر.join(' · '));
 
 // مؤشرات list المكتوبة بالأرقام
 const list_idx = { 0:'Order No', 1:'Date', 3:'Distributor', 4:'Phone', 5:'Region',
