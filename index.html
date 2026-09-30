@@ -1178,7 +1178,7 @@ const ASSETS = {
     A08:'img/doors/A08.jpg',
     A09:'img/doors/A09.jpg',
     A010:'img/doors/A010.jpg',
-    A015:'img/doors/A015.jpg'
+    A013:'img/doors/A013.jpg'
   }
 };
 
@@ -1286,7 +1286,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v197';
+const APP_BUILD   = 'v198';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1460,7 +1460,7 @@ const DOORS = [
   {code:'A08', name:'زان',   en:'Beech',  img:ASSETS.doors.A08},
   {code:'A09', name:'شيري',  en:'Cherry', img:ASSETS.doors.A09},
   {code:'A010', name:'رمادي', en:'Grey',   img:ASSETS.doors.A010},
-  {code:'A015', name:'أرو فاتح', en:'Light Arrow', img:ASSETS.doors.A015}
+  {code:'A013', name:'أرو فاتح', en:'Light Arrow', img:ASSETS.doors.A013}
 ];
 // خلفية/بردر شيبس "كود الباب" في أقسام الحلق/البرور/البروديوم — بتاخد لون قريب من اسم اللون نفسه
 // (مش لون مسحوب من الصورة لأن الصور بتاعتنا لقطات لاستوديو/غرفة كاملة مش سواتش لون نضيف)
@@ -1477,7 +1477,7 @@ const DOOR_COLOR_SWATCH = {
 // بتبني style="" جاهز لشيب كود باب — بترجع فاضي لو الشيب مختار (عشان مايكسرش هايلايت .chip.on الأزرق الغامق)
 function doorChipStyle_(code, selected){
   if(selected) return '';
-  const d = DOORS.find(x=>x.code===code);
+  const d = DOORS.find(x=>x.code===doorCode_(code));
   const sw = d && DOOR_COLOR_SWATCH[d.name];
   return sw ? ` style="background:${sw.bg};border-color:${sw.border}"` : '';
 }
@@ -1752,7 +1752,17 @@ function save(k,v){
    ============================================================ */
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function money(n){const v=Math.round(Number(n)*100)/100;return v.toLocaleString('en-EG',{minimumFractionDigits:0,maximumFractionDigits:2});}
-function doorByCode(c){return DOORS.find(d=>d.code===c)||DOORS[0];}
+/* ⚠️ الباب A015 اتغيّر كوده لـA013. الطلبات القديمة (في الشيت وعلى الأجهزة)
+   لسه فيها A015 مكتوب — ولو سيبناه كده، DOORS.find مش هتلاقيه: الاسم العربي
+   والصورة بيضيعوا من الطلب والمستندات، ورصيد المخزن بيتقسم نصين (رصيد قديم
+   على A015 ورصيد جديد على A013) والمصنع يبيع من رصيد مش موجود.
+   فأي كود قديم بيتحوّل للجديد في لحظة القراءة — مكان واحد بيمرّ منه الكل. */
+const DOOR_CODE_ALIASES = { A015: 'A013' };
+function doorCode_(c){
+  const k = String(c == null ? '' : c).trim();
+  return DOOR_CODE_ALIASES[k] || k;
+}
+function doorByCode(c){const k=doorCode_(c);return DOORS.find(d=>d.code===k)||DOORS[0];}
 
 function selectDoor(code){
   const p=state.pick;
@@ -2012,7 +2022,8 @@ function stockFor(code, sizeW){
   const rows = state.stock.rows;
   if(!rows || !code) return null;
   const want = String(sizeW==null?'':sizeW).trim();
-  const hit = rows.find(r=>String(r.code).trim()===String(code).trim()
+  const wantCode = doorCode_(code);
+  const hit = rows.find(r=>doorCode_(r.code)===wantCode
                         && String(r.size).trim()===want);
   return hit ? (Number(hit.qty)||0) : 0;
 }
@@ -2492,7 +2503,7 @@ function viewNew(){
 
   let doorsGrid='';
   if(p.code){
-    const sel = DOORS.find(d=>d.code===p.code);
+    const sel = DOORS.find(d=>d.code===doorCode_(p.code));
     doorsGrid = `<div class="focusrow">${doorCard(sel)}
         <button class="btn ghost sm changedoor" data-act="pick-door" data-code="${esc(p.code)}">${ico("back")} غيّر الباب</button>
       </div>${detailPanel}`;
@@ -3575,7 +3586,7 @@ const ACC_EN_TO_AR_ = {}; ACCESSORIES.forEach(a=>{ ACC_EN_TO_AR_[a.en] = a.name;
 const PRINT_MARK_RE_ = /\(طباعة\)|\(Print\)/i;
 function arabicItemTitle_(it){
   if(it.type==='Door'){
-    const d = DOORS.find(x=>x.code===it.code);
+    const d = DOORS.find(x=>x.code===doorCode_(it.code));
     const base = d ? ('باب '+d.code+' '+d.name) : (it.code||it.title||'');
     return base + (String(it.milling||'').trim() ? ' (حفر)' : '')
                 + (PRINT_MARK_RE_.test(String(it.title||'')) ? ' (طباعة)' : '')
@@ -4686,7 +4697,7 @@ function itemUnitAr_(u){
 // لو الصنف باب معروف (كود من A01..A10) بنرجّع اسمه العربي بدل الاعتماد على النص الإنجليزي المخزّن
 function itemNameAr_(it){
   if(it.type==='Door'){
-    const d = DOORS.find(x=>x.code===it.code);
+    const d = DOORS.find(x=>x.code===doorCode_(it.code));
     if(d) return 'باب '+d.name+' — '+it.code;
   }
   return it.title || it.code || '—';
@@ -6056,7 +6067,7 @@ function addRod(kind){
   const isFrame = kind==='frame';
   const st = isFrame?state.fr:state.br;
   if(!st.code){toast('اختر اللون (كود الباب) الأول — الحلق/البرور بيتصنّع بلون');return;}
-  const dName = (DOORS.find(x=>x.code===st.code)||{}).name || '';
+  const dName = (DOORS.find(x=>x.code===doorCode_(st.code))||{}).name || '';
 
   // بيضيف/بيجمّع سطر عود واحد في السلة (كل مقاس سطر مستقل)
   const push = (spec, cm, qty, perM, titleAr, titleEn) => {
@@ -6182,7 +6193,7 @@ function addPanel(){
   if(!st.code){toast('اختر اللون (كود الباب) الأول — الحلق/البرور بيتصنّع بلون');return;}
   const qty = Math.max(0, Math.round(Number(st.qty)||0));
   if(qty<=0){toast('اكتب عدد الألواح');return;}
-  const dName = (DOORS.find(x=>x.code===st.code)||{}).name || '';
+  const dName = (DOORS.find(x=>x.code===doorCode_(st.code))||{}).name || '';
   const key = 'panel|'+st.code;
   const ex = state.cart.find(it=>it.kind==='panel' && it.key===key);
   if(ex){ ex.qty += qty; }
@@ -6428,8 +6439,10 @@ function adminEditOrderWith_(o, its){
       const doorHeight = Number(it.doorHeight)||0;
       const label = doorSizeText_(sizeTxt, doorHeight);
       const حفر = /\(حفر\)|\(Carved\)/i.test(String(it.title||'')) || !!String(it.milling||'').trim();
-      return { kind:'door', title:arabicItemTitle_(it), titleEn:it.title||'', code:it.code||'',
-               img:(DOORS.find(d=>d.code===it.code)||{}).img || '',
+      // الكود بيتحوّل للجديد هنا كمان (مش في العرض بس): أي حفظ للطلب بعد
+      // التعديل بيتسجّل بالكود الجديد، فالبيانات بتتنضّف مع الاستعمال
+      return { kind:'door', title:arabicItemTitle_(it), titleEn:it.title||'', code:doorCode_(it.code||''),
+               img:(DOORS.find(d=>d.code===doorCode_(it.code))||{}).img || '',
                sizeTxt, sizeEn:it.size||'', unitPrice:price, qty,
                w:it.width||'', frame:Number(it.frame)||0, dbror:it.dbror||'', frameHeight:Number(it.frameHeight)||0,
                doorHeight, hafr:حفر,

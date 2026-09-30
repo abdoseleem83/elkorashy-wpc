@@ -34,6 +34,15 @@ function isServiceCode_(code){
   var c = String(code || '');
   return c === CUT_SERVICE_CODE_ || c === WOOD_SERVICE_CODE_ || c === PRINT_SERVICE_CODE_;
 }
+/* ⚠️ الباب A015 اتغيّر كوده لـA013. الشيت لسه فيه صفوف قديمة مكتوب فيها
+   A015 (أصناف طلبات + صف رصيد في المخزن). من غير تطبيع، الرصيد بيتقسم نصين:
+   صف قديم على A015 وصف جديد على A013 — والخصم بيروح على واحد والبيع من
+   التاني، فالمصنع يبيع أبواب مش موجودة. بنعتبرهم كود واحد في كل مقارنة. */
+var DOOR_CODE_ALIASES_ = { 'A015': 'A013' };
+function doorCode_(c){
+  var k = String(c == null ? '' : c).trim();
+  return DOOR_CODE_ALIASES_[k] || k;
+}
 var DOOR_STD_HEIGHT_ = 215;   // الارتفاع الاستاندر — أي ارتفاع غيره معناه قص
 var SHEET_ORDERS = 'Orders';
 var SHEET_ITEMS  = 'Order_Items';
@@ -997,7 +1006,7 @@ function doGet(e) {
       if (lastST >= 2) {
         var valsST = shST.getRange(2, 1, lastST - 1, HEAD_STOCK.length).getValues();
         for (var iST = 0; iST < valsST.length; iST++) {
-          var codeST = String(valsST[iST][0] || '').trim();
+          var codeST = doorCode_(valsST[iST][0]);   // الكود القديم بيترجع بالجديد
           if (!codeST) continue;
           outST.push({
             code: codeST,
@@ -1018,7 +1027,7 @@ function doGet(e) {
       try {
         lockSS.waitLock(15000);
         var shSS = sheet_(SHEET_STOCK, HEAD_STOCK);
-        var codeSS = String(e.parameter.code || '').trim();
+        var codeSS = doorCode_(e.parameter.code);
         var sizeSS = String(e.parameter.size || '').trim();
         var qtySS  = Math.max(0, Math.round(Number(e.parameter.qty) || 0));
         if (!codeSS) return reply({ ok: false, error: 'الكود ناقص' }, cb);
@@ -1028,7 +1037,7 @@ function doGet(e) {
         if (lastSS >= 2) {
           var rowsSS = shSS.getRange(2, 1, lastSS - 1, 2).getValues();
           for (var jSS = 0; jSS < rowsSS.length; jSS++) {
-            if (String(rowsSS[jSS][0]).trim() === codeSS &&
+            if (doorCode_(rowsSS[jSS][0]) === codeSS &&
                 String(rowsSS[jSS][1]).trim() === sizeSS) { foundSS = jSS + 2; break; }
           }
         }
@@ -1389,7 +1398,7 @@ function adjustStockForItems_(items, dir){
   for (var iAS = 0; iAS < items.length; iAS++) {
     var itAS = items[iAS];
     if (itAS.kind !== 'door') continue;
-    var codeAS = String(itAS.code || '').trim();
+    var codeAS = doorCode_(itAS.code);
     var wAS    = String(itAS.w || '').trim();
     var qtyAS  = Number(itAS.qty) || 0;
     if (!codeAS || !wAS || !qtyAS) continue;   // مقاس خاص أو بدون كود = مش متتبّع في المخزون
@@ -1409,7 +1418,7 @@ function adjustStockForItems_(items, dir){
   // setStock بيحدّث أول صف مطابق بس، فبنمشي على نفس القاعدة: أول صف يفوز.
   var doneAS = {};
   for (var jAS = 0; jAS < rowsAS.length; jAS++) {
-    var k = String(rowsAS[jAS][0]).trim() + '|' + String(rowsAS[jAS][1]).trim();
+    var k = doorCode_(rowsAS[jAS][0]) + '|' + String(rowsAS[jAS][1]).trim();
     if (!(k in deltas) || doneAS[k]) continue;   // مش متتبّع في الطلب، أو اتعدّل خلاص
     doneAS[k] = true;
     rowsAS[jAS][2] = (Number(rowsAS[jAS][2]) || 0) + deltas[k];
@@ -1419,6 +1428,49 @@ function adjustStockForItems_(items, dir){
 
   // ٣) كتابة واحدة بدل نداءين لكل صنف
   if (touched) rng.setValues(rowsAS);
+}
+
+/* ------------------------------------------------------------
+   تنضيف الأكواد القديمة في الشيت — تشغيل يدوي مرة واحدة (اختياري)
+   ------------------------------------------------------------
+   التطبيق والسيرفر بيتعاملوا مع A015 على إنه A013 في كل حتة، فالشغل ماشي
+   صح من غير ما تعمل حاجة. الدالة دي بس لو حابب الشيت نفسه يتكتب بالكود
+   الجديد (عشان اللي بيبص على الشيت مباشرة ما يلخبطش).
+
+   طريقة التشغيل: من محرّر Apps Script اختار الدالة دي ودوس ▶ مرة واحدة.
+   بتغيّر عمود الكود في تبويب الأصناف وتبويب المخزن بس — مفيش أي حاجة
+   تانية بتتلمس، ومفيش كميات بتتغيّر. شغّلها وانت مطمّن إن عندك نسخة من
+   الشيت (ملف ▸ عمل نسخة).
+   ------------------------------------------------------------ */
+function renameDoorCodesOnce(){
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try{
+    var n = 0;
+    // أصناف الطلبات — عمود Colour Code (السادس في HEAD_ITEMS)
+    var COL_CODE_ = HEAD_ITEMS.indexOf('Colour Code') + 1;
+    var shI = sheet_(SHEET_ITEMS, HEAD_ITEMS), lastI = shI.getLastRow();
+    if (lastI >= 2 && COL_CODE_ > 0) {
+      var rng = shI.getRange(2, COL_CODE_, lastI - 1, 1), v = rng.getValues(), hit = false;
+      for (var i = 0; i < v.length; i++) {
+        var nw = doorCode_(v[i][0]);
+        if (nw && nw !== String(v[i][0]).trim()) { v[i][0] = nw; hit = true; n++; }
+      }
+      if (hit) rng.setValues(v);
+    }
+    // المخزن — عمود الكود رقم ١
+    var shS = sheet_(SHEET_STOCK, HEAD_STOCK), lastS = shS.getLastRow();
+    if (lastS >= 2) {
+      var rngS = shS.getRange(2, 1, lastS - 1, 1), vs = rngS.getValues(), hitS = false;
+      for (var j = 0; j < vs.length; j++) {
+        var nwS = doorCode_(vs[j][0]);
+        if (nwS && nwS !== String(vs[j][0]).trim()) { vs[j][0] = nwS; hitS = true; n++; }
+      }
+      if (hitS) rngS.setValues(vs);
+    }
+    Logger.log('اتغيّر ' + n + ' صف');
+    return n;
+  } finally { try{ lock.releaseLock(); }catch(e){} }
 }
 
 /* ============================================================
