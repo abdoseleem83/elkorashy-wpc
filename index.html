@@ -1169,6 +1169,36 @@ input[type=text],input[type=tel],input[type=number],input[type=password],input[t
 .tabs button .i{width:22px;height:22px}
 .secnav button .i{width:23px;height:23px}
 
+/* ---------- ترتيب الشرايح: شبكة منتظمة بدل صفوف مبعثرة ----------
+   ⚠️ الشكوى: الشرايح واخدة عرض كبير، اتنين في الصف، والآخر لوحده —
+   والشاشة بتضيع في الفاضي. ١١ لون كانوا ٦ صفوف.
+   السبب إن الشرايح كانت بتتلفّ حسب عرض النص (flex-wrap)، فطول النص
+   العربي المختلف بيسيب فراغات متفاوتة وصف آخر ناقص.
+   الحل: شبكة أعمدتها متساوية بتتحسب من عرض الشاشة — كل الشرايح بنفس
+   العرض، الصفوف متساوية، ومفيش فراغ ضايع. */
+.chips{
+  display:grid;
+  /* ٩٢ بكسل = أضيق عرض يخلّي ٣ أعمدة تدخل على تليفون ٣٦٠ بكسل (أصغر شاشة
+     عملية: عرض الصف الفعلي هناك ٢٩٠ بكسل، و٣×٨٨+١٦ = ٢٨٠ بتدخل)، ويفضل ٣
+     أعمدة على ٤١٢ كمان. أطول اسم («A013 — أرو فاتح» ١٠٤ بكسل) بينزل سطرين
+     على الضيق بس — وده أحسن من إننا نضيّع صف كامل. */
+  grid-template-columns:repeat(auto-fill,minmax(88px,1fr));
+  gap:8px;align-items:stretch;
+}
+.chip{
+  padding:9px 6px;               /* العرض بقى من الشبكة، فالحشو الجانبي مالوش لازمة */
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:44px;line-height:1.35;
+  overflow-wrap:break-word;      /* يكسر عند المسافة، مش في نص الكلمة */
+}
+/* صف أزرار الحالة في شاشة المصنع لازم يفضل سطر واحد */
+.chips-line{display:flex;flex-wrap:nowrap}
+.chips-line .chip{padding:9px 10px}
+
+/* أزرار الأقسام: صفوف متساوية كمان (كانت ٣ وبعدين ٢ متمدّدين) */
+.secnav{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.secnav button{flex:none;min-width:0;max-width:none}
+
 </style>
 </head>
 <body>
@@ -1340,7 +1370,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v200';
+const APP_BUILD   = 'v201';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -5592,7 +5622,7 @@ function viewAdmin(){
         font-size:13px;font-weight:700;color:var(--danger-ink);display:flex;align-items:flex-start;gap:6px;line-height:1.6">
         ${ico("warn")}<span>الطلب ده <b>اتعدّل وعنده نسخة جديدة</b> — كان دخل التنفيذ فمقدرناش نلغيه تلقائي.
         راجع النسخة الجديدة واحذف السطر ده بنفسك من زرار «حذف» تحت.</span></div>`:''}
-      <div class="chips" style="margin-top:10px;gap:6px;flex-wrap:nowrap">${btns}</div>
+      <div class="chips chips-line" style="margin-top:10px;gap:6px">${btns}</div>
       ${busy?'<div class="note">جارٍ الحفظ…</div>':''}
       <div class="cardacts">${actionBtns}</div>
       ${itemsHtml}
