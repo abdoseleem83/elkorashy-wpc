@@ -1570,10 +1570,16 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v203';
+const APP_BUILD   = 'v204';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
+// نسخة السكربت اللي الكود ده محتاجها على جوجل. لو المنشور أقدم منها معناه
+// إن حد نسخ apps_script.gs مرة وماعملش Deploy ▸ New version بعد كده — التطبيق
+// شغّال والسيرفر ناقص حاجة، وده بيطلع على شكل باجات غريبة (رصيد باب مش لاقيه،
+// تعديل صنف بيترفض). بنسأل السيرفر عن نسخته ونقول للمصنع بدل ما يخمّن.
+const SRV_BUILD_WANT = 'v204';
+
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2aVRVaUVubR3w4a3weiQTHGp03SvMozh83NY3OtBD14n1YugCjbcWdYEJUPJb-s3E/exec';
 
 /* ============================================================
@@ -1970,6 +1976,7 @@ const state = {
     pricesOpen:false, priceEdit:null,
     groupOpen:{}, groupPdfBusy:null,
     qtyEditOpen:{}, qtyEdit:{}, qtyBusy:null, itemDelBusy:null,
+    srv:undefined, srvErr:'', srvChecking:false,   // نسخة السكربت المنشور
     metaEdit:{}, metaBusy:null,
     prodEdit:{}, prodBusy:null},
   profile: load(LS_PROFILE, {name:'', phone:'', region:''}),
@@ -3563,6 +3570,36 @@ function loadAdminCache_(){
 }
 function clearAdminCache_(){ try{ localStorage.removeItem(LS_ADM_CACHE); }catch(e){} }
 
+// بتقارن نسخة السكربت المنشور بالمطلوبة. ما بترجّعش حاجة — بتحدّث state
+// والشاشة بتعرض السطر لوحدها. أي فشل (نت، سكربت قديم مابيرجّعش srv) بيتسجّل
+// كـ«مش معروف» مش كـ«تمام» — الافتراض الأأمن إننا مانعرفش.
+// الـping رد صغير جدًا، فمهلة أقصر من العادي كفاية — ومش عايزينه يقعد
+// يستنى ٢٥ ثانية وهو مجرد سؤال عن نسخة.
+const PING_TIMEOUT_MS = 15000;
+async function checkServerBuild_(){
+  if(state.admin.srvChecking) return;
+  state.admin.srvChecking = true;
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL + '?action=ping', PING_TIMEOUT_MS);
+    state.admin.srv = (d && d.ok && d.srv) ? String(d.srv) : '';
+    state.admin.srvErr = '';
+  }catch(e){
+    state.admin.srv = null;                 // null = مافيش رد خالص
+    state.admin.srvErr = e && e.message ? e.message : 'مفيش رد';
+  }
+  state.admin.srvChecking = false;
+  render();
+}
+
+// السطر اللي المصنع بيشوفه. تمام؟ مابيبانش خالص — مش عايزين سطر زيادة على
+// الشاشة كل يوم. قديم أو مش معروف بس هو اللي بيظهر.
+function srvBuildNote_(){
+  const v = state.admin.srv;
+  if(v === undefined || v === SRV_BUILD_WANT) return '';
+  if(v === null) return `<div class="ordnote">${ico("warn")}<span>مش قادرين نتأكد من نسخة السكربت على جوجل (${esc(state.admin.srvErr||'مفيش رد')}). لو الأرصدة أو تعديل الأصناف بيعمل مشاكل، افتح جوجل شيت ▸ Extensions ▸ Apps Script وتأكد إنك عملت <b>Deploy ▸ New version</b> على <b>نفس</b> الـdeployment.</span></div>`;
+  return `<div class="ordnote">${ico("warn")}<span>السكربت المنشور على جوجل نسخة <b>${esc(v||'قديمة جدًا')}</b> والتطبيق محتاج <b>${SRV_BUILD_WANT}</b>. انسخ <b>apps_script.gs</b> كله من جديد واعمل <b>Deploy ▸ New version</b> على <b>نفس</b> الـdeployment — مش deployment جديد، عشان الرابط مايتغيّرش.</span></div>`;
+}
+
 async function adminLoad(){
   // فيه نسخة محفوظة ومفيش حاجة معروضة؟ اعرضها فورًا بدل شاشة الانتظار
   if(!state.admin.rows){
@@ -3591,6 +3628,7 @@ async function adminLoad(){
     // تاني (محتاج كلمة السر) ومزامنة الأسعار كانت هتفضل واقفة. الدخول نفسه
     // بيشغّلها دلوقتي — فأول ما يدخل، اللي لسه ما اترفعش بيترفع.
     syncPricesFromServer_();
+    checkServerBuild_();                    // مرة كل دخول — رد صغير وبيتكاش
   }catch(err){
     state.admin.err = err.message || String(err);
     // فشل التحديث وعندنا نسخة محفوظة معروضة؟ سيبها شغّالة بدل ما نقفل الشاشة
@@ -5880,6 +5918,7 @@ function viewAdmin(){
       <div class="step"><span class="n">${viewingArchive?ico("folder","lg"):ico("factory","lg")}</span><h2>${viewingArchive?'الأرشيف':'متابعة المصنع'}</h2><span class="hint">${list.length} طلب · ${order.length} عميل</span></div>
       <div class="note" style="margin-top:0">${viewingArchive?'الطلبات المؤرشفة (اتسلمت أو اتأرشفت يدوي) — مش بتظهر في التقارير.':'اضغط اسم العميل عشان تشوف طلباته، وبعدين «الأصناف والإنتاج» جوه كل طلب عشان تسجّل الإنتاج وتشوف المتبقي. تسليم الطلب بيأرشفه أوتوماتيك.'}</div>
       ${headerBtns}
+      ${srvBuildNote_()}
     </section>
     ${ADMIN_CARDS_MARK}${verBar()}`;
   return _adminShell.replace(ADMIN_CARDS_MARK, rows);

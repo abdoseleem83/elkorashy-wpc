@@ -27,6 +27,12 @@
  */
 
 // أكواد بنود الخدمة على الباب — بتتحسب في الفلوس بس، مش في عدد القطع
+// نسخة السكربت اللي على جوجل. التطبيق بيقراها في الـping ويقارنها بنسخته،
+// وبيقول للمصنع لو السكربت المنشور قديم — الناس مش بتفتكر عملت
+// Deploy ▸ New version ولا لأ، وده أوحش نوع مشكلة: التطبيق شغّال والسيرفر
+// ناقص حاجة. **لازم** تزوّد الرقم ده كل مرة السكربت ده يتغيّر.
+var SRV_BUILD_ = 'v204';
+
 var CUT_SERVICE_CODE_ = 'CUT';
 var WOOD_SERVICE_CODE_ = 'WOOD';
 var PRINT_SERVICE_CODE_ = 'PRINT';
@@ -373,7 +379,7 @@ function doGet(e) {
     var action = (e && e.parameter && e.parameter.action) || 'ping';
 
     if (action === 'ping') {
-      return reply({ ok: true, msg: 'WPC orders script is running' }, cb);
+      return reply({ ok: true, msg: 'WPC orders script is running', srv: SRV_BUILD_ }, cb);
     }
 
     // إضافة طلب جديد عبر GET (JSONP) — بديل مضمون الرد لطلب POST العادي،
