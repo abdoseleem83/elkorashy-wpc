@@ -9,6 +9,11 @@ const check=(n,ok,x='')=>{ console.log((ok?'✅':'❌')+' '+n+(x?'  — '+x:''))
 const gs = fs.readFileSync(new URL('../apps_script.gs', import.meta.url), 'utf8');
 const src = /function adjustStockForItems_\(items, dir\)\{[\s\S]*?\n\}/.exec(gs);
 check('لقينا الدالة في apps_script.gs', !!src);
+// ⚠️ الدالة بقت بتنده doorCode_ (تطبيع الأكواد القديمة زي A015→A013).
+// بنحقن الأصلية من نفس الملف — مش نسخة مكتوبة هنا — عشان الاختبار يفضل
+// بيقيس الكود الحقيقي.
+const srcCode = /var DOOR_CODE_ALIASES_ = [\s\S]*?function doorCode_\(c\)\{[\s\S]*?\n\}/.exec(gs);
+check('ولقينا دالة تطبيع الأكواد', !!srcCode);
 
 // شيت وهمي: صفوف [كود، مقاس، كمية، تاريخ] وبنسجّل الكتابة اللي اتعملت
 function مصنع_شيت(rows){
@@ -27,8 +32,20 @@ function شغّل(rows, items, dir){
   const { sh, state } = مصنع_شيت(rows);
   const ctx = { sheet_: () => sh, SHEET_STOCK:'Stock', HEAD_STOCK:['Code','Size','Qty','Updated'], Number, String, Object, Date };
   vm.createContext(ctx);
-  vm.runInContext(src[0] + '\nadjustStockForItems_(' + JSON.stringify(items) + ', ' + dir + ');', ctx);
+  vm.runInContext(srcCode[0] + '\n' + src[0] + '\nadjustStockForItems_(' + JSON.stringify(items) + ', ' + dir + ');', ctx);
   return state;
+}
+
+// ⚠️ الباب A015 بقى A013. لو الطلب القديم (كوده A015) خصم من صف تاني غير
+// صف A013، الرصيد بيتقسم نصين والمصنع يبيع أبواب مش موجودة.
+{
+  const r = شغّل([['A013','90',10,'']], [{kind:'door',code:'A015',w:'90',qty:4}], -1);
+  check('طلب بالكود القديم بيخصم من رصيد الكود الجديد', r.rows[0][2]===6, 'رصيد='+r.rows[0][2]);
+  const r2 = شغّل([['A015','90',10,'']], [{kind:'door',code:'A013',w:'90',qty:4}], -1);
+  check('والعكس: صف رصيد قديم وطلب جديد', r2.rows[0][2]===6, 'رصيد='+r2.rows[0][2]);
+  const r3 = شغّل([['A013','90',10,''],['A015','90',5,'']], [{kind:'door',code:'A013',w:'90',qty:4}], -1);
+  check('وصفين قديم وجديد = خصم مرة واحدة بس',
+    r3.rows[0][2]===6 && r3.rows[1][2]===5, r3.rows.map(x=>x[2]).join(','));
 }
 
 // ١) الحالة العادية: صف واحد لكل صنف
