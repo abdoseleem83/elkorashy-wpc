@@ -1286,7 +1286,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v198';
+const APP_BUILD   = 'v199';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -1647,6 +1647,33 @@ async function syncPricesFromServer_(){
 /* ============================================================
    الحالة
    ============================================================ */
+/* ⚠️ السلة والطلبات المحفوظة على جهاز الموزّع اتكتبت قبل تغيير الكود:
+   الكود جواها A015، والاسم متكتوب نص جاهز («باب A015 أرو فاتح») — والمستندات
+   بتعرض الاسم ده زي ما هو. يعني الموزّع يفضل شايف A015 على طلباته القديمة
+   حتى بعد التحديث. بنحوّلها مرة واحدة على الجهاز.
+   بتتنفّذ قبل ما state تتبني عشان تقرا المحوَّل على طول. */
+(function renameDoorCodeLocally_(){
+  try{
+    if(localStorage.getItem('wpc_code_migrated')) return;
+    const قديم = /\bA015\b/g;
+    const حوّل = list => (Array.isArray(list) ? list : []).map(it=>{
+      if(!it || typeof it !== 'object') return it;
+      if(it.code) it.code = String(it.code).replace(قديم, 'A013');
+      ['title','titleEn','spec','key'].forEach(k=>{
+        if(typeof it[k] === 'string') it[k] = it[k].replace(قديم, 'A013');
+      });
+      if(Array.isArray(it.items)) it.items = حوّل(it.items);
+      return it;
+    });
+    ['wpc_cart','wpc_orders'].forEach(k=>{
+      const raw = localStorage.getItem(k);
+      if(!raw || raw.indexOf('A015') < 0) return;
+      try{ localStorage.setItem(k, JSON.stringify(حوّل(JSON.parse(raw)))); }catch(e){}
+    });
+    localStorage.setItem('wpc_code_migrated', '1');
+  }catch(e){}
+})();
+
 const state = {
   tab: load(LS_TAB, 'new'),
   track:{loading:false, rows:null, err:'', at:0},
@@ -4558,13 +4585,27 @@ async function previewOneOrder_(id){
   a.orderPreviewBusy = null; render();
 }
 
+/* ⚠️ الأصناف الراجعة من الشيت لسه فيها الأكواد القديمة (A015) — والكود ده
+   بيتعرض زي ما هو في شاشة المصنع وفي الإكسل والتقارير، وبيدخل في مفاتيح
+   التجميع وفي فحص المتوفر بالمخزن. يعني من غير تطبيع هنا:
+     • المصنع يشوف «A015» على طلبات قديمة و«A013» على الجديدة لنفس الباب.
+     • التقرير الشامل يعدّهم صنفين منفصلين.
+     • فحص المتوفر يدوّر على رصيد A015 وهو متسجّل على A013.
+   بنطبّعهم مرة واحدة عند الاستقبال — وكل اللي بعده بياخد الكود الجديد.
+   (والسيرفر بيطبّع كمان وقت مطابقة الصنف، فالتعديل والحذف على السطور
+   القديمة فاضلين شغّالين.) */
+function normalizeItems_(list){
+  (list || []).forEach(it=>{ if(it && it.code) it.code = doorCode_(it.code); });
+  return list || [];
+}
+
 // بتجيب أصناف طلب واحد وتكاشهم. بترجّع من غير أي نداء لو محمّلين خلاص.
 async function loadOrderItems_(id){
   if(state.admin.items[id]) return state.admin.items[id];
   const d = await jsonp(APPS_SCRIPT_URL
     + '?action=orderItems' + admParams_()
     + '&id=' + encodeURIComponent(id));
-  if(d && d.ok) state.admin.items[id] = d.items || [];
+  if(d && d.ok) state.admin.items[id] = normalizeItems_(d.items);
   return state.admin.items[id] || [];
 }
 
@@ -4582,7 +4623,7 @@ async function loadOrderItemsMany_(ids){
         + '?action=orderItems' + admParams_()
         + '&ids=' + encodeURIComponent(دفعة.join(',')));
       if(d && d.ok && d.itemsById){
-        دفعة.forEach(id => { if(d.itemsById[id]) state.admin.items[id] = d.itemsById[id]; });
+        دفعة.forEach(id => { if(d.itemsById[id]) state.admin.items[id] = normalizeItems_(d.itemsById[id]); });
       }
     }catch(e){}
     // أي طلب ما رجعش في الرد (سيرفر قديم مثلًا) بنجيبه لوحده

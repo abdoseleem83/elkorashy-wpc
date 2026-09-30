@@ -8,6 +8,7 @@ import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 let pass=0, fail=0;
 const check=(n,ok,x='')=>{ console.log((ok?'✅':'❌')+' '+n+(x?'  — '+x:'')); ok?pass++:fail++; };
 const b = await chromium.launch();
+const b2 = await chromium.launch();   // متصفح تاني لاختبار التحويل على الجهاز
 const pg = await (await b.newContext({viewport:{width:412,height:915}})).newPage();
 const errs=[]; pg.on('pageerror',e=>errs.push(e.message));
 await pg.goto(process.env.APP_URL || 'http://localhost:8100/index.html',{waitUntil:'domcontentloaded'});
@@ -87,8 +88,70 @@ const جديد = await pg.evaluate(()=>{
 check('الطلب الجديد كوده A013', جديد.code==='A013', جديد.code);
 check('ومفيش A015 في أي اسم', !/A015/.test(جديد.title+جديد.titleEn), جديد.title+' / '+جديد.titleEn);
 
+// ═══ ٦) أصناف طلب قديم جاية من الشيت بتتطبّع عند الاستقبال ═══
+const استقبال = await pg.evaluate(()=>{
+  const out = normalizeItems_([
+    {type:'Door', code:'A015', size:'90 cm', qty:2},
+    {type:'Frame', code:'A015', size:'10 سم', qty:3},
+    {type:'Door', code:'A01', size:'70 cm', qty:1}
+  ]);
+  return out.map(x=>x.code);
+});
+check('⚠️ الأصناف الراجعة من الشيت بتتحوّل للكود الجديد',
+  استقبال.join(',')==='A013,A013,A01', استقبال.join(','));
+
+// وده معناه إن شاشة المصنع وفحص المتوفر والتقارير كلهم بياخدوا الكود الجديد
+const مصنع = await pg.evaluate(()=>{
+  state.stock.rows = [{code:'A013', size:'90', qty:5}];
+  const its = normalizeItems_([{type:'Door', code:'A015', size:'90 cm', qty:2, width:'90'}]);
+  const حالة = stockStatus_(its[0].code, its[0].size, its[0].qty);
+  // ولو الكود ما اتطبّعش، stockFor مش هتلاقي الصف وترجّع 0 = «غير متاح»
+  const بالقديم = stockStatus_('A015', '90 cm', 2);
+  state.stock.rows = [];
+  return { code: its[0].code, label: حالة && حالة.label, قديم: بالقديم && بالقديم.label };
+});
+check('وفحص المتوفر بيلاقي رصيد الكود الجديد',
+  مصنع.code==='A013' && مصنع.label==='متاح', JSON.stringify(مصنع));
+check('والسؤال بالكود القديم مابيقولش «غير متاح» غلط',
+  مصنع.قديم==='متاح', String(مصنع.قديم));
+
 check('مفيش أخطاء JS', errs.length===0, errs.join(' | '));
 await b.close();
+
+// ═══ ٧) السلة والطلبات المحفوظة على الجهاز بتتحوّل مرة واحدة ═══
+{
+  const ctx2 = await b2.newContext();
+  const pg2 = await ctx2.newPage();
+  const e2=[]; pg2.on('pageerror',x=>e2.push(x.message));
+  await pg2.addInitScript(()=>{
+    localStorage.setItem('wpc_cart', JSON.stringify([
+      {kind:'door', code:'A015', title:'باب A015 أرو فاتح', titleEn:'WPC Door A015 - Light Arrow',
+       sizeTxt:'90 سم', sizeEn:'90 cm', unitPrice:5000, qty:2},
+      {kind:'frame', code:'A015', title:'حلق باب 10 سم — A015 أرو فاتح', spec:'10 سم — A015', qty:3}
+    ]));
+    localStorage.setItem('wpc_orders', JSON.stringify([
+      {id:'O1', displayNo:'5', items:[{kind:'door', code:'A015', title:'باب A015 أرو فاتح'}]}
+    ]));
+  });
+  await pg2.goto(process.env.APP_URL || 'http://localhost:8100/index.html',{waitUntil:'domcontentloaded'});
+  await pg2.waitForTimeout(1200);
+  const محلي = await pg2.evaluate(()=>({
+    سلة: JSON.parse(localStorage.getItem('wpc_cart')||'[]'),
+    طلبات: JSON.parse(localStorage.getItem('wpc_orders')||'[]'),
+    علامة: localStorage.getItem('wpc_code_migrated')
+  }));
+  const نص = JSON.stringify(محلي.سلة) + JSON.stringify(محلي.طلبات);
+  check('⚠️ السلة المحفوظة على الجهاز اتحوّلت', !/A015/.test(نص) && /A013/.test(نص),
+    نص.slice(0,120));
+  check('والاسم المكتوب جوّه السطر اتغيّر كمان',
+    محلي.سلة[0].title==='باب A013 أرو فاتح', محلي.سلة[0].title);
+  check('والطلبات القديمة على الجهاز كمان',
+    محلي.طلبات[0].items[0].code==='A013', محلي.طلبات[0].items[0].code);
+  check('والتحويل بيتعلّم إنه اتعمل (مرة واحدة بس)', محلي.علامة==='1', String(محلي.علامة));
+  check('مفيش أخطاء في التحويل', e2.length===0, e2.join(' | '));
+  await ctx2.close();
+}
+await b2.close();
 
 // ═══ ٦) الملفات: الصورة والسيرفر ═══
 const sw = fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
