@@ -1115,6 +1115,60 @@ input.bad{background:#FFF3F2;box-shadow:0 0 0 3px rgba(198,54,45,.10)}
 .specol .sol-h,.miniLbl,.prow3 .tcell b,label.fld span{color:#4A5C74}
 .line .info2 .spec,.ord .od,.ord .os,.note,.empty,.total .lbl{color:#5B6B82}
 
+/* ============================================================
+   v200 — «خفيف ودقيق» (شكل ٢٠٢٧)
+   ------------------------------------------------------------
+   تطوير هادي فوق الشكل النظيف (v197): خطوط الأيقونات أرفع وأدق، زوايا
+   أنعم، ومساحات أوسع. مفيش أي خطوة ولا زرار اتغيّر — المقاسات بس.
+
+   اللي اتغيّر بالأرقام:
+     • سُمك خط الأيقونة من ١.٧٥ لـ١.٥ على شبكة ٢٤ (ده اللي ماشي في
+       أيقونات ٢٠٢٦–٢٠٢٧: خط واحد رفيع ودقيق يفضل مقروء وهو صغير).
+     • الزوايا كبرت درجة: الكارت ١٨→٢٢، والشرايح والخانات معاها.
+     • الكارت والشاشة خدوا مساحة زيادة تتنفّس فيها.
+     • الحدود بقت أخف شوية عشان الخط الرفيع ما يتوهش وسط إطار تقيل.
+   ============================================================ */
+:root{
+  --r:20px;
+  --r-sm:12px;
+  --r-md:16px;
+  --r-lg:22px;
+  --line:#EDF1F6;
+}
+
+/* ---------- الأيقونات ---------- */
+.i{stroke-width:1.5}
+.i.lg{stroke-width:1.45}
+.i.xl{stroke-width:1.4}
+.tabs button .i{stroke-width:1.55}
+.step .n .i{stroke-width:1.7}
+/* الأيقونة اللي جوّه زرار ملوّن محتاجة شعرة زيادة عشان ما تبهتش على اللون */
+.btn.brand .i,.btn.primary .i,.bar .btn .i{stroke-width:1.65}
+
+/* ---------- مساحة تتنفّس فيها ---------- */
+.wrap{padding:18px 16px}
+.card{padding:18px}
+.card,.ord{border-radius:var(--r-lg)}
+.step{margin-bottom:14px}
+.chips{gap:8px}
+.miniChips{gap:7px}
+.chip,.miniChip{border-radius:var(--r-pill)}
+.sizeCard,.doorpanel,.rodbox,.accgrid .ac{border-radius:var(--r-md)}
+input[type=text],input[type=tel],input[type=number],input[type=password],input[type=date],input[type=search],select,textarea,.fld textarea{border-radius:var(--r-sm)}
+.btn{border-radius:var(--r-sm)}
+.line{padding-block:13px}
+.line img,.line .ic{border-radius:var(--r-sm)}
+.door .leaf{border-radius:var(--r-md)}
+
+/* ---------- حدود أخف تحت الخط الرفيع ---------- */
+.card,.ord,.sizeCard,.rodbox,.accgrid .ac{border-width:1px}
+.chip,.miniChip{border-width:1px}
+.chip.on,.miniChip.on{border-width:1px}
+
+/* ---------- التبويبات: أهدى شوية ---------- */
+.tabs button .i{width:22px;height:22px}
+.secnav button .i{width:23px;height:23px}
+
 </style>
 </head>
 <body>
@@ -1286,7 +1340,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v199';
+const APP_BUILD   = 'v200';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
