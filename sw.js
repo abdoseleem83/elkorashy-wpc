@@ -1,6 +1,6 @@
 // ⚠️ مهم: غيّر رقم النسخة دي في كل مرة ترفع تحديث جديد.
 // ده اللي بيخلي المتصفح يرمي الكاش القديم ويجيب الملفات الجديدة.
-const CACHE_VERSION = 'v201';
+const CACHE_VERSION = 'v203';
 const CACHE_NAME = 'elkorashy-wpc-' + CACHE_VERSION;
 // كاش منفصل للمكتبات الخارجية — مش بيتمسح مع كل تحديث للتطبيق، لأن روابطها فيها
 // رقم إصدار ثابت. لو كانت جوه الكاش العادي كانت هتتحمّل من النت من أول وجديد
@@ -24,7 +24,7 @@ const PRECACHE = [
   './manifest.json'
 ];
 
-const ASSET_VERSION = 'a3';   // a2→a3: أيقونة التطبيق اتغيّرت (شكل ٢٠٢٧)
+const ASSET_VERSION = 'a4';   // a3→a4: الأيقونة بقت بنفس تدرّج الهيدر المدموج (v203)
 const ASSET_CACHE   = 'elkorashy-assets-' + ASSET_VERSION;
 const STATIC = [
   './icon-192.png',
