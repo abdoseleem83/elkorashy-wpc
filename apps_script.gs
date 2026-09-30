@@ -31,7 +31,7 @@
 // وبيقول للمصنع لو السكربت المنشور قديم — الناس مش بتفتكر عملت
 // Deploy ▸ New version ولا لأ، وده أوحش نوع مشكلة: التطبيق شغّال والسيرفر
 // ناقص حاجة. **لازم** تزوّد الرقم ده كل مرة السكربت ده يتغيّر.
-var SRV_BUILD_ = 'v204';
+var SRV_BUILD_ = 'v205';
 
 var CUT_SERVICE_CODE_ = 'CUT';
 var WOOD_SERVICE_CODE_ = 'WOOD';
@@ -58,6 +58,8 @@ var SHEET_PRICES = 'Prices';       // أسعار الكتالوج — مصدر �
 var HEAD_PRICES  = ['Prices JSON', 'Updated At'];
 
 var HEAD_STOCK = ['Code', 'Size', 'Qty', 'Updated'];
+var COL_STOCK_QTY     = 3;
+var COL_STOCK_UPDATED = 4;
 var TZ           = 'Africa/Cairo';
 
 // الحالات المسموحة — أي حاجة غيرها بتترفض.
@@ -102,6 +104,30 @@ var HEAD_ORDERS = [
   'Warehouse', 'Total Qty', 'Total Rods', 'Total Amount', 'Status', 'Note to Distributor', 'Pricing Terms', 'Message', 'Status Updated',
   'Archived', 'Customer', 'Order Note', 'Customer Phone', 'Superseded', 'Replaces Order', 'Display No', 'Edit Count', 'Edited At'
 ];
+// ⚠️ الأعمدة دي كانت أرقام مكتوبة بالنص جوه الكود (getRange(r, 8)…).
+// أول ما حد يزوّد عمود في نص الجدول، الكتابة كانت بتروح للخانة الغلط في
+// صمت: «إجمالي الكمية» فوق «المخزن»، أو الكمية فوق «متاح؟». بقت مسمّاة
+// هنا وtest/sheet-columns.mjs بيربط كل واحدة باسم عمودها.
+// الأعمدة التلاتة اللي قراءة القايمة بتعدّيها (تقيلة ومحدش بيقراها من القايمة).
+// الأسامي هي المصدر — أرقامها بتتحسب، فزيادة عمود قبلها مابتكسرش القراءة.
+var GAP_COLS_ = ['Pricing Terms', 'Message', 'Status Updated'];
+// مشتق من الأسامي نفسها — مش رقم مكتوب. لو الفجوة ماكانتش تلات أعمدة ورا
+// بعض (حد زوّد عمود بينهم) بنرجع لقراءة الجدول كله: أبطأ، بس صح.
+var GAP_FIRST_COL_ = (function () {
+  var i = HEAD_ORDERS.indexOf(GAP_COLS_[0]);
+  if (i < 0) return 0;
+  for (var k = 1; k < GAP_COLS_.length; k++) {
+    if (HEAD_ORDERS[i + k] !== GAP_COLS_[k]) return 0;   // مش ورا بعض
+  }
+  return i + 1;
+})();
+
+var COL_DATE       = 2;   // تاريخ الطلب
+var COL_PHONE      = 5;   // تليفون الموزّع (صاحب الجهاز)
+var COL_TOTAL_QTY  = 8;
+var COL_TOTAL_RODS = 9;
+var COL_TOTAL_AMT  = 10;
+
 var COL_ARCHIVED = 16;
 var COL_CUSTOMER = 17;   // اسم صاحب الأوردر لو مختلف عن صاحب الجهاز
 var COL_ORDNOTE  = 18;   // ملاحظات العميل على الطلب   // Y/N — بيتحدّد أوتوماتيك لما الحالة تبقى Delivered، أو يدوي من زرار الأرشفة
@@ -121,6 +147,8 @@ var HEAD_ITEMS = [
   'Frame (cm)', 'Bror', 'Frame Height (cm)', 'Width (cm)', 'Produced Qty', 'Door Height (cm)',
   'For Door Width (cm)', 'Item Note'
 ];
+var COL_ITEM_QTY = 11;     // الكمية — ومعاها Unit Price وLine Total ورا بعض
+                           // (بيتكتبوا التلاتة مرة واحدة، شوف syncItemQty_)
 var COL_ITEM_WIDTH = 18;  // العرض بالسم كرقم خام (بس للأبواب) — بيتستخدم لخصم/رجوع رصيد المخزون بدقة
 var COL_ITEM_AVAIL = 14;   // عمود "متاح؟" في تبويب Order_Items — Y/N، بيتحدّث من شاشة المصنع
 var COL_ITEM_PRODUCED = 19; // عمود "الكمية المنتجة" — رقم من صفر لحد الكمية المطلوبة، بيتحدّث من شاشة المصنع
@@ -621,11 +649,11 @@ function doGet(e) {
           if (mOM < 1 || mOM > 12 || dayOM < 1 || dayOM > 31) {
             return reply({ ok: false, error: 'شكل التاريخ مش صحيح' }, cb);
           }
-          shOM.getRange(rOM, 2).setValue(dTxtOM);
+          shOM.getRange(rOM, COL_DATE).setValue(dTxtOM);
         }
         return reply({ ok: true, id: e.parameter.id,
           customer: shOM.getRange(rOM, COL_CUSTOMER).getValue(),
-          date: fmtDate_(shOM.getRange(rOM, 2).getValue()) }, cb);
+          date: fmtDate_(shOM.getRange(rOM, COL_DATE).getValue()) }, cb);
       } finally {
         try { lockOM.releaseLock(); } catch (eOM) {}
       }
@@ -783,7 +811,7 @@ function doGet(e) {
           return reply({ ok: false, error: RATE_MSG_ }, cb);
         }
         if (!isAdminCO) {
-          var ownerPhoneCO = digitsOnly_(shCO.getRange(rCO, 5).getValue() || '');   // digitsOnly_ بتشيل الفاصلة العليا كمان
+          var ownerPhoneCO = digitsOnly_(shCO.getRange(rCO, COL_PHONE).getValue() || '');   // digitsOnly_ بتشيل الفاصلة العليا كمان
           var reqPhoneCO = digitsOnly_(e.parameter.phone || '');
           if (!reqPhoneCO || reqPhoneCO.slice(-9) !== ownerPhoneCO.slice(-9)) {
             return reply({ ok: false, error: 'مش مسموح تلغي الطلب ده' }, cb);
@@ -1048,8 +1076,8 @@ function doGet(e) {
           }
         }
         if (foundSS > 0) {
-          shSS.getRange(foundSS, 3).setValue(qtySS);
-          shSS.getRange(foundSS, 4).setValue(new Date());
+          shSS.getRange(foundSS, COL_STOCK_QTY).setValue(qtySS);
+          shSS.getRange(foundSS, COL_STOCK_UPDATED).setValue(new Date());
         } else {
           shSS.appendRow([codeSS, sizeSS, qtySS, new Date()]);
         }
@@ -1302,7 +1330,7 @@ function syncCutRows_(shI, id) {
     var rowNo = rowNums[c.i];
     if (want <= 0) { shI.deleteRow(rowNo); changed++; continue; }
     var price = Number(c.row[11]) || 0;
-    shI.getRange(rowNo, 11, 1, 3).setValues([[want, price, price * want]]);   // Qty / Unit Price / Line Total
+    shI.getRange(rowNo, COL_ITEM_QTY, 1, 3).setValues([[want, price, price * want]]);   // Qty / Unit Price / Line Total
     changed++;
   }
   return changed;
@@ -1327,9 +1355,9 @@ function recomputeOrderTotals_(id) {
   var shO = sheet_(SHEET_ORDERS, HEAD_ORDERS);
   var r = findRow_(shO, id);
   if (r > 0) {
-    shO.getRange(r, 8).setValue(qty);
-    shO.getRange(r, 9).setValue(rods);
-    shO.getRange(r, 10).setValue(total);
+    shO.getRange(r, COL_TOTAL_QTY).setValue(qty);
+    shO.getRange(r, COL_TOTAL_RODS).setValue(rods);
+    shO.getRange(r, COL_TOTAL_AMT).setValue(total);
   }
   return { qty: qty, rods: rods, total: total };
 }
@@ -1530,11 +1558,23 @@ function readOrderRows_(sh) {
   var last = sh.getLastRow();
   if (last < 2) return [];
   var n = last - 1;
-  var head = sh.getRange(2, 1, n, 12).getValues();          // أعمدة 1..12  → مؤشرات 0..11
-  var tail = sh.getRange(2, 16, n, HEAD_ORDERS.length - 15).getValues();  // 16..24 → 15..23
+  // ⚠️ الفجوة (الأعمدة اللي بنعدّيها) كانت أرقام مكتوبة: 12 / 16 / تلات خانات
+  // فاضية. لو حد زوّد عمود قبلها، القراءة كانت بتترزّع كلها — الحالة تتقري
+  // من خانة الرسالة، والعميل من خانة الأرشيف، في كل طلب وفي صمت.
+  // بقت مشتقّة من GAP_COLS_ نفسها، والاختبار بيتأكد إن الأسامي هي هي.
+  // الفجوة مش متعرّفة (الأسامي اتغيّرت)؟ اقرا الجدول كله — الصح أهم من السرعة.
+  if (!GAP_FIRST_COL_) return sh.getRange(2, 1, n, HEAD_ORDERS.length).getValues();
+  var gapFrom = GAP_FIRST_COL_;                    // أول عمود في الفجوة (1-based)
+  var gapLen  = GAP_COLS_.length;
+  var head = sh.getRange(2, 1, n, gapFrom - 1).getValues();
+  var afterFrom = gapFrom + gapLen;
+  var afterLen  = HEAD_ORDERS.length - (afterFrom - 1);
+  var tail = afterLen > 0 ? sh.getRange(2, afterFrom, n, afterLen).getValues() : null;
+  var blanks = [];
+  for (var g = 0; g < gapLen; g++) blanks.push('');
   var out = [];
   for (var i = 0; i < n; i++) {
-    out.push(head[i].concat(['', '', ''], tail[i]));        // الفجوة: مؤشرات 12,13,14
+    out.push(tail ? head[i].concat(blanks, tail[i]) : head[i].concat(blanks));
   }
   return out;
 }

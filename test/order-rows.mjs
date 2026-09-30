@@ -2,6 +2,7 @@
 // الأعمدة التقيلة (Message / Pricing Terms / Status Updated) اللي محدش بيقراها.
 // الاختبار ده بيتأكد إن الصف اللي بترجّعه **مطابق تمامًا** لقراءة الشيت كامل،
 // ما عدا التلات أعمدة دي — يعني كل الكود اللي بيقرا rows[i][N] يفضل شغّال زي ما هو.
+import { أعمدة as ثوابت } from './_srv-consts.mjs';
 import fs from 'fs';
 
 const src = fs.readFileSync(new URL('../apps_script.gs', import.meta.url), 'utf8');
@@ -33,6 +34,10 @@ function makeSheet(nRows) {
 }
 
 globalThis.HEAD_ORDERS = HEAD;
+// ⚠️ موضع الفجوة بقى مشتق من أسامي الأعمدة (GAP_COLS_/GAP_FIRST_COL_) مش
+// أرقام مكتوبة. بنحقن الكتلة الحقيقية من apps_script.gs — لو اتغيّرت، الاختبار
+// يتغيّر معاها لوحده بدل ما يفشل بـ«not defined».
+new Function(ثوابت + '\nglobalThis.GAP_COLS_ = GAP_COLS_; globalThis.GAP_FIRST_COL_ = GAP_FIRST_COL_;')();
 const readOrderRows_ = new Function('sh', fn.replace(/^function readOrderRows_\(sh\) \{/, '').replace(/\}$/, ''));
 
 const SKIPPED = [12, 13, 14];   // Pricing Terms · Message · Status Updated

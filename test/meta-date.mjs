@@ -5,6 +5,7 @@
 // الاختبار بيشغّل الجزء ده فعليًا وبيقلّد توقيتين مختلفين.
 import fs from 'fs';
 import vm from 'node:vm';
+import { ثوابت } from './_srv-consts.mjs';
 let pass=0, fail=0;
 const check=(n,ok,x='')=>{ console.log((ok?'✅':'❌')+' '+n+(x?'  — '+x:'')); ok?pass++:fail++; };
 const gs = fs.readFileSync(new URL('../apps_script.gs', import.meta.url), 'utf8');
@@ -36,6 +37,7 @@ function شغّل(تاريخ, فرق_ساعات_المشروع){
     }}
   };
   vm.createContext(ctx);
+  vm.runInContext(ثوابت, ctx);
   vm.runInContext('(function(){ ' + block[0] + ' })()', ctx);
   return { مكتوب, رد };
 }
