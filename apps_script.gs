@@ -1565,7 +1565,10 @@ function itemMatches_(row, e) {
   var wantType = e.parameter.itype, wantCode = e.parameter.icode, wantSize = e.parameter.isize;
   if (wantType === undefined && wantCode === undefined && wantSize === undefined) return true;
   if (wantType !== undefined && String(row[3] || '') !== String(wantType)) return false;
-  if (wantCode !== undefined && String(row[5] || '') !== String(wantCode)) return false;
+  // ⚠️ التطبيق بيطبّع الأكواد القديمة (A015→A013) قبل ما يعرضها، فالكود اللي
+  // بيبعته ممكن يكون الجديد والسطر في الشيت لسه بالقديم. من غير التطبيع هنا،
+  // أي تعديل كمية أو حذف صنف على طلب قديم بيترفض بـ«الأصناف اتغيّرت».
+  if (wantCode !== undefined && doorCode_(row[5]) !== doorCode_(wantCode)) return false;
   if (wantSize !== undefined && String(row[6] || '') !== String(wantSize)) return false;
   return true;
 }

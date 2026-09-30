@@ -11,7 +11,13 @@ const check=(n,ok,x='')=>{ console.log((ok?'✅':'❌')+' '+n+(x?'  — '+x:''))
 const gs = fs.readFileSync(new URL('../apps_script.gs', import.meta.url), 'utf8');
 const src = /function itemMatches_\(row, e\) \{[\s\S]*?\n\}/.exec(gs);
 check('لقينا دالة التحقق في السيرفر', !!src);
-const ctx = { String }; vm.createContext(ctx); vm.runInContext(src[0], ctx);
+// ⚠️ الدالة بقت بتنده doorCode_ (تطبيع الأكواد القديمة زي A015→A013).
+// بنحقن الأصلية من نفس الملف — مش نسخة مكتوبة هنا — عشان الاختبار يفضل
+// بيقيس الكود الحقيقي.
+const srcCode = /var DOOR_CODE_ALIASES_ = [\s\S]*?function doorCode_\(c\)\{[\s\S]*?\n\}/.exec(gs);
+check('ولقينا دالة تطبيع الأكواد', !!srcCode);
+const ctx = { String }; vm.createContext(ctx);
+vm.runInContext(srcCode[0] + '\n' + src[0], ctx);
 const صف = (type,code,size)=>{ const r=new Array(22).fill(''); r[3]=type; r[5]=code; r[6]=size; return r; };
 const طابق = (row, p) => vm.runInContext('itemMatches_('+JSON.stringify(row)+', {parameter:'+JSON.stringify(p)+'})', ctx);
 
@@ -25,6 +31,16 @@ check('نوع مختلف بيترفض',
   طابق(صف('Door','A01','90 cm'), {itype:'Frame', icode:'A01', isize:'90 cm'}) === false);
 check('تطبيق قديم (مابيبعتش هوية) لسه شغّال',
   طابق(صف('Door','A01','90 cm'), {}) === true);
+
+// ⚠️ الباب A015 بقى A013: التطبيق بيطبّع الكود قبل ما يعرضه، فبيبعت A013
+// والسطر في الشيت لسه A015. من غير تطبيع في المقارنة، أي تعديل كمية أو حذف
+// صنف على طلب قديم بيترفض بـ«الأصناف اتغيّرت من جهاز تاني».
+check('سطر قديم (A015) بيطابق طلب بالكود الجديد (A013)',
+  طابق(صف('Door','A015','90 cm'), {itype:'Door', icode:'A013', isize:'90 cm'}) === true);
+check('والعكس كمان',
+  طابق(صف('Door','A013','90 cm'), {itype:'Door', icode:'A015', isize:'90 cm'}) === true);
+check('ولسه بيرفض كود مختلف فعلاً',
+  طابق(صف('Door','A013','90 cm'), {itype:'Door', icode:'A01', isize:'90 cm'}) === false);
 
 // كل المسارات اللي بتكتب على صنف لازم تتأكد
 ['setItemAvail','setItemQty','deleteOrderItem','setItemProduced'].forEach(a=>{
