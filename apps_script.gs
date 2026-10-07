@@ -1206,7 +1206,9 @@ function saveOrder_(o) {
     var type = isDoor ? 'Door'
              : (it.kind === 'frame' ? 'Frame'
              : (it.kind === 'bror'  ? 'Bror'
-             : (it.kind === 'panel' ? 'Panel' : 'Accessory')));
+             : (it.kind === 'panel' ? 'Panel'
+             : (it.kind === 'strip' ? 'Strip'
+             : (it.kind === 'veneer' ? 'Veneer' : 'Accessory')))));
 
     // ⚠️ السطر المدموج فيه أعواد بأطوال مختلفة (قوائم + عوارض). كتابة
     // 'rod 200cm' عليه بتكدب على ٣ أعواد من التسعة. بنكتب 'rods' من غير طول —
