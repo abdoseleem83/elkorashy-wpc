@@ -1623,6 +1623,43 @@ html[data-theme="dark"] .hero-t b{background:linear-gradient(90deg,#F0C872,#E3B0
 .secnav button:last-child:nth-child(odd){grid-column:1/-1}
 html[data-theme="dark"] .secnav button .tx{color:var(--ink)}
 html[data-theme="dark"] .secnav button.on .tx{color:var(--brand-lt)}
+
+/* ---------- ميعاد التسليم (شاشة المصنع) ---------- */
+.grp-ord{flex-wrap:wrap}
+.due{position:relative;display:inline-flex;align-items:center;gap:6px;flex:1 1 100%;min-width:0;
+  padding:5px 10px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;line-height:1.4;
+  border:1px solid var(--due-line,var(--line));background:var(--due-bg,transparent);color:var(--due-ink,var(--muted))}
+.due .i{width:14px;height:14px;flex:none}
+.due .dl{flex:1;min-width:0}
+.due .de{font-weight:600;font-size:11px;opacity:.85;white-space:nowrap}
+.due input[type=date]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
+.due-overdue{--due-bg:rgba(240,115,106,.16);--due-line:rgba(240,115,106,.55);--due-ink:var(--danger-ink)}
+.due-today{--due-bg:rgba(255,145,40,.28);--due-line:rgb(255,145,40);--due-ink:var(--warn-ink);box-shadow:inset 0 0 0 1px rgb(255,145,40)}
+.due-soon{--due-bg:rgba(217,164,65,.16);--due-line:rgba(217,164,65,.5);--due-ink:var(--warn-ink)}
+.due-later{--due-bg:rgba(79,192,138,.13);--due-line:rgba(79,192,138,.42);--due-ink:var(--ok-ink)}
+.due-done{--due-bg:rgba(255,255,255,.04);--due-line:var(--line);--due-ink:var(--muted)}
+.due-none{--due-bg:transparent;--due-line:var(--muted);--due-ink:var(--muted);border-style:dashed}
+.due-mini{display:inline-block;margin-inline-start:5px;padding:0 7px;border-radius:20px;font-size:10.5px;font-weight:800;
+  background:var(--due-bg);color:var(--due-ink);border:1px solid var(--due-line)}
+.duestrip{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0 0}
+.duestrip button{flex:1 1 30%;min-width:0;padding:8px 6px;border-radius:10px;font-size:12px;font-weight:800;line-height:1.35;
+  border:1px solid var(--due-line);background:var(--due-bg);color:var(--due-ink)}
+.duestrip button b{display:block;font-size:17px}
+.dueov{position:fixed;inset:0;z-index:330;background:rgba(0,10,30,.88);display:flex;align-items:flex-start;justify-content:center;
+  padding:14px;overflow-y:auto;overscroll-behavior:contain}
+.dueov .box{width:100%;max-width:420px;background:#FFFFFF;border:1px solid var(--line);border-radius:16px;padding:14px;margin:auto 0}
+html[data-theme="dark"] .dueov .box{background:#141F32}
+.dueov .rw.col{flex-wrap:wrap}
+.dueov .rw.col input{flex:1 1 100%;margin-top:4px}
+.dueov h3{margin:0 0 4px;font-size:16px;color:var(--ink)}
+.dueov .sub{font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6}
+.dueov .sec{margin-top:12px;font-size:13px;font-weight:800;display:flex;align-items:center;gap:6px}
+.dueov .rw{display:flex;align-items:center;gap:8px;justify-content:space-between;border:1px solid var(--line);
+  border-radius:10px;padding:8px 10px;margin-top:6px}
+.dueov .rw .t{min-width:0}
+.dueov .rw .t b{font-size:14px;color:var(--ink)}
+.dueov .rw .t div{font-size:11.5px;color:var(--muted);margin-top:2px}
+.dueov input[type=date]{border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13px;background:transparent;color:var(--ink);flex:none}
 </style>
 </head>
 <body>
@@ -1676,6 +1713,7 @@ html[data-theme="dark"] .secnav button.on .tx{color:var(--brand-lt)}
 const ASSETS = {
   logo:'img/logo.png',
   mark:'img/mark.png',
+  bank:'img/bank-transfer.jpg',   // بيانات التحويل البنكي — بتتطبع في آخر مستند الأوردر
   doors:{
     A01:'img/doors/A01.jpg',
     A02:'img/doors/A02.jpg',
@@ -1715,7 +1753,7 @@ function preloadDoorImages_(){
   // كان بيبدأ 13 تحميل صورة مع أول لحظة فتح فيزاحم رسم الشاشة نفسها.
   // دلوقتي بيستنى المتصفح يفضى (requestIdleCallback) فالفتحة بقت أسرع محسوسًا.
   const go = () => {
-    [ASSETS.logo, ASSETS.mark, ...Object.values(ASSETS.doors)].forEach(src=>{
+    [ASSETS.logo, ASSETS.mark, ASSETS.bank, ...Object.values(ASSETS.doors)].forEach(src=>{
       const im = new Image(); im.decoding = 'async'; im.src = src;
     });
   };
@@ -1795,7 +1833,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v207';
+const APP_BUILD   = 'v208';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2729,6 +2767,11 @@ function restoreFocus_(snap){
 }
 
 let _renderQueued = false;
+// أي scrollTo بيطلبه الكود نفسه (رجوع لأول الصفحة بعد تغيير القسم…) لازم الرسم
+// ما يلغيهوش برجوع المكان القديم — فبنفتكر آخر طلب تمرير متعمّد.
+let _progScrollAt = 0;
+const _origScrollTo = window.scrollTo.bind(window);
+window.scrollTo = function(){ _progScrollAt = Date.now(); return _origScrollTo.apply(null, arguments); };
 let _lastRenderedTab = null;
 let _lastRenderedHTML = null;   // آخر HTML اترسم لشاشة المصنع — للمقارنة قبل أي استبدال
 // شاشة المصنع بتتبني على هيئة «شِل» (العنوان والأزرار) + كارت لكل عميل.
@@ -2816,7 +2859,14 @@ function renderNow(){
   // لوحده. استبدال الشاشة كلها مع كل ضغطة كان بياخد وقت محسوس على الموبايل.
   let اتحدّث_جزئي = false;
   if(يقدر_يتخطى) اتحدّث_جزئي = patchAdminCards_();
-  if(!اتحدّث_جزئي) v.innerHTML = html;
+  // ⚠️ باج «الشاشة بتنط» لما تختار باب أو حلق: استبدال innerHTML بيفضّي الصفحة لحظة،
+  // فالمتصفح بيقصّر التمرير لفوق. وبعدها كنا بنرجّع المكان بس لو فيه خانة كتابة
+  // متفوكسة (snap) — واختيار الباب/الحلق ضغطة زرار مش خانة. بنثبّت الارتفاع
+  // أثناء الاستبدال ونرجّع المكان في كل رسمة جوّه نفس التبويب.
+  if(!اتحدّث_جزئي){
+    if(!tabChanged) v.style.minHeight = v.offsetHeight + 'px';
+    v.innerHTML = html;
+  }
 
   _lastRenderedHTML = state.tab === 'admin' ? html : null;
   _lastAdminShell = state.tab === 'admin' ? _adminShell : null;
@@ -2824,7 +2874,8 @@ function renderNow(){
 
   restoreFocus_(snap);
   // لو الصفحة قصرت فجأة المتصفح بيقفز لفوق — بنرجّع المكان زي ما كان
-  if(snap && window.scrollY !== sy) window.scrollTo(0, sy);
+  if(!tabChanged && window.scrollY !== sy && Date.now() - _progScrollAt > 600) _origScrollTo({top:sy, behavior:'instant'});
+  if(v.style.minHeight) requestAnimationFrame(()=>{ v.style.minHeight=''; });
 
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===state.tab));
   const cb=document.getElementById('cartBadge');
@@ -3464,6 +3515,7 @@ function viewOrders(){
       <div class="os">${esc(dateStr(o.ts))} · ${(o.items||[]).filter(x=>!isCutLine_(x)).length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
         ${o.customer?`<br><b style="color:var(--info-ink)">صاحب الأوردر: ${esc(o.customer)}</b>`:''}<br>
         ${esc((o.items||[]).filter(x=>x&&!isCutLine_(x)).map(x=>x.title).filter(Boolean).slice(0,3).join('، '))}${(o.items||[]).filter(x=>x&&!isCutLine_(x)).length>3?'…':''}
+        ${live && live.due && !DUE_DONE_STATUSES.includes(live.status)?('<br><b style="color:var(--info-ink)">ميعاد التسليم: '+esc(dayNameAr_(live.due))+' '+esc(dateStr2_(live.due))+'</b>'):''}
         ${live && live.note?('<br><b style="color:var(--brand)">'+esc(live.note)+'</b>'):''}</div>
       ${o.note?('<div class="ordnote">'+ico("warn")+'<span><b>ملاحظات:</b> '+esc(o.note)+'</span></div>'):''}
       <div class="oa">
@@ -3914,6 +3966,7 @@ async function adminLoad(){
     if(!state.admin.staleAt) state.admin.open = false;
   }
   state.admin.loading = false; render();
+  maybeShowDueOverlay_();   // أوردرات النهاردة + الطلبات القديمة من غير ميعاد (مرة كل فتحة للتطبيق)
 }
 
 
@@ -5925,6 +5978,200 @@ function prodTableHTML_(oid, its, a, qtyMode){
 // سطر الطلب الواحد على كارت العميل: رقمه وتاريخه ويومه، ومعاه معاينة وطباعة
 // للطلب ده لوحده. قبل كده الأزرار كانت على مستوى العميل بس — يعني معاينة كل
 // طلباته مع بعض — وكانت في نفس صف الأرقام فالشكل كان بيتداخل.
+/* ============================================================
+   ميعاد التسليم
+   - الافتراضي: تاريخ الطلب + ١٤ يوم (السيرفر هو اللي بيحطه).
+   - المصنع بيعدّله من الشريط الملوّن قدام كل أوردر.
+   - أول ما المصنع يفتح الشاشة: نافذة بأوردرات النهاردة والمتأخرة،
+     ولو فيه طلبات قديمة من غير ميعاد بتطلب منه يكتبهم.
+   ============================================================ */
+const DUE_DEFAULT_DAYS = 14;
+const DUE_DONE_STATUSES = ['Delivered','Cancelled'];
+function parseIso_(iso){
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso||'').trim());
+  return m ? new Date(Number(m[1]), Number(m[2])-1, Number(m[3])) : null;
+}
+function fmtIso_(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function todayIso_(){ return fmtIso_(new Date()); }
+function addDaysIso_(iso, n){
+  const d = parseIso_(iso) || new Date();
+  d.setDate(d.getDate() + n);
+  return fmtIso_(d);
+}
+function daysUntilIso_(iso){
+  const d = parseIso_(iso), t = parseIso_(todayIso_());
+  return (d && t) ? Math.round((d - t) / 86400000) : null;
+}
+function dueShort_(iso){
+  const d = parseIso_(iso); if(!d) return '';
+  try{ return d.toLocaleDateString('ar-EG',{day:'numeric',month:'numeric'}); }
+  catch(e){ return (d.getDate())+'/'+(d.getMonth()+1); }
+}
+// بيرجّع {cls, label, days} لطلب — اللون والكلام حسب قرب الميعاد
+function dueInfo_(o){
+  const iso = o && o.due;
+  const done = !!(o && (DUE_DONE_STATUSES.includes(o.status) || o.status==='Ready'));
+  if(!iso || daysUntilIso_(iso)===null) return {cls:'due-none', label:'مفيش ميعاد تسليم — اضغط وحدّده', days:null, iso:''};
+  const n = daysUntilIso_(iso);
+  const dayName = dayNameAr_(iso);
+  if(done) return {cls:'due-done', label:'التسليم', days:n, iso, extra:dayName+' '+dueShort_(iso)};
+  if(n < 0)  return {cls:'due-overdue', label:'متأخر '+(n===-1?'يوم':(-n)+' يوم'), days:n, iso, extra:dayName+' '+dueShort_(iso)};
+  if(n === 0) return {cls:'due-today', label:'التسليم النهاردة', days:0, iso, extra:dueShort_(iso)};
+  if(n === 1) return {cls:'due-soon', label:'التسليم بكرة', days:1, iso, extra:dayName+' '+dueShort_(iso)};
+  if(n <= 3)  return {cls:'due-soon', label:'التسليم بعد '+n+' أيام', days:n, iso, extra:dayName+' '+dueShort_(iso)};
+  return {cls:'due-later', label:'التسليم بعد '+n+' يوم', days:n, iso, extra:dayName+' '+dueShort_(iso)};
+}
+// الشريط الملوّن قدام الأوردر. الضغط عليه بيفتح اختيار التاريخ مباشرة.
+function dueChipHTML_(o, editable){
+  const inf = dueInfo_(o);
+  const ic = inf.cls==='due-overdue' ? 'warn' : (inf.cls==='due-done' ? 'checkC' : 'clock');
+  const input = editable
+    ? `<input type="date" value="${esc(inf.iso||addDaysIso_(o.date||todayIso_(), DUE_DEFAULT_DAYS))}" data-act="due-set" data-id="${esc(o.id)}" aria-label="تعديل ميعاد التسليم">`
+    : '';
+  return `<label class="due ${inf.cls}" title="ميعاد التسليم">${ico(ic)}<span class="dl">${esc(inf.label)}</span>${inf.extra?`<span class="de">${esc(inf.extra)}</span>`:''}${editable?ico('edit'):''}${input}</label>`;
+}
+// ميعاد الاستلام اللي بيتكتب في مستند الأوردر: اللي المصنع حدده لو معروف،
+// وإلا تاريخ الطلب + ١٤ يوم (نفس افتراضي السيرفر)
+function docDue_(o){
+  const live = (state.track.rows||[]).find(r=>String(r.id)===String(o.id));
+  const v = (o.due && parseIso_(o.due)) ? o.due
+          : (live && live.due && parseIso_(live.due)) ? live.due
+          : (o.dueDate && parseIso_(o.dueDate)) ? o.dueDate : '';
+  return v || addDaysIso_(isoLocal_(o.ts), DUE_DEFAULT_DAYS);
+}
+function dueCounts_(rows){
+  const c = {today:0, overdue:0, none:0};
+  (rows||[]).forEach(o=>{
+    if(!o || DUE_DONE_STATUSES.includes(o.status) || o.superseded) return;
+    if(!o.due){ c.none++; return; }
+    const n = daysUntilIso_(o.due);
+    if(n===null) { c.none++; return; }
+    if(n===0) c.today++; else if(n<0 && o.status!=='Ready') c.overdue++;
+  });
+  return c;
+}
+function grpDueBadges_(orders){
+  if(state.admin.viewArchive) return '';
+  const c = dueCounts_(orders);
+  return (c.overdue?`<span class="due-mini due-overdue">متأخر ${c.overdue}</span>`:'')
+       + (c.today?`<span class="due-mini due-today">النهاردة ${c.today}</span>`:'');
+}
+function dueStripHTML_(rows){
+  const c = dueCounts_(rows);
+  const b = (cls, n, txt, act)=>`<button class="${cls}" data-act="${act}"><b>${n}</b>${txt}</button>`;
+  return `<div class="duestrip">
+    ${b('due-today', c.today, 'تسليم النهاردة', 'adm-due-open')}
+    ${b('due-overdue', c.overdue, 'متأخر', 'adm-due-open')}
+    ${b(c.none?'due-soon':'due-done', c.none, 'من غير ميعاد', 'adm-due-open')}
+  </div>`;
+}
+// حفظ ميعاد واحد — تحديث فوري على الشاشة والرجوع للقديم لو السيرفر رفض
+async function saveDue_(id, iso){
+  const o = adminOrderById_(id); if(!o) return;
+  const old = o.due || '';
+  if(iso === old) return;
+  o.due = iso; render();
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL + '?action=setOrderMeta' + admParams_()
+      + '&id=' + encodeURIComponent(id) + '&due=' + encodeURIComponent(iso));
+    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل الحفظ');
+    saveAdminCache_(state.admin.rows);
+    toast('اتحفظ ميعاد التسليم');
+  }catch(err){
+    o.due = old; render();
+    toast('تعذّر حفظ الميعاد: ' + (err.message||err), 5000);
+  }
+}
+// حفظ مجموعة مواعيد (للطلبات القديمة) — دفعات صغيرة عشان طول الرابط
+async function saveDueBatch_(map){
+  const ids = Object.keys(map);
+  let ok = 0;
+  for(let i=0; i<ids.length; i+=25){
+    const part = ids.slice(i, i+25).map(id=>({id, due:map[id]}));
+    const d = await jsonp(APPS_SCRIPT_URL + '?action=setDueBatch' + admParams_()
+      + '&payload=' + encodeURIComponent(JSON.stringify(part)), 60000);
+    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل الحفظ');
+    part.forEach(x=>{ const o = adminOrderById_(x.id); if(o) o.due = x.due; });
+    ok += part.length;
+  }
+  saveAdminCache_(state.admin.rows);
+  return ok;
+}
+
+let _dueOverlayShownThisSession = false;
+function maybeShowDueOverlay_(force){
+  const a = state.admin;
+  if(!a.open || !a.rows || a.staleAt || a.viewArchive) return;
+  if(!force){
+    if(_dueOverlayShownThisSession || state.tab!=='admin') return;
+  }
+  const active = a.rows.filter(o=>!DUE_DONE_STATUSES.includes(o.status) && !o.superseded);
+  const today = active.filter(o=>o.due && daysUntilIso_(o.due)===0);
+  const late = active.filter(o=>o.due && daysUntilIso_(o.due)<0 && o.status!=='Ready');
+  const none = active.filter(o=>!o.due);
+  if(!force && !today.length && !late.length && !none.length){ _dueOverlayShownThisSession = true; return; }
+  _dueOverlayShownThisSession = true;
+  showDueOverlay_(today, late, none);
+}
+function showDueOverlay_(today, late, none){
+  const old = document.getElementById('dueOverlay'); if(old) old.remove();
+  const ov = document.createElement('div');
+  ov.id = 'dueOverlay'; ov.className = 'dueov';
+  const rowHtml = o=>`<div class="rw">
+      <div class="t"><b>${esc(orderNoText_(o))}</b> ${statusPill(o.status)}
+        <div>${esc(o.customer||o.dist||'')}${o.customer&&o.dist?' · '+esc(o.dist):''} · ${esc(o.qty||0)} قطعة${o.due&&daysUntilIso_(o.due)<0?' · كان '+esc(dateStr2_(o.due)):''}</div></div>
+    </div>`;
+  const draft = {};
+  none.forEach(o=>{ draft[o.id] = addDaysIso_(o.date || todayIso_(), DUE_DEFAULT_DAYS); });
+  const noneRow = o=>{
+    const قيمة = draft[o.id], معرّف = o.id;
+    return `<div class="rw col">
+      <div class="t"><b>${esc(orderNoText_(o))}</b>
+        <div>${esc(o.customer||o.dist||'')} · طُلب ${esc(dateStr2_(o.date))}</div></div>
+      <input type="date" value="${esc(قيمة)}" data-did="${esc(معرّف)}">
+    </div>`;
+  };
+  ov.innerHTML = `<div class="box">
+    <h3>${ico('clock')} مواعيد التسليم</h3>
+    <div class="sub">${esc(dayNameAr_(todayIso_()))} ${esc(dateStr2_(todayIso_()))}</div>
+    ${today.length?`<div class="sec" style="color:var(--warn-ink)">${ico('truck')} تسليمهم النهاردة (${today.length})</div>${today.map(rowHtml).join('')}`:''}
+    ${late.length?`<div class="sec" style="color:var(--danger-ink)">${ico('warn')} متأخرين (${late.length})</div>${late.map(rowHtml).join('')}`:''}
+    ${!today.length && !late.length?`<div class="note" style="margin:6px 0 0">مفيش أوردرات ميعاد تسليمها النهاردة.</div>`:''}
+    ${none.length?`<div class="sec" style="color:var(--warn-ink)">${ico('edit')} طلبات قديمة من غير ميعاد (${none.length})</div>
+      <div class="sub" style="margin:4px 0 0">اكتب ميعاد التسليم قدام كل طلب (متحط تلقائي أسبوعين من تاريخ الطلب — عدّل اللي يفرق).</div>
+      ${none.map(noneRow).join('')}
+      <button id="dueSaveAll" class="btn brand" style="width:100%;margin-top:10px;padding:12px;font-weight:700">${ico('save')} حفظ مواعيد الطلبات القديمة</button>`:''}
+    <button id="dueClose" style="width:100%;margin-top:10px;background:rgba(255,255,255,.12);color:var(--ink);padding:11px;border-radius:12px;font-size:13.5px">${none.length?'بعدين':'تمام'}</button>
+  </div>`;
+  document.body.appendChild(ov);
+  const close = ()=>ov.remove();
+  document.getElementById('dueClose').onclick = close;
+  ov.addEventListener('click', e=>{ if(e.target===ov) close(); });
+  ov.querySelectorAll('input[data-did]').forEach(inp=>{
+    inp.addEventListener('change', ()=>{ draft[inp.dataset.did] = inp.value; });
+  });
+  const sv = document.getElementById('dueSaveAll');
+  if(sv) sv.onclick = async ()=>{
+    const map = {};
+    Object.keys(draft).forEach(id=>{ if(parseIso_(draft[id])) map[id] = draft[id]; });
+    if(!Object.keys(map).length){ toast('اكتب التواريخ الأول'); return; }
+    sv.disabled = true; sv.textContent = 'جارٍ الحفظ…';
+    try{
+      const n = await saveDueBatch_(map);
+      toast('اتحفظ ميعاد '+n+' طلب'); close(); render();
+    }catch(err){
+      sv.disabled = false; sv.innerHTML = ico('save')+' حفظ مواعيد الطلبات القديمة';
+      toast('تعذّر الحفظ: '+(err.message||err), 6000);
+    }
+  };
+}
+document.addEventListener('change', e=>{
+  const el = e.target.closest && e.target.closest('[data-act="due-set"]');
+  if(el && el.value) saveDue_(el.dataset.id, el.value);
+});
+
 function groupOrderRowHTML_(o, a){
   const busy = a.orderPreviewBusy === o.id;
   const noTxt = orderNoText_(o);
@@ -5940,6 +6187,7 @@ function groupOrderRowHTML_(o, a){
       title="معاينة الطلب ${esc(noTxt)}" aria-label="معاينة الطلب ${esc(noTxt)}">${ico("search")}${busy?'…':'معاينة'}</button>
     <button class="btn act-report sm grp-b" data-act="adm-pdf" data-id="${esc(o.id)}"
       title="طباعة الطلب ${esc(noTxt)}" aria-label="طباعة الطلب ${esc(noTxt)}">${ico("doc")}PDF</button>
+    ${dueChipHTML_(o, !a.viewArchive)}
   </div>
   ${o.ordNote?`<div class="grp-note">${ico("warn")}<span><b>ملاحظات:</b> ${esc(o.ordNote)}</span></div>`:''}`;
 }
@@ -6182,7 +6430,7 @@ function viewAdmin(){
       <div class="grp-hd" data-act="adm-toggle-group" data-name="${esc(name)}">
         <span style="flex:1;min-width:0">
           <b style="font-size:13.5px;color:#FFFFFF">${esc(name)}</b>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">${orders.length} طلب · ${totalQty} قطعة · ${money(totalMoney)} ج</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${orders.length} طلب · ${totalQty} قطعة · ${money(totalMoney)} ج${grpDueBadges_(orders)}</div>
         </span>
         <span class="grp-chev" style="transform:rotate(${open?90:0}deg)">‹</span>
       </div>
@@ -6209,6 +6457,7 @@ function viewAdmin(){
   _adminShell = `<section class="card">
       <div class="step"><span class="n">${viewingArchive?ico("folder","lg"):ico("factory","lg")}</span><h2>${viewingArchive?'الأرشيف':'متابعة المصنع'}</h2><span class="hint">${list.length} طلب · ${order.length} عميل</span></div>
       <div class="note" style="margin-top:0">${viewingArchive?'الطلبات المؤرشفة (اتسلمت أو اتأرشفت يدوي) — مش بتظهر في التقارير.':'اضغط اسم العميل عشان تشوف طلباته، وبعدين «الأصناف والإنتاج» جوه كل طلب عشان تسجّل الإنتاج وتشوف المتبقي. تسليم الطلب بيأرشفه أوتوماتيك.'}</div>
+      ${viewingArchive?'':dueStripHTML_(list)}
       ${headerBtns}
       ${srvBuildNote_()}
     </section>
@@ -6227,6 +6476,7 @@ document.getElementById('tabs').addEventListener('click',e=>{
   state.tab=b.dataset.tab; render(); window.scrollTo({top:0,behavior:'smooth'});
   if(state.tab==='orders' && state.track.rows===null && state.orders.length) loadTrack();
   if(state.tab==='new') loadStock();
+  if(state.tab==='admin') maybeShowDueOverlay_();
 });
 
 document.addEventListener('click',e=>{
@@ -6315,7 +6565,7 @@ document.addEventListener('click',e=>{
     case 'del': state.cart.splice(Number(el.dataset.i),1); saveCart_(); render(); break;
     case 'edit-line': editCartLine(Number(el.dataset.i)); break;
     case 'clear': if(confirm('تفريغ السلة بالكامل؟')){state.cart=[];saveCart_();render();} break;
-    case 'submit': submitOrder(); break;
+    case 'submit': submitOrderGuarded_(); break;
     case 'quote-cart': makeDoc(draftOrder(), 'order'); break;
     case 'ord-pdf':   withOrder(el,o=>makeDoc(mergeProducedFromTrack_(o),'order')); break;
     case 'ord-xls':   withOrder(el,o=>exportExcel([mergeProducedFromTrack_(o)],'طلب_'+orderNoText_(o).replace('/','-'))); break;
@@ -6458,6 +6708,13 @@ document.addEventListener('click',e=>{
       const o=adminOrderById_(id);
       const meta = state.admin.metaEdit[id] || {customer:(o&&o.customer)||'', date:(o&&o.date)||''};
       saveOrderMeta_(id, meta.customer, meta.date);
+      break;
+    }
+    case 'adm-due-open': {
+      const act = (state.admin.rows||[]).filter(o=>!DUE_DONE_STATUSES.includes(o.status) && !o.superseded);
+      showDueOverlay_(act.filter(o=>o.due && daysUntilIso_(o.due)===0),
+                      act.filter(o=>o.due && daysUntilIso_(o.due)<0 && o.status!=='Ready'),
+                      act.filter(o=>!o.due));
       break;
     }
     case 'adm-logout':
@@ -7246,6 +7503,7 @@ function enterEditMode_(o, opts){
   state.editingDate = opts.date || isoLocal_(o.ts);
   state.editingDisplayNo = o.displayNo || '';
   state.editingEditCount = Number(o.editCount) || 0;
+  state.editingDue = (o.due || o.dueDate || ((state.track.rows||[]).find(r=>String(r.id)===String(o.id))||{}).due || '');
   state.tab = 'cart'; render(); window.scrollTo({top:0, behavior:'smooth'});
   toast('بتعدّل الطلب '+orderNoText_(o)+' — عدّل السلة واضغط «حفظ التعديل»');
 }
@@ -7302,7 +7560,8 @@ function draftOrder(){
     // تاريخ التعديل نفسه. الطلب المعدّل بياخد تاريخ الطلب الأصلي عن قصد (عشان
     // يفضل محتفظ بتاريخه)، فتاريخ التعديل مكانش متسجّل في أي مكان. بنسجّله هنا
     // عشان يبان جنب رقم التعديل في المستند: «معدّل 52/1 — بتاريخ ...»
-    editedAt: state.editingId ? isoLocal_() : ''
+    editedAt: state.editingId ? isoLocal_() : '',
+    dueDate: state.editingId ? (state.editingDue || '') : ''   // ميعاد الاستلام بيتورّث من الطلب القديم
   };
 }
 
@@ -7318,6 +7577,7 @@ function buildMessage(o){
   m+='الاسم: '+(o.name||'-')+'\n';
   m+='المنطقة: '+(o.region||'-')+'\n';
   m+='الموبايل: '+(o.phone||'-')+'\n';
+  { const d = docDue_(o); m+='📅 ميعاد الاستلام المتوقع: '+dayNameAr_(d)+' '+dateStrDMY_(new Date(d+'T12:00:00').getTime())+'\n'; }
   if(o.customer) m+='صاحب الأوردر: '+o.customer+'\n';
   if(o.customerPhone) m+='تليفون صاحب الأوردر: '+o.customerPhone+'\n';
   m+='المخزن: '+WAREHOUSE+'\n';
@@ -7700,6 +7960,100 @@ async function retryPendingOrders_(){
   } finally {
     _retryRunning = false;
   }
+}
+
+/* ============================================================
+   أوردر تاني في نفس اليوم لنفس العميل
+   قبل ما الأوردر الجديد يتبعت بنسأل السيرفر: لو الموزّع عنده أوردر النهاردة
+   لنفس صاحب الأوردر —
+   • لسه ما دخلش الإنتاج → نقترح يضيف عليه بدل ما يعمل أوردر جديد منفصل
+   • دخل الإنتاج → نقوله «للأسف دخل إنتاج، بلّغ المصنع»
+   لو السيرفر مردّش في ٨ ثواني بنعتمد على الطلبات المحفوظة على الجهاز،
+   ولو مفيش نتيجة الأوردر يتبعت عادي — الفحص مايعطّلش الطلب أبدًا.
+   ============================================================ */
+function normName_(v){
+  return String(v||'').trim().toLowerCase().replace(/\s+/g,' ')
+    .replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي');
+}
+const SAME_DAY_OPEN_ = ['New','Received'];
+const SAME_DAY_LOCKED_ = ['In Progress','Ready'];
+function sameDayMatches_(rows){
+  const today = todayIso_();
+  const cust = normName_(state.customer && state.customer.name);
+  const replaced = new Set((rows||[]).map(r=>String(r.replacesId||'')).filter(Boolean));
+  return (rows||[]).filter(r=>
+    r && r.date===today && !replaced.has(String(r.id))
+    && (SAME_DAY_OPEN_.includes(r.status) || SAME_DAY_LOCKED_.includes(r.status))
+    && (!cust || !r.customer || normName_(r.customer)===cust));
+}
+async function findSameDayOrders_(){
+  let rows = null;
+  try{
+    const phone = String(state.profile.phone||'').trim();
+    const d = await jsonp(APPS_SCRIPT_URL + '?action=list&dev=' + encodeURIComponent(deviceId_())
+      + '&phone=' + encodeURIComponent(phone), 8000);
+    if(d && d.ok) rows = d.orders || [];
+  }catch(err){ rows = null; }
+  if(!rows){
+    // مفيش رد من السيرفر — من الطلبات اللي على الجهاز نفسه (والحالة من آخر تحديث لو موجود)
+    const today = todayIso_();
+    const live = {}; (state.track.rows||[]).forEach(r=>{ live[String(r.id)] = r; });
+    rows = state.orders.filter(o=>isoLocal_(o.ts)===today).map(o=>({
+      id:o.id, date:today, customer:o.customer||'', displayNo:o.displayNo, editCount:o.editCount,
+      replacesId:o.replacesId||'', status:(live[String(o.id)]&&live[String(o.id)].status)||'New'}));
+  }
+  const hit = sameDayMatches_(rows);
+  return { open: hit.filter(r=>SAME_DAY_OPEN_.includes(r.status)),
+           locked: hit.filter(r=>SAME_DAY_LOCKED_.includes(r.status)) };
+}
+async function submitOrderGuarded_(){
+  // التعديل، وتعديل المصنع، والسلة الفاضية، والبيانات الناقصة: نفس المسار القديم بالظبط
+  if(!state.cart.length || state.editingId || state.editingMeta || !profileOk() || !APPS_SCRIPT_URL){
+    return submitOrder();
+  }
+  busy(true, 'بنراجع أوردراتك النهاردة…');
+  let hit = null;
+  try{ hit = await findSameDayOrders_(); }catch(err){ hit = null; }
+  finally{ busy(false); }
+  if(!hit || (!hit.open.length && !hit.locked.length)) return submitOrder();
+  showSameDayDialog_(hit);
+}
+function showSameDayDialog_(hit){
+  const old = document.getElementById('sameDayOverlay'); if(old) old.remove();
+  const ov = document.createElement('div');
+  ov.id = 'sameDayOverlay'; ov.className = 'dueov';
+  const canAdd = hit.open.length > 0;
+  const r = canAdd ? hit.open[0] : hit.locked[0];
+  const local = state.orders.find(x=>String(x.id)===String(r.id));
+  const no = orderNoText_(r.displayNo ? r : (local || r));
+  const cust = r.customer || (state.customer && state.customer.name) || '';
+  const addBtn = (canAdd && local)
+    ? `<button id="sdAdd" class="btn brand" style="width:100%;padding:13px;font-weight:700;margin-top:12px">${ico('plus')} ضيف على الأوردر ${esc(no)}</button>` : '';
+  const body = canAdd
+    ? `عندك أوردر النهاردة <b>${esc(no)}</b>${cust?' لـ <b>'+esc(cust)+'</b>':''} ولسه ما دخلش الإنتاج. الأفضل تضيف الأصناف دي عليه بدل ما تبعت أوردر جديد منفصل.${local?'':'<br><span style="color:var(--warn-ink)">الأوردر ده اتبعت من جهاز تاني، فمش هينفع تضيف عليه من هنا — كلّم المصنع.</span>'}`
+    : `للأسف الأوردر <b>${esc(no)}</b>${cust?' بتاع <b>'+esc(cust)+'</b>':''} اللي طلبته النهاردة <b>دخل إنتاج</b> ومينفعش نضيف عليه. بلّغ المصنع بالأصناف اللي عايز تزودها.`;
+  ov.innerHTML = `<div class="box" style="text-align:right">
+    <h3>${ico(canAdd?'doc':'warn')} ${canAdd?'عندك أوردر النهاردة':'الأوردر دخل إنتاج'}</h3>
+    <div class="sub" style="font-size:13.5px;color:var(--ink);margin-top:8px">${body}</div>
+    ${addBtn}
+    ${canAdd
+      ? `<button id="sdNew" class="btn ghost" style="width:100%;padding:12px;margin-top:8px">ابعت أوردر جديد منفصل</button>
+         <button id="sdBack" style="width:100%;margin-top:8px;background:rgba(255,255,255,.12);color:var(--ink);padding:11px;border-radius:12px;font-size:13.5px">رجوع للسلة</button>`
+      : `<button id="sdBack" class="btn brand" style="width:100%;padding:13px;font-weight:700;margin-top:12px">تمام، هبلّغ المصنع</button>
+         <button id="sdNew" class="btn ghost" style="width:100%;padding:12px;margin-top:8px">ابعته كأوردر جديد برضه</button>`}
+  </div>`;
+  document.body.appendChild(ov);
+  const close = ()=>ov.remove();
+  document.getElementById('sdBack').onclick = close;
+  document.getElementById('sdNew').onclick = ()=>{ close(); submitOrder(); };
+  const add = document.getElementById('sdAdd');
+  if(add) add.onclick = ()=>{
+    close();
+    const merged = JSON.parse(JSON.stringify(local.items||[])).concat(JSON.parse(JSON.stringify(state.cart)));
+    state.cart = merged; saveCart_();
+    enterEditMode_(local);
+    toast('اتضافت الأصناف على الأوردر '+no+' — راجع السلة واضغط «حفظ التعديل»', 6000);
+  };
 }
 
 function submitOrder(){
@@ -8110,6 +8464,12 @@ function docHTML(o,mode,priced){
         ${edited ? `<div style="font-size:12.5px;font-weight:700;color:#8A6512;background:#FFF6E5;
                          border:1px solid #E8C77A;border-radius:20px;padding:3px 14px;display:inline-block;margin-top:6px">
                التعديل رقم ${esc(o.editCount)} — بتاريخ ${esc(editDate)}</div>` : ''}
+        ${isQuote ? '' : (() => {
+          const due = docDue_(o);
+          return `<div style="font-size:13px;font-weight:700;color:#0E6B4D;background:#EAF7F1;border:1px solid #9AD3B8;
+                       border-radius:20px;padding:4px 16px;display:inline-block;margin-top:7px">
+               ميعاد الاستلام المتوقع: ${esc(dayNameAr_(due))} ${esc(dateStrDMY_(new Date(due+'T12:00:00').getTime()))}</div>`;
+        })()}
       </div>`;
       })()}
 
@@ -8165,6 +8525,14 @@ function docHTML(o,mode,priced){
       </div>`:`<div style="margin-top:18px;padding:11px 13px;background:#EAF2FA;border:1px solid #B9D4EA;border-radius:9px;font-size:11.5px;line-height:1.75">
         هيتواصل معاك المصنع بالتفاصيل والسعر. تقدر تتابع حالة الطلب في أي وقت من تبويب «تابع طلبك».
       </div>`}
+      ${isQuote ? '' : `
+      <div style="margin-top:18px;padding:16px 16px;background:#FFF1F0;border:3px solid #D92D20;border-radius:12px;text-align:center">
+        <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px;font-weight:900;color:#fff;background:#D92D20;border-radius:20px;display:inline-block;padding:3px 16px">ملحوظة هامة</div>
+        <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:21px;font-weight:900;color:#B3261E;line-height:1.6;margin-top:8px">
+          لا يُعتدّ بميعاد الاستلام إلا بعد سداد عربون على رقم الحساب وإرسال إيصال التحويل
+        </div>
+      </div>
+      <div style="margin-top:12px"><img src="${ASSETS.bank}" alt="بيانات التحويل البنكي" style="display:block;width:100%;height:auto;border-radius:12px;border:1px solid #D5DDE6"></div>`}
     </div>
   </div>`;
 }

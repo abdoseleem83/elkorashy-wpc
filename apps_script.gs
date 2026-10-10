@@ -102,7 +102,7 @@ var PRICE_NOTE   = 'الأسعار بعاليه حسب وقت التسعير و�
 var HEAD_ORDERS = [
   'Order No', 'Date', 'Time', 'Distributor', 'Phone', 'Region',
   'Warehouse', 'Total Qty', 'Total Rods', 'Total Amount', 'Status', 'Note to Distributor', 'Pricing Terms', 'Message', 'Status Updated',
-  'Archived', 'Customer', 'Order Note', 'Customer Phone', 'Superseded', 'Replaces Order', 'Display No', 'Edit Count', 'Edited At'
+  'Archived', 'Customer', 'Order Note', 'Customer Phone', 'Superseded', 'Replaces Order', 'Display No', 'Edit Count', 'Edited At', 'Due Date'
 ];
 // ⚠️ الأعمدة دي كانت أرقام مكتوبة بالنص جوه الكود (getRange(r, 8)…).
 // أول ما حد يزوّد عمود في نص الجدول، الكتابة كانت بتروح للخانة الغلط في
@@ -140,6 +140,26 @@ var COL_EDITED_AT   = 24; // تاريخ آخر تعديل. الطلب المعد
                           // فتاريخ التعديل نفسه مكانش متسجّل في أي مكان. بيبان في المستند
                           // جنب الرقم المركّب: «52/1 — التعديل رقم 1 بتاريخ ...»
                           // العمود بيتضاف تلقائي لأي شيت قديم (شوف sheet_ تحت).
+
+var COL_DUE = 25;          // ميعاد التسليم (yyyy-MM-dd). الافتراضي تاريخ الطلب + ١٤ يوم، والمصنع بيعدّله من شاشته.
+                          // العمود بيتضاف تلقائي لأي شيت قديم (شوف sheet_ فوق) والطلبات القديمة بتفضل فاضية
+                          // لحد ما المصنع يكتب ميعادها (التطبيق بيطلب منه ده أول ما يفتح شاشة المصنع).
+var DUE_DEFAULT_DAYS_ = 14;
+
+// يوم + ن بالتقويم الميلادي من غير أي تحويل توقيت (نفس درس باج setOrderMeta)
+function addDaysIso_(iso, n) {
+  var p = String(iso).split('-');
+  var d = new Date(Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2]) + n));
+  return Utilities.formatDate(d, 'UTC', 'yyyy-MM-dd');
+}
+// بيرجّع التاريخ لو شكله yyyy-MM-dd وصح، وإلا نص فاضي
+function cleanIsoDate_(v) {
+  var t = String(v == null ? '' : v).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return '';
+  var p = t.split('-'), m = Number(p[1]), d = Number(p[2]);
+  if (m < 1 || m > 12 || d < 1 || d > 31) return '';
+  return t;
+}
 
 var HEAD_ITEMS = [
   'Order No', 'Date', 'Distributor', 'Type', 'Item', 'Colour Code',
@@ -543,6 +563,7 @@ function doGet(e) {
           displayNo: rows[i][COL_DISPLAY_NO - 1] || '',
           editCount: rows[i][COL_EDIT_COUNT - 1] || 0,
           editedAt: fmtDate_(rows[i][COL_EDITED_AT - 1]),
+          due: fmtDate_(rows[i][COL_DUE - 1]),   // ميعاد التسليم (فاضي للطلبات القديمة)
           // ⚠️ علامة «الطلب ده اتعدّل وعنده نسخة جديدة» كانت بتتكتب في الشيت
           // وخلاص — عمرها ما رجعت للتطبيق. فالمصنع كان بيشوف الطلب القديم
           // والجديد جنب بعض في شاشته من غير أي تفسير، ومش عارف إن المفروض
@@ -651,11 +672,52 @@ function doGet(e) {
           }
           shOM.getRange(rOM, COL_DATE).setValue(dTxtOM);
         }
+        if (e.parameter.due !== undefined) {
+          // ميعاد التسليم: فاضي = مسح الميعاد، غير كده لازم yyyy-MM-dd صحيح
+          var dueTxtOM = String(e.parameter.due).trim();
+          if (dueTxtOM !== '' && !cleanIsoDate_(dueTxtOM)) {
+            return reply({ ok: false, error: 'شكل ميعاد التسليم مش صحيح' }, cb);
+          }
+          shOM.getRange(rOM, COL_DUE).setValue(dueTxtOM);
+        }
         return reply({ ok: true, id: e.parameter.id,
+          due: fmtDate_(shOM.getRange(rOM, COL_DUE).getValue()),
           customer: shOM.getRange(rOM, COL_CUSTOMER).getValue(),
           date: fmtDate_(shOM.getRange(rOM, COL_DATE).getValue()) }, cb);
       } finally {
         try { lockOM.releaseLock(); } catch (eOM) {}
+      }
+    }
+
+    // ميعاد التسليم لمجموعة طلبات مرة واحدة (تحديد مواعيد الطلبات القديمة) — من شاشة المصنع.
+    // payload = JSON: [{id:'...', due:'yyyy-MM-dd'}, ...] — الحد الأقصى ٤٠ في النداء.
+    if (action === 'setDueBatch') {
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
+      }
+      var lockDB = LockService.getScriptLock();
+      try {
+        lockDB.waitLock(20000);
+        var listDB = JSON.parse(String(e.parameter.payload || '[]'));
+        if (!listDB || !listDB.length || listDB.length > 40) {
+          return reply({ ok: false, error: 'عدد الطلبات غير مسموح' }, cb);
+        }
+        var shDB = sheet_(SHEET_ORDERS, HEAD_ORDERS);
+        var lastDB = shDB.getLastRow();
+        var idsDB = lastDB > 1 ? shDB.getRange(2, 1, lastDB - 1, 1).getValues() : [];
+        var rowOf = {};
+        for (var iDB = 0; iDB < idsDB.length; iDB++) rowOf[String(idsDB[iDB][0])] = iDB + 2;
+        var doneDB = 0;
+        for (var jDB = 0; jDB < listDB.length; jDB++) {
+          var dueDB = cleanIsoDate_(listDB[jDB].due);
+          var rDB = rowOf[String(listDB[jDB].id)];
+          if (!dueDB || !rDB) continue;
+          shDB.getRange(rDB, COL_DUE).setValue(dueDB);
+          doneDB++;
+        }
+        return reply({ ok: true, saved: doneDB }, cb);
+      } finally {
+        try { lockDB.releaseLock(); } catch (eDB) {}
       }
     }
 
@@ -981,6 +1043,7 @@ function doGet(e) {
           displayNo: rowsLW[jLW][COL_DISPLAY_NO - 1] || '',
           editCount: rowsLW[jLW][COL_EDIT_COUNT - 1] || 0,
           editedAt: fmtDate_(rowsLW[jLW][COL_EDITED_AT - 1]),
+          due: fmtDate_(rowsLW[jLW][COL_DUE - 1]),
           items:     itemsByIdLW[idLW] || []
         });
       }
@@ -1185,6 +1248,22 @@ function saveOrder_(o) {
     shO.getRange(rowIdxRepl, COL_EDITED_AT).setValue(sanitizeCell_(String(o.editedAt)));
   }
 
+  // ---- ميعاد التسليم ----
+  // الطلب الجديد: اللي جه من التطبيق، وإلا تاريخ الطلب + ١٤ يوم.
+  // الطلب اللي بدل تعديل: بياخد ميعاد الطلب القديم (المصنع يمكن يكون عدّله).
+  // إعادة إرسال لطلب موجود: ما نكتبش فوق ميعاد المصنع غير لو الخانة فاضية.
+  var dueNow = existing > 0 ? fmtDate_(shO.getRange(rowIdxRepl, COL_DUE).getValue()) : '';
+  var dueS = dueNow;
+  if (!dueS) {
+    if (o.replacesId) {
+      var rOld = findRow_(shO, o.replacesId);
+      if (rOld > 0) dueS = fmtDate_(shO.getRange(rOld, COL_DUE).getValue());
+    }
+    if (!dueS) dueS = cleanIsoDate_(o.dueDate);
+    if (!dueS) dueS = addDaysIso_(dateS, DUE_DEFAULT_DAYS_);
+    shO.getRange(rowIdxRepl, COL_DUE).setValue(dueS);
+  }
+
   // ---- سطور التفاصيل ----
   var shI = sheet_(SHEET_ITEMS, HEAD_ITEMS);
   clearItemRows_(shI, o.id);   // لو الطلب اتحدّث، بنمسح سطوره القديمة الأول
@@ -1259,7 +1338,59 @@ function saveOrder_(o) {
     adjustStockForItems_(items, -1);
   }
 
-  return { displayNo: displayNo, editCount: editCount };
+  // إشعار للمالك بالطلب الجديد (تليجرام / واتساب CallMeBot / إيميل) — أول مرة بس، وأي عطل
+  // فيه مايفشّلش الطلب أبدًا.
+  if (existing < 0) {
+    try { notifyNewOrder_(o, displayNo, editCount, qty, rods, dueS); } catch (eN) { logError_(eN); }
+  }
+
+  return { displayNo: displayNo, editCount: editCount, due: dueS };
+}
+
+/* ============================================================
+   إشعار الطلب الجديد
+   بيتظبط من Project Settings ← Script Properties (من غير ما أي كلمة سر تتكتب في الكود):
+   - تليجرام (الأفضل: إشعار فوري على الموبايل): TELEGRAM_TOKEN + TELEGRAM_CHAT_ID
+   - واتساب عن طريق CallMeBot: CALLMEBOT_PHONE + CALLMEBOT_KEY
+   - إيميل: NOTIFY_EMAIL
+   أي قناة مش مظبوطة بتتخطّى بصمت. جرّب بتشغيل testNotify من المحرر (هيطلب صلاحيات أول مرة).
+   ============================================================ */
+function notifyNewOrder_(o, displayNo, editCount, qty, rods, dueS) {
+  var props = PropertiesService.getScriptProperties();
+  var no = displayNo ? ('#' + displayNo + (editCount > 0 ? '/' + editCount : '')) : ('#' + o.id);
+  var lines = [
+    (o.replacesId ? '🔁 تعديل على طلب — ' : '📥 طلب جديد ') + no,
+    'الموزّع: ' + (o.name || '—') + (o.phone ? ' (' + o.phone + ')' : ''),
+  ];
+  if (o.customer) lines.push('صاحب الأوردر: ' + o.customer);
+  lines.push('القطع: ' + qty + (rods ? ' + ' + rods + ' عود' : '') + ' — الإجمالي: ' + (Number(o.total) || 0));
+  lines.push('ميعاد التسليم: ' + dueS);
+  var text = lines.join('\n');
+
+  var tgT = props.getProperty('TELEGRAM_TOKEN'), tgC = props.getProperty('TELEGRAM_CHAT_ID');
+  if (tgT && tgC) {
+    try {
+      UrlFetchApp.fetch('https://api.telegram.org/bot' + tgT + '/sendMessage', {
+        method: 'post', muteHttpExceptions: true,
+        payload: { chat_id: tgC, text: text }
+      });
+    } catch (e1) { logError_(e1); }
+  }
+  var cbP = props.getProperty('CALLMEBOT_PHONE'), cbK = props.getProperty('CALLMEBOT_KEY');
+  if (cbP && cbK) {
+    try {
+      UrlFetchApp.fetch('https://api.callmebot.com/whatsapp.php?phone=' + encodeURIComponent(cbP)
+        + '&text=' + encodeURIComponent(text) + '&apikey=' + encodeURIComponent(cbK), { muteHttpExceptions: true });
+    } catch (e2) { logError_(e2); }
+  }
+  var mail = props.getProperty('NOTIFY_EMAIL');
+  if (mail) {
+    try { MailApp.sendEmail(mail, 'طلب جديد ' + no, text); } catch (e3) { logError_(e3); }
+  }
+}
+// شغّلها من المحرر مرة واحدة: بتطلب الصلاحيات وبتبعت رسالة تجربة على القنوات المظبوطة
+function testNotify() {
+  notifyNewOrder_({ name: 'تجربة', phone: '0100000000', total: 0 }, 0, 0, 1, 0, addDaysIso_(Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), DUE_DEFAULT_DAYS_));
 }
 
 // بيرجّع رصيد أصناف طلب (قبل ما سطوره تتمسح) — بتتنادى من cancelOrder و deleteOrder
