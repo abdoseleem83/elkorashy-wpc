@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ELKORASHI DOORS — طلبات أبواب WPC</title>
 <meta name="theme-color" content="#2E7FF0">
+<script>(function(){try{var t=localStorage.getItem('wpc_theme');if(t!=='dark'&&t!=='light')t='light';document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='dark'?'#0A1830':'#2E7FF0');}catch(e){}})();</script>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
@@ -1399,6 +1400,229 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(31,111,235,.16
   .tabs{background:#fff}
 }
 
+
+/* ============================================================
+   v207 — نايت مود / نهار مود
+   ------------------------------------------------------------
+   النهاري = الشكل الحالي زي ما هو. الليلي = كحلي عميق بلمسات
+   زجاجية وإضاءة زرقاء وذهبي للتمييز (زي تصميم التطبيقات الجديدة).
+   الاختيار بيتحفظ في localStorage (wpc_theme: light | dark) وبيتطبّق
+   قبل أول رسم عشان مفيش وميض. مستندات PDF/الطباعة بيضا دايمًا.
+   ============================================================ */
+
+/* ---------- زرار التبديل (الاتنين) ---------- */
+.verstrip button.vs-theme .i{width:17px;height:17px;margin:0}
+.verstrip button.vs-theme .ic-sun{display:none}
+html[data-theme="dark"] .verstrip button.vs-theme .ic-sun{display:block}
+html[data-theme="dark"] .verstrip button.vs-theme .ic-moon{display:none}
+@media (max-width:430px){ .wh-chip{padding-inline:8px} .wh-chip b{font-size:11.5px} }
+
+/* ---------- لمسة عصرية للأيقونات في الاتنين: بلاط ملوّن ---------- */
+.secnav button .i{
+  width:38px;height:38px;padding:8px;border-radius:12px;margin:0 auto 6px;
+  color:#fff;stroke-width:1.7;
+  background:linear-gradient(135deg,#4B93FF,#1F6FEB);
+  box-shadow:0 4px 12px rgba(31,111,235,.30);
+}
+.secnav button:nth-child(2) .i{background:linear-gradient(135deg,#F2B544,#D98A12);box-shadow:0 4px 12px rgba(217,138,18,.30)}
+.secnav button:nth-child(3) .i{background:linear-gradient(135deg,#3DD6A0,#12996B);box-shadow:0 4px 12px rgba(18,153,107,.30)}
+.secnav button:nth-child(4) .i{background:linear-gradient(135deg,#9B7BFF,#6A45E0);box-shadow:0 4px 12px rgba(106,69,224,.30)}
+.secnav button:nth-child(5) .i{background:linear-gradient(135deg,#FF8A7A,#E2503F);box-shadow:0 4px 12px rgba(226,80,63,.28)}
+.secnav button:nth-child(6) .i{background:linear-gradient(135deg,#34C9E8,#0E8FB0);box-shadow:0 4px 12px rgba(14,143,176,.28)}
+.secnav button:nth-child(7) .i{background:linear-gradient(135deg,#FF8FC0,#D9468A);box-shadow:0 4px 12px rgba(217,70,138,.28)}
+.secnav button.on .i{color:#fff}
+
+/* ================== الوضع الليلي ================== */
+html[data-theme="dark"]{color-scheme:dark}
+html[data-theme="dark"]{
+  --navy:#16233A; --navy-2:#0C1524;
+  --brand:#3FA9F5; --brand-lt:#6FC1FA;
+  --wood:#E3B04B; --wood-lt:#F0C872;
+  --bg:#070E1C;
+  --card:rgba(17,29,50,.74);
+  --surface-2:rgba(24,38,64,.70);
+  --ink:#E8EEF6;
+  --muted:#9DB0C9;
+  --line:rgba(120,165,235,.16);
+  --line-soft:rgba(120,165,235,.10);
+  --warn-ink:#E8C47E; --info-ink:#9BCDF3; --ok-ink:#7FD8AE; --danger-ink:#F3968F;
+  --danger:#F0736A;
+  --e1:0 1px 2px rgba(0,0,0,.35);
+  --e2:0 2px 8px rgba(0,0,0,.32),0 12px 28px rgba(0,0,0,.34);
+  --e3:0 10px 26px rgba(0,0,0,.42),0 26px 54px rgba(0,0,0,.46);
+}
+html[data-theme="dark"] body{
+  background:
+    radial-gradient(60% 34% at 12% 0%,rgba(46,127,240,.28),transparent 64%),
+    radial-gradient(50% 30% at 96% 12%,rgba(120,80,230,.20),transparent 62%),
+    radial-gradient(70% 40% at 50% 100%,rgba(0,170,200,.16),transparent 64%),
+    #070E1C;
+  background-attachment:fixed;color:var(--ink);
+}
+/* الأسطح الزجاجية */
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .ord,
+html[data-theme="dark"] .sizeCard,
+html[data-theme="dark"] .doorpanel,
+html[data-theme="dark"] .rodbox,
+html[data-theme="dark"] .accgrid .ac{
+  background:var(--card);
+  border:1px solid rgba(120,165,235,.18);
+  box-shadow:var(--e2),inset 0 1px 0 rgba(255,255,255,.06);
+}
+html[data-theme="dark"] .top{
+  background-color:#0A1830;
+  background-image:linear-gradient(135deg,#12305E 0%,#0C2145 52%,#081530 100%);
+  box-shadow:0 2px 18px rgba(0,0,0,.5),0 1px 0 rgba(111,193,250,.18);
+}
+html[data-theme="dark"] .tabs{
+  background:rgba(9,17,33,.86);
+  box-shadow:0 -1px 0 rgba(120,165,235,.16),0 -8px 26px rgba(0,0,0,.45);
+}
+html[data-theme="dark"] .tabs button{color:var(--muted)}
+html[data-theme="dark"] .tabs button.on{color:var(--brand-lt)}
+html[data-theme="dark"] .tabs button.on .i{color:var(--brand-lt);filter:drop-shadow(0 2px 8px rgba(63,169,245,.55))}
+html[data-theme="dark"] .tabs button.on::before{
+  background:linear-gradient(135deg,rgba(63,169,245,.20),rgba(31,111,235,.10));
+  box-shadow:inset 0 0 0 1.5px rgba(111,193,250,.45);
+}
+html[data-theme="dark"] .bar{
+  background:rgba(9,17,33,.92);border-top-color:var(--line);
+  box-shadow:0 -8px 28px rgba(0,0,0,.5);
+}
+html[data-theme="dark"] .top img.logo{background:#fff}
+html[data-theme="dark"] .verstrip button.vs-install{background:#E3B04B;color:#1A1203}
+/* الحقول والشرايح */
+html[data-theme="dark"] .chip,
+html[data-theme="dark"] .miniChip,
+html[data-theme="dark"] .specol .colchip,
+html[data-theme="dark"] .qty,
+html[data-theme="dark"] .hgtIn,
+html[data-theme="dark"] .stkin,
+html[data-theme="dark"] input[type=text],
+html[data-theme="dark"] input[type=tel],
+html[data-theme="dark"] input[type=number],
+html[data-theme="dark"] input[type=password],
+html[data-theme="dark"] input[type=date],
+html[data-theme="dark"] input[type=search],
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] .fld textarea,
+html[data-theme="dark"] .prow3 input{
+  background:rgba(10,20,40,.62);border-color:rgba(120,165,235,.20);color:var(--ink);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.25);
+}
+html[data-theme="dark"] ::placeholder{color:#6E83A1;opacity:1}
+html[data-theme="dark"] input:focus,html[data-theme="dark"] select:focus,html[data-theme="dark"] textarea:focus{
+  border-color:var(--brand);box-shadow:0 0 0 3px rgba(63,169,245,.20)}
+html[data-theme="dark"] input.bad{background:rgba(240,115,106,.12)}
+html[data-theme="dark"] .chip.on,
+html[data-theme="dark"] .miniChip.on,
+html[data-theme="dark"] .specol .colchip.on{
+  background:linear-gradient(135deg,#4FB4F8,#1F6FEB);border-color:transparent;color:#fff;
+  box-shadow:0 3px 14px rgba(63,169,245,.34),inset 0 1px 0 rgba(255,255,255,.28);
+}
+html[data-theme="dark"] .chip.on .sub,html[data-theme="dark"] .specol .colchip.on .sub{color:rgba(255,255,255,.85)}
+html[data-theme="dark"] .qty button:active{background:rgba(63,169,245,.18)}
+/* الأزرار */
+html[data-theme="dark"] .btn.brand,
+html[data-theme="dark"] .bar .btn.brand,
+html[data-theme="dark"] .btn.wood,
+html[data-theme="dark"] .step .n{
+  background:linear-gradient(135deg,#4FB4F8,#1F6FEB);color:#fff;
+  box-shadow:0 5px 18px rgba(63,169,245,.32),inset 0 1px 0 rgba(255,255,255,.28);
+}
+html[data-theme="dark"] .step .n{background:linear-gradient(135deg,#F0C872,#D4962A);color:#2A1A02;
+  box-shadow:0 4px 14px rgba(227,176,75,.32),inset 0 1px 0 rgba(255,255,255,.35)}
+html[data-theme="dark"] .btn.primary{background:linear-gradient(135deg,#1E3358,#122241);color:#fff;
+  border:1px solid rgba(120,165,235,.22)}
+html[data-theme="dark"] .btn.ghost,
+html[data-theme="dark"] .btn.act-tool{background:rgba(24,38,64,.72);border-color:var(--line);color:#CFDDF0}
+html[data-theme="dark"] .btn.act-edit,html[data-theme="dark"] .btn.act-money{background:rgba(63,169,245,.12);border-color:rgba(63,169,245,.34);color:#9BCDF3}
+html[data-theme="dark"] .btn.act-send{background:rgba(79,192,138,.12);border-color:rgba(79,192,138,.34);color:#7FD8AE}
+html[data-theme="dark"] .btn.act-arch{background:rgba(227,176,75,.12);border-color:rgba(227,176,75,.36);color:#E8C47E}
+html[data-theme="dark"] .btn.act-del{background:rgba(240,115,106,.12);border-color:rgba(240,115,106,.36);color:#F3968F}
+html[data-theme="dark"] .btn.act-report{background:rgba(155,123,255,.13);border-color:rgba(155,123,255,.36);color:#C3B1FF}
+/* الأقسام والأبواب */
+html[data-theme="dark"] .secnav button{background:var(--card);border-color:rgba(120,165,235,.18);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+html[data-theme="dark"] .secnav button .tx{color:var(--muted)}
+html[data-theme="dark"] .secnav button.on{background:rgba(63,169,245,.12);border-color:var(--brand);
+  box-shadow:0 0 0 1.5px var(--brand),0 6px 20px rgba(63,169,245,.22)}
+html[data-theme="dark"] .secnav button.on .tx{color:var(--brand-lt)}
+html[data-theme="dark"] .door .leaf{background:rgba(24,38,64,.7);border-color:rgba(120,165,235,.2)}
+html[data-theme="dark"] .door.on .leaf{border-color:var(--brand);box-shadow:0 6px 22px rgba(63,169,245,.30)}
+html[data-theme="dark"] .line .ic{background:rgba(63,169,245,.12)}
+/* حالات وملاحظات */
+html[data-theme="dark"] .stockbar.ok,html[data-theme="dark"] .door .rdy,html[data-theme="dark"] .specol .colchip.instock{
+  background:rgba(79,192,138,.13);border-color:rgba(79,192,138,.34);color:#7FD8AE}
+html[data-theme="dark"] .stockbar.part{background:rgba(227,176,75,.12);border-color:rgba(227,176,75,.36);color:#E8C47E}
+html[data-theme="dark"] .stockbar.out{background:rgba(255,255,255,.04);border-color:var(--line);color:var(--muted)}
+html[data-theme="dark"] .ordnote-box,html[data-theme="dark"] .ordnote{
+  background:rgba(227,176,75,.10);border-color:rgba(227,176,75,.38);color:#EBCB8A}
+html[data-theme="dark"] .ordnote-ta{background:rgba(10,20,40,.7)!important;border-color:rgba(227,176,75,.38)!important;color:var(--ink)}
+html[data-theme="dark"] .grp-no{background:rgba(63,169,245,.13);border-color:rgba(63,169,245,.34);color:#9BCDF3}
+html[data-theme="dark"] .grp-no.nn{background:rgba(255,255,255,.06);border-color:var(--line);color:var(--muted)}
+html[data-theme="dark"] .stktbl tbody tr:nth-child(even){background:rgba(255,255,255,.03)}
+html[data-theme="dark"] .stkin.dirty{background:rgba(63,169,245,.14);border-color:var(--brand)}
+html[data-theme="dark"] .wh-chip{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18)}
+/* نوافذ التحميل والمعاينة */
+html[data-theme="dark"] #busy{background:rgba(2,6,14,.62)}
+html[data-theme="dark"] #busy .b{background:#12203A;color:var(--ink);border:1px solid var(--line)}
+html[data-theme="dark"] .rpv-bar{background:#0E1A30;color:var(--ink);border-bottom-color:var(--line)}
+html[data-theme="dark"] #toast>*{background:#1B2B47;color:#fff}
+html[data-theme="dark"] ::-webkit-scrollbar-thumb{background:rgba(120,165,235,.28)}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  html[data-theme="dark"] .card,html[data-theme="dark"] .ord,html[data-theme="dark"] .sizeCard,
+  html[data-theme="dark"] .doorpanel,html[data-theme="dark"] .rodbox,html[data-theme="dark"] .accgrid .ac{background:#121F36}
+  html[data-theme="dark"] .tabs,html[data-theme="dark"] .bar{background:#0A1426}
+}
+
+/* هيدر أضيق: مكان لزرار الوضع من غير ما العنوان يتقطّع */
+@media (max-width:430px){
+  .top .verstrip button{min-width:32px;height:32px}
+  .top .verstrip{gap:4px}
+  .top-row{gap:6px}
+  .wh-chip{font-size:0;padding:3px 7px;line-height:1.2}
+  .wh-chip b{font-size:11px;display:block}
+  .top img.logo{height:26px;padding:3px 5px}
+  .wh-chip b{font-size:10px}
+  .top .ttl{min-width:64px}
+}
+/* وضوح النصوص الخافتة في الليلي */
+html[data-theme="dark"] .specol .sol-h,html[data-theme="dark"] .miniLbl,
+html[data-theme="dark"] .prow3 .tcell b,html[data-theme="dark"] label.fld span{color:#B7C8DF}
+html[data-theme="dark"] .line .info2 .spec,html[data-theme="dark"] .ord .od,html[data-theme="dark"] .ord .os,
+html[data-theme="dark"] .note,html[data-theme="dark"] .empty,html[data-theme="dark"] .total .lbl,
+html[data-theme="dark"] .top .t2{color:#A9BBD3}
+html[data-theme="dark"] .empty .i{color:#4A6286}
+/* ---------- v207: تخطيط أحدث — شريط ترحيب + كروت أقسام بوصف ---------- */
+.hero{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;padding:16px 18px;border-radius:22px;
+  background:linear-gradient(135deg,#2E7FF0,#0B4FA8);color:#fff;box-shadow:0 8px 24px rgba(31,111,235,.28);position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;inset-inline-start:-30px;top:-40px;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.22),transparent 65%)}
+.hero-t small{display:block;font-size:12.5px;opacity:.88;font-weight:600}
+.hero-t b{display:block;font-size:18px;font-weight:800;margin-top:2px}
+.hero-chip{position:relative;z-index:1;display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:14px;color:#fff;
+  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.34)}
+.hero-chip .i{width:18px;height:18px}
+.hero-chip span{font-size:17px;font-weight:800}
+.hero-chip em{font-style:normal;font-size:11px;opacity:.9}
+html[data-theme="dark"] .hero{background:linear-gradient(135deg,#12305E,#0A1B3A 70%);border:1px solid rgba(111,193,250,.22);
+  box-shadow:0 10px 28px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.07)}
+html[data-theme="dark"] .hero-t b{background:linear-gradient(90deg,#F0C872,#E3B04B);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* كروت الأقسام: أيقونة جنب العنوان والوصف، عمودين */
+.secnav{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.secnav button{display:grid;grid-template-columns:42px 1fr;grid-template-rows:auto auto;align-content:center;column-gap:10px;row-gap:1px;text-align:start;padding:11px 12px;min-width:0;max-width:none;flex:none;border-radius:18px}
+.secnav button .i{margin:0;grid-row:1/3;grid-column:1;align-self:center;width:42px;height:42px;padding:9px}
+.secnav button .tx{grid-column:2;grid-row:1;align-self:end}
+.secnav button .sb{grid-column:2;grid-row:2;align-self:start}
+.secnav button .tx{display:block;font-size:13.5px;font-weight:800;line-height:1.25;color:var(--ink)}
+.secnav button .sb{display:block;font-size:10.5px;font-weight:600;color:var(--muted);margin-top:2px;line-height:1.3}
+.secnav button>.tx,.secnav button>.sb{min-width:0}
+.secnav button:last-child:nth-child(odd){grid-column:1/-1}
+html[data-theme="dark"] .secnav button .tx{color:var(--ink)}
+html[data-theme="dark"] .secnav button.on .tx{color:var(--brand-lt)}
 </style>
 </head>
 <body>
@@ -1414,6 +1638,7 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(31,111,235,.16
     </div>
     <div class="wh-chip">المخزن<b>مصنع إنشاص</b></div>
     <div class="verstrip">
+      <button data-act="theme" class="vs-theme" id="vsTheme" aria-label="تبديل الوضع" title="نايت مود / نهار مود"><svg class="i ic-moon" viewBox="0 0 24 24"><path d="M20.2 14.6A8.4 8.4 0 0 1 9.4 3.8a8.4 8.4 0 1 0 10.8 10.8z"/></svg><svg class="i ic-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2M12 19.4v2M2.6 12h2M19.4 12h2M5.4 5.4l1.4 1.4M17.2 17.2l1.4 1.4M5.4 18.6l1.4-1.4M17.2 6.8l1.4-1.4"/></svg></button>
       <button data-act="update" aria-label="تحديث" title="تحديث التطبيق"><svg class="i" viewBox="0 0 24 24"><path d="M20.4 12a8.4 8.4 0 1 1-2.5-6"/><path d="M20.9 3.6v5h-5"/></svg></button>
       <button data-act="install" id="vsInstall" class="vs-install" title="تثبيت التطبيق"><svg class="i" viewBox="0 0 24 24"><path d="M12 3.4v11.2"/><path d="m7.4 10.4 4.6 4.6 4.6-4.6"/><path d="M4 17.6v1.4a1.6 1.6 0 0 0 1.6 1.6h12.8a1.6 1.6 0 0 0 1.6-1.6v-1.4"/></svg>تثبيت</button>
     </div>
@@ -1570,7 +1795,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v206';
+const APP_BUILD   = 'v207';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2848,13 +3073,13 @@ function viewNew(){
 
   const nav = `
   <div class="secnav">
-    <button class="${state.newSection==='doors'?'on':''}" data-act="sec" data-s="doors">${ico("door","lg")}<span class="tx">الأبواب</span></button>
-    <button class="${state.newSection==='acc'?'on':''}"   data-act="sec" data-s="acc">${ico("parts","lg")}<span class="tx">الإكسسوارات</span></button>
-    <button class="${state.newSection==='frame'?'on':''}" data-act="sec" data-s="frame">${ico("frame","lg")}<span class="tx">حلق فقط</span></button>
-    <button class="${state.newSection==='strip'?'on':''}"  data-act="sec" data-s="strip">${ico("strip","lg")}<span class="tx">شريط</span></button>
-    <button class="${state.newSection==='veneer'?'on':''}" data-act="sec" data-s="veneer">${ico("veneer","lg")}<span class="tx">قشرة</span></button>
-    <button class="${state.newSection==='bror'?'on':''}"  data-act="sec" data-s="bror">${ico("bror","lg")}<span class="tx">برور فقط</span></button>
-    <button class="${state.newSection==='prodium'?'on':''}"  data-act="sec" data-s="prodium">${ico("panel","lg")}<span class="tx">ألواح بروديوم</span></button>
+    <button class="${state.newSection==='doors'?'on':''}" data-act="sec" data-s="doors">${ico("door","lg")}<span class="tx">الأبواب</span><span class="sb">11 لون جاهزين</span></button>
+    <button class="${state.newSection==='acc'?'on':''}"   data-act="sec" data-s="acc">${ico("parts","lg")}<span class="tx">الإكسسوارات</span><span class="sb">مقابض · كوالين · مفصلات</span></button>
+    <button class="${state.newSection==='frame'?'on':''}" data-act="sec" data-s="frame">${ico("frame","lg")}<span class="tx">حلق فقط</span><span class="sb">قايم وعارضة علوية</span></button>
+    <button class="${state.newSection==='strip'?'on':''}"  data-act="sec" data-s="strip">${ico("strip","lg")}<span class="tx">شريط</span><span class="sb">شرائط حافة</span></button>
+    <button class="${state.newSection==='veneer'?'on':''}" data-act="sec" data-s="veneer">${ico("veneer","lg")}<span class="tx">قشرة</span><span class="sb">قشرة للأبواب</span></button>
+    <button class="${state.newSection==='bror'?'on':''}"  data-act="sec" data-s="bror">${ico("bror","lg")}<span class="tx">برور فقط</span><span class="sb">برور بالعود</span></button>
+    <button class="${state.newSection==='prodium'?'on':''}"  data-act="sec" data-s="prodium">${ico("panel","lg")}<span class="tx">ألواح بروديوم</span><span class="sb">ألواح للديكور</span></button>
   </div>`;
 
   const secDoors = `
@@ -3016,7 +3241,15 @@ function viewNew(){
              : state.newSection==='prodium' ? secProdium
              : secEmpty;
 
+  const heroName_ = String(state.profile.name||'').trim().split(/\s+/)[0];
+  const hero = `
+  <section class="hero">
+    <div class="hero-t"><small>${heroName_?'أهلاً '+esc(heroName_)+' 👋':'أهلاً بيك 👋'}</small><b>اطلب أبوابك بسهولة</b></div>
+    <div class="hero-s"><button class="hero-chip" data-act="go-cart">${ico("cart")}<span>${cartCount()}</span><em>في السلة</em></button></div>
+  </section>`;
+
   return `
+  ${hero}
   <section class="card">
     <div class="step"><span class="n">١</span><h2>بياناتك</h2><span class="hint">إجباري</span></div>
     <div class="row2">
@@ -6241,6 +6474,7 @@ document.addEventListener('click',e=>{
       if(adminPollTimer){ clearInterval(adminPollTimer); adminPollTimer=null; }
       updateAdmBadge(); render(); break;
     case 'order-import': importOrderText_(); break;
+    case 'theme': toggleTheme_(); break;
     case 'update': doUpdate(); break;
     case 'install': doInstall(); break;
   }
@@ -8025,6 +8259,16 @@ async function exportExcel(orders,fname){
 /* ============================================================
    التحديث والتثبيت
    ============================================================ */
+/* ---- نايت مود / نهار مود (v207) ---- */
+function toggleTheme_(){
+  const cur=document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light';
+  const nx=cur==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',nx);
+  try{ localStorage.setItem('wpc_theme',nx); }catch(e){}
+  const m=document.querySelector('meta[name="theme-color"]');
+  if(m) m.setAttribute('content',nx==='dark'?'#0A1830':'#2E7FF0');
+}
+
 async function doUpdate(){
   busy(true,'جارٍ التحديث…');
   try{
