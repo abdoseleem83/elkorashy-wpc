@@ -6919,7 +6919,17 @@ document.addEventListener('click',e=>{
     case 'track-load': loadTrack(); break;
     case 'adm-login':  adminLoad(); break;
     case 'adm-reload': state.admin.viewArchive ? loadArchive(true) : adminLoad(); break;
-    case 'adm-set':    setStatus(el.dataset.id, el.dataset.st); break;
+    case 'adm-set': {
+      // ضغطة تانية على المرحلة المعلّمة = شيل العلامة: الطلب يرجع للمرحلة اللي قبلها
+      // (استلام الطلب → طلب جديد). «تم التسليم» مستثناة لأنها بتأرشف الطلب، والإرجاع من زرار الأرشيف.
+      const cur = (adminOrderById_(el.dataset.id)||{}).status;
+      let st = el.dataset.st;
+      if(cur === st && st !== 'Delivered'){
+        const k = FLOW.indexOf(st);
+        st = k > 0 ? FLOW[k-1] : 'New';
+      }
+      setStatus(el.dataset.id, st);
+      break; }
     case 'adm-toggle-items': { const o=adminOrderById_(el.dataset.id); if(o) toggleOrderItemsPreview(o); } break;
     case 'adm-toggle-qtymode': { const o=adminOrderById_(el.dataset.id); if(o) toggleQtyEditMode_(o); } break;
     case 'adm-add-items': { const o=adminOrderById_(el.dataset.id); if(o) adminEditOrder(o); } break;
