@@ -6685,7 +6685,6 @@ function viewAdmin(){
          <button class="btn act-edit sm" data-act="adm-add-items" data-id="${esc(o.id)}">${ico("plus")}إضافة</button>
          <button class="btn act-send sm" data-act="adm-share" data-id="${esc(o.id)}">${ico("send")}إرسال</button>
          <button class="btn act-money sm" data-act="adm-quote" data-id="${esc(o.id)}">${ico("money")}سعر</button>
-         ${viewingArchive?`<button class="btn act-tool sm" data-act="adm-unarchive" data-id="${esc(o.id)}" ${archBusy?'disabled':''}>${ico("refresh")}${archBusy?'…':'رجّع'}</button>`:''}
          <button class="btn act-del sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}>${ico("trash")}${delBusy?'…':'حذف'}</button>`;
 
     return `<div class="ord">
@@ -6700,6 +6699,7 @@ function viewAdmin(){
         راجع النسخة الجديدة واحذف السطر ده بنفسك من زرار «حذف» تحت.</span></div>`:''}
       <div class="chips chips-line" style="margin-top:10px;gap:6px">${btns}</div>
       ${busy?'<div class="note">جارٍ الحفظ…</div>':''}
+      ${viewingArchive?`<button class="btn brand" data-act="adm-unarchive" data-id="${esc(o.id)}" ${archBusy?'disabled':''} style="width:100%;margin-top:10px;padding:10px;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px">${ico("refresh")}${archBusy?'جارٍ الإرجاع…':'رجّع من الأرشيف للطلبات النشطة'}</button>`:''}
       <div class="cardacts">${actionBtns}</div>
       ${itemsHtml}
     </div>`;
