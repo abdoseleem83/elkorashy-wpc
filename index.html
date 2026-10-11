@@ -1929,7 +1929,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v212';
+const APP_BUILD   = 'v213';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -7794,7 +7794,7 @@ function buildMessage(o){
   if(o.customerPhone) m+='تليفون صاحب الأوردر: '+o.customerPhone+'\n';
   m+='المخزن: '+WAREHOUSE+'\n';
   if(o.note) m+='ملاحظات: '+o.note+'\n';
-  { const ops = otherOpenOrders_(o); if(ops.length) m+='⚠️ للعميل طلبات سابقة لسه ما خلصتش: '+ops.slice(0,8).map(x=>x.no+' ('+x.st+')').join('، ')+'\n'; }
+  { const ops = otherOpenOrders_(o); if(ops.length) m+='⚠️ ملحوظة: للعميل طلبات سابقة لسه ما خلصتش — رقم '+ops.slice(0,8).map(x=>x.no).join('، ')+'\n'; }
   m+='——————\n';
   // «خدمة قص» بتبان في عرض السعر بس. «تدعيم خشب» بيفضل — دي رسالة بتروح
   // للمصنع كمان، ولازم يعرف إن الباب ده عليه تدعيم.
@@ -8657,11 +8657,9 @@ function otherOpenOrders_(o){
 function openOrdersNoteHTML_(o){
   const list = otherOpenOrders_(o);
   if(!list.length) return '';
-  const shown = list.slice(0,8).map(x=>`<span style="display:inline-block;margin:2px 0 2px 6px;padding:2px 9px;background:#fff;border:1px solid #E8B94A;border-radius:14px;white-space:nowrap"><b style="font-size:14px;color:#B3261E">${esc(x.no)}</b> <span style="font-size:11px;color:#7A5405">${esc(x.st)}</span></span>`).join('');
-  const more = list.length>8 ? ` <span style="font-size:12px;color:#7A5405">+${list.length-8} تانيين</span>` : '';
-  return `<div style="margin-top:12px;padding:9px 12px;background:#FFF3D6;border:1.5px solid #E8B94A;border-inline-start:6px solid #D99A0B;border-radius:9px;font-family:Arial,'Helvetica Neue',sans-serif">
-    <div style="font-size:12.5px;font-weight:800;color:#7A5405;margin-bottom:3px">تنبيه: للعميل ${list.length>1?'طلبات سابقة':'طلب سابق'} لسه ما خلص${list.length>1?'تش':''}</div>
-    <div>${shown}${more}</div></div>`;
+  const nums = list.slice(0,8).map(x=>esc(x.no)).join('، ') + (list.length>8 ? ' وغيرهم' : '');
+  return `<div style="margin-top:12px;padding:9px 14px;background:#FFF3D6;border:1.5px solid #E8B94A;border-inline-start:6px solid #D99A0B;border-radius:9px;font-family:Arial,'Helvetica Neue',sans-serif;font-size:13.5px;font-weight:800;color:#7A5405;line-height:1.7">
+    ملحوظة: للعميل ${list.length>1?'طلبات سابقة':'طلب سابق'} لسه ما خلص${list.length>1?'تش':''} — رقم <span style="color:#B3261E">${nums}</span></div>`;
 }
 
 function docHTML(o,mode,priced){
