@@ -1713,6 +1713,15 @@ html[data-theme="dark"] .dueov .box{background:#141F32}
 .hm-o .t div{font-size:12px;color:var(--muted);margin-top:2px}
 .hm-o .due{flex:none;min-width:0;padding:4px 9px;font-size:11.5px}
 .hm-empty{padding:18px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:14px;font-size:13px}
+
+/* ---------- v210: أزرار الأقسام أصغر والصفحة أضم ---------- */
+.secnav{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.secnav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center;padding:7px 4px;border-radius:14px;min-width:0;flex:none}
+.secnav button .i{width:28px;height:28px;padding:6px;border-radius:9px;margin:0;grid-row:auto;grid-column:auto;box-shadow:0 2px 6px rgba(31,111,235,.22)}
+.secnav button .tx{display:block;font-size:11.5px;font-weight:800;line-height:1.2;grid-column:auto;grid-row:auto}
+.secnav button .sb{display:none}
+.secnav button:last-child:nth-child(odd){grid-column:auto}
+.secnav button:last-child:nth-child(3n+1){grid-column:1/-1}
 </style>
 </head>
 <body>
@@ -1764,6 +1773,39 @@ html[data-theme="dark"] .dueov .box{background:#141F32}
 /* ============================================================
    الإعدادات
    ============================================================ */
+/* بيانات التحويل البنكي — نص مضغوط بدل الصورة (بيتطبع كامل في الصفحة ومايتقطعش) */
+const BANK_INFO = {
+  factory:'مصنع سمارتي للأبواب',
+  bank:'البنك الأهلي المصري',
+  account:'6533 1721 4717 3901 011',
+  holder:'احمد صلاح عبد العال مجاهد القرشي وشريكه',
+  branch:'ايست هاب'
+};
+function bankCardHTML_(compact){
+  const F = "font-family:Arial,'Helvetica Neue',sans-serif";
+  return `<div class="keep-blk" style="margin-top:${compact?10:12}px;border-radius:12px;overflow:hidden;border:1px solid #0B1B3A;background:#fff;direction:rtl;text-align:right;${F}">
+    <div style="background:linear-gradient(135deg,#0B1B3A,#14305F);color:#fff;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <b style="font-size:13px">بيانات التحويل البنكي</b>
+      <span style="font-size:12px;opacity:.9">${BANK_INFO.factory}</span>
+    </div>
+    <div style="padding:10px 14px;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;justify-content:space-between">
+      <div style="flex:1 1 100%">
+        <div style="font-size:10.5px;color:#5B6B80">${BANK_INFO.bank} — رقم الحساب</div>
+        <div dir="ltr" style="text-align:right;font-size:21px;font-weight:900;letter-spacing:1.5px;color:#0B1B3A;line-height:1.35">${BANK_INFO.account}</div>
+      </div>
+      <div style="flex:1 1 auto;min-width:0">
+        <div style="font-size:10.5px;color:#5B6B80">اسم الحساب</div>
+        <div style="font-size:13px;font-weight:800;color:#0B1B3A;line-height:1.4">${BANK_INFO.holder}</div>
+      </div>
+      <div style="flex:0 0 auto">
+        <div style="font-size:10.5px;color:#5B6B80">الفرع</div>
+        <div style="font-size:13px;font-weight:800;color:#0B1B3A">${BANK_INFO.branch}</div>
+      </div>
+    </div>
+    <div style="background:#F3F6FA;border-top:1px solid #D5DDE6;padding:6px 14px;font-size:11.5px;color:#0B1B3A;text-align:center">برجاء إرسال <b>صورة إيصال التحويل</b> بعد إتمام السداد</div>
+  </div>`;
+}
+
 const ASSETS = {
   logo:'img/logo.png',
   mark:'img/mark.png',
@@ -1807,7 +1849,7 @@ function preloadDoorImages_(){
   // كان بيبدأ 13 تحميل صورة مع أول لحظة فتح فيزاحم رسم الشاشة نفسها.
   // دلوقتي بيستنى المتصفح يفضى (requestIdleCallback) فالفتحة بقت أسرع محسوسًا.
   const go = () => {
-    [ASSETS.logo, ASSETS.mark, ASSETS.bank, ...Object.values(ASSETS.doors)].forEach(src=>{
+    [ASSETS.logo, ASSETS.mark, ...Object.values(ASSETS.doors)].forEach(src=>{
       const im = new Image(); im.decoding = 'async'; im.src = src;
     });
   };
@@ -1887,7 +1929,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v209';
+const APP_BUILD   = 'v210';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3014,7 +3056,7 @@ function showBankOverlay_(){
   const ov = document.createElement('div'); ov.id='bankOverlay'; ov.className='dueov';
   ov.innerHTML = `<div class="box"><h3>${ico('money')} بيانات التحويل البنكي</h3>
     <div class="sub" style="color:var(--danger-ink);font-weight:800;font-size:13px">لا يُعتدّ بميعاد الاستلام إلا بعد سداد عربون وإرسال إيصال التحويل.</div>
-    <img src="${ASSETS.bank}" alt="بيانات التحويل البنكي" style="display:block;width:100%;height:auto;border-radius:12px;border:1px solid var(--line)">
+    ${bankCardHTML_(false)}
     <button id="bankClose" style="width:100%;margin-top:10px;background:rgba(255,255,255,.12);color:var(--ink);padding:11px;border-radius:12px;font-size:13.5px">إغلاق</button></div>`;
   document.body.appendChild(ov);
   const close=()=>ov.remove();
@@ -3724,6 +3766,13 @@ async function renderPaper_(html, opts){
       .filter(y => y > 0);
   }
 
+  // بلوكات لازم تفضل في صفحة واحدة (كارت التحويل والملحوظة) — بنسجّل مكانها بمقياس canvas
+  const keepTop = el.getBoundingClientRect().top;
+  const keepBlocks = Array.from(el.querySelectorAll('.keep-blk')).map(n=>{
+    const r = n.getBoundingClientRect();
+    return [Math.round((r.top-keepTop)*scale), Math.round((r.bottom-keepTop)*scale)];
+  });
+
   await yield_(0);
   const canvas = await html2canvas(el, {
     scale,
@@ -3740,6 +3789,7 @@ async function renderPaper_(html, opts){
     }
   });
   paper.innerHTML = '';
+  canvas._keep = keepBlocks;
   await yield_(0);
   return { canvas, breaksPx };
 }
@@ -3775,6 +3825,14 @@ async function canvasToPdf_(canvas, filename, opts){
   const pageHpx  = Math.floor(usableH * pxPerMm); // المحتوى بيتقص على الارتفاع المتاح بس
 
   const hardBreaks = (opts.hardBreaksPx||[]).filter(y=>y>0 && y<canvas.height).sort((a,b)=>a-b);
+  // لو بلوك «لازم يفضل مع بعضه» هيتقطع بين صفحتين، نبدأ صفحة جديدة عنده (لو أقصر من صفحة)
+  (canvas._keep||[]).forEach(([top,bot])=>{
+    const prev = hardBreaks.filter(y=>y<=top).pop() || 0;
+    const rt = top-prev, rb = bot-prev;
+    if(rb-rt <= pageHpx && Math.floor(rt/pageHpx) !== Math.floor((rb-1)/pageHpx)){
+      hardBreaks.push(top); hardBreaks.sort((a,b)=>a-b);
+    }
+  });
   const segBounds = [0, ...hardBreaks, canvas.height];
   const segments = [];
   for(let i=0;i<segBounds.length-1;i++){
@@ -6639,7 +6697,7 @@ document.addEventListener('click',e=>{
     case 'home-call': if(FACTORY_PHONE) location.href = 'tel:'+FACTORY_PHONE; break;
     case 'go-cart': state.tab='cart'; render(); window.scrollTo({top:0}); break;
     case 'pick-door': selectDoor(el.dataset.code); loadStock(); break;
-    case 'sec': state.newSection=el.dataset.s; save(LS_SECTION,state.newSection); render(); window.scrollTo({top:0,behavior:'smooth'}); break;
+    case 'sec': state.newSection=el.dataset.s; save(LS_SECTION,state.newSection); render(); break;   // من غير تمرير لفوق — الصفحة تفضل مكانها
     case 'door-preview': showDoorPreview(el.dataset.code); break;
     case 'preview-select':
       { const ov=document.getElementById('doorPreviewOverlay'); if(ov) ov.remove(); }
@@ -8667,13 +8725,13 @@ function docHTML(o,mode,priced){
         هيتواصل معاك المصنع بالتفاصيل والسعر. تقدر تتابع حالة الطلب في أي وقت من تبويب «تابع طلبك».
       </div>`}
       ${isQuote ? '' : `
-      <div style="margin-top:18px;padding:16px 16px;background:#FFF1F0;border:3px solid #D92D20;border-radius:12px;text-align:center">
+      <div class="keep-blk" style="margin-top:14px;padding:10px 14px;background:#FFF1F0;border:2px solid #D92D20;border-radius:12px;text-align:center">
         <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px;font-weight:900;color:#fff;background:#D92D20;border-radius:20px;display:inline-block;padding:3px 16px">ملحوظة هامة</div>
-        <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:21px;font-weight:900;color:#B3261E;line-height:1.6;margin-top:8px">
+        <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:17px;font-weight:900;color:#B3261E;line-height:1.5;margin-top:6px">
           لا يُعتدّ بميعاد الاستلام إلا بعد سداد عربون على رقم الحساب وإرسال إيصال التحويل
         </div>
       </div>
-      <div style="margin-top:12px"><img src="${ASSETS.bank}" alt="بيانات التحويل البنكي" style="display:block;width:100%;height:auto;border-radius:12px;border:1px solid #D5DDE6"></div>`}
+      ${bankCardHTML_(true)}`}
     </div>
   </div>`;
 }
