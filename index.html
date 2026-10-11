@@ -8801,7 +8801,7 @@ function docHTML(o,mode,priced){
         const topDate = edited ? editDate : dateStrDMY_(o.ts);
         const pill = edited ? `التعديل رقم ${esc(o.editCount)} — بتاريخ ${esc(editDate)}`
                    : (isQuote && o.priceTierLabel ? esc(o.priceTierLabel) : '');
-        const cell = (lbl, valHTML, full) => `<div style="width:${full?'100':'50'}%;display:flex;align-items:baseline;gap:16px;box-sizing:border-box;padding-inline-end:10px">
+        const cell = (lbl, valHTML, full) => `<div style="width:${full?'100':'50'}%;display:flex;align-items:baseline;gap:12px;box-sizing:border-box;padding-inline-end:10px">
             <span style="color:#6B7A8C;font-size:14px;min-width:86px">${lbl}</span><b style="font-size:15.5px;color:#14243A">${valHTML}</b></div>`;
         const dash = v => (v && String(v).trim()) ? esc(v) : '-';
         return `
@@ -8817,13 +8817,13 @@ function docHTML(o,mode,priced){
         </div>
       </div>
 
-      <div style="margin-top:18px;background:#FFF3E0;border:2px solid #F0C27B;border-radius:20px;padding:14px 20px 18px;text-align:center">
-        <div style="font-size:14px;font-weight:800;color:#B3261E">${label}</div>
-        <div dir="ltr" style="font-size:58px;font-weight:900;color:#B3261E;line-height:1.15;letter-spacing:1px">${num}</div>
-        ${pill?`<div style="display:inline-block;margin-top:8px;padding:5px 22px;border:1.5px solid #E2B962;border-radius:30px;background:#FFF8EC;color:#8A5A00;font-weight:800;font-size:14px">${pill}</div>`:''}
+      <div style="margin-top:10px;background:#FFF3E0;border:2px solid #F0C27B;border-radius:16px;padding:5px 16px 8px;text-align:center">
+        <div style="font-size:12.5px;font-weight:800;color:#B3261E">${label}</div>
+        <div dir="ltr" style="font-size:40px;font-weight:900;color:#B3261E;line-height:1.05;letter-spacing:1px">${num}</div>
+        ${pill?`<div style="display:inline-block;margin-top:3px;padding:2px 18px;border:1.5px solid #E2B962;border-radius:30px;background:#FFF8EC;color:#8A5A00;font-weight:800;font-size:12.5px">${pill}</div>`:''}
       </div>
 
-      <div style="margin-top:20px;display:flex;flex-wrap:wrap;row-gap:14px">
+      <div style="margin-top:10px;display:flex;flex-wrap:wrap;row-gap:5px">
         ${cell('صاحب الحساب', dash(o.name))}
         ${cell('الموبايل', o.phone?`<span dir="ltr">${esc(o.phone)}</span>`:'-')}
         ${cell('المنطقة', dash(o.region))}
@@ -8837,7 +8837,7 @@ function docHTML(o,mode,priced){
         <span style="display:block;font-size:11.5px;font-weight:700;color:#444;margin-bottom:2px">ملاحظات عامة على الأوردر</span>
         ${esc(o.note)}</div>`:''}
 
-      <div style="margin-top:20px;overflow:hidden">
+      <div style="margin-top:12px;overflow:hidden">
       <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead>
           <tr style="background:#002050;color:#fff;font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px">
