@@ -1722,6 +1722,38 @@ html[data-theme="dark"] .dueov .box{background:#141F32}
 .secnav button .sb{display:none}
 .secnav button:last-child:nth-child(odd){grid-column:auto}
 .secnav button:last-child:nth-child(3n+1){grid-column:1/-1}
+
+/* ---------- v214: قوائم منسدلة + بيانات أصغر ---------- */
+.accCard{padding:0 !important;overflow:hidden}
+.accList{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.accSec{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.accSec.open{border-color:var(--brand)}
+.accH{display:flex;align-items:center;gap:9px;width:100%;padding:9px 12px;text-align:start;background:transparent;color:var(--ink)}
+.accH .ti{flex:0 0 auto;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,#4B93FF,#1F6FEB)}
+.accH .ti svg{width:17px;height:17px;stroke-width:1.9}
+.accH .ti[data-s="acc"]{background:linear-gradient(135deg,#F2B544,#D98A12)}
+.accH .ti[data-s="frame"]{background:linear-gradient(135deg,#3DD6A0,#12996B)}
+.accH .ti[data-s="strip"]{background:linear-gradient(135deg,#9B7BFF,#6A45E0)}
+.accH .ti[data-s="veneer"]{background:linear-gradient(135deg,#FF8A7A,#E2503F)}
+.accH .ti[data-s="bror"]{background:linear-gradient(135deg,#34C9E8,#0E8FB0)}
+.accH .ti[data-s="prodium"]{background:linear-gradient(135deg,#FF8FC0,#D9468A)}
+.accH .ti[data-s="user"]{background:linear-gradient(135deg,#6B7A8C,#46566B)}
+.accH .tx{font-size:13.5px;font-weight:800;white-space:nowrap}
+.accH .sb{flex:1;min-width:0;font-size:11px;color:var(--muted);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.accH .reqb{flex:0 0 auto;font-size:10.5px;font-weight:800;color:#fff;background:var(--danger);border-radius:10px;padding:1px 8px}
+.accH>svg.i,.ddH>svg.i{flex:0 0 auto;width:16px;height:16px;color:var(--muted);transition:transform .18s}
+.accSec.open>.accH>svg.i,.dd.open>.ddH>svg.i,.accCard:has(.accBody)>.accH>svg.i{transform:rotate(180deg)}
+.accBody{padding:4px 12px 12px}
+.accSec>.accBody>.card{margin:0;padding:6px 0 0;border:0;box-shadow:none;background:transparent}
+.accSec>.accBody>.card>.step{display:none}
+.accCard .accBody .fld{margin-bottom:6px}
+.accCard .accBody input{padding-top:8px;padding-bottom:8px}
+.dd{margin-top:8px;border:1px dashed var(--line);border-radius:10px}
+.ddH{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;text-align:start;background:transparent;color:var(--ink)}
+.ddH .t{font-size:12px;font-weight:800}
+.ddH .sm{flex:1;min-width:0;font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ddB{padding:0 10px 8px}
+.stepHint{margin-top:9px;font-size:11px;color:var(--muted);font-weight:600}
 </style>
 </head>
 <body>
@@ -1929,7 +1961,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v213';
+const APP_BUILD   = 'v214';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3073,6 +3105,10 @@ function repeatLastOrder_(){
   toast('اتحمّلت أصناف الأوردر '+orderNoText_(last)+' في السلة — راجعها وابعت');
 }
 
+// حالة القوائم المنسدلة (في الذاكرة بس) — null = القيمة الافتراضية للقائمة دي
+const _ui = {};
+function uiOpen_(k, dflt){ return _ui[k]==null ? !!dflt : !!_ui[k]; }
+
 function viewNew(){
   const p=state.pick, bad=state.touched;
   const selWidths = Object.keys(p.sizes).map(Number).sort((a,b)=>a-b);
@@ -3131,6 +3167,35 @@ function viewNew(){
       +`<button class="miniChip ${sel?'on':''}" data-act="${act}"${wAttr} data-v="1">طباعة${pricesVisible()?` (+${PRINT_EXTRA}ج)`:''}</button>`;
   };
 
+  // خانة منسدلة صغيرة — بتتفتح بالضغط بس
+  const dd = (key, title, summary, inner) => {
+    const open = uiOpen_(key,false);
+    return `<div class="dd ${open?'open':''}">
+      <button class="ddH" data-act="ui-toggle" data-k="${key}"><span class="t">${title}</span><span class="sm">${summary?esc(summary):''}</span>${ico("chev")}</button>
+      ${open?`<div class="ddB">${inner}</div>`:''}</div>`;
+  };
+  // الخطوات: الكمية ← الحلق ← (ارتفاع الحلق + البرور بعد ما الحلق يتحدد) ← خيارات إضافية منسدلة
+  const stepsFor = (e, w) => {
+    const isC = w==='custom';
+    const A = (n)=> isC ? 'cust-'+n : 'size-'+n;
+    const wA = isC ? '' : ` data-w="${w}"`;
+    const bits = [];
+    if(e.hafr) bits.push('حفر'); if(e.wood) bits.push('تدعيم'); if(e.print) bits.push('طباعة'); if(!isC && e.height) bits.push('ارتفاع '+e.height);
+    const extras = dd('ex'+w, 'خيارات إضافية', bits.join('، ') || 'حفر · تدعيم · طباعة · ارتفاع',
+      `<div class="miniLbl">النوع</div><div class="miniChips">${hafrMiniChips(e.hafr,w)}</div>
+       <div class="miniLbl">التدعيم</div><div class="miniChips">${woodMiniChips(e.wood,w)}</div>
+       <div class="miniLbl">الطباعة</div><div class="miniChips">${printMiniChips(e.print,w)}</div>
+       ${isC?'':`<label class="fld sm"><span style="color:var(--danger)">ارتفاع الفتحة المعمارية (سم)</span>
+        <input type="text" inputmode="decimal" class="hgtIn" value="${esc(e.height||'')}" placeholder="استاندر ${DOOR_STD_HEIGHT}" data-act="size-height" data-w="${w}"></label>`}`);
+    const frameStep = `<div class="miniLbl">١) الحلق</div><div class="miniChips">${frameMiniChips(e.frame,w)}</div>`;
+    const afterFrame = e.frame==null
+      ? `<div class="stepHint">اختار الحلق (أو «بدون») عشان يظهر البرور</div>`
+      : `${e.frame?`<label class="fld sm"><span>ارتفاع الحلق (سم) — اختياري</span>
+          <input type="text" inputmode="decimal" class="hgtIn" value="${esc(e.frameHeight||'')}" placeholder="سيبها فاضية لو عادي" data-act="${A('frame-height')}"${wA}></label>`:''}
+        <div class="miniLbl">٢) البرور</div><div class="miniChips">${dbrorMiniChips(e.dbror,w)}</div>`;
+    return extras + frameStep + afterFrame;
+  };
+
   const sizeCards = selWidths.map(w=>{
     const e=p.sizes[w];
     const st = stockFor(p.code, w);
@@ -3149,20 +3214,7 @@ function viewNew(){
         </div>
       </div>
       ${stockLine}
-      <div class="miniLbl">النوع</div>
-      <div class="miniChips">${hafrMiniChips(e.hafr,w)}</div>
-      <div class="miniLbl">التدعيم</div>
-      <div class="miniChips">${woodMiniChips(e.wood,w)}</div>
-      <div class="miniLbl">الطباعة</div>
-      <div class="miniChips">${printMiniChips(e.print,w)}</div>
-      <label class="fld sm"><span style="color:var(--danger)">ارتفاع الفتحة المعمارية (سم)</span>
-        <input type="text" inputmode="decimal" class="hgtIn" value="${esc(e.height||'')}" placeholder="استاندر ${DOOR_STD_HEIGHT}" data-act="size-height" data-w="${w}"></label>
-      <div class="miniLbl">الحلق</div>
-      <div class="miniChips">${frameMiniChips(e.frame,w)}</div>
-      ${e.frame?`<label class="fld sm"><span>ارتفاع الحلق (سم) — اختياري</span>
-        <input type="text" inputmode="decimal" class="hgtIn" value="${esc(e.frameHeight||'')}" placeholder="سيبها فاضية لو عادي" data-act="size-frame-height" data-w="${w}"></label>`:''}
-      <div class="miniLbl">البرور</div>
-      <div class="miniChips">${dbrorMiniChips(e.dbror,w)}</div>
+      ${stepsFor(e,w)}
     </div>`;
   }).join('');
 
@@ -3179,18 +3231,7 @@ function viewNew(){
         <button data-act="cust-qty-plus">+</button>
       </div>
       <div class="note">سعر الباب زي المقاس العادي، و<b>«${CUT_SERVICE_NOTE_}»</b> بتتحط بند مستقل تحته بالكمية والسعر (${CUSTOM_EXTRA} ج للباب).</div>
-      <div class="miniLbl">النوع</div>
-      <div class="miniChips">${hafrMiniChips(p.custom.hafr,'custom')}</div>
-      <div class="miniLbl">التدعيم</div>
-      <div class="miniChips">${woodMiniChips(p.custom.wood,'custom')}</div>
-      <div class="miniLbl">الطباعة</div>
-      <div class="miniChips">${printMiniChips(p.custom.print,'custom')}</div>
-      <div class="miniLbl">الحلق</div>
-      <div class="miniChips">${frameMiniChips(p.custom.frame,'custom')}</div>
-      ${p.custom.frame?`<label class="fld sm"><span>ارتفاع الحلق (سم) — اختياري</span>
-        <input type="text" inputmode="decimal" class="hgtIn" value="${esc(p.custom.frameHeight||'')}" placeholder="سيبها فاضية لو عادي" data-act="cust-frame-height"></label>`:''}
-      <div class="miniLbl">البرور</div>
-      <div class="miniChips">${dbrorMiniChips(p.custom.dbror,'custom')}</div>
+      ${customReady_(p) ? stepsFor(p.custom,'custom') : `<div class="stepHint">اكتب العرض والارتفاع عشان تظهر باقي الاختيارات</div>`}
     </div>` : '';
 
   const frKind=state.fr.kind==='rods'?'rods':'full';
@@ -3264,7 +3305,7 @@ function viewNew(){
       ${sizeCards}
       ${customCard}
 
-      <label class="fld">
+      ${(selWidths.length>0 || p.customOn) ? `      <label class="fld">
         <span>ملاحظات على الباب (اختياري)</span>
         <textarea rows="2" placeholder="مثال: الباب حفر جانبي حفر وردة — أو: الطول لأربع أبواب" data-act="pick-note">${esc(p.note||'')}</textarea>
       </label>
@@ -3272,6 +3313,7 @@ function viewNew(){
       <div class="note" id="sumline">${esc(currentSummary())}</div>
       <button class="btn primary" style="margin-top:12px" data-act="add-door" ${readyToAdd?'':'disabled'}>
         ${readyToAdd?'أضف الأبواب للسلة':'اختر مقاس واحد على الأقل وحدد الحلق والبرور لكل مقاس'}</button>
+      ` : ''}
     </div>` : '';
 
   // ── شبكة الأبواب مقسّمة صفوف من ٤، واللوحة بتتحط تحت الصف اللي فيه المختار ──
@@ -3467,6 +3509,22 @@ function viewNew(){
              : state.newSection==='prodium' ? secProdium
              : secEmpty;
 
+  const SEC_DEFS_ = [
+    ['doors','door','الأبواب','11 لون جاهزين',secDoors],
+    ['acc','parts','الإكسسوارات','مقابض · كوالين · مفصلات',secAcc],
+    ['frame','frame','حلق فقط','قايم وعارضة علوية',secFrame],
+    ['strip','strip','شريط','شرائط حافة',secStrip],
+    ['veneer','veneer','قشرة','قشرة للأبواب',secVeneer],
+    ['bror','bror','برور فقط','برور بالعود',secBror],
+    ['prodium','panel','ألواح بروديوم','ألواح للديكور',secProdium]
+  ];
+  const secAccordion_ = `<div class="accList">` + SEC_DEFS_.map(([k,ic,t,sb,html])=>{
+    const open = state.newSection===k;
+    return `<div class="accSec ${open?'open':''}">
+      <button class="accH" data-act="sec" data-s="${k}"><span class="ti" data-s="${k}">${ico(ic)}</span><span class="tx">${t}</span><span class="sb">${sb}</span>${ico("chev")}</button>
+      ${open?`<div class="accBody">${html}</div>`:''}</div>`;
+  }).join('') + `</div>`;
+
   const heroName_ = String(state.profile.name||'').trim().split(/\s+/)[0];
   const hero = `
   <section class="hero">
@@ -3476,8 +3534,14 @@ function viewNew(){
 
   return `
   ${hero}
-  <section class="card">
-    <div class="step"><span class="n">١</span><h2>بياناتك</h2><span class="hint">إجباري</span></div>
+  <section class="card accCard">
+    <button class="accH" data-act="ui-toggle" data-k="prof">
+      <span class="ti" data-s="user">${ico("user")}</span>
+      <span class="tx">بياناتك</span>
+      <span class="sb">${profileOk() ? esc((state.profile.name||'').trim()+' · '+(state.profile.phone||'')) : 'إجباري — اضغط واكتب بياناتك'}</span>
+      ${profileOk()?'':'<span class="reqb">مطلوب</span>'}${ico("chev")}
+    </button>
+    ${uiOpen_('prof', !profileOk() || bad) ? `<div class="accBody">
     <div class="row2">
       <label class="fld"><span>الاسم <b class="req">*</b></span>
         <input type="text" class="${bad && !state.profile.name.trim()?'bad':''}" value="${esc(state.profile.name)}" placeholder="الاسم كما هو مسجّل" data-act="prof" data-k="name"></label>
@@ -3494,10 +3558,10 @@ function viewNew(){
       <input type="text" value="${esc(state.profile.region)}" placeholder="طنطا مثلاً" data-act="prof" data-k="region"></label>
     ${bad && !profileOk() ? `<div class="note" style="color:var(--danger)">الاسم ورقم الموبايل وصاحب الأوردر إجباريين — الرقم لازم يكون ١١ رقم يبدأ بـ 01.</div>` : ''}
     ${ordNoteBoxHTML_()}
+    </div>` : ''}
   </section>
 
-  ${nav}
-  ${body}
+  ${secAccordion_}
 
   ${verBar()}`;
 }
@@ -3930,6 +3994,7 @@ const ICONS = {
   bell:    '<path d="M18.4 9.4a6.4 6.4 0 1 0-12.8 0c0 6.2-2.4 7.6-2.4 7.6h17.6s-2.4-1.4-2.4-7.6z"/><path d="M13.9 20.6a2.2 2.2 0 0 1-3.8 0"/>',
   clock:   '<circle cx="12" cy="12" r="9.2"/><path d="M12 6.8V12l3.4 2"/>',
   filter:  '<path d="M3.2 4.6h17.6l-6.9 8.2v6.1l-3.8 2v-8.1z"/>',
+  chev:    '<path d="m6 9 6 6 6-6"/>',
   share:   '<circle cx="18" cy="5.6" r="2.8"/><circle cx="6" cy="12" r="2.8"/><circle cx="18" cy="18.4" r="2.8"/><path d="m8.5 10.6 7-3.6M8.5 13.4l7 3.6"/>'
 };
 // بيرجّع أيقونة SVG جاهزة — cls اختيارية (lg / xl لتكبير الحجم)
@@ -6697,7 +6762,8 @@ document.addEventListener('click',e=>{
     case 'home-call': if(FACTORY_PHONE) location.href = 'tel:'+FACTORY_PHONE; break;
     case 'go-cart': state.tab='cart'; render(); window.scrollTo({top:0}); break;
     case 'pick-door': selectDoor(el.dataset.code); loadStock(); break;
-    case 'sec': state.newSection=el.dataset.s; save(LS_SECTION,state.newSection); render(); break;   // من غير تمرير لفوق — الصفحة تفضل مكانها
+    case 'sec': state.newSection = (state.newSection===el.dataset.s) ? '' : el.dataset.s; save(LS_SECTION,state.newSection); render(); break;
+    case 'ui-toggle': { const k=el.dataset.k; const cur = (k==='prof') ? uiOpen_('prof', !profileOk() || state.touched) : uiOpen_(k,false); _ui[k] = !cur; render(); break; }   // من غير تمرير لفوق — الصفحة تفضل مكانها
     case 'door-preview': showDoorPreview(el.dataset.code); break;
     case 'preview-select':
       { const ov=document.getElementById('doorPreviewOverlay'); if(ov) ov.remove(); }
