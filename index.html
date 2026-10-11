@@ -1976,7 +1976,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v216';
+const APP_BUILD   = 'v218';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -8805,7 +8805,7 @@ function docHTML(o,mode,priced){
         <div style="display:flex;align-items:center;gap:14px">
           <div style="flex:1;min-width:0">
             <div style="font-size:14px;font-weight:800">${esc(dayNm)} ${esc(dateStrDMY_(o.ts))}${isQuote&&o.priceTierLabel?` · <b>${esc(o.priceTierLabel)}</b>`:''}</div>
-            <div style="text-align:center;font-size:26px;font-weight:900;line-height:1.4;margin:6px 0 4px">${title}${o.customer?` — ${esc(o.customer)}`:''}</div>
+            <div style="text-align:center;font-size:26px;font-weight:900;line-height:1.4;margin:6px 0 4px">${title}${o.customer?` — <span style="color:#0B4A9E;font-size:31px;font-weight:900;text-shadow:.7px 0 0 #0B4A9E,-.7px 0 0 #0B4A9E">${esc(o.customer)}</span>`:''}</div>
             <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:13px;font-weight:700">${label}</span><span style="font-size:44px;font-weight:900;line-height:1.05;letter-spacing:.5px">${num}</span></div>
             ${o.replacesId?`<div style="font-size:12.5px;margin-top:4px;color:#B3261E;font-weight:800">بدل الطلب رقم ${esc(prevOrderNoText_(o))}</div>`:''}
             ${edited?`<div style="font-size:12.5px;margin-top:2px;font-weight:700">التعديل رقم ${esc(o.editCount)} — بتاريخ ${esc(editDate)}</div>`:''}
@@ -8818,20 +8818,6 @@ function docHTML(o,mode,priced){
       </div>`;
       })()}
 
-      <table style="width:100%;margin-top:14px;font-size:12.5px;border-collapse:collapse;background:#fff;border:1px solid #E1E8F0;border-radius:12px">
-        <tr>
-          <td style="padding:7px 10px;color:#333;width:78px">صاحب الحساب</td><td style="font-weight:800;color:#000">${esc(o.name||'-')}</td>
-          <td style="padding:5px 0;color:#333;width:78px">الموبايل</td><td style="font-weight:800;color:#000">${esc(o.phone||'-')}</td>
-        </tr>
-        <tr>
-          <td style="padding:5px 0;color:#333">المنطقة</td><td style="font-weight:800;color:#000">${esc(o.region||'-')}</td>
-          <td style="padding:5px 0;color:#333">المخزن</td><td style="font-weight:800;color:#000">${esc(o.warehouse||WAREHOUSE)}</td>
-        </tr>
-        ${o.customer?`<tr>
-          <td style="padding:5px 0;color:#333">صاحب الأوردر</td>
-          <td colspan="3" style="font-weight:700;color:#000">${esc(o.customer)}</td>
-        </tr>`:''}
-      </table>
       ${isQuote ? '' : openOrdersNoteHTML_(o)}
       ${o.note?`<div style="margin-top:12px;padding:11px 14px;background:#FFF3D6;border:2px solid #E8B94A;border-inline-start:7px solid #D99A0B;border-radius:9px;font-size:13.5px;font-weight:800;color:#000">
         <span style="display:block;font-size:11.5px;font-weight:700;color:#444;margin-bottom:2px">ملاحظات عامة على الأوردر</span>
