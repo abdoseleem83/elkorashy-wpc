@@ -1976,7 +1976,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v218';
+const APP_BUILD   = 'v219';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2511,10 +2511,10 @@ function selectDoor(code){
   const p=state.pick;
   if(p.code===code){
     // ضغط على نفس الباب المفتوح — يقفل ويلمّ
-    p.code=''; p.sizes={}; p.customOn=false; p.custom={w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,frameKind:null,frameRodQty:'',frameForDoors:''};
+    p.code=''; p.sizes={}; p.customOn=false; p.custom={w:'',h:'',qty:'',frame:null,frameHeight:'',dbror:null,frameKind:null,frameRodQty:'',frameForDoors:''};
   } else {
     // باب جديد = اختيارات جديدة، عشان الموزع يحدد كل حاجة بنفسه من الأول
-    p.code=code; p.sizes={}; p.customOn=false; p.custom={w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,frameKind:null,frameRodQty:'',frameForDoors:''};
+    p.code=code; p.sizes={}; p.customOn=false; p.custom={w:'',h:'',qty:'',frame:null,frameHeight:'',dbror:null,frameKind:null,frameRodQty:'',frameForDoors:''};
   }
   render();
 }
