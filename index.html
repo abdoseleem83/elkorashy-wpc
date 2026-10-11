@@ -8638,7 +8638,7 @@ function docRows(o, priced, showFrameHCol){
 
   let n=0, rows='';
   order.forEach(k=>{
-    rows += `<tr><td colspan="${colspan}" style="background:#EEF4FB;border-inline-start:5px solid #5B8DBF;padding:9px 12px;font-family:Arial,'Helvetica Neue',sans-serif;font-weight:800;color:#000;font-size:14px">أبواب مقاس ${esc(k)}</td></tr>`;
+    rows += `<tr><td colspan="${colspan}" style="background:#F9E4DB;padding:10px 12px;font-family:Arial,'Helvetica Neue',sans-serif;font-weight:800;color:#A0451F;font-size:14px">🚪 أبواب مقاس ${esc(k)}</td></tr>`;
     groups[k].forEach(it=>{
       const oddFrameW = dominantFrameW!=null && it.frame && String(it.frame)!==dominantFrameW;
       rows += docRowHTML_(it, ++n, priced, showFrameHCol, oddFrameW);
@@ -8674,16 +8674,16 @@ function docTotalsHTML(o){
   const setsNote = setsQty
     ? `<div style="display:flex;justify-content:space-between;font-size:11.5px;padding:2px 0;color:#000"><span>منهم ${setsQty} طقم حلق</span><b>= ${setsQty*RODS_PER_SET} عود</b></div>`
     : '';
-  // كل كارت بلون فاتح مختلف (توفير حبر) والكتابة سودا عشان تبان
-  const PAL = [['#E3F0FF','#9CC3EE'],['#FFF1D6','#EBC46E'],['#E2F6E9','#8ED1A5'],['#F1E6FF','#C4A4EE'],['#FFE5E3','#EE9F98'],['#DFF6F8','#8ACFD8'],['#FDE6F1','#E79DC2'],['#EEF2D4','#C3CF7E']];
-  let ci = 0;
-  const tile = (lbl,val,unitTxt)=>{ const [bg,bd]=PAL[ci++ % PAL.length];
-    return `<div style="flex:1;min-width:92px;background:${bg};border:1.5px solid ${bd};border-radius:10px;padding:8px 6px;text-align:center;color:#000">
-    <div style="font-size:11.5px;font-weight:800;line-height:1.35">${lbl}</div>
-    <div style="font-size:22px;font-weight:900;line-height:1.2">${val}${unitTxt?`<span style="font-size:12px;font-weight:700"> ${unitTxt}</span>`:''}</div></div>`; };
-  const cards = tile('إجمالي الأبواب', doorsTotal, 'باب')
-              + keys.map(k=>tile(esc(k), perSize[k], '')).join('');
-  return `<div class="keep-blk" style="margin-top:14px"><div style="display:flex;gap:8px;flex-wrap:wrap">${cards}</div>${setsNote?`<div style="margin-top:6px;padding:0 4px">${setsNote}</div>`:''}</div>`;
+    const cards = keys.map(k=>`<div style="flex:1;min-width:110px;background:#EAF2FB;border:1.5px solid #B9D3EE;border-radius:14px;padding:12px 6px;text-align:center">
+    <div style="font-size:12px;font-weight:700;color:#1F7A8C;line-height:1.45">${esc(k)}</div>
+    <div style="font-size:27px;font-weight:900;line-height:1.3;color:#0A1F44">${perSize[k]}</div></div>`).join('');
+  const sumRow = (lbl,val,unit)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;font-size:15px;font-weight:800;color:#0A1F44"><span>${lbl}</span><span>${val} <span style="font-size:14px">${unit}</span></span></div>`;
+  return `<div class="keep-blk" style="margin-top:16px"><div style="display:flex;gap:10px;flex-wrap:wrap">${cards}</div>
+    <div style="margin-top:14px;background:#F3F6FA;border-radius:14px;padding:12px 20px">
+      ${sumRow('إجمالي الأبواب', doorsTotal, 'باب')}
+      ${sumRow('الإجمالي الكلي', overallTotal, 'قطعة')}
+      ${setsNote}
+    </div></div>`;
 }
 
 // الطلبات اللي اتعملت قبل ما «خدمة قص» تبقى بند (أو من جهاز لسه على نسخة قديمة)
@@ -8787,8 +8787,7 @@ function docHTML(o,mode,priced){
     <div style="position:absolute;inset:0;background:url('${ASSETS.mark}') no-repeat center center;background-size:34% auto;opacity:.06;"></div>
     <div style="position:relative">
 
-      <!-- هيدر خفيف (توفير حبر): اليوم والتاريخ فوق، «طلب أوردر — صاحب الأوردر» في النص بخط كبير، ثم رقم الأوردر.
-           رقم الأوردر هو اللي المصنع بيدوّر عليه وهو ماسك ورق كتير، فبقى أكبر حاجة في الصفحة. -->
+      <!-- تصميم v222: لوجو + عنوان المستند + تاريخ، صندوق رقم الأوردر، بيانات الحساب، جدول بهيدر كحلي -->
       ${(() => {
         const edited = !isQuote && o.displayNo && Number(o.editCount) > 0;
         // الطلب المعدّل بياخد رقم مركّب: رقم الطلب / رقم التعديل (52 ثم 52/1 ثم 52/2)
@@ -8799,22 +8798,37 @@ function docHTML(o,mode,priced){
         const title = isQuote ? 'عرض سعر' : (o.replacesId ? 'تعديل على أوردر' : 'طلب أوردر');
         const editDate = edited ? (o.editedAt ? dateStrDMY_(new Date(o.editedAt+'T12:00:00').getTime())
                                               : dateStrDMY_(o.ts)) : '';
-        const dayNm = DAY_AR_[new Date(o.ts).getDay()] || '';
+        const topDate = edited ? editDate : dateStrDMY_(o.ts);
+        const pill = edited ? `التعديل رقم ${esc(o.editCount)} — بتاريخ ${esc(editDate)}`
+                   : (isQuote && o.priceTierLabel ? esc(o.priceTierLabel) : '');
+        const cell = (lbl, valHTML, full) => `<div style="width:${full?'100':'50'}%;display:flex;align-items:baseline;gap:16px;box-sizing:border-box;padding-inline-end:10px">
+            <span style="color:#6B7A8C;font-size:14px;min-width:86px">${lbl}</span><b style="font-size:15.5px;color:#14243A">${valHTML}</b></div>`;
+        const dash = v => (v && String(v).trim()) ? esc(v) : '-';
         return `
-      <div style="background:#EEF4FB;border:1.5px solid #B9CCE0;border-radius:14px;padding:12px 16px;color:#000">
-        <div style="display:flex;align-items:center;gap:14px">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:14px;font-weight:800">${esc(dayNm)} ${esc(dateStrDMY_(o.ts))}${isQuote&&o.priceTierLabel?` · <b>${esc(o.priceTierLabel)}</b>`:''}</div>
-            <div style="text-align:center;font-size:26px;font-weight:900;line-height:1.4;margin:6px 0 4px">${title}${o.customer?` — <span style="color:#0B4A9E;font-size:31px;font-weight:900;text-shadow:.7px 0 0 #0B4A9E,-.7px 0 0 #0B4A9E">${esc(o.customer)}</span>`:''}</div>
-            <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:13px;font-weight:700">${label}</span><span style="font-size:44px;font-weight:900;line-height:1.05;letter-spacing:.5px">${num}</span></div>
-            ${o.replacesId?`<div style="font-size:12.5px;margin-top:4px;color:#B3261E;font-weight:800">بدل الطلب رقم ${esc(prevOrderNoText_(o))}</div>`:''}
-            ${edited?`<div style="font-size:12.5px;margin-top:2px;font-weight:700">التعديل رقم ${esc(o.editCount)} — بتاريخ ${esc(editDate)}</div>`:''}
-          </div>
-          <div style="text-align:center">
-            <div style="background:#fff;border:1px solid #D5DDE6;border-radius:10px;padding:6px 10px"><img src="${ASSETS.logo}" style="height:44px;width:auto;display:block"></div>
-            <div style="font-size:11px;margin-top:5px;color:#222">${esc(COMPANY_AR)}<br>${esc(WAREHOUSE)}</div>
-          </div>
+      <div style="display:flex;align-items:center;gap:14px;padding-bottom:14px;border-bottom:3px solid #1F78D1">
+        <div style="border:1px solid #14243A;background:#fff;line-height:0"><img src="${ASSETS.logo}" style="height:56px;width:auto;display:block"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:31px;font-weight:900;color:#0A1F44;line-height:1.3">${title}</div>
+          <div style="font-size:13px;color:#555;margin-top:2px">${esc(COMPANY_AR)} · ${esc(WAREHOUSE)}</div>
         </div>
+        <div style="text-align:left;white-space:nowrap">
+          <div style="font-size:13px;color:#555">بتاريخ ${esc(topDate)}</div>
+          ${o.replacesId?`<div style="font-size:13px;margin-top:4px;color:#B3261E;font-weight:800">بدل الطلب رقم ${esc(prevOrderNoText_(o))}</div>`:''}
+        </div>
+      </div>
+
+      <div style="margin-top:18px;background:#FFF3E0;border:2px solid #F0C27B;border-radius:20px;padding:14px 20px 18px;text-align:center">
+        <div style="font-size:14px;font-weight:800;color:#B3261E">${label}</div>
+        <div dir="ltr" style="font-size:58px;font-weight:900;color:#B3261E;line-height:1.15;letter-spacing:1px">${num}</div>
+        ${pill?`<div style="display:inline-block;margin-top:8px;padding:5px 22px;border:1.5px solid #E2B962;border-radius:30px;background:#FFF8EC;color:#8A5A00;font-weight:800;font-size:14px">${pill}</div>`:''}
+      </div>
+
+      <div style="margin-top:20px;display:flex;flex-wrap:wrap;row-gap:14px">
+        ${cell('صاحب الحساب', dash(o.name))}
+        ${cell('الموبايل', o.phone?`<span dir="ltr">${esc(o.phone)}</span>`:'-')}
+        ${cell('المنطقة', dash(o.region))}
+        ${cell('المخزن', esc(o.warehouse||WAREHOUSE))}
+        ${cell('صاحب الأوردر', o.customer?`<span style="color:#0B4A9E">${esc(o.customer)}</span>`:'-', true)}
       </div>`;
       })()}
 
@@ -8823,19 +8837,19 @@ function docHTML(o,mode,priced){
         <span style="display:block;font-size:11.5px;font-weight:700;color:#444;margin-bottom:2px">ملاحظات عامة على الأوردر</span>
         ${esc(o.note)}</div>`:''}
 
-      <div style="margin-top:16px;border:1px solid #D5DDE6;border-radius:12px;overflow:hidden">
+      <div style="margin-top:20px;overflow:hidden">
       <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead>
-          <tr style="background:#DCEAF6;color:#000;font-family:Arial,'Helvetica Neue',sans-serif;font-size:12px">
-            <th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;width:26px">م</th>
-            <th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;text-align:right;padding-inline:8px">كود</th>
-            <th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;width:72px">الكمية</th>
-            <th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;border-inline-start:1px solid #B9CCE0;width:52px">عرض<br>الفتحة</th>
-            <th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;width:52px">ارتفاع<br>الفتحة</th>
-            <th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;border-inline-start:1px solid #B9CCE0;width:50px">عرض<br>الحلق</th>
-            ${showFrameHCol?`<th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;width:50px">ارتفاع<br>الحلق</th>`:''}
-            <th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;border-inline-start:1px solid #B9CCE0;width:48px">البرور</th>
-            ${priced?`<th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;border-inline-start:1px solid #B9CCE0;width:64px">السعر</th><th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;width:74px">الإجمالي</th>`:''}
+          <tr style="background:#002050;color:#fff;font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px">
+            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:26px">م</th>
+            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;text-align:right;padding-inline:8px">كود</th>
+            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:72px">الكمية</th>
+            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:52px">عرض<br>الفتحة</th>
+            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:52px">ارتفاع<br>الفتحة</th>
+            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:50px">عرض<br>الحلق</th>
+            ${showFrameHCol?`<th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:50px">ارتفاع<br>الحلق</th>`:''}
+            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:48px">البرور</th>
+            ${priced?`<th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:64px">السعر</th><th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:74px">الإجمالي</th>`:''}
           </tr>
         </thead>
         <tbody style="background:#fff">${docRows(o,priced,showFrameHCol)}</tbody>
@@ -8853,10 +8867,10 @@ function docHTML(o,mode,priced){
           </tr>
         </table>
       </div>
-      <div style="margin-top:18px;padding:11px 13px;background:#EAF2FA;border:1px solid #B9D4EA;border-radius:9px;font-size:11.5px;line-height:1.75">
+      <div style="margin-top:18px;padding:14px 18px;background:#EAF2FA;border:1.5px solid #B9D4EA;border-radius:14px;font-size:13px;line-height:1.75">
         <b style="font-family:Arial,'Helvetica Neue',sans-serif">شروط التسعير:</b> ${esc(PRICE_NOTE)}
         <br>تقدر تتابع حالة طلبك في أي وقت من تبويب «تابع طلبك».
-      </div>`:`<div style="margin-top:18px;padding:11px 13px;background:#EAF2FA;border:1px solid #B9D4EA;border-radius:9px;font-size:11.5px;line-height:1.75">
+      </div>`:`<div style="margin-top:18px;padding:14px 18px;background:#EAF2FA;border:1.5px solid #B9D4EA;border-radius:14px;font-size:13px;line-height:1.75">
         هيتواصل معاك المصنع بالتفاصيل والسعر. تقدر تتابع حالة الطلب في أي وقت من تبويب «تابع طلبك».
       </div>`}
       ${isQuote ? '' : `
