@@ -1976,7 +1976,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v221';
+const APP_BUILD   = 'v222';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2229,7 +2229,7 @@ const ACCESSORIES = [
 // و const مابتترفعش زي الدوال. لما كانت متعرّفة تحت، أي جهاز بياناته مخربة كان
 // بيقع بشاشة بيضا: "Cannot access '_storeProblems_' before initialization".
 const _storeProblems_ = [];
-const LS_SHOWBANK = 'wpc_showbank';
+const LS_SHOWBANK = 'wpc_showbank2';   // مفتاح جديد: يرجّع كارت التحويل ظاهر عند الكل بعد ما كان متخبّي بالغلط
 const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders', LS_TAB = 'wpc_tab', LS_SECTION = 'wpc_section', LS_PRICES = 'wpc_prices', LS_PENDING = 'wpc_pending_sync', LS_PENDING_CANCEL = 'wpc_pending_cancel', LS_PRICES_DIRTY = 'wpc_prices_dirty', LS_DELETED = 'wpc_deleted_ids', LS_SENT = 'wpc_sent_ids', LS_REJECTED = 'wpc_rejected_ids';
 
 // مستويات السعر: السعر الأساسي المتخزّن في الكتالوج هو "سعر موزع"، ومنه بتتحسب المستويات التانية بزيادة ثابتة.
@@ -6943,7 +6943,7 @@ document.addEventListener('click',e=>{
     case 'rpv-bank': {
       state.showBank = (state.showBank===false); save(LS_SHOWBANK, state.showBank);
       el.classList.toggle('on', state.showBank!==false);
-      document.querySelectorAll('#reportPreviewOverlay .bankblk').forEach(n=>{ n.style.display = state.showBank===false ? 'none' : ''; });
+      document.querySelectorAll('#reportPreviewOverlay .bankblk').forEach(n=>{ n.style.display = (state.showBank===false && !n.dataset.force) ? 'none' : ''; });
       const ov = document.getElementById('reportPreviewOverlay'); if(ov && ov._fit) ov._fit();
       break; }
     case 'adm-preview': previewOneOrder_(el.dataset.id); break;
@@ -8860,7 +8860,7 @@ function docHTML(o,mode,priced){
         هيتواصل معاك المصنع بالتفاصيل والسعر. تقدر تتابع حالة الطلب في أي وقت من تبويب «تابع طلبك».
       </div>`}
       ${isQuote ? '' : `
-      <div class="keep-blk bankblk" style="${state.showBank===false?'display:none':''}">
+      <div class="keep-blk bankblk" ${o.replacesId?'data-force="1"':''} style="${(state.showBank===false && !o.replacesId)?'display:none':''}">
       <div style="margin-top:14px;padding:10px 14px;background:#FFF7F6;border:1.5px solid #D92D20;border-radius:12px;text-align:center">
         <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px;font-weight:900;color:#B3261E;border:1.5px solid #D92D20;border-radius:20px;display:inline-block;padding:2px 16px">ملحوظة هامة</div>
         <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:16px;font-weight:900;color:#000;line-height:1.5;margin-top:6px">
