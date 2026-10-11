@@ -1976,7 +1976,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v220';
+const APP_BUILD   = 'v221';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -6314,7 +6314,7 @@ function dueInfo_(o){
   return {cls:'due-later', label:'التسليم بعد '+n+' يوم', days:n, iso, extra:dayName+' '+dueShort_(iso)};
 }
 // الشريط الملوّن قدام الأوردر. الضغط عليه بيفتح اختيار التاريخ مباشرة.
-function dueChipHTML_(o, editable){
+function dueChipHTML_(o, editable){ /* v221: ميعاد التسليم اتلغى من شاشة المصنع نهائيًا */ return '';
   const inf = dueInfo_(o);
   const ic = inf.cls==='due-overdue' ? 'warn' : (inf.cls==='due-done' ? 'checkC' : 'clock');
   const input = editable
@@ -6342,13 +6342,13 @@ function dueCounts_(rows){
   });
   return c;
 }
-function grpDueBadges_(orders){
+function grpDueBadges_(orders){ /* v221: ميعاد التسليم اتلغى من شاشة المصنع نهائيًا */ return '';
   if(state.admin.viewArchive) return '';
   const c = dueCounts_(orders);
   return (c.overdue?`<span class="due-mini due-overdue">متأخر ${c.overdue}</span>`:'')
        + (c.today?`<span class="due-mini due-today">النهاردة ${c.today}</span>`:'');
 }
-function dueStripHTML_(rows){
+function dueStripHTML_(rows){ /* v221: ميعاد التسليم اتلغى من شاشة المصنع نهائيًا */ return '';
   const act = (rows||[]).filter(o=>o && !DUE_DONE_STATUSES.includes(o.status) && !o.superseded);
   const qty = l=>l.reduce((s,o)=>s+(Number(o.qty)||0),0);
   const today = act.filter(o=>o.due && daysUntilIso_(o.due)===0);
@@ -6399,7 +6399,7 @@ async function saveDueBatch_(map){
 }
 
 let _dueOverlayShownThisSession = false;
-function maybeShowDueOverlay_(force){
+function maybeShowDueOverlay_(force){ /* v221: ميعاد التسليم اتلغى من شاشة المصنع نهائيًا */ return;
   const a = state.admin;
   if(!a.open || !a.rows || a.staleAt || a.viewArchive) return;
   if(!force){
@@ -6466,7 +6466,7 @@ function showDueOverlay_(today, late, none){
   };
 }
 document.addEventListener('change', e=>{
-  const el = e.target.closest && e.target.closest('[data-act="due-set"]');
+  const el = null;   // v221: مفيش حقل ميعاد في الشاشة
   if(el && el.value) saveDue_(el.dataset.id, el.value);
 });
 
