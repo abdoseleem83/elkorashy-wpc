@@ -1729,23 +1729,23 @@ html[data-theme="dark"] .dueov .box{background:#141F32}
 .accSec{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
 .accSec.open{border-color:var(--brand)}
 .accH{display:flex;align-items:center;gap:9px;width:100%;padding:9px 12px;text-align:start;background:transparent;color:var(--ink)}
-.accH .ti{flex:0 0 auto;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,#4B93FF,#1F6FEB)}
-.accH .ti svg{width:17px;height:17px;stroke-width:1.9}
-.accH .ti[data-s="acc"]{background:linear-gradient(135deg,#F2B544,#D98A12)}
-.accH .ti[data-s="frame"]{background:linear-gradient(135deg,#3DD6A0,#12996B)}
-.accH .ti[data-s="strip"]{background:linear-gradient(135deg,#9B7BFF,#6A45E0)}
-.accH .ti[data-s="veneer"]{background:linear-gradient(135deg,#FF8A7A,#E2503F)}
-.accH .ti[data-s="bror"]{background:linear-gradient(135deg,#34C9E8,#0E8FB0)}
-.accH .ti[data-s="prodium"]{background:linear-gradient(135deg,#FF8FC0,#D9468A)}
-.accH .ti[data-s="user"]{background:linear-gradient(135deg,#6B7A8C,#46566B)}
+.accH .ti,.secTile .ti{flex:0 0 auto;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,#4B93FF,#1F6FEB)}
+.accH .ti svg,.secTile .ti svg{width:17px;height:17px;stroke-width:1.9}
+.accH .ti[data-s="acc"],.secTile .ti[data-s="acc"]{background:linear-gradient(135deg,#F2B544,#D98A12)}
+.accH .ti[data-s="frame"],.secTile .ti[data-s="frame"]{background:linear-gradient(135deg,#3DD6A0,#12996B)}
+.accH .ti[data-s="strip"],.secTile .ti[data-s="strip"]{background:linear-gradient(135deg,#9B7BFF,#6A45E0)}
+.accH .ti[data-s="veneer"],.secTile .ti[data-s="veneer"]{background:linear-gradient(135deg,#FF8A7A,#E2503F)}
+.accH .ti[data-s="bror"],.secTile .ti[data-s="bror"]{background:linear-gradient(135deg,#34C9E8,#0E8FB0)}
+.accH .ti[data-s="prodium"],.secTile .ti[data-s="prodium"]{background:linear-gradient(135deg,#FF8FC0,#D9468A)}
+.accH .ti[data-s="user"],.secTile .ti[data-s="user"]{background:linear-gradient(135deg,#6B7A8C,#46566B)}
 .accH .tx{font-size:13.5px;font-weight:800;white-space:nowrap}
 .accH .sb{flex:1;min-width:0;font-size:11px;color:var(--muted);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .accH .reqb{flex:0 0 auto;font-size:10.5px;font-weight:800;color:#fff;background:var(--danger);border-radius:10px;padding:1px 8px}
 .accH>svg.i,.ddH>svg.i{flex:0 0 auto;width:16px;height:16px;color:var(--muted);transition:transform .18s}
 .accSec.open>.accH>svg.i,.dd.open>.ddH>svg.i,.accCard:has(.accBody)>.accH>svg.i{transform:rotate(180deg)}
 .accBody{padding:4px 12px 12px}
-.accSec>.accBody>.card{margin:0;padding:6px 0 0;border:0;box-shadow:none;background:transparent}
-.accSec>.accBody>.card>.step{display:none}
+.secPanel>.card{margin:0;padding:6px 0 0;border:0;box-shadow:none;background:transparent}
+.secPanel>.card>.step{display:none}
 .accCard .accBody .fld{margin-bottom:6px}
 .accCard .accBody input{padding-top:8px;padding-bottom:8px}
 .dd{margin-top:8px;border:1px dashed var(--line);border-radius:10px}
@@ -1754,6 +1754,21 @@ html[data-theme="dark"] .dueov .box{background:#141F32}
 .ddH .sm{flex:1;min-width:0;font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ddB{padding:0 10px 8px}
 .stepHint{margin-top:9px;font-size:11px;color:var(--muted);font-weight:600}
+.secTiles{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:10px}
+.secTile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 2px 7px;border:1px solid var(--line);border-radius:13px;background:var(--card);color:var(--ink);min-width:0}
+.secTile .tx{font-size:11px;font-weight:800;line-height:1.2;text-align:center}
+.secTile.on{border-color:var(--brand);box-shadow:0 0 0 1.5px var(--brand)}
+.secPanel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 12px 12px;margin-bottom:12px}
+.noteBtn{display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;margin-bottom:10px;border:1px dashed var(--line);border-radius:12px;background:var(--card);color:var(--ink);text-align:start}
+.noteBtn svg.i{flex:0 0 auto;width:16px;height:16px;color:var(--warn-ink)}
+.noteBtn .tx{font-size:12.5px;font-weight:800;white-space:nowrap}
+.noteBtn .sb{flex:1;min-width:0;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.noteBtn.has{border-style:solid;border-color:var(--warn-ink)}
+
+.rpv-bank{display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--muted);font-size:12px;font-weight:700}
+.rpv-bank.on{border-color:var(--brand);color:var(--brand)}
+.rpv-bank svg.i{width:15px;height:15px}
+.qty input.qtyEmpty{width:68px}
 </style>
 </head>
 <body>
@@ -1815,26 +1830,26 @@ const BANK_INFO = {
 };
 function bankCardHTML_(compact){
   const F = "font-family:Arial,'Helvetica Neue',sans-serif";
-  return `<div class="keep-blk" style="margin-top:${compact?10:12}px;border-radius:12px;overflow:hidden;border:1px solid #0B1B3A;background:#fff;direction:rtl;text-align:right;${F}">
-    <div style="background:linear-gradient(135deg,#0B1B3A,#14305F);color:#fff;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+  return `<div style="margin-top:${compact?10:12}px;border-radius:12px;overflow:hidden;border:1.5px solid #9DB8D3;background:#fff;direction:rtl;text-align:right;${F}">
+    <div style="background:#E3EDF8;color:#000;padding:8px 14px;border-bottom:1px solid #B9CCE0;display:flex;justify-content:space-between;align-items:center;gap:8px">
       <b style="font-size:13px">بيانات التحويل البنكي</b>
-      <span style="font-size:12px;opacity:.9">${BANK_INFO.factory}</span>
+      <span style="font-size:12px;font-weight:700">${BANK_INFO.factory}</span>
     </div>
     <div style="padding:10px 14px;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;justify-content:space-between">
       <div style="flex:1 1 100%">
-        <div style="font-size:10.5px;color:#5B6B80">${BANK_INFO.bank} — رقم الحساب</div>
-        <div dir="ltr" style="text-align:right;font-size:21px;font-weight:900;letter-spacing:1.5px;color:#0B1B3A;line-height:1.35">${BANK_INFO.account}</div>
+        <div style="font-size:10.5px;color:#333">${BANK_INFO.bank} — رقم الحساب</div>
+        <div dir="ltr" style="text-align:right;font-size:21px;font-weight:900;letter-spacing:1.5px;color:#000;line-height:1.35">${BANK_INFO.account}</div>
       </div>
       <div style="flex:1 1 auto;min-width:0">
-        <div style="font-size:10.5px;color:#5B6B80">اسم الحساب</div>
-        <div style="font-size:13px;font-weight:800;color:#0B1B3A;line-height:1.4">${BANK_INFO.holder}</div>
+        <div style="font-size:10.5px;color:#333">اسم الحساب</div>
+        <div style="font-size:13px;font-weight:800;color:#000;line-height:1.4">${BANK_INFO.holder}</div>
       </div>
       <div style="flex:0 0 auto">
-        <div style="font-size:10.5px;color:#5B6B80">الفرع</div>
-        <div style="font-size:13px;font-weight:800;color:#0B1B3A">${BANK_INFO.branch}</div>
+        <div style="font-size:10.5px;color:#333">الفرع</div>
+        <div style="font-size:13px;font-weight:800;color:#000">${BANK_INFO.branch}</div>
       </div>
     </div>
-    <div style="background:#F3F6FA;border-top:1px solid #D5DDE6;padding:6px 14px;font-size:11.5px;color:#0B1B3A;text-align:center">برجاء إرسال <b>صورة إيصال التحويل</b> بعد إتمام السداد</div>
+    <div style="background:#F6F9FC;border-top:1px solid #D5DDE6;padding:6px 14px;font-size:11.5px;color:#000;text-align:center">برجاء إرسال <b>صورة إيصال التحويل</b> بعد إتمام السداد</div>
   </div>`;
 }
 
@@ -1961,7 +1976,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v214';
+const APP_BUILD   = 'v216';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2214,6 +2229,7 @@ const ACCESSORIES = [
 // و const مابتترفعش زي الدوال. لما كانت متعرّفة تحت، أي جهاز بياناته مخربة كان
 // بيقع بشاشة بيضا: "Cannot access '_storeProblems_' before initialization".
 const _storeProblems_ = [];
+const LS_SHOWBANK = 'wpc_showbank';
 const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders', LS_TAB = 'wpc_tab', LS_SECTION = 'wpc_section', LS_PRICES = 'wpc_prices', LS_PENDING = 'wpc_pending_sync', LS_PENDING_CANCEL = 'wpc_pending_cancel', LS_PRICES_DIRTY = 'wpc_prices_dirty', LS_DELETED = 'wpc_deleted_ids', LS_SENT = 'wpc_sent_ids', LS_REJECTED = 'wpc_rejected_ids';
 
 // مستويات السعر: السعر الأساسي المتخزّن في الكتالوج هو "سعر موزع"، ومنه بتتحسب المستويات التانية بزيادة ثابتة.
@@ -2388,7 +2404,8 @@ const state = {
   profile: load(LS_PROFILE, {name:'', phone:'', region:''}),
   cart:    load(LS_CART, []),
   orders:  load(LS_ORDERS, []),
-  pick:{code:'', sizes:{}, customOn:false, note:'', custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,frameKind:null,frameRodQty:'',frameForDoors:''}},
+  pick:{code:'', sizes:{}, customOn:false, note:'', custom:{w:'',h:'',qty:'',frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,frameKind:null,frameRodQty:'',frameForDoors:''}},
+  showBank: load(LS_SHOWBANK, true),   // إظهار ملحوظة العربون + بيانات التحويل في مستند الأوردر (اختياري)
   newSection: load(LS_SECTION, ''),   // '' (لسه محددش) | doors | acc | frame | strip | veneer | bror | prodium
   // ⚠️ الأطوال (jambCm/headerCm/extra[].cm/rodsCm) بتتخزّن **بالوحدة المكتوبة**
   // (state.fr.unit) مش بالسنتي دايمًا — عشان اللي الموزّع بيكتبه يفضل زي ما هو
@@ -3054,7 +3071,7 @@ function viewHome(){
       <div class="r"><span class="sm">آخر أوردر</span><span style="background:rgba(255,255,255,.92);color:#0C447C;border-radius:20px;padding:1px 10px;font-size:11.5px;font-weight:700">${esc(stInf.ar)}</span></div>
       <div class="r" style="align-items:baseline;margin-top:3px"><span class="no">${esc(orderNoText_(last))}</span><span class="sm">${cust}${esc(last.qty||0)} قطعة</span></div>
       <div class="hm-steps">${[1,2,3,4].map(i=>`<i class="${i<=n?'on':''}"></i>`).join('')}</div>
-      <div class="hm-sl"><span>استلام ← تنفيذ ← جاهز ← تسليم</span><span>الاستلام المتوقع: ${esc(dueShort_(homeDue_(last)))}</span></div>
+      <div class="hm-sl"><span>استلام ← تنفيذ ← جاهز ← تسليم</span></div>
     </div>`;
   }
   const tile = (act, to, ic, t, tb, tc, badge)=>`<button class="hm-t" data-act="${act}" ${to?`data-to="${to}"`:''} style="--tb:${tb};--tc:${tc}">
@@ -3087,7 +3104,7 @@ function showBankOverlay_(){
   const old = document.getElementById('bankOverlay'); if(old) old.remove();
   const ov = document.createElement('div'); ov.id='bankOverlay'; ov.className='dueov';
   ov.innerHTML = `<div class="box"><h3>${ico('money')} بيانات التحويل البنكي</h3>
-    <div class="sub" style="color:var(--danger-ink);font-weight:800;font-size:13px">لا يُعتدّ بميعاد الاستلام إلا بعد سداد عربون وإرسال إيصال التحويل.</div>
+    <div class="sub" style="color:var(--danger-ink);font-weight:800;font-size:13px">لا يُبدأ التنفيذ إلا بعد سداد عربون وإرسال إيصال التحويل.</div>
     ${bankCardHTML_(false)}
     <button id="bankClose" style="width:100%;margin-top:10px;background:rgba(255,255,255,.12);color:var(--ink);padding:11px;border-radius:12px;font-size:13.5px">إغلاق</button></div>`;
   document.body.appendChild(ov);
@@ -3209,7 +3226,7 @@ function viewNew(){
       <div class="scHead"><b>${w} سم</b>
         <div class="qty sm">
           <button data-act="size-qty-minus" data-w="${w}">−</button>
-          <input type="number" inputmode="numeric" min="1" value="${e.qty}" data-act="size-qty-set" data-w="${w}">
+          <input type="number" inputmode="numeric" min="1" value="${e.qty}" placeholder="الكمية" class="qtyEmpty" data-act="size-qty-set" data-w="${w}">
           <button data-act="size-qty-plus" data-w="${w}">+</button>
         </div>
       </div>
@@ -3227,7 +3244,7 @@ function viewNew(){
       <div class="grp" style="margin-top:6px">الكمية</div>
       <div class="qty">
         <button data-act="cust-qty-minus">−</button>
-        <input type="number" inputmode="numeric" min="1" value="${p.custom.qty}" data-act="cust-qty-set">
+        <input type="number" inputmode="numeric" min="1" value="${p.custom.qty}" placeholder="الكمية" class="qtyEmpty" data-act="cust-qty-set">
         <button data-act="cust-qty-plus">+</button>
       </div>
       <div class="note">سعر الباب زي المقاس العادي، و<b>«${CUT_SERVICE_NOTE_}»</b> بتتحط بند مستقل تحته بالكمية والسعر (${CUSTOM_EXTRA} ج للباب).</div>
@@ -3291,9 +3308,7 @@ function viewNew(){
   // ── لوحة تفاصيل الباب — بتتحط تحت الصف اللي فيه الباب المختار ──
   // مفيش حاجة متحددة افتراضيًا: الموزع لازم يختار كل مقاس وحلقه وبروره بنفسه
   const customReady = customReady_(p);
-  const sizesConfigured = selWidths.every(w=>p.sizes[w].frame!=null && p.sizes[w].dbror!=null);
-  const customConfigured = !p.customOn || (customReady && p.custom.frame!=null && p.custom.dbror!=null);
-  const readyToAdd = !!p.code && (selWidths.length>0 || customReady) && sizesConfigured && customConfigured;
+  const readyToAdd = doorReady_(p);
 
   const detailPanel = p.code ? `
     <div class="doorpanel">
@@ -3312,7 +3327,7 @@ function viewNew(){
 
       <div class="note" id="sumline">${esc(currentSummary())}</div>
       <button class="btn primary" style="margin-top:12px" data-act="add-door" ${readyToAdd?'':'disabled'}>
-        ${readyToAdd?'أضف الأبواب للسلة':'اختر مقاس واحد على الأقل وحدد الحلق والبرور لكل مقاس'}</button>
+        ${readyToAdd?'أضف الأبواب للسلة':'اكتب الكمية وحدد الحلق والبرور لكل مقاس'}</button>
       ` : ''}
     </div>` : '';
 
@@ -3518,12 +3533,10 @@ function viewNew(){
     ['bror','bror','برور فقط','برور بالعود',secBror],
     ['prodium','panel','ألواح بروديوم','ألواح للديكور',secProdium]
   ];
-  const secAccordion_ = `<div class="accList">` + SEC_DEFS_.map(([k,ic,t,sb,html])=>{
-    const open = state.newSection===k;
-    return `<div class="accSec ${open?'open':''}">
-      <button class="accH" data-act="sec" data-s="${k}"><span class="ti" data-s="${k}">${ico(ic)}</span><span class="tx">${t}</span><span class="sb">${sb}</span>${ico("chev")}</button>
-      ${open?`<div class="accBody">${html}</div>`:''}</div>`;
-  }).join('') + `</div>`;
+  const secAccordion_ = `<div class="secTiles">` + SEC_DEFS_.map(([k,ic,t])=>
+      `<button class="secTile ${state.newSection===k?'on':''}" data-act="sec" data-s="${k}"><span class="ti" data-s="${k}">${ico(ic)}</span><span class="tx">${t}</span></button>`
+    ).join('') + `</div>`
+    + (()=>{ const cur = SEC_DEFS_.find(d=>d[0]===state.newSection); return cur ? `<div class="secPanel">${cur[4]}</div>` : ''; })();
 
   const heroName_ = String(state.profile.name||'').trim().split(/\s+/)[0];
   const hero = `
@@ -3557,13 +3570,32 @@ function viewNew(){
     <label class="fld"><span>المنطقة</span>
       <input type="text" value="${esc(state.profile.region)}" placeholder="طنطا مثلاً" data-act="prof" data-k="region"></label>
     ${bad && !profileOk() ? `<div class="note" style="color:var(--danger)">الاسم ورقم الموبايل وصاحب الأوردر إجباريين — الرقم لازم يكون ١١ رقم يبدأ بـ 01.</div>` : ''}
-    ${ordNoteBoxHTML_()}
     </div>` : ''}
   </section>
+  ${ordNoteBtnHTML_()}
 
   ${secAccordion_}
 
   ${verBar()}`;
+}
+
+// زرار صغير للملاحظات العامة — الكتابة نفسها في نافذة منبثقة (نفس state.orderNote)
+function ordNoteBtnHTML_(){
+  const t = String(state.orderNote||'').trim();
+  return `<button class="noteBtn ${t?'has':''}" data-act="ord-note-open">${ico("warn")}<span class="tx">ملاحظات على الأوردر</span><span class="sb">${t?esc(t.length>40?t.slice(0,40)+'…':t):'اضغط للكتابة (اختياري)'}</span>${ico("edit")}</button>`;
+}
+function showOrdNote_(){
+  const old = document.getElementById('ordNoteOverlay'); if(old) old.remove();
+  const ov = document.createElement('div'); ov.id='ordNoteOverlay'; ov.className='dueov';
+  ov.innerHTML = `<div class="box"><h3>${ico('warn')} ملاحظات عامة على الأوردر</h3>
+    <div class="sub">بتظهر للمصنع على الطلب والمستند.</div>
+    <textarea rows="4" class="ordnote-ta" style="width:100%" placeholder="أي تفاصيل إضافية عن الطلب — لون، مواعيد، تسليم…" data-act="ord-note">${esc(state.orderNote)}</textarea>
+    <button id="ordNoteDone" style="width:100%;margin-top:10px;background:linear-gradient(180deg,var(--brand-lt),var(--brand));color:#fff;padding:11px;border-radius:12px;font-size:14px;font-weight:700">تم</button></div>`;
+  document.body.appendChild(ov);
+  const close=()=>{ ov.remove(); render(); };
+  document.getElementById('ordNoteDone').onclick=close;
+  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  const ta = ov.querySelector('textarea'); if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
 }
 
 // خانة الملاحظات العامة — بتتعرض في شاشتين (طلب جديد، ومراجعة الطلب قبل
@@ -3584,6 +3616,7 @@ function currentSummary(){
   const customReady = customReady_(p);
 
   if(!widths.length && !p.customOn) return 'اختر مقاس واحد على الأقل.';
+  for(const w of widths){ if(!(Number(p.sizes[w].qty)>0)) return `اكتب الكمية لمقاس ${w} سم.`; }
   if(p.customOn && !customReady) return 'اكتب العرض والارتفاع والكمية للمقاس الخاص.';
   for(const w of widths){
     const e=p.sizes[w];
@@ -3754,7 +3787,6 @@ function viewOrders(){
       <div class="os">${esc(dateStr(o.ts))} · ${(o.items||[]).filter(x=>!isCutLine_(x)).length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
         ${o.customer?`<br><b style="color:var(--info-ink)">صاحب الأوردر: ${esc(o.customer)}</b>`:''}<br>
         ${esc((o.items||[]).filter(x=>x&&!isCutLine_(x)).map(x=>x.title).filter(Boolean).slice(0,3).join('، '))}${(o.items||[]).filter(x=>x&&!isCutLine_(x)).length>3?'…':''}
-        ${live && live.due && !DUE_DONE_STATUSES.includes(live.status)?('<br><b style="color:var(--info-ink)">ميعاد التسليم: '+esc(dayNameAr_(live.due))+' '+esc(dateStr2_(live.due))+'</b>'):''}
         ${live && live.note?('<br><b style="color:var(--brand)">'+esc(live.note)+'</b>'):''}</div>
       ${o.note?('<div class="ordnote">'+ico("warn")+'<span><b>ملاحظات:</b> '+esc(o.note)+'</span></div>'):''}
       <div class="oa">
@@ -4261,7 +4293,7 @@ async function loadArchive(force){
   try{
     const d = await jsonp(APPS_SCRIPT_URL + '?action=list' + admParams_() + '&archived=1');
     if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
-    a.archRows = dropDeleted_(d.orders);
+    a.archRows = dropDeleted_(d.orders).slice().sort((x,y)=>String(y.updated||y.date||'').localeCompare(String(x.updated||x.date||'')));   // الأحدث أرشفةً الأول
   }catch(err){
     toast('تعذّر تحميل الأرشيف: ' + (err.message || err));
     a.archRows = a.archRows || [];
@@ -5561,6 +5593,7 @@ function showReportPreview_(html, title, orderId){
   ov.innerHTML = `
     <div class="rpv-bar">
       <b>معاينة — ${esc(title||'')}</b>
+      <button class="rpv-bank ${state.showBank===false?'':'on'}" data-act="rpv-bank" title="إظهار/إخفاء بيانات التحويل البنكي">${ico('money')}<span>الحساب</span></button>
       <button class="rpv-pdf" data-act="rpv-pdf" data-name="${esc(title||'')}"${orderId?` data-id="${esc(orderId)}"`:''}>${ico('doc')}تصدير PDF</button>
       <button class="rpv-x" data-act="rpv-close" aria-label="إغلاق المعاينة">${ico('x')}</button>
     </div>
@@ -6659,7 +6692,7 @@ function viewAdmin(){
       <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:11.5px;font-weight:700;color:var(--warn-ink);background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:12px;font-weight:700;color:var(--danger-ink);background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${statusPill(o.status)}</div>
       <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}
         ${o.customer?`<br><b style="color:var(--info-ink)">صاحب الأوردر: ${esc(o.customer)}</b>`:''}
-        <br>${esc(dateStr2_(o.date))} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''} · ${money(o.total||0)} ج</div>
+        <br>${viewingArchive ? 'أُرشف '+esc(dateStr2_(o.updated||o.date))+(o.date&&o.updated&&o.date!==o.updated?' · الطلب '+esc(dateStr2_(o.date)):'') : esc(dateStr2_(o.date))} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''} · ${money(o.total||0)} ج</div>
       ${o.ordNote?`<div class="ordnote">${ico("warn")}<span><b>ملاحظات:</b> ${esc(o.ordNote)}</span></div>`:''}
       ${o.superseded?`<div style="margin-top:8px;padding:9px 12px;background:rgba(240,115,106,.13);border:1.5px solid rgba(240,115,106,.42);border-radius:9px;
         font-size:13px;font-weight:700;color:var(--danger-ink);display:flex;align-items:flex-start;gap:6px;line-height:1.6">
@@ -6763,6 +6796,7 @@ document.addEventListener('click',e=>{
     case 'go-cart': state.tab='cart'; render(); window.scrollTo({top:0}); break;
     case 'pick-door': selectDoor(el.dataset.code); loadStock(); break;
     case 'sec': state.newSection = (state.newSection===el.dataset.s) ? '' : el.dataset.s; save(LS_SECTION,state.newSection); render(); break;
+    case 'ord-note-open': showOrdNote_(); break;
     case 'ui-toggle': { const k=el.dataset.k; const cur = (k==='prof') ? uiOpen_('prof', !profileOk() || state.touched) : uiOpen_(k,false); _ui[k] = !cur; render(); break; }   // من غير تمرير لفوق — الصفحة تفضل مكانها
     case 'door-preview': showDoorPreview(el.dataset.code); break;
     case 'preview-select':
@@ -6772,14 +6806,14 @@ document.addEventListener('click',e=>{
       break;
     case 'toggle-size': {
       const w=Number(el.dataset.w);
-      if(p.sizes[w]!=null) delete p.sizes[w]; else p.sizes[w]={qty:1,height:'',frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,frameKind:null,frameRodQty:'',frameForDoors:''};
+      if(p.sizes[w]!=null) delete p.sizes[w]; else p.sizes[w]={qty:'',height:'',frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,frameKind:null,frameRodQty:'',frameForDoors:''};
       render(); break;
     }
     case 'toggle-custom': p.customOn=!p.customOn; render(); break;
-    case 'size-qty-minus': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.qty=Math.max(1,(Number(e.qty)||1)-1); render(); break; }
-    case 'size-qty-plus':  { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.qty=(Number(e.qty)||1)+1; render(); break; }
-    case 'cust-qty-minus': p.custom.qty=Math.max(1,(Number(p.custom.qty)||1)-1); render(); break;
-    case 'cust-qty-plus':  p.custom.qty=(Number(p.custom.qty)||1)+1; render(); break;
+    case 'size-qty-minus': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e && Number(e.qty)>0) e.qty=Math.max(1,Number(e.qty)-1); render(); break; }
+    case 'size-qty-plus':  { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.qty=(Number(e.qty)||0)+1; render(); break; }
+    case 'cust-qty-minus': if(Number(p.custom.qty)>0) p.custom.qty=Math.max(1,Number(p.custom.qty)-1); render(); break;
+    case 'cust-qty-plus':  p.custom.qty=(Number(p.custom.qty)||0)+1; render(); break;
     case 'size-frame': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.frame=Number(el.dataset.cm); render(); break; }
     case 'size-frame-kind': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.frameKind=el.dataset.k; render(); break; }
     case 'cust-frame-kind': p.custom.frameKind=el.dataset.k; render(); break;
@@ -6905,6 +6939,12 @@ document.addEventListener('click',e=>{
         else toast('الطلب ده مابقاش في الشاشة — اعمل تحديث وجرّب تاني', 4000);
       }
       else exportCustomerPdf_(n);
+      break; }
+    case 'rpv-bank': {
+      state.showBank = (state.showBank===false); save(LS_SHOWBANK, state.showBank);
+      el.classList.toggle('on', state.showBank!==false);
+      document.querySelectorAll('#reportPreviewOverlay .bankblk').forEach(n=>{ n.style.display = state.showBank===false ? 'none' : ''; });
+      const ov = document.getElementById('reportPreviewOverlay'); if(ov && ov._fit) ov._fit();
       break; }
     case 'adm-preview': previewOneOrder_(el.dataset.id); break;
     case 'adm-pdf':     { const o=adminOrderById_(el.dataset.id); if(o) exportAdminOrderPdf(o); } break;
@@ -7105,8 +7145,8 @@ document.addEventListener('input',e=>{
   if(a==='cust-frame-rodqty'){ state.pick.custom.frameRodQty=el.value; return; }
   if(a==='size-frame-fordoors'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.frameForDoors=el.value; return; }
   if(a==='cust-frame-fordoors'){ state.pick.custom.frameForDoors=el.value; return; }
-  if(a==='size-qty-set'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.qty=Math.max(1,parseInt(el.value,10)||1); refreshSummary(); return; }
-  if(a==='cust-qty-set'){ state.pick.custom.qty=Math.max(1,parseInt(el.value,10)||1); refreshSummary(); return; }
+  if(a==='size-qty-set'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.qty=(parseInt(el.value,10)>0?parseInt(el.value,10):''); refreshSummary(); return; }
+  if(a==='cust-qty-set'){ state.pick.custom.qty=(parseInt(el.value,10)>0?parseInt(el.value,10):''); refreshSummary(); return; }
   if(a==='acc-set'){ state.acc[el.dataset.id]=Math.max(0,parseFloat(el.value)||0); refreshAccBtn(); return; }
   if(a==='fr-jambCm'){ state.fr.jambCm=decIn_(el.value); render(); return; }
   if(a==='fr-headerCm'){ state.fr.headerCm=decIn_(el.value); render(); return; }
@@ -7170,7 +7210,19 @@ function refreshAccBtn(){
   b.textContent = t>0 ? 'أضف الإكسسوارات' : 'اختر الكميات أولاً';
 }
 
-function refreshSummary(){const n=document.getElementById('sumline'); if(n) n.textContent=currentSummary();}
+// جاهز للإضافة؟ كل مقاس مختار لازم يكون له كمية مكتوبة (مفيش كمية افتراضية عشان الموظف مايفوتهاش) + حلق + برور
+function doorReady_(p){
+  const ws = Object.keys(p.sizes).map(Number);
+  const cr = customReady_(p);
+  if(!p.code || (!ws.length && !cr)) return false;
+  if(!ws.every(w=>Number(p.sizes[w].qty)>0 && p.sizes[w].frame!=null && p.sizes[w].dbror!=null)) return false;
+  return !p.customOn || (cr && p.custom.frame!=null && p.custom.dbror!=null);
+}
+function refreshSummary(){
+  const n=document.getElementById('sumline'); if(n) n.textContent=currentSummary();
+  const b=document.querySelector('[data-act="add-door"]');
+  if(b){ const ok=doorReady_(state.pick); b.disabled=!ok; b.textContent = ok ? 'أضف الأبواب للسلة' : 'اكتب الكمية وحدد الحلق والبرور لكل مقاس'; }
+}
 
 // زرار إضافة ألواح البروديوم — بيتحدّث من غير render كامل عشان الكيبورد ما يقفلش وإحنا بنكتب
 function refreshPanelBtn(){
@@ -7201,6 +7253,7 @@ function addDoor(){
   const p=state.pick;
   const widths = Object.keys(p.sizes).map(Number).filter(w=>(Number((p.sizes[w]||{}).qty)||0)>0);
   const customReady = customReady_(p);
+  if(Object.keys(p.sizes).some(w=>!(Number(p.sizes[w].qty)>0))){ toast('اكتب الكمية لكل مقاس مختار'); return; }
   if(!p.code || (!widths.length && !customReady)){
     toast('اختر مقاس واحد على الأقل'); return;
   }
@@ -7258,7 +7311,7 @@ function addDoor(){
   clearPulledLine_();
   toast('اتضاف للسلة: '+d.code+' — '+addedTxts.join('، '));
   // نلمّ الاختيارات ونقفل اللوحة عشان يختار باب تاني بارتياح
-  state.pick={code:'', sizes:{}, customOn:false, note:'', custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,frameKind:null,frameRodQty:'',frameForDoors:''}};
+  state.pick={code:'', sizes:{}, customOn:false, note:'', custom:{w:'',h:'',qty:'',frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,frameKind:null,frameRodQty:'',frameForDoors:''}};
   render();
 }
 
@@ -7472,7 +7525,7 @@ let _pulledLine = null;
 function resetPickerFor_(kind){
   if(kind==='door'){
     state.pick = {code:'', sizes:{}, customOn:false, note:'',
-      custom:{w:'',h:'',qty:1,frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,
+      custom:{w:'',h:'',qty:'',frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,
               frameKind:null,frameRodQty:'',frameForDoors:''}};
   } else if(kind==='frame'){
     state.fr = {cm:10, code:'', doorW:'', kind:'full', qty:1, nonStd:false,
@@ -7855,7 +7908,6 @@ function buildMessage(o){
   m+='الاسم: '+(o.name||'-')+'\n';
   m+='المنطقة: '+(o.region||'-')+'\n';
   m+='الموبايل: '+(o.phone||'-')+'\n';
-  { const d = docDue_(o); m+='📅 ميعاد الاستلام المتوقع: '+dayNameAr_(d)+' '+dateStrDMY_(new Date(d+'T12:00:00').getTime())+'\n'; }
   if(o.customer) m+='صاحب الأوردر: '+o.customer+'\n';
   if(o.customerPhone) m+='تليفون صاحب الأوردر: '+o.customerPhone+'\n';
   m+='المخزن: '+WAREHOUSE+'\n';
@@ -8520,18 +8572,18 @@ function docRowHTML_(it, idx, priced, showFrameHCol, oddFrameW, titleTxt){
     ? it.note.split(' — ').filter(x=>x.trim() && x.trim()!==CUT_SERVICE_NOTE_).join(' — ')
     : '';
   // تنسيق v211: خط أكبر وأغمق، فواصل خفيفة بين مجموعات الأعمدة، والفاضي بشرطة رمادية باهتة
-  const T  = 'padding:9px 4px;border-bottom:1px solid #E8EEF5;vertical-align:middle;text-align:center;font-size:14px;color:#14243A';
+  const T  = 'padding:9px 4px;border-bottom:1px solid #E1E8F0;vertical-align:middle;text-align:center;font-size:14px;color:#000';
   const SEP = 'border-inline-start:1px solid #E1E8F0';
   const val = (v, extra) => (v==='—' || v==='' || v==null)
-    ? `<span style="color:#C2CBD6">—</span>`
+    ? `<span style="color:#888">—</span>`
     : `<b style="${extra||''}">${esc(v)}</b>`;
   const frameWCell = oddFrameW
     ? `<span style="display:inline-block;min-width:26px;padding:2px 6px;background:#FFF3CD;color:#8A5A00;font-weight:900;border-radius:6px">${esc(frameW)}</span>`
     : val(frameW);
   return `<tr${isCut?' style="background:#FFF8E8"':''}>
-    <td style="${T};font-size:11.5px;color:#8A97A6">${idx}</td>
+    <td style="${T};font-size:12px;color:#444">${idx}</td>
     <td style="${T};text-align:right;padding-inline:8px"><b style="font-size:14px">${esc(titleTxt||it.title)}</b>${restNote?`<br><span style="font-size:12.5px;font-weight:700;color:#B3261E">${esc(restNote)}</span>`:''}</td>
-    <td style="${T};white-space:nowrap"><b style="font-size:16px;color:#0C447C">${qty}</b> <span style="font-size:11px;color:#6B7A8C">${esc(unit)}</span></td>
+    <td style="${T};white-space:nowrap"><b style="font-size:16px;color:#000">${qty}</b> <span style="font-size:11px;color:#333">${esc(unit)}</span></td>
     <td style="${T};${SEP}">${val(widthTxt)}</td>
     <td style="${T}">${val(heightTxt)}</td>
     <td style="${T};${SEP}">${frameWCell}</td>
@@ -8586,12 +8638,7 @@ function docRows(o, priced, showFrameHCol){
 
   let n=0, rows='';
   order.forEach(k=>{
-    const grpQty = groups[k].reduce((t,it)=>t+(Number(it.qty)||0),0);
-    rows += `<tr><td colspan="${colspan}" style="background:#EAF2FA;border-inline-start:5px solid #0C447C;padding:9px 12px;font-family:Arial,'Helvetica Neue',sans-serif">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-        <span style="font-weight:800;color:#0C447C;font-size:14px">أبواب مقاس ${esc(k)}</span>
-        <span style="font-weight:900;color:#D92D20;font-size:15px;white-space:nowrap">الإجمالي ${grpQty} باب</span>
-      </div></td></tr>`;
+    rows += `<tr><td colspan="${colspan}" style="background:#EEF4FB;border-inline-start:5px solid #5B8DBF;padding:9px 12px;font-family:Arial,'Helvetica Neue',sans-serif;font-weight:800;color:#000;font-size:14px">أبواب مقاس ${esc(k)}</td></tr>`;
     groups[k].forEach(it=>{
       const oddFrameW = dominantFrameW!=null && it.frame && String(it.frame)!==dominantFrameW;
       rows += docRowHTML_(it, ++n, priced, showFrameHCol, oddFrameW);
@@ -8603,7 +8650,7 @@ function docRows(o, priced, showFrameHCol){
     });
   });
   if(restOther.length){
-    rows += `<tr><td colspan="${colspan}" style="background:#F3F6FA;border-inline-start:5px solid #8A97A6;padding:9px 12px;font-weight:800;color:#4A5B6E;font-size:14px;font-family:Arial,'Helvetica Neue',sans-serif">حلق / برور / إكسسوارات</td></tr>`;
+    rows += `<tr><td colspan="${colspan}" style="background:#F3F6FA;border-inline-start:5px solid #9AA7B5;padding:9px 12px;font-weight:800;color:#000;font-size:14px;font-family:Arial,'Helvetica Neue',sans-serif">حلق / برور / إكسسوارات</td></tr>`;
     restOther.forEach(it=>{ rows += docRowHTML_(it, ++n, priced, showFrameHCol, false); });
   }
   return rows;
@@ -8614,31 +8661,29 @@ function docTotalsHTML(o){
   const items=o.items||[];
   const doorItems=items.filter(it=>it.kind==='door');
   if(!doorItems.length) return '';
-  const perSize={}, sizeW={};
-  doorItems.forEach(it=>{ const k=doorSizeText_(it.sizeTxt,it.doorHeight)||''; perSize[k]=(perSize[k]||0)+(Number(it.qty)||0); if(sizeW[k]==null) sizeW[k]=Number(it.w)||0; });
-  // ⚠️ الكروت دي كانت بترتيب المصفوفة الطبيعي، واللغة عربي RTL — يعني أول
-  // عنصر (نفس ترتيب أول مجموعة في الجدول فوق) كان بيظهر على الشمال، مش
-  // اليمين، فبان كإن ترتيب الكروت معكوس عن الجدول. .reverse() بيرجّع أول
-  // مجموعة في الجدول لأول كارت من الشمال (بما إن الفلكس RTL بيرسم آخر
-  // عنصر في المصفوفة على الشمال).
+  const perSize={};
+  doorItems.forEach(it=>{ const k=doorSizeText_(it.sizeTxt,it.doorHeight)||''; perSize[k]=(perSize[k]||0)+(Number(it.qty)||0); });
+  // ⚠️ ترتيب الكروت: الفلكس RTL بيرسم آخر عنصر على الشمال — .reverse() بيخلّي أول مجموعة في الجدول أول كارت من اليمين
   const keys=sortSizeKeys_(Object.keys(perSize)).reverse();
-  const cards=keys.map(k=>`<div style="flex:1;min-width:84px;background:#E6F1FB;border:1px solid #B5D4F4;border-radius:10px;padding:8px 6px;text-align:center">
-    <div style="font-size:11px;color:#0C447C;font-weight:700">${esc(k)}</div>
-    <div style="font-size:22px;font-weight:900;color:#0C447C;line-height:1.2">${perSize[k]}</div></div>`).join('');
   const doorsTotal=keys.reduce((s,k)=>s+perSize[k],0);
   // «خدمة قص» بند فلوس مش قطعة تتقطع — مابتتعدّش في إجمالي القطع
   const counted=items.filter(it=>!isCutLine_(it));
   const overallTotal=counted.reduce((s,it)=>s+(Number(it.qty)||0),0);
-  // ⚠️ «الإجمالي الكلي» بيعدّ طقم الحلق كقطعة واحدة — وهو فعليًا ٣ عيدان.
-  // المصنع بيقطّع على أساس الرقم ده، فسطر واحد ملخبط معناه خشب مقطوع غلط.
-  // مابنغيّرش الحساب (المصنع اتعوّد عليه) — بنوضّح الطقم كام عود صراحة.
+  // ⚠️ «الإجمالي الكلي» بيعدّ طقم الحلق كقطعة واحدة — وهو فعليًا ٣ عيدان. مابنغيّرش الحساب، بنوضّح الطقم كام عود.
   const setsQty = items.reduce((s,it)=>s+(it.isSet?(Number(it.qty)||0):0),0);
   const setsNote = setsQty
-    ? `<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:#6B7A8C"><span>منهم ${setsQty} طقم حلق</span><b>= ${setsQty*RODS_PER_SET} عود</b></div>`
+    ? `<div style="display:flex;justify-content:space-between;font-size:11.5px;padding:2px 0;color:#000"><span>منهم ${setsQty} طقم حلق</span><b>= ${setsQty*RODS_PER_SET} عود</b></div>`
     : '';
-
-  // الكروت (إجمالي الأبواب/الإجمالي الكلي/كروت المقاسات) اتشالت — إجمالي كل مقاس بقى في سطر عنوان مجموعته في الجدول
-  return setsNote?`<div style="margin-top:10px;padding:0 4px">${setsNote}</div>`:'';
+  // كل كارت بلون فاتح مختلف (توفير حبر) والكتابة سودا عشان تبان
+  const PAL = [['#E3F0FF','#9CC3EE'],['#FFF1D6','#EBC46E'],['#E2F6E9','#8ED1A5'],['#F1E6FF','#C4A4EE'],['#FFE5E3','#EE9F98'],['#DFF6F8','#8ACFD8'],['#FDE6F1','#E79DC2'],['#EEF2D4','#C3CF7E']];
+  let ci = 0;
+  const tile = (lbl,val,unitTxt)=>{ const [bg,bd]=PAL[ci++ % PAL.length];
+    return `<div style="flex:1;min-width:92px;background:${bg};border:1.5px solid ${bd};border-radius:10px;padding:8px 6px;text-align:center;color:#000">
+    <div style="font-size:11.5px;font-weight:800;line-height:1.35">${lbl}</div>
+    <div style="font-size:22px;font-weight:900;line-height:1.2">${val}${unitTxt?`<span style="font-size:12px;font-weight:700"> ${unitTxt}</span>`:''}</div></div>`; };
+  const cards = tile('إجمالي الأبواب', doorsTotal, 'باب') + tile('الإجمالي الكلي', overallTotal, 'قطعة')
+              + keys.map(k=>tile(esc(k), perSize[k], '')).join('');
+  return `<div class="keep-blk" style="margin-top:14px"><div style="display:flex;gap:8px;flex-wrap:wrap">${cards}</div>${setsNote?`<div style="margin-top:6px;padding:0 4px">${setsNote}</div>`:''}</div>`;
 }
 
 // الطلبات اللي اتعملت قبل ما «خدمة قص» تبقى بند (أو من جهاز لسه على نسخة قديمة)
@@ -8724,7 +8769,7 @@ function openOrdersNoteHTML_(o){
   const list = otherOpenOrders_(o);
   if(!list.length) return '';
   const nums = list.slice(0,8).map(x=>esc(x.no)).join('، ') + (list.length>8 ? ' وغيرهم' : '');
-  return `<div style="margin-top:12px;padding:9px 14px;background:#FFF3D6;border:1.5px solid #E8B94A;border-inline-start:6px solid #D99A0B;border-radius:9px;font-family:Arial,'Helvetica Neue',sans-serif;font-size:13.5px;font-weight:800;color:#7A5405;line-height:1.7">
+  return `<div style="margin-top:12px;padding:9px 14px;background:#FFF3D6;border:1.5px solid #E8B94A;border-inline-start:6px solid #D99A0B;border-radius:9px;font-family:Arial,'Helvetica Neue',sans-serif;font-size:13.5px;font-weight:800;color:#000;line-height:1.7">
     ملحوظة: للعميل ${list.length>1?'طلبات سابقة':'طلب سابق'} لسه ما خلص${list.length>1?'تش':''} — رقم <span style="color:#B3261E">${nums}</span></div>`;
 }
 
@@ -8742,13 +8787,11 @@ function docHTML(o,mode,priced){
     <div style="position:absolute;inset:0;background:url('${ASSETS.mark}') no-repeat center center;background-size:34% auto;opacity:.06;"></div>
     <div style="position:relative">
 
-      <!-- هيدر كحلي: نوع المستند والتاريخ + رقم الأوردر الكبير + ميعاد الاستلام.
+      <!-- هيدر خفيف (توفير حبر): اليوم والتاريخ فوق، «طلب أوردر — صاحب الأوردر» في النص بخط كبير، ثم رقم الأوردر.
            رقم الأوردر هو اللي المصنع بيدوّر عليه وهو ماسك ورق كتير، فبقى أكبر حاجة في الصفحة. -->
       ${(() => {
         const edited = !isQuote && o.displayNo && Number(o.editCount) > 0;
         // الطلب المعدّل بياخد رقم مركّب: رقم الطلب / رقم التعديل (52 ثم 52/1 ثم 52/2)
-        // ⚠️ عرض السعر كان بيطبع الكود الداخلي كـ«رقم عرض السعر» — بياخد رقم الطلب دلوقتي،
-        // وبيقع على الكود الداخلي لوحده لو الطلب لسه مالوش رقم تسلسلي.
         const num = isQuote ? esc(orderNoText_(o))
                   : (o.displayNo ? esc(o.displayNo) + (edited ? '/' + esc(o.editCount) : '')
                                  : esc(o.id));
@@ -8756,73 +8799,64 @@ function docHTML(o,mode,priced){
         const title = isQuote ? 'عرض سعر' : (o.replacesId ? 'تعديل على أوردر' : 'طلب أوردر');
         const editDate = edited ? (o.editedAt ? dateStrDMY_(new Date(o.editedAt+'T12:00:00').getTime())
                                               : dateStrDMY_(o.ts)) : '';
-        const due = isQuote ? '' : docDue_(o);
+        const dayNm = DAY_AR_[new Date(o.ts).getDay()] || '';
         return `
-      <div style="background:#0C447C;border-radius:14px;padding:16px 18px;color:#fff">
-        <div style="display:flex;align-items:flex-start;gap:14px">
+      <div style="background:#EEF4FB;border:1.5px solid #B9CCE0;border-radius:14px;padding:12px 16px;color:#000">
+        <div style="display:flex;align-items:center;gap:14px">
           <div style="flex:1;min-width:0">
-            <div style="font-size:13px;opacity:.9">${title} · ${(!isQuote && o.displayNo)?'بتاريخ ':''}${esc(dateStrDMY_(o.ts))}${isQuote&&o.priceTierLabel?` · <b>${esc(o.priceTierLabel)}</b>`:''}</div>
-            <div style="font-size:12.5px;opacity:.85;margin-top:8px">${label}</div>
-            <div style="font-size:48px;font-weight:900;line-height:1.1;letter-spacing:.5px">${num}</div>
-            ${o.replacesId?`<div style="font-size:12.5px;margin-top:4px;color:#FFD2CD;font-weight:700">بدل الطلب رقم ${esc(prevOrderNoText_(o))}</div>`:''}
-            ${edited?`<div style="font-size:12.5px;margin-top:2px;opacity:.92">التعديل رقم ${esc(o.editCount)} — بتاريخ ${esc(editDate)}</div>`:''}
+            <div style="font-size:14px;font-weight:800">${esc(dayNm)} ${esc(dateStrDMY_(o.ts))}${isQuote&&o.priceTierLabel?` · <b>${esc(o.priceTierLabel)}</b>`:''}</div>
+            <div style="text-align:center;font-size:26px;font-weight:900;line-height:1.4;margin:6px 0 4px">${title}${o.customer?` — ${esc(o.customer)}`:''}</div>
+            <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:13px;font-weight:700">${label}</span><span style="font-size:44px;font-weight:900;line-height:1.05;letter-spacing:.5px">${num}</span></div>
+            ${o.replacesId?`<div style="font-size:12.5px;margin-top:4px;color:#B3261E;font-weight:800">بدل الطلب رقم ${esc(prevOrderNoText_(o))}</div>`:''}
+            ${edited?`<div style="font-size:12.5px;margin-top:2px;font-weight:700">التعديل رقم ${esc(o.editCount)} — بتاريخ ${esc(editDate)}</div>`:''}
           </div>
           <div style="text-align:center">
-            <div style="background:#fff;border-radius:10px;padding:6px 10px"><img src="${ASSETS.logo}" style="height:44px;width:auto;display:block"></div>
-            <div style="font-size:11px;opacity:.85;margin-top:5px">${esc(COMPANY_AR)}<br>${esc(WAREHOUSE)}</div>
+            <div style="background:#fff;border:1px solid #D5DDE6;border-radius:10px;padding:6px 10px"><img src="${ASSETS.logo}" style="height:44px;width:auto;display:block"></div>
+            <div style="font-size:11px;margin-top:5px;color:#222">${esc(COMPANY_AR)}<br>${esc(WAREHOUSE)}</div>
           </div>
         </div>
-        ${isQuote ? '' : `<div style="margin-top:14px;background:#EAF3DE;color:#27500A;border-radius:10px;padding:9px 14px">
-          <div style="font-size:12px;font-weight:700">ميعاد الاستلام المتوقع</div>
-          <div style="font-size:18px;font-weight:900">${esc(dayNameAr_(due))} ${esc(dateStrDMY_(new Date(due+'T12:00:00').getTime()))}</div>
-        </div>`}
       </div>`;
       })()}
 
-      ${docTotalsHTML(o)}
-
-      <table style="width:100%;margin-top:14px;font-size:12.5px;border-collapse:collapse;background:#F7F9FC;border:1px solid #E1E8F0;border-radius:12px">
+      <table style="width:100%;margin-top:14px;font-size:12.5px;border-collapse:collapse;background:#fff;border:1px solid #E1E8F0;border-radius:12px">
         <tr>
-          <td style="padding:7px 10px;color:#6B7A8C;width:78px">صاحب الحساب</td><td style="font-weight:700">${esc(o.name||'-')}</td>
-          <td style="padding:5px 0;color:#6B7A8C;width:78px">الموبايل</td><td style="font-weight:700">${esc(o.phone||'-')}</td>
+          <td style="padding:7px 10px;color:#333;width:78px">صاحب الحساب</td><td style="font-weight:800;color:#000">${esc(o.name||'-')}</td>
+          <td style="padding:5px 0;color:#333;width:78px">الموبايل</td><td style="font-weight:800;color:#000">${esc(o.phone||'-')}</td>
         </tr>
         <tr>
-          <td style="padding:5px 0;color:#6B7A8C">المنطقة</td><td style="font-weight:700">${esc(o.region||'-')}</td>
-          <td style="padding:5px 0;color:#6B7A8C">المخزن</td><td style="font-weight:700">${esc(o.warehouse||WAREHOUSE)}</td>
+          <td style="padding:5px 0;color:#333">المنطقة</td><td style="font-weight:800;color:#000">${esc(o.region||'-')}</td>
+          <td style="padding:5px 0;color:#333">المخزن</td><td style="font-weight:800;color:#000">${esc(o.warehouse||WAREHOUSE)}</td>
         </tr>
         ${o.customer?`<tr>
-          <td style="padding:5px 0;color:#6B7A8C">صاحب الأوردر</td>
-          <td colspan="3" style="font-weight:700;color:#0B4A7A">${esc(o.customer)}</td>
+          <td style="padding:5px 0;color:#333">صاحب الأوردر</td>
+          <td colspan="3" style="font-weight:700;color:#000">${esc(o.customer)}</td>
         </tr>`:''}
       </table>
       ${isQuote ? '' : openOrdersNoteHTML_(o)}
-      ${o.note?`<div style="margin-top:12px;padding:11px 14px;background:#FFF3D6;border:2px solid #E8B94A;border-inline-start:7px solid #D99A0B;border-radius:9px;font-size:13.5px;font-weight:700;color:#7A5405">
-        <span style="display:block;font-size:11.5px;font-weight:700;color:#A9821F;margin-bottom:2px">ملاحظات عامة على الأوردر</span>
+      ${o.note?`<div style="margin-top:12px;padding:11px 14px;background:#FFF3D6;border:2px solid #E8B94A;border-inline-start:7px solid #D99A0B;border-radius:9px;font-size:13.5px;font-weight:800;color:#000">
+        <span style="display:block;font-size:11.5px;font-weight:700;color:#444;margin-bottom:2px">ملاحظات عامة على الأوردر</span>
         ${esc(o.note)}</div>`:''}
 
       <div style="margin-top:16px;border:1px solid #D5DDE6;border-radius:12px;overflow:hidden">
       <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead>
-          <tr style="background:#0C447C;color:#fff;font-family:Arial,'Helvetica Neue',sans-serif;font-size:12.5px">
-            <th rowspan="2" style="padding:8px 4px;width:26px">م</th>
-            <th rowspan="2" style="padding:8px 8px;text-align:right">كود</th>
-            <th rowspan="2" style="padding:8px 4px;width:78px">الكمية</th>
-            <th colspan="2" style="padding:7px 4px;border-inline-start:1px solid rgba(255,255,255,.28);border-bottom:1px solid rgba(255,255,255,.28)">الفتحة المعمارية</th>
-            <th colspan="${showFrameHCol?2:1}" style="padding:7px 4px;border-inline-start:1px solid rgba(255,255,255,.28);border-bottom:1px solid rgba(255,255,255,.28)">الحلق</th>
-            <th rowspan="2" style="padding:8px 4px;width:50px;border-inline-start:1px solid rgba(255,255,255,.28)">البرور</th>
-            ${priced?`<th rowspan="2" style="padding:8px 4px;width:64px;border-inline-start:1px solid rgba(255,255,255,.28)">السعر</th>
-            <th rowspan="2" style="padding:8px 4px;width:74px">الإجمالي</th>`:''}
-          </tr>
-          <tr style="background:#1F5F9E;color:#DCEBFA;font-family:Arial,'Helvetica Neue',sans-serif;font-size:11.5px">
-            <th style="padding:6px 3px;width:52px;border-inline-start:1px solid rgba(255,255,255,.28)">العرض</th>
-            <th style="padding:6px 3px;width:52px">الارتفاع</th>
-            <th style="padding:6px 3px;width:52px;border-inline-start:1px solid rgba(255,255,255,.28)">العرض</th>
-            ${showFrameHCol?`<th style="padding:6px 3px;width:52px">الارتفاع</th>`:''}
+          <tr style="background:#DCEAF6;color:#000;font-family:Arial,'Helvetica Neue',sans-serif;font-size:12px">
+            <th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;width:26px">م</th>
+            <th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;text-align:right;padding-inline:8px">كود</th>
+            <th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;width:72px">الكمية</th>
+            <th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;border-inline-start:1px solid #B9CCE0;width:52px">عرض<br>الفتحة</th>
+            <th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;width:52px">ارتفاع<br>الفتحة</th>
+            <th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;border-inline-start:1px solid #B9CCE0;width:50px">عرض<br>الحلق</th>
+            ${showFrameHCol?`<th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;width:50px">ارتفاع<br>الحلق</th>`:''}
+            <th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;border-inline-start:1px solid #B9CCE0;width:48px">البرور</th>
+            ${priced?`<th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;border-inline-start:1px solid #B9CCE0;width:64px">السعر</th><th style="padding:8px 3px;border-bottom:1.5px solid #9DB8D3;font-weight:800;line-height:1.35;width:74px">الإجمالي</th>`:''}
           </tr>
         </thead>
         <tbody style="background:#fff">${docRows(o,priced,showFrameHCol)}</tbody>
       </table>
       </div>
+
+      ${docTotalsHTML(o)}
 
       ${priced?`<div style="display:flex;justify-content:flex-start;margin-top:16px">
         <table style="border-collapse:collapse;font-size:13.5px;min-width:250px">
@@ -8840,13 +8874,15 @@ function docHTML(o,mode,priced){
         هيتواصل معاك المصنع بالتفاصيل والسعر. تقدر تتابع حالة الطلب في أي وقت من تبويب «تابع طلبك».
       </div>`}
       ${isQuote ? '' : `
-      <div class="keep-blk" style="margin-top:14px;padding:10px 14px;background:#FFF1F0;border:2px solid #D92D20;border-radius:12px;text-align:center">
-        <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px;font-weight:900;color:#fff;background:#D92D20;border-radius:20px;display:inline-block;padding:3px 16px">ملحوظة هامة</div>
-        <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:17px;font-weight:900;color:#B3261E;line-height:1.5;margin-top:6px">
-          لا يُعتدّ بميعاد الاستلام إلا بعد سداد عربون على رقم الحساب وإرسال إيصال التحويل
+      <div class="keep-blk bankblk" style="${state.showBank===false?'display:none':''}">
+      <div style="margin-top:14px;padding:10px 14px;background:#FFF7F6;border:1.5px solid #D92D20;border-radius:12px;text-align:center">
+        <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px;font-weight:900;color:#B3261E;border:1.5px solid #D92D20;border-radius:20px;display:inline-block;padding:2px 16px">ملحوظة هامة</div>
+        <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:16px;font-weight:900;color:#000;line-height:1.5;margin-top:6px">
+          لا يُبدأ التنفيذ إلا بعد سداد عربون على رقم الحساب وإرسال إيصال التحويل
         </div>
       </div>
-      ${bankCardHTML_(true)}`}
+      ${bankCardHTML_(true)}
+      </div>`}
     </div>
   </div>`;
 }

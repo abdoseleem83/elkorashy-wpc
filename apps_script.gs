@@ -502,6 +502,7 @@ function doGet(e) {
         var rAR = findRow_(shAR, e.parameter.id);
         if (rAR < 0) return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
         shAR.getRange(rAR, COL_ARCHIVED).setValue(String(e.parameter.archived) === '1' ? 'Y' : 'N');
+        if (String(e.parameter.archived) === '1') shAR.getRange(rAR, COL_UPDATED).setValue(new Date());   // يوم الأرشفة اليدوية
         return reply({ ok: true, id: e.parameter.id }, cb);
       } finally {
         try { lockAR.releaseLock(); } catch (eAR) {}
@@ -564,6 +565,8 @@ function doGet(e) {
           editCount: rows[i][COL_EDIT_COUNT - 1] || 0,
           editedAt: fmtDate_(rows[i][COL_EDITED_AT - 1]),
           due: fmtDate_(rows[i][COL_DUE - 1]),   // ميعاد التسليم (فاضي للطلبات القديمة)
+          // آخر تحديث للحالة — لما الطلب يتسلّم بيتأرشف أوتوماتيك في نفس اللحظة، فده هو «يوم الأرشفة» اللي بيتعرض في الأرشيف
+          updated: isAdmin ? fmtDate_(rows[i][COL_UPDATED - 1]) : '',
           // ⚠️ علامة «الطلب ده اتعدّل وعنده نسخة جديدة» كانت بتتكتب في الشيت
           // وخلاص — عمرها ما رجعت للتطبيق. فالمصنع كان بيشوف الطلب القديم
           // والجديد جنب بعض في شاشته من غير أي تفسير، ومش عارف إن المفروض
