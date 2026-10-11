@@ -8796,7 +8796,7 @@ function docHTML(o,mode,priced){
                   : (o.displayNo ? esc(o.displayNo) + (edited ? '/' + esc(o.editCount) : '')
                                  : esc(o.id));
         const label = isQuote ? 'رقم عرض السعر' : (edited ? 'رقم طلب الأوردر — معدّل' : 'رقم طلب الأوردر');
-        const title = isQuote ? 'عرض سعر' : (o.replacesId ? 'تعديل على أوردر' : 'طلب أوردر');
+        const title = isQuote ? 'عرض سعر' : (o.replacesId ? 'تعديل على أوردر تصنيع أبواب' : 'أوردر تصنيع أبواب');
         const editDate = edited ? (o.editedAt ? dateStrDMY_(new Date(o.editedAt+'T12:00:00').getTime())
                                               : dateStrDMY_(o.ts)) : '';
         const topDate = edited ? editDate : dateStrDMY_(o.ts);
@@ -8806,31 +8806,27 @@ function docHTML(o,mode,priced){
             <span style="color:#6B7A8C;font-size:14px;min-width:86px">${lbl}</span><b style="font-size:15.5px;color:#14243A">${valHTML}</b></div>`;
         const dash = v => (v && String(v).trim()) ? esc(v) : '-';
         return `
-      <div style="display:flex;align-items:center;gap:14px;padding-bottom:14px;border-bottom:3px solid #1F78D1">
-        <div style="border:1px solid #14243A;background:#fff;line-height:0"><img src="${ASSETS.logo}" style="height:56px;width:auto;display:block"></div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:31px;font-weight:900;color:#0A1F44;line-height:1.3">${title}</div>
-          <div style="font-size:13px;color:#555;margin-top:2px">${esc(COMPANY_AR)} · ${esc(WAREHOUSE)}</div>
+      <div style="display:flex;align-items:center;gap:12px;padding-bottom:12px;border-bottom:3px solid #1F78D1">
+        <div style="text-align:center;flex:0 0 auto">
+          <div style="border:1px solid #14243A;background:#fff;line-height:0"><img src="${ASSETS.logo}" style="height:56px;width:auto;display:block"></div>
+          <div style="font-size:11px;color:#444;margin-top:4px;font-weight:700;white-space:nowrap">${esc(COMPANY_AR)} · ${esc(WAREHOUSE)}</div>
         </div>
-        <div style="text-align:left;white-space:nowrap">
+        <div style="flex:1;min-width:0;text-align:center">
+          <div style="font-size:30px;font-weight:900;color:#0A1F44;line-height:1.3">${title}</div>
+          ${o.customer?`<div style="font-size:21px;font-weight:900;color:#0B4A9E;line-height:1.35;margin-top:2px">${esc(o.customer)}</div>`:''}
+          <div style="font-size:12.5px;font-weight:800;color:#B3261E;margin-top:4px">${label}</div>
+          <div dir="ltr" style="font-size:42px;font-weight:900;color:#B3261E;line-height:1.05;letter-spacing:1px">${num}</div>
+          ${pill?`<div style="display:inline-block;margin-top:4px;padding:2px 18px;border:1.5px solid #E2B962;border-radius:30px;background:#FFF8EC;color:#8A5A00;font-weight:800;font-size:12.5px">${pill}</div>`:''}
+        </div>
+        <div style="text-align:left;flex:0 0 auto;max-width:200px">
           <div style="font-size:13px;color:#555">بتاريخ ${esc(topDate)}</div>
-          ${o.replacesId?`<div style="font-size:13px;margin-top:4px;color:#B3261E;font-weight:800">بدل الطلب رقم ${esc(prevOrderNoText_(o))}</div>`:''}
+          ${o.replacesId?`<div style="font-size:13px;margin-top:3px;color:#B3261E;font-weight:800">بدل الطلب رقم ${esc(prevOrderNoText_(o))}</div>`:''}
+          <div style="font-size:13px;margin-top:6px;color:#14243A;line-height:1.4"><span style="color:#6B7A8C">صاحب الحساب:</span> <b>${dash(o.name)}</b></div>
+          ${o.phone?`<div dir="ltr" style="font-size:12.5px;font-weight:700;color:#14243A;text-align:left">${esc(o.phone)}</div>`:''}
+          ${o.region&&String(o.region).trim()?`<div style="font-size:12px;color:#444">${esc(o.region)}</div>`:''}
         </div>
       </div>
-
-      <div style="margin-top:10px;background:#FFF3E0;border:2px solid #F0C27B;border-radius:16px;padding:5px 16px 8px;text-align:center">
-        <div style="font-size:12.5px;font-weight:800;color:#B3261E">${label}</div>
-        <div dir="ltr" style="font-size:40px;font-weight:900;color:#B3261E;line-height:1.05;letter-spacing:1px">${num}</div>
-        ${pill?`<div style="display:inline-block;margin-top:3px;padding:2px 18px;border:1.5px solid #E2B962;border-radius:30px;background:#FFF8EC;color:#8A5A00;font-weight:800;font-size:12.5px">${pill}</div>`:''}
-      </div>
-
-      <div style="margin-top:10px;display:flex;flex-wrap:wrap;row-gap:5px">
-        ${cell('صاحب الحساب', dash(o.name))}
-        ${cell('الموبايل', o.phone?`<span dir="ltr">${esc(o.phone)}</span>`:'-')}
-        ${cell('المنطقة', dash(o.region))}
-        ${cell('المخزن', esc(o.warehouse||WAREHOUSE))}
-        ${cell('صاحب الأوردر', o.customer?`<span style="color:#0B4A9E">${esc(o.customer)}</span>`:'-', true)}
-      </div>`;
+`;
       })()}
 
       ${isQuote ? '' : openOrdersNoteHTML_(o)}
