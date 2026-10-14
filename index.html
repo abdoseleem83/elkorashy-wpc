@@ -1737,6 +1737,7 @@ html[data-theme="dark"] .dueov .box{background:#141F32}
 .accH .ti[data-s="veneer"],.secTile .ti[data-s="veneer"]{background:linear-gradient(135deg,#FF8A7A,#E2503F)}
 .accH .ti[data-s="bror"],.secTile .ti[data-s="bror"]{background:linear-gradient(135deg,#34C9E8,#0E8FB0)}
 .accH .ti[data-s="prodium"],.secTile .ti[data-s="prodium"]{background:linear-gradient(135deg,#FF8FC0,#D9468A)}
+.accH .ti[data-s="mabra"],.secTile .ti[data-s="mabra"]{background:linear-gradient(135deg,#FFB547,#E07B12)}
 .accH .ti[data-s="user"],.secTile .ti[data-s="user"]{background:linear-gradient(135deg,#6B7A8C,#46566B)}
 .accH .tx{font-size:13.5px;font-weight:800;white-space:nowrap}
 .accH .sb{flex:1;min-width:0;font-size:11px;color:var(--muted);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1976,7 +1977,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v222';
+const APP_BUILD   = 'v223';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2212,6 +2213,12 @@ const METER_KINDS_ = {
 };
 const METER_TYPE_TO_KIND_ = { Strip:'strip', Veneer:'veneer' };
 
+/* معبرة — بتتركب مكان الحلق كديكور (من غير باب). بتتطلب بالعدد، ومقاسها: سمك الحيطة (زي الحلق)
+   + العرض + الارتفاع. الاستاندر: العرض = مقاس الباب (70/80/90/100) والارتفاع 215. أو مقاس خاص بالسم.
+   ⚠️ السعر صفر لحد ما نحدد طريقة التسعير — مش بنخمّن سعر. */
+const MABRA_WALLS = [10,15,20];
+let MABRA_PRICE = 0;
+
 /* تفريز الكالون */
 
 const ACCESSORIES = [
@@ -2255,6 +2262,7 @@ const ACC_EN_TO_ID_ = {}; ACCESSORIES.forEach(a=>{ ACC_EN_TO_ID_[a.en] = a.id; }
 // المستوى فوقه.
 function tierPrice(basePrice, kind, tierKey, key, opts){
   if(!tierKey || tierKey==='dist') return Number(basePrice)||0;
+  if(kind==='mabra') return Number(basePrice)||0;   // لسه من غير تسعير — مايتزادش عليها زيادة المستوى
   const group = kind==='door'?'sizes':kind==='frame'?'frames':kind==='bror'?'brors':kind==='panel'?'panel':(kind==='strip'||kind==='veneer')?kind:'acc';
   const ov = TIER_OVERRIDES[tierKey];
   // «خدمة قص» سعرها واحد في كل المستويات إلا لو المصنع حفظ للمستوى ده قيمة
@@ -2406,17 +2414,18 @@ const state = {
   orders:  load(LS_ORDERS, []),
   pick:{code:'', sizes:{}, customOn:false, note:'', custom:{w:'',h:'',qty:'',frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,frameKind:null,frameRodQty:'',frameForDoors:''}},
   showBank: load(LS_SHOWBANK, true),   // إظهار ملحوظة العربون + بيانات التحويل في مستند الأوردر (اختياري)
-  newSection: load(LS_SECTION, ''),   // '' (لسه محددش) | doors | acc | frame | strip | veneer | bror | prodium
+  newSection: load(LS_SECTION, ''),   // '' (لسه محددش) | doors | acc | frame | strip | veneer | mabra | bror | prodium
   // ⚠️ الأطوال (jambCm/headerCm/extra[].cm/rodsCm) بتتخزّن **بالوحدة المكتوبة**
   // (state.fr.unit) مش بالسنتي دايمًا — عشان اللي الموزّع بيكتبه يفضل زي ما هو
   // وهو بيكتب. التحويل لسنتي بيحصل في مكان واحد بس: frCm_().
   // أي مكان بيرجّع أطوال جاهزة بالسنتي (تعديل سطر من السلة) لازم يحط unit:'cm'.
-  fr:{cm:10, code:'', doorW:'', kind:'full', qty:1, nonStd:false, jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:'', unit:'cm'},   // حلق منفصل: kind = 'full' (طقم كامل — الكمية × [٢ قائم ٢٢٠سم + ١ عارضة حلق علوية ١١٠سم]، والارتفاع يتغيّر بس لو nonStd=true) أو 'rods' (أعواد حرة — عدد وطول بيحددهم المستخدم من غير قيمة افتراضية). doorW = مقاس الباب اللي الحلق ده ليه (70/80/90/100) — اختياري. note: ملحوظة اختيارية
+  fr:{cm:10, code:'', doorW:'', kind:'full', qty:1, brSize:'', brQty:5, nonStd:false, jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:'', unit:'cm'},   // حلق منفصل: kind = 'full' (طقم كامل — الكمية × [٢ قائم ٢٢٠سم + ١ عارضة حلق علوية ١١٠سم]، والارتفاع يتغيّر بس لو nonStd=true) أو 'rods' (أعواد حرة — عدد وطول بيحددهم المستخدم من غير قيمة افتراضية). doorW = مقاس الباب اللي الحلق ده ليه (70/80/90/100) — اختياري. note: ملحوظة اختيارية
   // len = طول العود **بالوحدة المكتوبة** (state.br.unit: 'm' افتراضيًا أو 'cm')،
   // والتحويل لسنتي في brRodCm_() بس. code = كود/لون الباب (إجباري زي الحلق).
   br:{size:'6×9', code:'', rods:1, len:BROR_ROD_M_DEFAULT, unit:'m'},
   sp:{code:'', qty:1}, // شريط — بالمتر، الكمية بتقبل كسور
   vn:{code:'', qty:1}, // قشرة — بالمتر، الكمية بتقبل كسور
+  mb:{wall:10, code:'', doorW:'', custom:false, w:'', h:'', qty:1}, // معبرة — wall = سمك الحيطة، doorW = عرض الباب الاستاندر، custom = مقاس خاص (w/h بالسم)
   pd:{code:'', qty:1}, // ألواح بروديوم — code = كود/لون الباب (إجباري زي البرور)، qty = عدد الألواح
   acc:{},
   touched:false,             // اتضغط إرسال؟ عشان نوضّح الحقول الناقصة
@@ -3265,6 +3274,11 @@ function viewNew(){
   const frRodsCm=Math.max(0,frCm_(state.fr.rodsCm));
   const frRods=frKind==='full' ? (frJamb+frHeader+frExtraRods) : frRodsQty;
   const frSel=FRAMES.find(f=>f.cm===state.fr.cm)||FRAMES[0];
+  // برور مع الحلق الكامل (اختياري) — الباب بياخد ٥ عيدان، فهنا نفس الفكرة: عدد لكل طقم × عدد الأطقم
+  const frBrOn = frKind==='full' && !!state.fr.brSize;
+  const frBrPerSet = rodQty_(state.fr.brQty);
+  const frBrTotal = frBrOn ? Math.round(frBrPerSet*frQty*100)/100 : 0;
+  const frBrTxt = frBrTotal>0 ? ' + '+frBrTotal+' برور '+state.fr.brSize : '';
   // سعر كل مقاس على حدة حسب طوله الفعلي
   const frJambPrice=rodPrice(frSel.price,frJambCm), frHeaderPrice=rodPrice(frSel.price,frHeaderCm);
   const frChips=FRAMES.map(f=>`
@@ -3359,6 +3373,7 @@ function viewNew(){
     <button class="${state.newSection==='doors'?'on':''}" data-act="sec" data-s="doors">${ico("door","lg")}<span class="tx">الأبواب</span><span class="sb">11 لون جاهزين</span></button>
     <button class="${state.newSection==='acc'?'on':''}"   data-act="sec" data-s="acc">${ico("parts","lg")}<span class="tx">الإكسسوارات</span><span class="sb">مقابض · كوالين · مفصلات</span></button>
     <button class="${state.newSection==='frame'?'on':''}" data-act="sec" data-s="frame">${ico("frame","lg")}<span class="tx">حلق فقط</span><span class="sb">قايم وعارضة علوية</span></button>
+    <button class="${state.newSection==='mabra'?'on':''}" data-act="sec" data-s="mabra">${ico("mabra","lg")}<span class="tx">معبرة</span><span class="sb">بدل الحلق (ديكور)</span></button>
     <button class="${state.newSection==='strip'?'on':''}"  data-act="sec" data-s="strip">${ico("strip","lg")}<span class="tx">شريط</span><span class="sb">شرائط حافة</span></button>
     <button class="${state.newSection==='veneer'?'on':''}" data-act="sec" data-s="veneer">${ico("veneer","lg")}<span class="tx">قشرة</span><span class="sb">قشرة للأبواب</span></button>
     <button class="${state.newSection==='bror'?'on':''}"  data-act="sec" data-s="bror">${ico("bror","lg")}<span class="tx">برور فقط</span><span class="sb">برور بالعود</span></button>
@@ -3412,6 +3427,15 @@ function viewNew(){
     <div class="row2" style="gap:6px;max-width:220px">
       <input type="text" inputmode="decimal" placeholder="العدد" value="${esc(state.fr.qty)}" data-act="fr-qty">
     </div>
+    <div class="sol-h" style="margin:12px 0 6px">برور مع الحلق <span style="font-weight:400;color:var(--muted)">(اختياري — مقاس البرور)</span></div>
+    <div class="chips">
+      <button class="chip ${!state.fr.brSize?'on':''}" data-act="fr-brsize" data-s="">بدون برور</button>
+      ${BRORS.map(b=>`<button class="chip ${state.fr.brSize===b.size?'on':''}" data-act="fr-brsize" data-s="${esc(b.size)}">${esc(b.size)}</button>`).join('')}
+    </div>
+    ${frBrOn?`
+    <label class="fld" style="margin-top:9px;max-width:220px"><span>عدد البرور لكل طقم</span>
+      <input type="text" inputmode="decimal" placeholder="5" value="${esc(state.fr.brQty)}" data-act="fr-brqty"></label>
+    <div class="note" style="margin-top:6px">الإجمالي: <b>${frBrTotal||0}</b> عود برور ${esc(state.fr.brSize)} — طول العود ${BROR_ROD_CM} سم، وبتتسجل في الطلب كسطر برور بنفس لون الحلق.</div>`:''}
     ${pricesVisible()&&frQty>0?`<div class="rp" style="margin-top:6px">${money(frJambPrice)} ج/عود ٢٢٠سم — ${money(frHeaderPrice)} ج/عود ١١٠سم</div>`:''}
     <button class="btn ghost sm" style="margin-top:9px" data-act="fr-nonstd-toggle">${frNonStd?'إخفاء الارتفاع المخصوص':'الارتفاع مش استاندر؟'}</button>
     ${frNonStd ? `
@@ -3451,8 +3475,8 @@ function viewNew(){
       ${!state.fr.code ? 'اختر اللون الأول (كود الباب)'
         : (frRods>0 ? (
             (frKind==='full' && !frNonStd)
-              ? `أضف ${frQty} طقم — حلق كامل ${frSel.cm} سم ${esc(state.fr.code)}${state.fr.doorW?' — لباب '+state.fr.doorW+' سم':''}`
-              : `أضف ${frRods} عود — حلق ${frSel.cm} سم ${esc(state.fr.code)}${state.fr.doorW?' — لباب '+state.fr.doorW+' سم':''}`
+              ? `أضف ${frQty} طقم — حلق كامل ${frSel.cm} سم ${esc(state.fr.code)}${state.fr.doorW?' — لباب '+state.fr.doorW+' سم':''}${frBrTxt}`
+              : `أضف ${frRods} عود — حلق ${frSel.cm} سم ${esc(state.fr.code)}${state.fr.doorW?' — لباب '+state.fr.doorW+' سم':''}${frBrTxt}`
           )
           : (frKind==='full' ? 'اكتب الكمية' : 'اكتب عدد الأعواد وطولها'))}</button>
   </section>`;
@@ -3509,15 +3533,46 @@ function viewNew(){
   };
   const secStrip = meterSec_('strip'), secVeneer = meterSec_('veneer');
 
+  // معبرة — ديكور بيتركب مكان الحلق من غير باب. العرض/الارتفاع: استاندر (عرض الباب × 215) أو مقاس خاص
+  const mbSt = state.mb, mbD = mbDims_();
+  const mbCodeChips = DOORS.map(d=>`
+    <button class="chip ${mbSt.code===d.code?'on':''}" data-act="mb-code" data-code="${d.code}"${doorChipStyle_(d.code,mbSt.code===d.code)}>${d.code} — ${esc(d.name)}</button>`).join('');
+  const mbWallChips = MABRA_WALLS.map(c=>`
+    <button class="chip ${mbSt.wall===c?'on':''}" data-act="mb-wall" data-w="${c}">${c} سم</button>`).join('');
+  const mbSizeChips = SIZES.map(z=>`
+    <button class="chip ${!mbSt.custom&&String(mbSt.doorW)===String(z.w)?'on':''}" data-act="mb-doorw" data-w="${z.w}">${z.w} سم</button>`).join('')
+    + `<button class="chip ${mbSt.custom?'on':''}" data-act="mb-custom">مقاس خاص</button>`;
+  const secMabra = `
+  <section class="card">
+    <div class="step"><span class="n">${ico("mabra","lg")}</span><h2>معبرة</h2><span class="hint">بدل الحلق — ديكور من غير باب</span></div>
+    <div class="sol-h" style="margin-bottom:6px">اللون (كود الباب) <b class="req">*</b></div>
+    <div class="chips">${mbCodeChips}</div>
+    <div class="sol-h" style="margin:12px 0 6px">سمك الحيطة <span style="font-weight:400;color:var(--muted)">(زي مقاس الحلق)</span></div>
+    <div class="chips">${mbWallChips}</div>
+    <div class="sol-h" style="margin:12px 0 6px">العرض <b class="req">*</b> <span style="font-weight:400;color:var(--muted)">(الارتفاع الاستاندر ${DOOR_STD_HEIGHT} سم)</span></div>
+    <div class="chips">${mbSizeChips}</div>
+    ${mbSt.custom?`
+    <div class="rodrow">
+      <label class="fld"><span>العرض (سم)</span>
+        <input type="text" inputmode="decimal" value="${esc(mbSt.w)}" placeholder="مثال 95" data-act="mb-w"></label>
+      <label class="fld"><span>الارتفاع (سم)</span>
+        <input type="text" inputmode="decimal" value="${esc(mbSt.h)}" placeholder="مثال ${DOOR_STD_HEIGHT}" data-act="mb-h"></label>
+    </div>`:''}
+    <label class="fld" style="margin-top:12px"><span>العدد</span>
+      <input type="text" inputmode="numeric" value="${esc(mbSt.qty)}" placeholder="مثال 2" data-act="mb-qty"></label>
+    <button class="btn ghost sm" style="margin-top:9px" data-act="add-mb" ${(mbSt.code&&mbD.w>0&&mbD.h>0&&mbQty_()>0)?'':'disabled'}>${mbBtnLabel_()}</button>
+  </section>`;
+
   const secEmpty = `
   <div class="empty">
     <span class="em">${ico("hand","xl")}</span>
-    <p>اختر قسم من فوق (الأبواب / الإكسسوارات / حلق فقط / شريط / قشرة / برور فقط / ألواح بروديوم) عشان تبدأ.</p>
+    <p>اختر قسم من فوق (الأبواب / الإكسسوارات / حلق فقط / معبرة / شريط / قشرة / برور فقط / ألواح بروديوم) عشان تبدأ.</p>
   </div>`;
 
   const body = state.newSection==='doors' ? secDoors
              : state.newSection==='acc'   ? secAcc
              : state.newSection==='frame' ? secFrame
+             : state.newSection==='mabra' ? secMabra
              : state.newSection==='strip' ? secStrip
              : state.newSection==='veneer' ? secVeneer
              : state.newSection==='bror'  ? secBror
@@ -3528,6 +3583,7 @@ function viewNew(){
     ['doors','door','الأبواب','11 لون جاهزين',secDoors],
     ['acc','parts','الإكسسوارات','مقابض · كوالين · مفصلات',secAcc],
     ['frame','frame','حلق فقط','قايم وعارضة علوية',secFrame],
+    ['mabra','mabra','معبرة','بدل الحلق (ديكور)',secMabra],
     ['strip','strip','شريط','شرائط حافة',secStrip],
     ['veneer','veneer','قشرة','قشرة للأبواب',secVeneer],
     ['bror','bror','برور فقط','برور بالعود',secBror],
@@ -3676,7 +3732,7 @@ function viewCart(){
   const priced=pricesVisible();
 
   const lines=state.cart.map((it,i)=>{
-    const kindIcon = it.kind==='frame'?'ruler':it.kind==='bror'?'bror':it.kind==='panel'?'panel':METER_KINDS_[it.kind]?METER_KINDS_[it.kind].icon:'parts';
+    const kindIcon = it.kind==='frame'?'ruler':it.kind==='bror'?'bror':it.kind==='panel'?'panel':it.kind==='mabra'?'mabra':METER_KINDS_[it.kind]?METER_KINDS_[it.kind].icon:'parts';
     const th = it.kind==='door' ? `<img src="${esc(it.img)}" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ic',innerHTML:ico('door','lg')}))">`
              : `<div class="ic">${ico(kindIcon,'lg')}</div>`;
     let spec;
@@ -3689,6 +3745,8 @@ function viewCart(){
       spec = it.isSet ? (it.qty+' طقم'+(priced?' — '+money(it.price)+' ج/طقم':''))
                        : it.customSet ? (it.qty+' عود'+(priced?' — '+money(linePrice(it))+' ج':'')+'<br>'+esc(it.spec))
                        : (it.qty+' عود'+(it.rodCm?' × '+it.rodCm+' سم':'')+(priced?' — '+money(it.price)+' ج/عود':''));
+    } else if(it.kind==='mabra'){
+      spec = it.qty+' معبرة — '+esc(it.spec||'')+(priced&&it.price>0?' — '+money(it.price)+' ج/معبرة':'');
     } else if(METER_KINDS_[it.kind]){
       spec = it.qty+' متر'+(priced?' — '+money(it.price)+' ج/متر':'');
     } else spec=(priced?money(it.price)+' ج × ':'× ')+it.qty;
@@ -3987,6 +4045,7 @@ const ICONS = {
   bror:    '<path d="M3 8.5h18v7H3z"/><path d="M7 8.5v7M12 8.5v7M17 8.5v7"/>',
   strip:   '<path d="M3 9.5h18v5H3z"/><path d="M3 12h18"/>',
   veneer:  '<path d="M5 3.5h14v17H5z"/><path d="M8 3.5c1.4 5 1.4 12 0 17M13 3.5c-1.2 5-1.2 12 0 17M17 6.5c-.8 3.6-.8 7.4 0 11"/>',
+  mabra:   '<path d="M4 21V3h16v18"/><path d="M8 21V7h8v14"/>',
   panel:   '<rect x="4" y="2.6" width="16" height="18.8" rx="1.4"/><path d="M8.4 2.6v18.8M13 2.6v18.8"/>',
   cart:    '<path d="M2.5 3.5h2.4l2.3 11.2h9.9"/><path d="M6.4 6.6h14.1l-1.6 6.6H7.6"/><circle cx="9" cy="19.4" r="1.4"/><circle cx="17.6" cy="19.4" r="1.4"/>',
   truck:   '<path d="M2.5 6.5h11v9h-11z"/><path d="M13.5 9.5h4l3 3v3h-7z"/><circle cx="6.4" cy="17.6" r="1.7"/><circle cx="17.2" cy="17.6" r="1.7"/>',
@@ -4575,6 +4634,7 @@ function arabicItemTitle_(it){
     return t;
   }
   if(it.type==='Panel') return 'لوح بروديوم'+(it.code?' — '+it.code:'');
+  if(it.type==='Mabra') return 'معبرة'+(it.size?' '+arabicSizeText_(it.size):'')+(it.code?' — '+it.code:'');
   if(METER_TYPE_TO_KIND_[it.type]) return METER_KINDS_[METER_TYPE_TO_KIND_[it.type]].ar+(it.code?' — '+it.code:'');
   return ACC_EN_TO_AR_[it.title] || it.title || '';
 }
@@ -4619,7 +4679,7 @@ function adminDocItem_(it, tierKey){
   // المقاس بيتخزّن إنجليزي في الشيت ('10 cm')؛ بنعرّبه لكل الأنواع مش الأبواب بس
   const sz = it.type==='Door' ? doorSizeText_(arabicSizeText_(it.size), it.doorHeight)
                               : arabicSizeText_(it.size||'');
-  const kind = it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':(it.type==='Panel'?'panel':(METER_TYPE_TO_KIND_[it.type]||'acc'))));
+  const kind = it.type==='Door'?'door':(it.type==='Frame'?'frame':(it.type==='Bror'?'bror':(it.type==='Panel'?'panel':(it.type==='Mabra'?'mabra':(METER_TYPE_TO_KIND_[it.type]||'acc')))));
   // الحفر بيتعرف من عموده، ولو الطلب قديم مافيهوش العمود بنقراه من الاسم
   const حفرـالصنف = kind==='door' &&
     (!!String(it.milling||'').trim() || /\(حفر\)|\(Carved\)/i.test(String(it.title||'')));
@@ -5670,7 +5730,7 @@ async function exportPendingDoorsExcel_(){
 // تصدير إكسيل — تقرير الطلبات (شاشة المصنع) — منظّم بالعربي، مجمّع لكل عميل
 // بنفس روح تصميم تقرير الأبواب المعلّقة/الـ PDF الشامل (لوجو + ألوان + عناوين عربي)
 // ============================================================
-const ITEM_TYPE_AR_ = { 'Door':'باب', 'Frame':'حلق', 'Bror':'برور', 'Panel':'لوح بروديوم', 'Strip':'شريط', 'Veneer':'قشرة' };
+const ITEM_TYPE_AR_ = { 'Door':'باب', 'Frame':'حلق', 'Bror':'برور', 'Mabra':'معبرة', 'Panel':'لوح بروديوم', 'Strip':'شريط', 'Veneer':'قشرة' };
 function itemTypeAr_(t){ return ITEM_TYPE_AR_[t] || 'إكسسوار'; }
 function itemUnitAr_(u){
   const s = String(u||'').trim();
@@ -6830,6 +6890,7 @@ document.addEventListener('click',e=>{
     case 'fr-code': state.fr.code=el.dataset.code; render(); break;
     case 'fr-doorw': state.fr.doorW=el.dataset.w; render(); break;
     case 'fr-kind': state.fr.kind=el.dataset.k; render(); break;
+    case 'fr-brsize': state.fr.brSize=el.dataset.s||''; render(); break;
     case 'fr-nonstd-toggle': state.fr.nonStd=!state.fr.nonStd;
       if(!state.fr.nonStd){ state.fr.jambCm=lenFromCm_(220, state.fr.unit); state.fr.headerCm=lenFromCm_(110, state.fr.unit); state.fr.extra=[]; }
       render(); break;
@@ -6862,6 +6923,11 @@ document.addEventListener('click',e=>{
     case 'fr-extra-del': { const i=Number(el.dataset.i); state.fr.extra.splice(i,1); render(); break; }
     case 'br-size': state.br.size=el.dataset.size; render(); break;
     case 'br-code': state.br.code=el.dataset.code; render(); break;
+    case 'mb-code': state.mb.code=el.dataset.code; render(); break;
+    case 'mb-wall': state.mb.wall=Number(el.dataset.w); render(); break;
+    case 'mb-doorw': state.mb.doorW=el.dataset.w; state.mb.custom=false; render(); break;
+    case 'mb-custom': state.mb.custom=!state.mb.custom; if(state.mb.custom) state.mb.doorW=''; render(); break;
+    case 'add-mb': addMabra(); break;
     case 'pd-code': state.pd.code=el.dataset.code; render(); break;
     case 'sp-code': state.sp.code=el.dataset.code; render(); break;
     case 'vn-code': state.vn.code=el.dataset.code; render(); break;
@@ -7084,6 +7150,7 @@ function cartItemKey_(it){
              : it.kind==='frame' ? 'Frame'
              : it.kind==='bror'  ? 'Bror'
              : it.kind==='panel' ? 'Panel'
+             : it.kind==='mabra' ? 'Mabra'
              : METER_KINDS_[it.kind] ? METER_KINDS_[it.kind].type : 'Accessory';
   const size = it.kind==='door' ? (it.sizeEn||it.sizeTxt||'') : (it.spec||'');
   return producedKey_(type, it.code, size, it.doorHeight);
@@ -7161,6 +7228,7 @@ document.addEventListener('input',e=>{
   if(a==='fr-jambCm'){ state.fr.jambCm=decIn_(el.value); render(); return; }
   if(a==='fr-headerCm'){ state.fr.headerCm=decIn_(el.value); render(); return; }
   if(a==='fr-qty'){ state.fr.qty=el.value; render(); return; }
+  if(a==='fr-brqty'){ state.fr.brQty=el.value; render(); return; }
   if(a==='fr-rods'){ state.fr.rods=el.value; render(); return; }
   if(a==='fr-rodsCm'){ state.fr.rodsCm=decIn_(el.value); render(); return; }
   if(a==='fr-extra-cm'){ state.fr.extra[Number(el.dataset.i)].cm=decIn_(el.value); render(); return; }
@@ -7168,6 +7236,9 @@ document.addEventListener('input',e=>{
   if(a==='fr-note'){ state.fr.note=el.value; return; }
   if(a==='br-rods'){ state.br.rods=el.value; refreshRodBtn('add-br'); return; }
   if(a==='br-len'){ state.br.len=decIn_(el.value); render(); return; }
+  if(a==='mb-qty'){ state.mb.qty=el.value; refreshMabraBtn_(); return; }
+  if(a==='mb-w'){ state.mb.w=el.value; refreshMabraBtn_(); return; }
+  if(a==='mb-h'){ state.mb.h=el.value; refreshMabraBtn_(); return; }
   if(a==='pd-qty'){ state.pd.qty=el.value; refreshPanelBtn(); return; }
   if(a==='sp-qty'){ state.sp.qty=el.value; refreshMeterBtn_('strip'); return; }
   if(a==='vn-qty'){ state.vn.qty=el.value; refreshMeterBtn_('veneer'); return; }
@@ -7414,6 +7485,29 @@ function addRod(kind){
           added += totalQty;
         }
       }
+      // برور مع الحلق الكامل: سطر برور عادي (نفس لون الحلق) بعدد = عدد البرور لكل طقم × الأطقم.
+      // بنفس مفتاح سطر «برور فقط» عشان لو نفس المقاس/اللون موجود يتجمّعوا.
+      if(st.brSize){
+        const perSet = rodQty_(st.brQty);
+        const bb = BRORS.find(x=>x.size===st.brSize);
+        if(bb && perSet>0){
+          const brTotal = Math.round(perSet*qty*100)/100;
+          const rodCm = BROR_ROD_CM;
+          const spec = bb.size+' — '+rodCm+' سم'+(st.code?' — '+st.code:'');
+          const bkey = 'bror|'+bb.size+'|'+rodCm+'|'+st.code+'|';
+          const bex = state.cart.find(it=>it.kind==='bror' && it.key===bkey);
+          if(bex){ bex.qty = Math.round((Number(bex.qty)+brTotal)*100)/100; }
+          else{
+            state.cart.push({
+              kind:'bror', key:bkey, qty:brTotal, code:st.code, rodCm, perM:bb.price,
+              price: rodPrice(bb.price, rodCm), spec,
+              title: 'برور '+bb.size+' — عود '+rodCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):''),
+              titleEn: 'Bror '+bb.size+' - '+rodCm+'cm rod'+(st.code?' - '+st.code:''),
+              doorW:'', note:''
+            });
+          }
+        }
+      }
     } else {
       const rods = rodQty_(st.rods);   // بيقبل الكسور — نص عود/ربع عود تكملة
       // ⚠️ الطول بقى بيقبل كسور (220.5) في الشاشة، لكن الإضافة الفعلية كانت
@@ -7431,6 +7525,7 @@ function addRod(kind){
     state.fr.jamb=2; state.fr.header=1;
     state.fr.jambCm=lenFromCm_(220, state.fr.unit); state.fr.headerCm=lenFromCm_(110, state.fr.unit);
     state.fr.extra=[]; state.fr.rods=''; state.fr.rodsCm=''; state.fr.doorW=''; state.fr.note=''; state.fr.qty=1; state.fr.nonStd=false;
+    state.fr.brSize=''; state.fr.brQty=5;
   } else {
     const b = BRORS.find(x=>x.size===st.size)||BRORS[0];
     const rods = rodQty_(st.rods);
@@ -7447,6 +7542,60 @@ function addRod(kind){
   saveCart_();
   clearPulledLine_();
   toast(addedIsSet ? ('اتضاف '+added+' طقم حلق كامل') : ('اتضاف '+added+' عود'));
+  render();
+}
+
+// معبرة: العرض والارتفاع بالسم — الاستاندر (عرض الباب × 215) أو مقاس خاص مكتوب
+function mbDims_(){
+  const m = state.mb;
+  if(m.custom) return { w:Number(decIn_(m.w))||0, h:Number(decIn_(m.h))||0 };
+  return { w:Number(m.doorW)||0, h:DOOR_STD_HEIGHT };
+}
+function mbQty_(){ return Math.max(0, Math.round(Number(decIn_(String(state.mb.qty==null?'':state.mb.qty)))||0)); }
+function mbNum_(n){ return String(Math.round(Number(n)*100)/100); }
+function mbSpec_(wall, h, w){ return wall+' سم — '+mbNum_(h)+'×'+mbNum_(w); }
+function parseMabraSpec_(spec){
+  const m = /^(\d+(?:\.\d+)?)\s*سم\s*—\s*(\d+(?:\.\d+)?)×(\d+(?:\.\d+)?)/.exec(String(spec||'').trim());
+  return m ? { wall:Number(m[1]), h:Number(m[2]), w:Number(m[3]) } : null;
+}
+function mbBtnLabel_(){
+  const st=state.mb, d=mbDims_(), q=mbQty_();
+  if(!st.code) return 'اختر اللون الأول (كود الباب)';
+  if(!(d.w>0)) return st.custom ? 'اكتب عرض المعبرة' : 'اختر العرض';
+  if(!(d.h>0)) return 'اكتب ارتفاع المعبرة';
+  if(!(q>0)) return 'اكتب عدد المعابر';
+  return `أضف ${q} معبرة — ${st.wall} سم — ${mbNum_(d.h)}×${mbNum_(d.w)} — ${st.code}`;
+}
+// بيتحدّث من غير render كامل عشان الكيبورد ما يقفلش وإحنا بنكتب
+function refreshMabraBtn_(){
+  const b=document.querySelector('[data-act="add-mb"]'); if(!b) return;
+  const st=state.mb, d=mbDims_();
+  b.disabled=!(st.code && d.w>0 && d.h>0 && mbQty_()>0);
+  b.textContent=mbBtnLabel_();
+}
+function addMabra(){
+  const st = state.mb, d = mbDims_();
+  if(!st.code){ toast('اختر اللون (كود الباب) الأول'); return; }
+  if(!(d.w>0)){ toast(st.custom?'اكتب عرض المعبرة':'اختر العرض'); return; }
+  if(!(d.h>0)){ toast('اكتب ارتفاع المعبرة'); return; }
+  const qty = mbQty_();
+  if(qty<=0){ toast('اكتب عدد المعابر'); return; }
+  const dName = (DOORS.find(x=>x.code===doorCode_(st.code))||{}).name || '';
+  const spec = mbSpec_(st.wall, d.h, d.w);
+  const key = 'mabra|'+st.code+'|'+spec;
+  const ex = state.cart.find(it=>it.kind==='mabra' && it.key===key);
+  if(ex){ ex.qty += qty; }
+  else{
+    state.cart.push({
+      kind:'mabra', key, qty, code:st.code, price:MABRA_PRICE, unit:'معبرة', spec,
+      title: 'معبرة '+spec+' — '+st.code+(dName?' '+dName:''),
+      titleEn: 'Mabra '+st.wall+' cm - '+mbNum_(d.h)+'x'+mbNum_(d.w)+' - '+st.code
+    });
+  }
+  saveCart_();
+  clearPulledLine_();
+  toast('اتضاف '+qty+' معبرة');
+  state.mb = {wall:st.wall, code:'', doorW:'', custom:false, w:'', h:'', qty:1};
   render();
 }
 
@@ -7538,10 +7687,12 @@ function resetPickerFor_(kind){
       custom:{w:'',h:'',qty:'',frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,
               frameKind:null,frameRodQty:'',frameForDoors:''}};
   } else if(kind==='frame'){
-    state.fr = {cm:10, code:'', doorW:'', kind:'full', qty:1, nonStd:false,
+    state.fr = {cm:10, code:'', doorW:'', kind:'full', qty:1, brSize:'', brQty:5, nonStd:false,
                 jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:'', unit:'cm'};
   } else if(kind==='bror'){
     state.br = {size:'6×9', code:'', rods:1, len:BROR_ROD_M_DEFAULT, unit:'m'};
+  } else if(kind==='mabra'){
+    state.mb = {wall:10, code:'', doorW:'', custom:false, w:'', h:'', qty:1};
   } else if(kind==='panel'){
     state.pd = {code:'', qty:1};
   } else if(kind==='strip' || kind==='veneer'){
@@ -7677,6 +7828,12 @@ function editCartLine(i){
                   unit: it.rodCm ? 'cm' : 'm'};
     }
     state.newSection = isFr?'frame':'bror'; save(LS_SECTION,state.newSection);
+  } else if(it.kind==='mabra'){
+    const sp = parseMabraSpec_(it.spec) || {};
+    const std = SIZES.some(z=>z.w===sp.w) && sp.h===DOOR_STD_HEIGHT;
+    state.mb = {wall: MABRA_WALLS.includes(sp.wall)?sp.wall:10, code:it.code||'', doorW: std?String(sp.w):'',
+                custom: !std, w: std?'':String(sp.w||''), h: std?'':String(sp.h||''), qty: it.qty||1};
+    state.newSection='mabra'; save(LS_SECTION,state.newSection);
   } else if(it.kind==='panel'){
     state.pd = {code:it.code||'', qty:it.qty||1};
     state.newSection='prodium'; save(LS_SECTION,state.newSection);
@@ -7793,6 +7950,11 @@ function adminEditOrderWith_(o, its){
       return { kind:mk, key:mk+'|'+(it.code||''),
                title:arabicItemTitle_(it), titleEn:it.title||'', code:it.code||'',
                spec:it.size||'', price, qty, unit:it.unit||'متر' };
+    }
+    if(it.type==='Mabra'){
+      return { kind:'mabra', key:'mabra|'+(it.code||'')+'|'+(it.size||''),
+               title:arabicItemTitle_(it), titleEn:it.title||'', code:it.code||'',
+               spec:it.size||'', price, qty, unit:it.unit||'معبرة' };
     }
     if(it.type==='Panel'){
       return { kind:'panel', key:'panel|'+(it.code||''),
@@ -8931,9 +9093,9 @@ async function exportExcel(orders,fname){
         const pp=itemProdPending_(it);
         const row=[
           o.id, xlDate_(o.ts), o.name||'', String(o.phone||''), o.region||'', o.status||'',
-          isDoor?'Door':(it.kind==='frame'?'Frame':it.kind==='bror'?'Bror':it.kind==='panel'?'Panel':METER_KINDS_[it.kind]?METER_KINDS_[it.kind].type:'Accessory'),
+          isDoor?'Door':(it.kind==='frame'?'Frame':it.kind==='bror'?'Bror':it.kind==='panel'?'Panel':it.kind==='mabra'?'Mabra':METER_KINDS_[it.kind]?METER_KINDS_[it.kind].type:'Accessory'),
           it.titleEn||it.title||'', it.code||'',
-          isDoor?(it.sizeEn||it.sizeTxt||''):(isRod?(it.spec||''):((it.kind==='panel'||METER_KINDS_[it.kind])?(it.spec||''):'')),
+          isDoor?(it.sizeEn||it.sizeTxt||''):(isRod?(it.spec||''):((it.kind==='panel'||it.kind==='mabra'||METER_KINDS_[it.kind])?(it.spec||''):'')),
           isDoor?(it.doorHeight||''):'',
           isDoor?(it.frame||''):'',
           isDoor?(it.frameHeight||''):'',
