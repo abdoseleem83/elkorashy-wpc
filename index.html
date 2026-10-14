@@ -2419,7 +2419,7 @@ const state = {
   // (state.fr.unit) مش بالسنتي دايمًا — عشان اللي الموزّع بيكتبه يفضل زي ما هو
   // وهو بيكتب. التحويل لسنتي بيحصل في مكان واحد بس: frCm_().
   // أي مكان بيرجّع أطوال جاهزة بالسنتي (تعديل سطر من السلة) لازم يحط unit:'cm'.
-  fr:{cm:10, code:'', doorW:'', kind:'full', qty:1, brSize:'', brQty:5, nonStd:false, jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:'', unit:'cm'},   // حلق منفصل: kind = 'full' (طقم كامل — الكمية × [٢ قائم ٢٢٠سم + ١ عارضة حلق علوية ١١٠سم]، والارتفاع يتغيّر بس لو nonStd=true) أو 'rods' (أعواد حرة — عدد وطول بيحددهم المستخدم من غير قيمة افتراضية). doorW = مقاس الباب اللي الحلق ده ليه (70/80/90/100) — اختياري. note: ملحوظة اختيارية
+  fr:{cm:10, code:'', doorW:'', kind:'full', qty:1, brSize:'', brQty:5, brLen:'', nonStd:false, jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:'', unit:'cm'},   // حلق منفصل: kind = 'full' (طقم كامل — الكمية × [٢ قائم ٢٢٠سم + ١ عارضة حلق علوية ١١٠سم]، والارتفاع يتغيّر بس لو nonStd=true) أو 'rods' (أعواد حرة — عدد وطول بيحددهم المستخدم من غير قيمة افتراضية). doorW = مقاس الباب اللي الحلق ده ليه (70/80/90/100) — اختياري. note: ملحوظة اختيارية
   // len = طول العود **بالوحدة المكتوبة** (state.br.unit: 'm' افتراضيًا أو 'cm')،
   // والتحويل لسنتي في brRodCm_() بس. code = كود/لون الباب (إجباري زي الحلق).
   br:{size:'6×9', code:'', rods:1, len:BROR_ROD_M_DEFAULT, unit:'m'},
@@ -3277,8 +3277,9 @@ function viewNew(){
   // برور مع الحلق الكامل (اختياري) — الباب بياخد ٥ عيدان، فهنا نفس الفكرة: عدد لكل طقم × عدد الأطقم
   const frBrOn = frKind==='full' && !!state.fr.brSize;
   const frBrPerSet = rodQty_(state.fr.brQty);
+  const frBrLenCm = (state.fr.brLen===''||state.fr.brLen==null) ? BROR_ROD_CM : Math.max(1, frCm_(state.fr.brLen)||BROR_ROD_CM);
   const frBrTotal = frBrOn ? Math.round(frBrPerSet*frQty*100)/100 : 0;
-  const frBrTxt = frBrTotal>0 ? ' + '+frBrTotal+' برور '+state.fr.brSize : '';
+  const frBrTxt = frBrTotal>0 ? ' + '+frBrTotal+' برور '+state.fr.brSize+(frBrLenCm!==BROR_ROD_CM?' ('+frBrLenCm+' سم)':'') : '';
   // سعر كل مقاس على حدة حسب طوله الفعلي
   const frJambPrice=rodPrice(frSel.price,frJambCm), frHeaderPrice=rodPrice(frSel.price,frHeaderCm);
   const frChips=FRAMES.map(f=>`
@@ -3435,7 +3436,9 @@ function viewNew(){
     ${frBrOn?`
     <label class="fld" style="margin-top:9px;max-width:220px"><span>عدد البرور لكل طقم</span>
       <input type="text" inputmode="decimal" placeholder="5" value="${esc(state.fr.brQty)}" data-act="fr-brqty"></label>
-    <div class="note" style="margin-top:6px">الإجمالي: <b>${frBrTotal||0}</b> عود برور ${esc(state.fr.brSize)} — طول العود ${BROR_ROD_CM} سم، وبتتسجل في الطلب كسطر برور بنفس لون الحلق.</div>`:''}
+    <label class="fld" style="margin-top:9px;max-width:220px"><span>ارتفاع البرور (${frUnit}) <span style="font-weight:400;color:var(--muted)">— فاضي = ${BROR_ROD_CM} سم</span></span>
+      <input type="text" inputmode="decimal" placeholder="${lenFromCm_(BROR_ROD_CM, state.fr.unit)}" value="${esc(state.fr.brLen)}" data-act="fr-brlen"></label>
+    <div class="note" style="margin-top:6px">الإجمالي: <b>${frBrTotal||0}</b> عود برور ${esc(state.fr.brSize)} — ارتفاع العود <b>${frBrLenCm} سم</b>، وبتتسجل في الطلب كسطر برور بنفس لون الحلق.</div>`:''}
     ${pricesVisible()&&frQty>0?`<div class="rp" style="margin-top:6px">${money(frJambPrice)} ج/عود ٢٢٠سم — ${money(frHeaderPrice)} ج/عود ١١٠سم</div>`:''}
     <button class="btn ghost sm" style="margin-top:9px" data-act="fr-nonstd-toggle">${frNonStd?'إخفاء الارتفاع المخصوص':'الارتفاع مش استاندر؟'}</button>
     ${frNonStd ? `
@@ -6905,6 +6908,7 @@ document.addEventListener('click',e=>{
         state.fr.jambCm  = حوّل(state.fr.jambCm);
         state.fr.headerCm = حوّل(state.fr.headerCm);
         state.fr.rodsCm  = حوّل(state.fr.rodsCm);
+        state.fr.brLen   = حوّل(state.fr.brLen);
         state.fr.extra = (state.fr.extra||[]).map(x=>({...x, cm:حوّل(x.cm)}));
         state.fr.unit = جديد;
       }
@@ -7229,6 +7233,7 @@ document.addEventListener('input',e=>{
   if(a==='fr-headerCm'){ state.fr.headerCm=decIn_(el.value); render(); return; }
   if(a==='fr-qty'){ state.fr.qty=el.value; render(); return; }
   if(a==='fr-brqty'){ state.fr.brQty=el.value; render(); return; }
+  if(a==='fr-brlen'){ state.fr.brLen=decIn_(el.value); render(); return; }
   if(a==='fr-rods'){ state.fr.rods=el.value; render(); return; }
   if(a==='fr-rodsCm'){ state.fr.rodsCm=decIn_(el.value); render(); return; }
   if(a==='fr-extra-cm'){ state.fr.extra[Number(el.dataset.i)].cm=decIn_(el.value); render(); return; }
@@ -7492,7 +7497,7 @@ function addRod(kind){
         const bb = BRORS.find(x=>x.size===st.brSize);
         if(bb && perSet>0){
           const brTotal = Math.round(perSet*qty*100)/100;
-          const rodCm = BROR_ROD_CM;
+          const rodCm = (st.brLen===''||st.brLen==null) ? BROR_ROD_CM : Math.max(1, frCm_(st.brLen)||BROR_ROD_CM);
           const spec = bb.size+' — '+rodCm+' سم'+(st.code?' — '+st.code:'');
           const bkey = 'bror|'+bb.size+'|'+rodCm+'|'+st.code+'|';
           const bex = state.cart.find(it=>it.kind==='bror' && it.key===bkey);
@@ -7525,7 +7530,7 @@ function addRod(kind){
     state.fr.jamb=2; state.fr.header=1;
     state.fr.jambCm=lenFromCm_(220, state.fr.unit); state.fr.headerCm=lenFromCm_(110, state.fr.unit);
     state.fr.extra=[]; state.fr.rods=''; state.fr.rodsCm=''; state.fr.doorW=''; state.fr.note=''; state.fr.qty=1; state.fr.nonStd=false;
-    state.fr.brSize=''; state.fr.brQty=5;
+    state.fr.brSize=''; state.fr.brQty=5; state.fr.brLen='';
   } else {
     const b = BRORS.find(x=>x.size===st.size)||BRORS[0];
     const rods = rodQty_(st.rods);
@@ -7687,7 +7692,7 @@ function resetPickerFor_(kind){
       custom:{w:'',h:'',qty:'',frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,
               frameKind:null,frameRodQty:'',frameForDoors:''}};
   } else if(kind==='frame'){
-    state.fr = {cm:10, code:'', doorW:'', kind:'full', qty:1, brSize:'', brQty:5, nonStd:false,
+    state.fr = {cm:10, code:'', doorW:'', kind:'full', qty:1, brSize:'', brQty:5, brLen:'', nonStd:false,
                 jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:'', unit:'cm'};
   } else if(kind==='bror'){
     state.br = {size:'6×9', code:'', rods:1, len:BROR_ROD_M_DEFAULT, unit:'m'};
