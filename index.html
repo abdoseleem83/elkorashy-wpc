@@ -8950,10 +8950,16 @@ function withoutCutLines_(o){
 // مستند الأدمن: بندوّر في طلبات المصنع بنفس رقم الموبايل. مستند العميل: طلبات جهازه.
 function otherOpenOrders_(o){
   if(!o) return [];
+  // ⚠️ باج كان هنا: الملحوظة كانت بتجيب كل الطلبات المفتوحة على الحساب/الجهاز (نفس رقم الموبايل)،
+  // والموزّع الواحد عنده عملاء كتير — فعميل جديد كان يطلع له أرقام طلبات ناس تانية.
+  // «العميل» هنا = صاحب الأوردر، فبنقارن بالاسم، ولو الطلب ده مالوش اسم مفيش ملحوظة.
+  const custKey = normName_(o.customer);
+  if(!custKey) return [];
   const skip = new Set([String(o.id||''), String(o.replacesId||'')].filter(Boolean));
   const out = [];
   const push = (x, status) => {
     if(!x || skip.has(String(x.id))) return;
+    if(normName_(x.customer)!==custKey) return;
     if(DUE_DONE_STATUSES.includes(status) || x.superseded) return;
     // طلب قديم من قبل الترقيم التسلسلي: مالوش رقم، فمنكتبش كوده الداخلي الطويل
     // (#W260904-002419ATB) — بنكتب «طلب» وتاريخه (من الكود نفسه) عشان يتعرف.
