@@ -8090,7 +8090,6 @@ function buildMessage(o){
   if(o.customerPhone) m+='تليفون صاحب الأوردر: '+o.customerPhone+'\n';
   m+='المخزن: '+WAREHOUSE+'\n';
   if(o.note) m+='ملاحظات: '+o.note+'\n';
-  { const ops = otherOpenOrders_(o); if(ops.length) m+='⚠️ ملحوظة: للعميل طلبات سابقة لسه ما خلصتش — رقم '+ops.slice(0,8).map(x=>x.no).join('، ')+'\n'; }
   m+='——————\n';
   // «خدمة قص» بتبان في عرض السعر بس. «تدعيم خشب» بيفضل — دي رسالة بتروح
   // للمصنع كمان، ولازم يعرف إن الباب ده عليه تدعيم.
@@ -9048,7 +9047,6 @@ function docHTML(o,mode,priced){
 `;
       })()}
 
-      ${isQuote ? '' : openOrdersNoteHTML_(o)}
       ${o.note?`<div style="margin-top:12px;padding:11px 14px;background:#FFF3D6;border:2px solid #E8B94A;border-inline-start:7px solid #D99A0B;border-radius:9px;font-size:13.5px;font-weight:800;color:#000">
         <span style="display:block;font-size:11.5px;font-weight:700;color:#444;margin-bottom:2px">ملاحظات عامة على الأوردر</span>
         ${esc(o.note)}</div>`:''}
