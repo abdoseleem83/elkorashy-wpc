@@ -319,6 +319,18 @@ input::placeholder{color:#A8B4C2}
 .hgtIn:focus{border-color:var(--brand);outline:none}
 .hgtIn::placeholder{color:#AEBBC8}
 .miniLbl{font-size:10px;color:var(--muted);font-weight:600;margin-top:9px;margin-bottom:4px}
+/* صف الباب + الحلق + البرور جنب بعض (v224) */
+.dfRow{display:grid;grid-template-columns:84px minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:stretch;margin-top:8px}
+.dfCol{display:flex;flex-direction:column;gap:6px;min-width:0}
+.dfCol .dfH{font-size:11px;color:var(--muted);font-weight:700;text-align:center}
+.dfCol .miniChip{width:100%;min-height:38px;padding:6px 4px;text-align:center;display:flex;align-items:center;justify-content:center}
+.dfCol .stepHint{margin-top:0;text-align:center;padding:8px 4px;border:1.5px dashed var(--line);border-radius:9px}
+.dfDoor{display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;padding:8px 4px;border:1.5px solid var(--line);border-radius:10px}
+.dfDoor b{font-size:15px;color:var(--navy)}
+.dfDoor .qty,.dfDoor .qty.sm{flex-direction:column;transform:none;width:100%}
+.dfDoor .qty button{width:100%;height:34px}
+.dfDoor .qty input,.dfDoor .qty input.qtyEmpty{width:100%;border-inline:0;border-block:1.5px solid var(--line);padding:6px 0}
+.exChips{margin-top:10px}
 .miniChips{display:flex;flex-wrap:wrap;gap:6px}
 .miniChip{border:1.5px solid var(--line);border-radius:9px;padding:6px 10px;font-size:11.5px;
   font-weight:600;color:var(--ink);background:#fff}
@@ -1978,7 +1990,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v224';
+const APP_BUILD   = 'v225';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3202,25 +3214,32 @@ function viewNew(){
       ${open?`<div class="ddB">${inner}</div>`:''}</div>`;
   };
   // الخطوات: الكمية ← الحلق ← (ارتفاع الحلق + البرور بعد ما الحلق يتحدد) ← خيارات إضافية منسدلة
-  const stepsFor = (e, w) => {
+  const stepsFor = (e, w, doorHtml) => {
     const isC = w==='custom';
     const A = (n)=> isC ? 'cust-'+n : 'size-'+n;
     const wA = isC ? '' : ` data-w="${w}"`;
-    const bits = [];
-    if(e.hafr) bits.push('حفر'); if(e.wood) bits.push('تدعيم'); if(e.print) bits.push('طباعة'); if(!isC && e.height) bits.push('ارتفاع '+e.height);
-    const extras = dd('ex'+w, 'خيارات إضافية', bits.join('، ') || 'حفر · تدعيم · طباعة · ارتفاع',
-      `<div class="miniLbl">النوع</div><div class="miniChips">${hafrMiniChips(e.hafr,w)}</div>
-       <div class="miniLbl">التدعيم</div><div class="miniChips">${woodMiniChips(e.wood,w)}</div>
-       <div class="miniLbl">الطباعة</div><div class="miniChips">${printMiniChips(e.print,w)}</div>
-       ${isC?'':`<label class="fld sm"><span style="color:var(--danger)">ارتفاع الفتحة المعمارية (سم)</span>
-        <input type="text" inputmode="decimal" class="hgtIn" value="${esc(e.height||'')}" placeholder="استاندر ${DOOR_STD_HEIGHT}" data-act="size-height" data-w="${w}"></label>`}`);
-    const frameStep = `<div class="miniLbl">١) الحلق</div><div class="miniChips">${frameMiniChips(e.frame,w)}</div>`;
-    const afterFrame = e.frame==null
-      ? `<div class="stepHint">اختار الحلق (أو «بدون») عشان يظهر البرور</div>`
-      : `${e.frame?`<label class="fld sm"><span>ارتفاع الحلق (سم) — اختياري</span>
-          <input type="text" inputmode="decimal" class="hgtIn" value="${esc(e.frameHeight||'')}" placeholder="سيبها فاضية لو عادي" data-act="${A('frame-height')}"${wA}></label>`:''}
-        <div class="miniLbl">٢) البرور</div><div class="miniChips">${dbrorMiniChips(e.dbror,w)}</div>`;
-    return extras + frameStep + afterFrame;
+    const frameCol = `<div class="dfCol"><div class="dfH">الحلق</div>${frameMiniChips(e.frame,w)}</div>`;
+    const barCol = e.frame==null
+      ? `<div class="dfCol"><div class="dfH">البرور</div><div class="stepHint">اختار الحلق الأول (أو «بدون»)</div></div>`
+      : `<div class="dfCol"><div class="dfH">البرور</div>${dbrorMiniChips(e.dbror,w)}</div>`;
+    const row = `<div class="dfRow">${doorHtml}${frameCol}${barCol}</div>`;
+    // خيارات إضافية: اختيار أكتر من حاجة مع بعض (كل زرار بيشتغل لوحده: ضغطة تشغّل وضغطة تانية تلغي)
+    const tog = (act, on, label) => `<button class="miniChip ${on?'on':''}" data-act="${act}"${wA} data-v="${on?0:1}">${label}</button>`;
+    const extraChips = `<div class="miniLbl">خيارات إضافية — تقدر تختار أكتر من واحدة</div>
+      <div class="miniChips exChips" style="margin-top:0">
+        ${tog(A('hafr'), e.hafr, 'حفر'+(pricesVisible()?` (+${HAFR_EXTRA}ج)`:''))}
+        ${tog(A('wood'), e.wood, 'تدعيم خشب'+(pricesVisible()?` (+${WOOD_EXTRA}ج)`:''))}
+        ${tog(A('print'), e.print, 'طباعة'+(pricesVisible()?` (+${PRINT_EXTRA}ج)`:''))}
+      </div>`;
+    const hBits = [];
+    if(!isC && e.height) hBits.push('فتحة '+e.height);
+    if(e.frame && e.frameHeight) hBits.push('حلق '+e.frameHeight);
+    const heights = dd('ex'+w, 'ارتفاعات (اختياري)', hBits.join('، ') || 'الفتحة · الحلق',
+      `${isC?'':`<label class="fld sm"><span style="color:var(--danger)">ارتفاع الفتحة المعمارية (سم)</span>
+        <input type="text" inputmode="decimal" class="hgtIn" value="${esc(e.height||'')}" placeholder="استاندر ${DOOR_STD_HEIGHT}" data-act="size-height" data-w="${w}"></label>`}
+       ${e.frame?`<label class="fld sm"><span>ارتفاع الحلق (سم) — اختياري</span>
+        <input type="text" inputmode="decimal" class="hgtIn" value="${esc(e.frameHeight||'')}" placeholder="سيبها فاضية لو عادي" data-act="${A('frame-height')}"${wA}></label>`:`<div class="stepHint">اختار الحلق الأول عشان تحدد ارتفاعه</div>`}`);
+    return row + extraChips + heights;
   };
 
   const sizeCards = selWidths.map(w=>{
@@ -3233,15 +3252,13 @@ function viewNew(){
             ? `متوفر بالمخزن (${st} باب) — <b>${READY_HOURS_TXT}</b>`
             : `المتوفر دلوقتي <b>${st}</b> بس من الكمية اللي طلبتها — الباقي بيتصنّع حسب الطلب.`}</span></div>`);
     return `<div class="sizeCard">
-      <div class="scHead"><b>${w} سم</b>
-        <div class="qty sm">
-          <button data-act="size-qty-minus" data-w="${w}">−</button>
-          <input type="number" inputmode="numeric" min="1" value="${e.qty}" placeholder="الكمية" class="qtyEmpty" data-act="size-qty-set" data-w="${w}">
-          <button data-act="size-qty-plus" data-w="${w}">+</button>
-        </div>
-      </div>
       ${stockLine}
-      ${stepsFor(e,w)}
+      ${stepsFor(e,w,`<div class="dfCol"><div class="dfH">الباب</div><div class="dfDoor"><b>${w} سم</b>
+        <div class="qty">
+          <button data-act="size-qty-plus" data-w="${w}">+</button>
+          <input type="number" inputmode="numeric" min="1" value="${e.qty}" placeholder="الكمية" class="qtyEmpty" data-act="size-qty-set" data-w="${w}">
+          <button data-act="size-qty-minus" data-w="${w}">−</button>
+        </div></div></div>`)}
     </div>`;
   }).join('');
 
@@ -3258,7 +3275,7 @@ function viewNew(){
         <button data-act="cust-qty-plus">+</button>
       </div>
       <div class="note">سعر الباب زي المقاس العادي، و<b>«${CUT_SERVICE_NOTE_}»</b> بتتحط بند مستقل تحته بالكمية والسعر (${CUSTOM_EXTRA} ج للباب).</div>
-      ${customReady_(p) ? stepsFor(p.custom,'custom') : `<div class="stepHint">اكتب العرض والارتفاع عشان تظهر باقي الاختيارات</div>`}
+      ${customReady_(p) ? stepsFor(p.custom,'custom',`<div class="dfCol"><div class="dfH">الباب</div><div class="dfDoor"><b>خاص</b><span class="dfH">${esc(p.custom.w)}×${esc(p.custom.h)}</span></div></div>`) : `<div class="stepHint">اكتب العرض والارتفاع عشان تظهر باقي الاختيارات</div>`}
     </div>` : '';
 
   const frKind=state.fr.kind==='rods'?'rods':'full';
