@@ -331,6 +331,26 @@ input::placeholder{color:#A8B4C2}
 .dfDoor .qty button{width:100%;height:34px}
 .dfDoor .qty input,.dfDoor .qty input.qtyEmpty{width:100%;border-inline:0;border-block:1.5px solid var(--line);padding:6px 0}
 .exChips{margin-top:10px}
+/* تمييز كل عمود بخلفية وحدود (v226) */
+.dfCol{padding:8px 6px;border-radius:12px;border:1.5px solid transparent}
+.dfCol .dfH{font-size:12px;font-weight:800}
+.dfCol.cDoor{background:rgba(46,127,240,.12);border-color:rgba(46,127,240,.35)}
+.dfCol.cDoor .dfH{color:#1F63C4}
+.dfCol.cFrame{background:rgba(232,160,20,.16);border-color:rgba(214,140,10,.45)}
+.dfCol.cFrame .dfH{color:#9A6205}
+.dfCol.cBar{background:rgba(30,160,110,.14);border-color:rgba(24,140,95,.42)}
+.dfCol.cBar .dfH{color:#0F7A52}
+.dfDoor{border:0;background:transparent;padding:0}
+.dfCol .miniChip:not(.on),.exChips .miniChip:not(.on){background:rgba(255,255,255,.88)!important;border:1.5px solid rgba(20,35,58,.22)!important;color:var(--ink)}
+.dfCol .miniChip.on{box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.exChips .miniChip{padding:8px 14px;min-height:38px}
+html[data-theme="dark"] .dfCol.cDoor{background:rgba(63,169,245,.16);border-color:rgba(63,169,245,.45)}
+html[data-theme="dark"] .dfCol.cDoor .dfH{color:#8CCBFA}
+html[data-theme="dark"] .dfCol.cFrame{background:rgba(240,180,40,.15);border-color:rgba(240,180,40,.45)}
+html[data-theme="dark"] .dfCol.cFrame .dfH{color:#F3CB6B}
+html[data-theme="dark"] .dfCol.cBar{background:rgba(50,200,140,.15);border-color:rgba(50,200,140,.45)}
+html[data-theme="dark"] .dfCol.cBar .dfH{color:#7BE0B5}
+html[data-theme="dark"] .dfCol .miniChip:not(.on),html[data-theme="dark"] .exChips .miniChip:not(.on){background:rgba(255,255,255,.07)!important;border-color:rgba(255,255,255,.28)!important}
 .miniChips{display:flex;flex-wrap:wrap;gap:6px}
 .miniChip{border:1.5px solid var(--line);border-radius:9px;padding:6px 10px;font-size:11.5px;
   font-weight:600;color:var(--ink);background:#fff}
@@ -1990,7 +2010,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v225';
+const APP_BUILD   = 'v226';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3218,10 +3238,10 @@ function viewNew(){
     const isC = w==='custom';
     const A = (n)=> isC ? 'cust-'+n : 'size-'+n;
     const wA = isC ? '' : ` data-w="${w}"`;
-    const frameCol = `<div class="dfCol"><div class="dfH">الحلق</div>${frameMiniChips(e.frame,w)}</div>`;
+    const frameCol = `<div class="dfCol cFrame"><div class="dfH">الحلق</div>${frameMiniChips(e.frame,w)}</div>`;
     const barCol = e.frame==null
-      ? `<div class="dfCol"><div class="dfH">البرور</div><div class="stepHint">اختار الحلق الأول (أو «بدون»)</div></div>`
-      : `<div class="dfCol"><div class="dfH">البرور</div>${dbrorMiniChips(e.dbror,w)}</div>`;
+      ? `<div class="dfCol cBar"><div class="dfH">البرور</div><div class="stepHint">اختار الحلق الأول (أو «بدون»)</div></div>`
+      : `<div class="dfCol cBar"><div class="dfH">البرور</div>${dbrorMiniChips(e.dbror,w)}</div>`;
     const row = `<div class="dfRow">${doorHtml}${frameCol}${barCol}</div>`;
     // خيارات إضافية: اختيار أكتر من حاجة مع بعض (كل زرار بيشتغل لوحده: ضغطة تشغّل وضغطة تانية تلغي)
     const tog = (act, on, label) => `<button class="miniChip ${on?'on':''}" data-act="${act}"${wA} data-v="${on?0:1}">${label}</button>`;
@@ -3253,7 +3273,7 @@ function viewNew(){
             : `المتوفر دلوقتي <b>${st}</b> بس من الكمية اللي طلبتها — الباقي بيتصنّع حسب الطلب.`}</span></div>`);
     return `<div class="sizeCard">
       ${stockLine}
-      ${stepsFor(e,w,`<div class="dfCol"><div class="dfH">الباب</div><div class="dfDoor"><b>${w} سم</b>
+      ${stepsFor(e,w,`<div class="dfCol cDoor"><div class="dfH">الباب</div><div class="dfDoor"><b>${w} سم</b>
         <div class="qty">
           <button data-act="size-qty-plus" data-w="${w}">+</button>
           <input type="number" inputmode="numeric" min="1" value="${e.qty}" placeholder="الكمية" class="qtyEmpty" data-act="size-qty-set" data-w="${w}">
@@ -3275,7 +3295,7 @@ function viewNew(){
         <button data-act="cust-qty-plus">+</button>
       </div>
       <div class="note">سعر الباب زي المقاس العادي، و<b>«${CUT_SERVICE_NOTE_}»</b> بتتحط بند مستقل تحته بالكمية والسعر (${CUSTOM_EXTRA} ج للباب).</div>
-      ${customReady_(p) ? stepsFor(p.custom,'custom',`<div class="dfCol"><div class="dfH">الباب</div><div class="dfDoor"><b>خاص</b><span class="dfH">${esc(p.custom.w)}×${esc(p.custom.h)}</span></div></div>`) : `<div class="stepHint">اكتب العرض والارتفاع عشان تظهر باقي الاختيارات</div>`}
+      ${customReady_(p) ? stepsFor(p.custom,'custom',`<div class="dfCol cDoor"><div class="dfH">الباب</div><div class="dfDoor"><b>خاص</b><span class="dfH">${esc(p.custom.w)}×${esc(p.custom.h)}</span></div></div>`) : `<div class="stepHint">اكتب العرض والارتفاع عشان تظهر باقي الاختيارات</div>`}
     </div>` : '';
 
   const frKind=state.fr.kind==='rods'?'rods':'full';
