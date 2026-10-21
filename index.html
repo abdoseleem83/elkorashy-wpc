@@ -1978,7 +1978,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v227';
+const APP_BUILD   = 'v228';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -7204,9 +7204,13 @@ document.addEventListener('input',e=>{
   if(a==='cust'){
     const k=el.dataset.k;
     const v = (k==='w'||k==='h') ? decIn_(el.value) : el.value;
+    const wasReady = customReady_(state.pick);
     state.pick.custom[k]=v;
     if(el.value!==v) el.value=v;
-    refreshSummary(); return;
+    refreshSummary();
+    // خيارات الحلق والبرور بتظهر بس لما المقاس الخاص يكتمل — لازم نرسم الشاشة تاني أول ما يكتمل (أو يبطل يكتمل)
+    if(wasReady !== customReady_(state.pick)) render();
+    return;
   }
   if(a==='pick-note'){ state.pick.note=el.value; return; }
   if(a==='cust-name'){ state.customer.name=el.value; return; }
@@ -7229,7 +7233,7 @@ document.addEventListener('input',e=>{
   if(a==='size-frame-fordoors'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.frameForDoors=el.value; return; }
   if(a==='cust-frame-fordoors'){ state.pick.custom.frameForDoors=el.value; return; }
   if(a==='size-qty-set'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.qty=(parseInt(el.value,10)>0?parseInt(el.value,10):''); refreshSummary(); return; }
-  if(a==='cust-qty-set'){ state.pick.custom.qty=(parseInt(el.value,10)>0?parseInt(el.value,10):''); refreshSummary(); return; }
+  if(a==='cust-qty-set'){ const wasReady=customReady_(state.pick); state.pick.custom.qty=(parseInt(el.value,10)>0?parseInt(el.value,10):''); refreshSummary(); if(wasReady!==customReady_(state.pick)) render(); return; }
   if(a==='acc-set'){ state.acc[el.dataset.id]=Math.max(0,parseFloat(el.value)||0); refreshAccBtn(); return; }
   if(a==='fr-jambCm'){ state.fr.jambCm=decIn_(el.value); render(); return; }
   if(a==='fr-headerCm'){ state.fr.headerCm=decIn_(el.value); render(); return; }
