@@ -1774,7 +1774,7 @@ input::placeholder,textarea::placeholder{color:#7A8DA6!important}
 html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::placeholder{color:#9FB0C6!important}
 
 /* ============================================================
-   v237 — ألوان خانات الكتابة + أيقونة الكمية
+   v229+ — ألوان خانات الكتابة + أيقونة الكمية
    كل خانة كتابة ليها خلفية مميّزة عن الكارت اللي حواليها، واللون بيدل على النوع:
    أزرق = نص/اسم/تليفون · أخضر = أرقام ومقاسات · كهرماني = الكمية
    بنفسجي = ملاحظات وتواريخ · رمادي مزرق = قوائم الاختيار
@@ -1878,6 +1878,122 @@ label.fld span{margin-bottom:5px;font-weight:700}
 /* جداول وقوائم طويلة: تمرير ناعم من غير شريط تمرير تقيل */
 .stktbl,.tblwrap,[style*="overflow-x:auto"],[style*="overflow:auto"]{-webkit-overflow-scrolling:touch;scrollbar-width:thin}
 ::selection{background:rgba(63,169,245,.28)}
+
+/* v231 — ترتيب كارت المقاس: الكمية ← الحلق ← البرور ← خيارات إضافية */
+.sizeCard .scHead{padding-bottom:9px;margin-bottom:9px;border-bottom:1px dashed var(--line)}
+.sizeCard .miniLbl{margin:11px 0 6px}
+.sizeCard .miniLbl:first-of-type{margin-top:4px}
+.sizeCard .dd{margin-top:13px;padding-top:11px;border-top:1px dashed var(--line)}
+
+/* v233 — إصلاح عرض الهيدر: كان بيزق الصفحة أعرض من الشاشة ويعمل تمرير جانبي */
+body{overflow-x:clip}
+.top-row{flex-wrap:wrap;row-gap:6px}
+.top-row .ttl{min-width:0;flex:1 1 120px}
+.top-row .ttl .t1,.top-row .ttl .t2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top-row .wh-chip{flex:none}
+.top-row .verstrip{margin-top:0;margin-inline-start:auto;flex:none}
+
+/* v234 — بحث الطلبات + شريط السلة العائم */
+.ord[hidden],#ordNone[hidden],#cartFloat[hidden]{display:none!important}
+.ordFilter{position:sticky;top:0;z-index:5;margin:0 0 12px;padding:2px 0 8px;background:var(--bg,transparent)}
+.ordFilter input{width:100%;box-sizing:border-box;padding:11px 14px;border-radius:13px;font-size:14px}
+.ordChips{display:flex;gap:7px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none}
+.ordChips::-webkit-scrollbar{display:none}
+.ordChip{flex:none;padding:7px 13px!important;font-size:12.5px!important;border-radius:20px!important}
+.ordChip b{margin-inline-start:4px;opacity:.75}
+.ordChip.on{background:var(--brand)!important;color:#fff!important;border-color:var(--brand)!important}
+#cartFloat{position:fixed;inset-inline:12px;z-index:60;display:flex;align-items:center;gap:9px;padding:12px 15px;border:0;border-radius:16px;
+  background:linear-gradient(135deg,var(--brand-lt,#3FA9F5),var(--brand,#1668B8));color:#fff;font-weight:700;font-size:14px;
+  box-shadow:0 8px 22px rgba(11,79,168,.38)}
+#cartFloat svg.i{width:20px;height:20px;flex:none}
+#cartFloat b{margin-inline-start:auto;font-size:15px}
+#cartFloat em{font-style:normal;font-size:12px;opacity:.9}
+#cartFloat:active{transform:scale(.98)}
+.ordChip{white-space:nowrap}
+.oa .btn{white-space:nowrap;font-size:12.5px;padding-inline:6px;gap:5px}
+.oa .btn svg.i{width:16px;height:16px}
+
+/* ============ v235 — الرئيسية الجديدة ============ */
+.hm2-hero{position:relative;overflow:hidden;border-radius:24px;padding:18px 16px 16px;color:#fff;margin-bottom:14px;
+  background:linear-gradient(160deg,#0E2A57 0%,#0A1B3D 55%,#071229 100%);box-shadow:0 14px 34px -14px rgba(7,18,41,.75),inset 0 0 0 1px rgba(111,193,250,.16)}
+.hm2-hero .g1,.hm2-hero .g2{position:absolute;border-radius:50%;filter:blur(38px);pointer-events:none}
+.hm2-hero .g1{width:170px;height:170px;top:-60px;inset-inline-start:-40px;background:rgba(63,169,245,.38)}
+.hm2-hero .g2{width:150px;height:150px;bottom:-70px;inset-inline-end:-30px;background:rgba(154,140,240,.28)}
+.hm2-hero>*{position:relative}
+.hm2-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.hm2-top small{display:block;font-size:12.5px;opacity:.8}
+.hm2-top b{display:block;font-size:22px;margin-top:2px}
+.hm2-cart{position:relative;width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.18)}
+.hm2-cart svg.i{width:22px;height:22px}
+.hm2-cart span{position:absolute;top:-6px;inset-inline-start:-6px;min-width:20px;height:20px;border-radius:10px;background:#F0736A;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 5px}
+.hm2-new{width:100%;margin-top:16px;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border-radius:16px;font-size:16px;font-weight:800;
+  background:linear-gradient(135deg,#6FC1FA,#2E7FF0);color:#fff;box-shadow:0 10px 24px -8px rgba(63,169,245,.75)}
+.hm2-new svg.i{width:20px;height:20px}
+.hm2-hero .hm-last{margin-top:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:16px}
+.hm2-ks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.hm2-k{position:relative;display:grid;grid-template-columns:auto 1fr;grid-template-areas:"i n" "t t";align-items:center;gap:4px 10px;text-align:start;
+  padding:13px;border-radius:18px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
+.hm2-k .ki{grid-area:i;width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:color-mix(in srgb,var(--kc) 18%,transparent);color:var(--kc)}
+.hm2-k .ki svg.i{width:21px;height:21px}
+.hm2-k b{grid-area:n;font-size:30px;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums;justify-self:end}
+.hm2-k .kt{grid-area:t;font-size:12.5px;font-weight:700;color:var(--muted)}
+.hm2-k:active{transform:scale(.97)}
+html[data-theme="dark"] .hm2-k{box-shadow:0 12px 26px -16px var(--kc),inset 0 0 0 1px rgba(255,255,255,.05)}
+.hm2-qs{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;margin-bottom:6px;scrollbar-width:none}
+.hm2-qs::-webkit-scrollbar{display:none}
+.hm2-q{position:relative;flex:1 0 74px;display:flex;flex-direction:column;align-items:center;gap:7px;padding:4px 2px;background:none}
+.hm2-q .qi{width:52px;height:52px;border-radius:18px;display:grid;place-items:center;background:color-mix(in srgb,var(--qc) 16%,var(--card));color:var(--qc);
+  border:1px solid color-mix(in srgb,var(--qc) 35%,transparent)}
+.hm2-q .qi svg.i{width:24px;height:24px}
+.hm2-q .qt{font-size:11.5px;font-weight:700;color:var(--ink);text-align:center;white-space:nowrap}
+.hm2-q:active .qi{transform:scale(.92)}
+.hm2-o{padding:13px 14px;margin-bottom:10px;border-radius:18px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
+.hm2-o .oh{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hm2-o .oh b{font-size:16px}
+.hm2-o .oc{font-size:12.5px;color:var(--muted);flex:1;min-width:0}
+.hm2-o .os{font-size:12.5px;color:var(--muted);margin-top:5px}
+.hm2-p{height:6px;border-radius:6px;background:var(--line);margin-top:10px;overflow:hidden}
+.hm2-p i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#3FA9F5,#4FC08A)}
+.hm2-o .dc{flex:none}
+.hm2-o .dc>*{display:inline-flex;width:auto;margin:0;white-space:nowrap;font-size:11.5px;padding:4px 10px}
+
+/* ============ v236 — شاشة السلة ============ */
+.ct-hero{position:relative;overflow:hidden;border-radius:24px;padding:16px;color:#fff;margin-bottom:14px;
+  background:linear-gradient(160deg,#0E2A57 0%,#0A1B3D 55%,#071229 100%);box-shadow:0 14px 34px -14px rgba(7,18,41,.75),inset 0 0 0 1px rgba(111,193,250,.16)}
+.ct-hero .g1,.ct-hero .g2{position:absolute;border-radius:50%;filter:blur(36px);pointer-events:none}
+.ct-hero .g1{width:150px;height:150px;top:-60px;inset-inline-start:-30px;background:rgba(79,192,138,.32)}
+.ct-hero .g2{width:140px;height:140px;bottom:-70px;inset-inline-end:-20px;background:rgba(63,169,245,.34)}
+.ct-hero>*{position:relative}
+.ct-top{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.ct-top small{display:block;font-size:12.5px;opacity:.78}
+.ct-top b{display:block;font-size:24px;margin-top:2px}
+.ct-tot{text-align:end}.ct-tot b{font-size:26px;font-variant-numeric:tabular-nums}.ct-tot em{font-style:normal;font-size:14px;opacity:.8}
+.ct-steps{display:flex;align-items:center;gap:6px;margin-top:15px}
+.ct-steps span{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:6px 11px;border-radius:20px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);white-space:nowrap}
+.ct-steps span svg.i{width:15px;height:15px}
+.ct-steps span.on{background:rgba(79,192,138,.22);color:#9FF0C6}
+.ct-steps span.warn{background:rgba(240,115,106,.22);color:#FFB4AE}
+.ct-steps i{flex:1;height:2px;border-radius:2px;background:rgba(255,255,255,.18);min-width:8px}
+.line{border:1px solid var(--line);border-radius:16px;padding:10px;margin-bottom:9px;box-shadow:var(--shadow)}
+.total{border-radius:16px}
+.ct-info{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.ct-info>div{padding:9px 11px;border-radius:13px;background:rgba(63,169,245,.09);border:1px solid rgba(63,169,245,.2);min-width:0}
+.ct-info span{display:block;font-size:11px;color:var(--muted);font-weight:700}
+.ct-info b{display:block;font-size:13.5px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ct-fix{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px;margin-bottom:12px;border-radius:13px;font-size:13px;font-weight:800;
+  background:rgba(240,115,106,.14);color:var(--danger-ink,#C6362D);border:1.5px dashed rgba(240,115,106,.55)}
+.ct-fix svg.i{width:17px;height:17px}
+.btn.ct-send{background:linear-gradient(135deg,#2BD576,#0E9F6E)!important;color:#fff!important;box-shadow:0 10px 22px -8px rgba(14,159,110,.6)}
+
+/* v236 — شاشة «طلب جديد»: نفس هوية الرئيسية والسلة */
+.hero{position:relative;overflow:hidden;background:linear-gradient(160deg,#0E2A57 0%,#0A1B3D 55%,#071229 100%)!important;
+  box-shadow:0 14px 34px -14px rgba(7,18,41,.75),inset 0 0 0 1px rgba(111,193,250,.16)!important;border-radius:22px!important}
+.hero::before,.hero::after{content:"";position:absolute;border-radius:50%;filter:blur(34px);pointer-events:none}
+.hero::before{width:140px;height:140px;top:-60px;inset-inline-end:-20px;background:rgba(63,169,245,.36)}
+.hero::after{width:120px;height:120px;bottom:-60px;inset-inline-start:-10px;background:rgba(154,140,240,.26)}
+.hero>*{position:relative;z-index:1}
+.secTile.on{box-shadow:0 0 0 2px var(--brand),0 10px 22px -10px var(--brand)}
+body.hasFloat #view{padding-bottom:84px}
 </style>
 </head>
 <body>
@@ -2086,7 +2202,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v230';
+const APP_BUILD   = 'v236';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3192,29 +3308,40 @@ function viewHome(){
       <div class="hm-sl"><span>استلام ← تنفيذ ← جاهز ← تسليم</span></div>
     </div>`;
   }
-  const tile = (act, to, ic, t, tb, tc, badge)=>`<button class="hm-t" data-act="${act}" ${to?`data-to="${to}"`:''} style="--tb:${tb};--tc:${tc}">
-      ${badge?`<span class="bd">${badge}</span>`:''}<span class="ic">${ico(ic)}</span>${t}</button>`;
-  const tiles = [
-    tile('home-go','orders','truck','تابع طلبك','rgba(63,169,245,.16)','var(--info-ink)'),
-    last ? tile('home-repeat','','refresh','كرّر آخر أوردر','rgba(79,192,138,.16)','var(--ok-ink)') : '',
-    tile('home-go','cart','cart','السلة','rgba(217,164,65,.16)','var(--warn-ink)', cartN||''),
-    tile('home-sec','doors','door','كتالوج الأبواب','rgba(63,169,245,.16)','var(--info-ink)'),
-    tile('home-sec','acc','parts','الإكسسوارات','rgba(217,164,65,.16)','var(--warn-ink)'),
-    tile('home-bank','','money','بيانات التحويل','rgba(240,115,106,.16)','var(--danger-ink)'),
-    FACTORY_PHONE ? tile('home-call','','phone','كلّم المصنع','rgba(79,192,138,.16)','var(--ok-ink)') : ''
+  // ---- v235: رئيسية جديدة: هيرو + كروت أرقام + اختصارات + أوردرات شغّالة بشريط تقدّم ----
+  const hr = new Date().getHours();
+  const greet = hr<5 ? 'سهرانين النهارده؟' : hr<12 ? 'صباح الخير' : hr<17 ? 'نهارك سعيد' : 'مساء الخير';
+  const cnt = {new:0,prog:0,ready:0,done:0};
+  orders.forEach(o=>{ const g=ordGroup_(homeStatus_(o)); if(g in cnt) cnt[g]++; });
+  const kpi = (k, ic, t, col)=>`<button class="hm2-k" data-hmk="${k}" style="--kc:${col}">
+      <span class="ki">${ico(ic)}</span><b>${cnt[k]}</b><span class="kt">${t}</span></button>`;
+  const kpis = kpi('new','doc','جديدة','#3FA9F5') + kpi('prog','factory','تحت التنفيذ','#D9A441')
+             + kpi('ready','checkC','جاهزة للتحميل','#4FC08A') + kpi('done','truck','اتسلّمت','#9A8CF0');
+  const q = (act, to, ic, t, col, badge)=>`<button class="hm2-q" data-act="${act}" ${to?`data-to="${to}"`:''} style="--qc:${col}">
+      ${badge?`<span class="bd">${badge}</span>`:''}<span class="qi">${ico(ic)}</span><span class="qt">${t}</span></button>`;
+  const quick = [
+    last ? q('home-repeat','','refresh','كرّر آخر أوردر','#4FC08A') : '',
+    q('home-sec','doors','door','الأبواب','#3FA9F5'),
+    q('home-sec','acc','parts','الإكسسوارات','#D9A441'),
+    q('home-bank','','money','التحويل','#F0736A'),
+    FACTORY_PHONE ? q('home-call','','phone','المصنع','#4FC08A') : ''
   ].join('');
   const shown = active.slice(0,3);
-  const list = shown.length ? shown.map(o=>`<div class="hm-o" data-act="home-go" data-to="orders">
-      <div class="t"><b>${esc(orderNoText_(o))}</b>${o.customer?` <span style="font-weight:400;color:var(--muted);font-size:12px">· ${esc(o.customer)}</span>`:''}
-        <div>${esc(o.qty||0)} قطعة · ${esc((STATUS[homeStatus_(o)]||STATUS.New).ar)}</div></div>
-      ${homeDueChip_(o)}</div>`).join('')
+  const list = shown.length ? shown.map(o=>{ const n = HOME_STEPS_[homeStatus_(o)]||1;
+    return `<div class="hm2-o" data-act="home-go" data-to="orders">
+      <div class="oh"><b>${esc(orderNoText_(o))}</b><span class="oc">${o.customer?esc(o.customer):''}</span><span class="dc">${homeDueChip_(o)}</span></div>
+      <div class="os">${esc(o.qty||0)} قطعة · ${esc((STATUS[homeStatus_(o)]||STATUS.New).ar)}</div>
+      <div class="hm2-p"><i style="width:${n*25}%"></i></div></div>`; }).join('')
     : `<div class="hm-empty">مفيش أوردرات شغالة دلوقتي — ابدأ بأوردر جديد.</div>`;
-  return `<div class="hm-hero">
-      <div class="hm-top"><div><small>أهلًا بيك</small><b>${name?esc(name):'في القرشي أبواب WPC'}</b></div><img src="${ASSETS.logo}" alt=""></div>
+  return `<section class="hm2-hero">
+      <div class="g1"></div><div class="g2"></div>
+      <div class="hm2-top"><div><small>${greet} 👋</small><b>${name?esc(name):'في القرشي أبواب WPC'}</b></div>
+        <button class="hm2-cart" data-act="home-go" data-to="cart" aria-label="السلة">${ico('cart')}${cartN?`<span>${cartN}</span>`:''}</button></div>
+      <button class="hm2-new" data-act="home-go" data-to="new">${ico('plus')} أوردر جديد</button>
       ${lastHtml}
-    </div>
-    <button class="hm-new" data-act="home-go" data-to="new">${ico('plus')} أوردر جديد</button>
-    <div class="hm-grid">${tiles}</div>
+    </section>
+    <div class="hm2-ks">${kpis}</div>
+    <div class="hm2-qs">${quick}</div>
     <div class="hm-h"><span>أوردراتك الشغالة</span>${active.length>3?`<button data-act="home-go" data-to="orders">عرض الكل (${active.length})</button>`:''}</div>
     ${list}${verBar()}`;
 }
@@ -3328,7 +3455,7 @@ function viewNew(){
       : `${e.frame?`<label class="fld sm"><span>ارتفاع الحلق (سم) — اختياري</span>
           <input type="text" inputmode="decimal" class="hgtIn" value="${esc(e.frameHeight||'')}" placeholder="سيبها فاضية لو عادي" data-act="${A('frame-height')}"${wA}></label>`:''}
         <div class="miniLbl">٢) البرور</div><div class="miniChips">${dbrorMiniChips(e.dbror,w)}</div>`;
-    return extras + frameStep + afterFrame;
+    return frameStep + afterFrame + extras;
   };
 
   const sizeCards = selWidths.map(w=>{
@@ -3693,13 +3820,13 @@ function viewNew(){
 
   const SEC_DEFS_ = [
     ['doors','door','الأبواب','11 لون جاهزين',secDoors],
-    ['acc','parts','الإكسسوارات','مقابض · كوالين · مفصلات',secAcc],
     ['frame','frame','حلق فقط','قايم وعارضة علوية',secFrame],
-    ['mabra','mabra','معبرة','بدل الحلق (ديكور)',secMabra],
-    ['strip','strip','شريط','شرائط حافة',secStrip],
-    ['veneer','veneer','قشرة','قشرة للأبواب',secVeneer],
     ['bror','bror','برور فقط','برور بالعود',secBror],
-    ['prodium','panel','ألواح بروديوم','ألواح للديكور',secProdium]
+    ['acc','parts','الإكسسوارات','مقابض · كوالين · مفصلات',secAcc],
+    ['mabra','mabra','معبرة','بدل الحلق (ديكور)',secMabra],
+    ['prodium','panel','ألواح بروديوم','ألواح للديكور',secProdium],
+    ['strip','strip','شريط','شرائط حافة',secStrip],
+    ['veneer','veneer','قشرة','قشرة للأبواب',secVeneer]
   ];
   const secAccordion_ = `<div class="secTiles">` + SEC_DEFS_.map(([k,ic,t])=>
       `<button class="secTile ${state.newSection===k?'on':''}" data-act="sec" data-s="${k}"><span class="ti" data-s="${k}">${ico(ic)}</span><span class="tx">${t}</span></button>`
@@ -3877,7 +4004,15 @@ function viewCart(){
 
   const ok=profileOk();
   const editing = !!state.editingId;
+  const itemsN = state.cart.filter(x=>!isCutLine_(x)).length;
+  const cartHero = `<section class="ct-hero"><div class="g1"></div><div class="g2"></div>
+    <div class="ct-top"><div><small>${editing?'بتعدّل طلب':'سلتك'}</small><b>${itemsN} ${itemsN===1?'صنف':'أصناف'}</b></div>
+      ${priced?`<div class="ct-tot"><small>الإجمالي التقديري</small><b>${money(cartTotal())} <em>ج</em></b></div>`:''}</div>
+    <div class="ct-steps"><span class="on">${ico('checkC')} مراجعة</span><i></i>
+      <span class="${ok?'on':'warn'}">${ico(ok?'checkC':'warn')} بياناتك</span><i></i><span>${ico('send')} إرسال</span></div>
+  </section>`;
   return `
+  ${cartHero}
   <section class="card">
     <div class="step"><span class="n">✓</span><h2>مراجعة الطلب</h2></div>
     ${editing?`<div class="note" style="margin-top:0;background:rgba(217,164,65,.12);color:var(--warn-ink);border:1px solid rgba(217,164,65,.35);border-radius:8px;padding:9px 12px">
@@ -3906,13 +4041,15 @@ function viewCart(){
 
   <section class="card">
     <div class="step"><span class="n">↗</span><h2>${editing?'حفظ التعديل':'إرسال طلب أوردر'}</h2></div>
-    <div class="note" style="margin-top:0;margin-bottom:12px">
-      الاسم: <b>${esc(state.profile.name||'—')}</b> · ${esc(state.profile.region||'المنطقة غير محددة')}<br>
-      المخزن: <b>${esc(WAREHOUSE)}</b>
-      ${ok?'':'<br><span style="color:var(--danger)">اكتب الاسم ورقم الموبايل واسم صاحب الأوردر في تبويب «طلب جديد» قبل الإرسال.</span>'}
+    <div class="ct-info">
+      <div><span>الاسم</span><b>${esc(state.profile.name||'—')}</b></div>
+      <div><span>صاحب الأوردر</span><b>${esc(state.customer.name||'—')}</b></div>
+      <div><span>المنطقة</span><b>${esc(state.profile.region||'غير محددة')}</b></div>
+      <div><span>المخزن</span><b>${esc(WAREHOUSE)}</b></div>
     </div>
+    ${ok?'':`<button class="ct-fix" data-act="home-go" data-to="new">${ico('warn')} كمّل الاسم ورقم الموبايل وصاحب الأوردر الأول</button>`}
     ${ordNoteBoxHTML_('margin-bottom:12px')}
-    <button class="btn brand" data-act="submit">${editing?ico("save")+' حفظ التعديل وإرسال واتساب':'إرسال طلب الأوردر على واتساب'}</button>
+    <button class="btn brand ct-send" data-act="submit">${editing?ico("save")+' حفظ التعديل وإرسال واتساب':ico("send")+' إرسال طلب الأوردر على واتساب'}</button>
     <div class="btnrow" style="margin-top:9px">
       <button class="btn ghost sm" data-act="quote-cart">${ico("doc")} PDF الطلب</button>
       <button class="btn ghost sm" data-act="clear">تفريغ السلة</button>
@@ -3950,8 +4087,11 @@ function viewOrders(){
     // ⚠️ الطلب اللي لسه ما وصلش المصنع لازم يبان مختلف. من غير كده الموزّع
     // شايفه في قايمته وفاكر إنه عند المصنع — والمصنع مايعرفش عنه حاجة خالص.
     const معلّق = pendingIds.has(String(o.id));
+    const _grp = ordGroup_(homeStatus_(o));
+    const _q = ordNorm_([orderNoText_(o), o.customer, o.note, live&&live.note, dateStr(o.ts),
+      (o.items||[]).filter(x=>x&&!isCutLine_(x)).map(x=>x.title).join(' ')].join(' '));
     return `
-    <div class="ord"${معلّق?' style="border:1.5px solid rgba(217,164,65,.55);background:rgba(217,164,65,.09)"':''}>
+    <div class="ord" data-q="${esc(_q)}" data-st="${_grp}"${ordMatch_(_q,_grp)?'':' hidden'}${معلّق?' style="border:1.5px solid rgba(217,164,65,.55);background:rgba(217,164,65,.09)"':''}>
       ${معلّق?`<div style="font-size:11.5px;font-weight:700;color:var(--warn-ink);margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}لسه ما وصلش المصنع — هيتبعت تلقائي أول ما النت يرجع</div>`:''}
       <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:var(--warn-ink);background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:var(--danger-ink);background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${live?statusPill(live.status):''}</div>
       <div class="os">${esc(dateStr(o.ts))} · ${(o.items||[]).filter(x=>!isCutLine_(x)).length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
@@ -3961,6 +4101,7 @@ function viewOrders(){
       ${o.note?('<div class="ordnote">'+ico("warn")+'<span><b>ملاحظات:</b> '+esc(o.note)+'</span></div>'):''}
       <div class="oa">
         ${editBtn}
+        <button class="btn ghost sm" data-act="ord-again" data-id="${esc(o.id)}">${ico("refresh")} اطلب تاني</button>
         <button class="btn ghost sm" data-act="ord-pdf"   data-id="${esc(o.id)}">${ico("doc")} PDF</button>
         <button class="btn ghost sm" data-act="ord-xls"   data-id="${esc(o.id)}">${ico("sheet")} إكسيل</button>
         <button class="btn ghost sm" data-act="resend"    data-id="${esc(o.id)}">${ico("send")} إرسال</button>
@@ -3969,7 +4110,7 @@ function viewOrders(){
     </div>`;
   }).join('');
 
-  return refreshBtn + errNote + pendingNote + cards
+  return ordFilterBar_() + refreshBtn + errNote + pendingNote + cards + `<div id="ordNone" class="empty" hidden><p>مفيش طلبات مطابقة للبحث ده.</p></div>`
     + `<button class="btn ghost sm" data-act="all-xls" style="margin-bottom:12px">${ico("sheet")} تصدير كل الطلبات إكسيل</button>`
     + verBar();
 }
@@ -7064,6 +7205,14 @@ document.addEventListener('click',e=>{
     case 'ord-xls':   withOrder(el,o=>exportExcel([mergeProducedFromTrack_(o)],'طلب_'+orderNoText_(o).replace('/','-'))); break;
     case 'all-xls':   exportExcel(state.orders.map(mergeProducedFromTrack_),'كل_الطلبات'); break;
     case 'resend':    withOrder(el,o=>shareOrderImage(mergeProducedFromTrack_(o))); break;
+    case 'ord-again':  withOrder(el,o=>{
+      if(state.editingId){ toast('إنت في وضع تعديل طلب — خلّصه أو الغيه الأول'); return; }
+      if(state.cart.length && !confirm('السلة فيها أصناف دلوقتي — تستبدلها بأصناف الطلب ده؟')) return;
+      state.cart = JSON.parse(JSON.stringify(o.items||[]));
+      saveCart_();
+      state.tab='cart'; render(); window.scrollTo({top:0});
+      toast('اتنسخ الطلب للسلة — عدّل الكميات وابعته');
+    }); break;
     case 'ord-edit':   withOrder(el,o=>{
       const live = (state.track.rows||[]).find(r=>String(r.id)===String(o.id));
       if(isOrderLocked_(live)){ toast('الطلب دخل التنفيذ في المصنع، مينفعش يتعدّل دلوقتي'); return; }
@@ -9530,6 +9679,48 @@ async function checkServerVersion(){
   }catch(e){}
 }
 setTimeout(checkServerVersion, 2500);
+
+// اهتزاز خفيف عند لمس الأزرار والشرايح (بيشتغل على أندرويد، وبيتجاهله آيفون)
+try{ if(navigator.vibrate && !matchMedia('(prefers-reduced-motion: reduce)').matches){
+  document.addEventListener('click',e=>{ if(e.target.closest && e.target.closest('button[data-act],.chip,.miniChip,.secTile')) navigator.vibrate(7); },{passive:true});
+} }catch(_){}
+
+/* ===== بحث لحظي + فلتر الحالة في قايمة الطلبات (v234) ===== */
+let _ordF = {q:'', st:''};
+const ORD_GROUPS_ = [['','الكل'],['new','جديد'],['prog','شغّال'],['ready','جاهز'],['done','اتسلّم']];
+function ordGroup_(st){ st=String(st||'New'); return /^(New|Received)$/i.test(st)?'new' : /progress/i.test(st)?'prog' : /^ready$/i.test(st)?'ready' : /deliver/i.test(st)?'done' : 'other'; }
+function ordNorm_(v){ return toLatinDigits_(v).toLowerCase().replace(/[\u064B-\u0652\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ').trim(); }
+function ordMatch_(q,grp){ return (!_ordF.st || grp===_ordF.st) && (!_ordF.q || q.includes(ordNorm_(_ordF.q))); }
+function ordFilterBar_(){
+  const cnt = {}; (state.orders||[]).forEach(o=>{ const g=ordGroup_(homeStatus_(o)); cnt[g]=(cnt[g]||0)+1; });
+  const chips = ORD_GROUPS_.map(([k,t])=>{ const n = k ? (cnt[k]||0) : (state.orders||[]).length;
+    return (k && !n) ? '' : `<button type="button" class="chip ordChip${_ordF.st===k?' on':''}" data-ofst="${k}">${t} <b>${n}</b></button>`; }).join('');
+  return `<div class="ordFilter"><input type="search" id="ordQ" placeholder="ابحث برقم الطلب أو الاسم أو الصنف…" value="${esc(_ordF.q)}" autocomplete="off"><div class="ordChips">${chips}</div></div>`;
+}
+function applyOrdFilter_(){
+  let shown=0, total=0;
+  document.querySelectorAll('.ord[data-q]').forEach(c=>{ total++; const ok=ordMatch_(c.dataset.q,c.dataset.st); c.hidden=!ok; if(ok) shown++; });
+  const none=document.getElementById('ordNone'); if(none) none.hidden = !(total && !shown);
+  document.querySelectorAll('.ordChip').forEach(b=>b.classList.toggle('on', b.dataset.ofst===_ordF.st));
+}
+document.addEventListener('input',e=>{ if(e.target && e.target.id==='ordQ'){ _ordF.q=e.target.value; applyOrdFilter_(); } });
+document.addEventListener('click',e=>{ const b=e.target.closest && e.target.closest('[data-ofst]'); if(b){ _ordF.st=b.dataset.ofst; applyOrdFilter_(); } });
+
+/* ===== شريط السلة العائم على شاشة «طلب جديد» (v234) ===== */
+function updateCartFloat_(){
+  let el=document.getElementById('cartFloat');
+  const show = state.tab==='new' && cartCount()>0;
+  if(!el){ if(!show) return; el=document.createElement('button'); el.id='cartFloat'; el.type='button';
+    el.onclick=()=>{ state.tab='cart'; render(); window.scrollTo({top:0}); }; document.body.appendChild(el); }
+  el.hidden=!show; document.body.classList.toggle('hasFloat',show); if(!show) return;
+  let tot=''; try{ if(pricesVisible()) tot='<b>'+money(cartTotal())+' ج</b>'; }catch(_){}
+  el.innerHTML = ico('cart')+'<span>السلة · '+cartCount()+' صنف</span>'+tot+'<em>عرض السلة ‹</em>';
+  const t=document.getElementById('tabs'); el.style.bottom=((t&&!t.hidden?t.offsetHeight:0)+10)+'px';
+}
+(function(){ const _rn=renderNow; renderNow=function(){ const r=_rn.apply(this,arguments); try{ updateCartFloat_(); applyOrdFilter_(); }catch(_){} return r; }; })();
+
+document.addEventListener('click',e=>{ const b=e.target.closest && e.target.closest('[data-hmk]');
+  if(b){ _ordF.st=b.dataset.hmk; _ordF.q=''; state.tab='orders'; render(); window.scrollTo({top:0}); } });
 </script>
 </body>
 </html>
