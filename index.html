@@ -1770,6 +1770,63 @@ html[data-theme="dark"] .dueov .box{background:#141F32}
 .rpv-bank.on{border-color:var(--brand);color:var(--brand)}
 .rpv-bank svg.i{width:15px;height:15px}
 .qty input.qtyEmpty{width:68px}
+input::placeholder,textarea::placeholder{color:#7A8DA6!important}
+html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::placeholder{color:#9FB0C6!important}
+
+/* ============================================================
+   v237 — ألوان خانات الكتابة + أيقونة الكمية
+   كل خانة كتابة ليها خلفية مميّزة عن الكارت اللي حواليها، واللون بيدل على النوع:
+   أزرق = نص/اسم/تليفون · أخضر = أرقام ومقاسات · كهرماني = الكمية
+   بنفسجي = ملاحظات وتواريخ · رمادي مزرق = قوائم الاختيار
+   ============================================================ */
+:root{
+  --fx-txt-bg:#EAF2FE;  --fx-txt-bd:#A9C6EC;  --fx-txt-fc:#FFFFFF;
+  --fx-num-bg:#E7F7EE;  --fx-num-bd:#9ED6B8;  --fx-num-fc:#FFFFFF;
+  --fx-note-bg:#F3EEFF; --fx-note-bd:#C9B9F0; --fx-note-fc:#FFFFFF;
+  --fx-sel-bg:#EDF0F6;  --fx-sel-bd:#B4BFD2;  --fx-sel-fc:#FFFFFF;
+  --fx-qty-bg:#FFF1D6;  --fx-qty-bd:#EBBE6B;  --fx-qty-fc:#FFFFFF;
+  --fx-qty-ic-bg:#FBDFA4; --fx-qty-ic:#8A5A0B;
+  --fx-bad-bg:#FFF0EE;  --fx-dirty-bg:#FFF4DF;
+}
+html[data-theme="dark"]{
+  --fx-txt-bg:#14294A;  --fx-txt-bd:#34588C;  --fx-txt-fc:#1B3560;
+  --fx-num-bg:#10302A;  --fx-num-bd:#2B6A55;  --fx-num-fc:#163E35;
+  --fx-note-bg:#251F4A; --fx-note-bd:#4E4390;  --fx-note-fc:#30285E;
+  --fx-sel-bg:#1B2740;  --fx-sel-bd:#3A4C70;  --fx-sel-fc:#24344F;
+  --fx-qty-bg:#3A2A10;  --fx-qty-bd:#8A6524;  --fx-qty-fc:#4A3514;
+  --fx-qty-ic-bg:#5A4015; --fx-qty-ic:#F0C46A;
+  --fx-bad-bg:#3A1A1A;  --fx-dirty-bg:#3D2E12;
+}
+/* الحاملات: كل نوع خانة بياخد مجموعة ألوانه */
+:root:root :is(input[type=text],input[type=tel],input[type=search],input[type=password],input[type=email],input:not([type])){
+  --fxb:var(--fx-txt-bg);--fxd:var(--fx-txt-bd);--fxf:var(--fx-txt-fc)}
+:root:root :is(input[type=number],.stkin,.hgtIn,.prow3 input,.rodbox input){
+  --fxb:var(--fx-num-bg);--fxd:var(--fx-num-bd);--fxf:var(--fx-num-fc)}
+:root:root :is(textarea,.fld textarea,input[type=date],input[type=time]){
+  --fxb:var(--fx-note-bg);--fxd:var(--fx-note-bd);--fxf:var(--fx-note-fc)}
+:root:root select{--fxb:var(--fx-sel-bg);--fxd:var(--fx-sel-bd);--fxf:var(--fx-sel-fc)}
+:root:root :is(input[data-act*="qty"],input[data-act="acc-set"]){
+  --fxb:var(--fx-qty-bg);--fxd:var(--fx-qty-bd);--fxf:var(--fx-qty-fc)}
+/* التطبيق الفعلي */
+:root:root :is(input[type=text],input[type=tel],input[type=search],input[type=password],input[type=email],input:not([type]),
+  input[type=number],input[type=date],input[type=time],textarea,select,.stkin,.hgtIn,.prow3 input,.rodbox input,.fld textarea){
+  background:var(--fxb);border-color:var(--fxd)}
+:root:root :is(input[type=text],input[type=tel],input[type=search],input[type=password],input[type=email],input:not([type]),
+  input[type=number],input[type=date],input[type=time],textarea,select,.stkin,.hgtIn,.prow3 input,.rodbox input,.fld textarea):focus{
+  background:var(--fxf);border-color:var(--brand)}
+:root:root .stkin.dirty{background:var(--fx-dirty-bg);border-color:#C08A3E}
+:root:root input.bad{background:var(--fx-bad-bg);border-color:var(--danger)}
+
+/* عدّاد الكمية: خلفية كهرمانية + خانة أيقونة */
+:root:root .qty{background:var(--fx-qty-bg);border-color:var(--fx-qty-bd)}
+:root:root .qty input,:root:root .qty input:focus{background:transparent;border-inline-color:var(--fx-qty-bd);box-shadow:none}
+:root:root .qty button{color:var(--fx-qty-ic)}
+:root:root .qty button:active{background:var(--fx-qty-ic-bg)}
+.qty .qIc{display:grid;place-items:center;align-self:stretch;flex:0 0 auto;width:34px;
+  background:var(--fx-qty-ic-bg);color:var(--fx-qty-ic);border-inline-end:1.5px solid var(--fx-qty-bd)}
+.qty .qIc svg.i{width:18px;height:18px}
+.accgrid .ac .qty .qIc{width:24px}
+.accgrid .ac .qty .qIc svg.i{width:15px;height:15px}
 </style>
 </head>
 <body>
@@ -1978,7 +2035,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v228';
+const APP_BUILD   = 'v229';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3234,7 +3291,7 @@ function viewNew(){
             : `المتوفر دلوقتي <b>${st}</b> بس من الكمية اللي طلبتها — الباقي بيتصنّع حسب الطلب.`}</span></div>`);
     return `<div class="sizeCard">
       <div class="scHead"><b>${w} سم</b>
-        <div class="qty sm">
+        <div class="qty sm"><span class="qIc" aria-hidden="true">${ico('qty')}</span>
           <button data-act="size-qty-minus" data-w="${w}">−</button>
           <input type="number" inputmode="numeric" min="1" value="${e.qty}" placeholder="الكمية" class="qtyEmpty" data-act="size-qty-set" data-w="${w}">
           <button data-act="size-qty-plus" data-w="${w}">+</button>
@@ -3252,7 +3309,7 @@ function viewNew(){
         <label class="fld"><span>الارتفاع (سم)</span><input type="text" inputmode="decimal" value="${esc(p.custom.h)}" placeholder="مثال 215" data-act="cust" data-k="h"></label>
       </div>
       <div class="grp" style="margin-top:6px">الكمية</div>
-      <div class="qty">
+      <div class="qty"><span class="qIc" aria-hidden="true">${ico('qty')}</span>
         <button data-act="cust-qty-minus">−</button>
         <input type="number" inputmode="numeric" min="1" value="${p.custom.qty}" placeholder="الكمية" class="qtyEmpty" data-act="cust-qty-set">
         <button data-act="cust-qty-plus">+</button>
@@ -3314,7 +3371,7 @@ function viewNew(){
     const q=state.acc[a.id]||0;
     return `<div class="ac">
       <b>${esc(a.name)}</b>${pricesVisible()?`<div class="pr">${money(a.price)} ج/${esc(a.unit)}</div>`:''}
-      <div class="qty">
+      <div class="qty"><span class="qIc" aria-hidden="true">${ico('qty')}</span>
         <button data-act="acc-minus" data-id="${a.id}">−</button>
         <input type="number" inputmode="decimal" min="0" step="0.5" value="${q}" data-act="acc-set" data-id="${a.id}">
         <button data-act="acc-plus" data-id="${a.id}">+</button>
@@ -4060,6 +4117,7 @@ const ICONS = {
   ruler:   '<rect x="2.2" y="8.4" width="19.6" height="7.2" rx="1.8"/><path d="M6.2 8.4v3M9.5 8.4v4.4M12.8 8.4v3M16.1 8.4v4.4M19.4 8.4v3"/>',
   send:    '<path d="M21 3.4 10.8 13.6"/><path d="M21 3.4 14.6 21l-3.8-7.4L3.4 9.8z"/>',
   edit:    '<path d="M15.6 3.9 20 8.3 8.6 19.7l-5.1.7.7-5.1z"/><path d="M13.9 5.7 18.3 10"/>',
+  qty:     '<path d="M9.4 3.6 8 20.4M16 3.6l-1.4 16.8M4 9h16.6M3.4 15.2H20"/>',
   box:     '<path d="M3 7.6 12 3l9 4.6v8.8L12 21l-9-4.6z"/><path d="M3 7.6 12 12l9-4.4M12 12v9"/>',
   boxOpen: '<path d="M3 9.4V17l9 4 9-4V9.4"/><path d="m3 9.4 4-4.8 5 3 5-3 4 4.8-9 4.4z"/>',
   folder:  '<path d="M2.8 6.2a1.6 1.6 0 0 1 1.6-1.6h4.3l2 2.6h9a1.6 1.6 0 0 1 1.6 1.6v8.8a1.6 1.6 0 0 1-1.6 1.6H4.4a1.6 1.6 0 0 1-1.6-1.6z"/>',
