@@ -1827,6 +1827,57 @@ html[data-theme="dark"]{
 .qty .qIc svg.i{width:18px;height:18px}
 .accgrid .ac .qty .qIc{width:24px}
 .accgrid .ac .qty .qIc svg.i{width:15px;height:15px}
+
+/* ============================================================
+   v230 — تظبيط وتنعيم الشكل العام (طبقة إضافية فوق اللي فات، من غير ما تغيّر أي منطق)
+   ============================================================ */
+:root{--ease:cubic-bezier(.22,.8,.3,1);--press:.97}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overscroll-behavior-y:none}
+input,textarea,select,.money,.pr,.no{font-variant-numeric:tabular-nums}
+/* انتقالات ناعمة موحّدة لكل العناصر اللي بتتلمس */
+@media (prefers-reduced-motion:no-preference){
+  .btn,.chip,.miniChip,.colchip,.secnav button,.tabs button,.door .leaf,.ord,.card,.sizeCard,.qty,.qty button,
+  input,select,textarea,.stkin,.hgtIn,.noteBtn,.rpv-bank{
+    transition:background-color .18s var(--ease),border-color .18s var(--ease),box-shadow .22s var(--ease),
+               transform .14s var(--ease),color .18s var(--ease),opacity .18s}
+  .chip.on,.miniChip.on,.colchip.on{transform:translateY(-1px)}
+  .door.on .leaf{transform:translateY(-2px)}
+}
+/* إحساس الضغط على الموبايل */
+.btn:active,.chip:active,.miniChip:active,.secnav button:active,.noteBtn:active,.rpv-bank:active{transform:scale(var(--press))}
+.door:active .leaf{transform:scale(.98)}
+.qty button:active{transform:scale(.9)}
+/* كروت: زوايا أنعم وعمق أوضح، وطلبات العملاء تتنفس */
+.card,.ord{border-radius:var(--r-lg,18px)}
+.ord{padding:14px;margin-bottom:13px}
+.card{margin-bottom:13px}
+.sizeCard{border-radius:var(--r-md,14px);padding:12px 13px}
+html[data-theme="dark"] .sizeCard{background:rgba(255,255,255,.04);border-color:rgba(120,165,235,.22)}
+/* الأزرار: ارتفاع ثابت مريح للمس وحالة تعطيل واضحة */
+.btn{min-height:46px;display:flex;align-items:center;justify-content:center;gap:7px;letter-spacing:.1px}
+.btn.sm{min-height:34px}
+.btn[disabled],.btn:disabled{opacity:.5;filter:saturate(.55);pointer-events:none;box-shadow:none}
+.btn svg.i{width:18px;height:18px;flex:none}
+/* شريط التبويبات والعنوان العلوي: فاصل ناعم بدل الخط الحاد */
+.top{box-shadow:0 2px 14px rgba(0,0,0,.14)}
+.tabs{box-shadow:0 1px 0 var(--line),0 6px 16px -10px rgba(0,0,0,.28)}
+.tabs button{border-radius:12px 12px 0 0}
+.tabs button.on{background:linear-gradient(180deg,transparent,rgba(63,169,245,.10))}
+/* الشريط السفلي: زجاج خفيف وفاصل أنعم، والمحتوى ما يتغطّاش */
+.bar{box-shadow:0 -8px 24px -12px rgba(0,0,0,.35)}
+main,#app,.wrap{scroll-padding-bottom:110px}
+/* عناوين الأقسام والملاحظات: مسافات منتظمة */
+.grp{margin:14px 0 7px;letter-spacing:.2px}
+.note{line-height:1.7}
+.row2{gap:11px}
+label.fld{margin-bottom:12px}
+label.fld span{margin-bottom:5px;font-weight:700}
+/* حلقة التركيز واضحة للي بيستخدم كيبورد */
+:focus-visible{outline:2.5px solid var(--brand);outline-offset:2px}
+/* جداول وقوائم طويلة: تمرير ناعم من غير شريط تمرير تقيل */
+.stktbl,.tblwrap,[style*="overflow-x:auto"],[style*="overflow:auto"]{-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+::selection{background:rgba(63,169,245,.28)}
 </style>
 </head>
 <body>
@@ -2035,7 +2086,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v229';
+const APP_BUILD   = 'v230';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
