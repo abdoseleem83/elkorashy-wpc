@@ -2083,6 +2083,20 @@ body.hasFloat #view{padding-bottom:84px}
 .hm-empty{padding:18px 14px;text-align:center;border-radius:16px;border:1.5px dashed var(--line);color:var(--muted);font-size:13px}
 .hm2-k{align-content:start}
 .hm2-k .kt{min-height:1.3em}
+
+/* v240 — «خيارات إضافية»: خلفية وإطار يبينوها */
+:root{--dd-bg:#EEF0FD;--dd-bd:#B9C0F0;--dd-in:#F8F9FF;--dd-ink:#3F4BB0}
+html[data-theme="dark"]{--dd-bg:#1E2450;--dd-bd:#4A53A0;--dd-in:#161B3E;--dd-ink:#B7BEFF}
+:root:root .dd{background:var(--dd-bg);border:1.5px solid var(--dd-bd);border-radius:14px;padding:0;overflow:hidden;margin-top:13px}
+:root:root .sizeCard .dd{border-top:1.5px solid var(--dd-bd);padding-top:0}
+.dd .ddH{width:100%;display:flex;align-items:center;gap:8px;padding:11px 12px;background:transparent;text-align:start;color:inherit}
+.dd .ddH .t{font-weight:800;color:var(--dd-ink)}
+.dd .ddH .sm{flex:1;min-width:0;font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dd .ddH>svg.i{flex:none;color:var(--dd-ink)}
+.dd.open .ddH{border-bottom:1.5px solid var(--dd-bd)}
+.dd .ddB{background:var(--dd-in);padding:11px 12px 12px}
+/* v241 — طلب مسترجع من جهاز تاني: بنخفي اللي محتاج أصناف */
+.ord[data-restored] [data-act="ord-edit"],.ord[data-restored] [data-act="ord-again"],.ord[data-restored] [data-act="ord-pdf"],.ord[data-restored] [data-act="ord-xls"],.ord[data-restored] [data-act="resend"]{display:none!important}
 </style>
 </head>
 <body>
@@ -2291,7 +2305,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v239';
+const APP_BUILD   = 'v241';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -4150,7 +4164,15 @@ function viewCart(){
 }
 
 function viewOrders(){
-  if(!state.orders.length) return `<div class="empty"><span class="em">${ico("doc","xl")}</span><p>لسه مفيش طلبات مسجّلة على الجهاز ده.</p></div>${verBar()}`;
+  if(!state.orders.length){
+    const hasPh = !!phoneKey_();
+    return `<div class="empty"><span class="em">${ico("doc","xl")}</span>
+      <p>${state.track.loading?'بندوّر على طلباتك برقم موبايلك…':'مفيش طلبات مسجّلة على الجهاز ده.'}</p>
+      <p class="note" style="margin:6px 0 12px">${hasPh?'لو كنت طلبت من جهاز تاني، اضغط الزرار ونجيبهالك برقم موبايلك '+esc(state.profile.phone||'')+'.':'لو كنت طلبت من جهاز تاني، اكتب رقم موبايلك في «بياناتك» في شاشة «طلب جديد» ونجيب طلباتك.'}</p>
+      ${hasPh?`<button class="btn brand sm" data-act="track-load" ${state.track.loading?'disabled':''}>${ico('refresh')} استرجع طلباتي</button>`
+             :`<button class="btn brand sm" data-act="home-go" data-to="new">${ico('user')} اكتب رقم موبايلك</button>`}
+    </div>${verBar()}`;
+  }
   const priced=pricesVisible();
   const t = state.track;
   const liveById = {};
@@ -4182,7 +4204,7 @@ function viewOrders(){
     const _q = ordNorm_([orderNoText_(o), o.customer, o.note, live&&live.note, dateStr(o.ts),
       (o.items||[]).filter(x=>x&&!isCutLine_(x)).map(x=>x.title).join(' ')].join(' '));
     return `
-    <div class="ord" data-q="${esc(_q)}" data-st="${_grp}"${ordMatch_(_q,_grp)?'':' hidden'}${معلّق?' style="border:1.5px solid rgba(217,164,65,.55);background:rgba(217,164,65,.09)"':''}>
+    <div class="ord" data-q="${esc(_q)}" data-st="${_grp}"${o.restored?' data-restored="1"':''}${ordMatch_(_q,_grp)?'':' hidden'}${معلّق?' style="border:1.5px solid rgba(217,164,65,.55);background:rgba(217,164,65,.09)"':''}>
       ${معلّق?`<div style="font-size:11.5px;font-weight:700;color:var(--warn-ink);margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}لسه ما وصلش المصنع — هيتبعت تلقائي أول ما النت يرجع</div>`:''}
       <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:var(--warn-ink);background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:var(--danger-ink);background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${live?statusPill(live.status):''}</div>
       <div class="os">${esc(dateStr(o.ts))} · ${(o.items||[]).filter(x=>!isCutLine_(x)).length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
@@ -4540,6 +4562,8 @@ async function loadTrack(){
     if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
     state.track.rows = d.orders || [];
     state.track.at = Date.now();
+    state.track.phoneUsed = phoneKey_();
+    mergeRestored_(state.track.rows);
     // بنحدّث رقم الطلب "العادي" وعدد التعديلات في النسخة المحلية من أي رد سيرفر بيوصلنا،
     // عشان لو الرد الأول وقت الإرسال ضاع (النت اتقطع) يتظبط تلقائي أول ما نفتح "تابع طلبك"
     let changedLocal=false;
@@ -7209,7 +7233,7 @@ document.getElementById('tabs').addEventListener('click',e=>{
   // سايب شاشة «طلب جديد» وفيه صنف مسحوب للتعديل ما اتكملش؟ رجّعه للسلة بدل ما يضيع
   if(b.dataset.tab!=='new') restorePulledLine_();
   state.tab=b.dataset.tab; render(); window.scrollTo({top:0,behavior:'smooth'});
-  if((state.tab==='orders'||state.tab==='home') && state.track.rows===null && state.orders.length) loadTrack();
+  if(state.tab==='orders'||state.tab==='home') maybeLoadTrack_();
   if(state.tab==='new') loadStock();
   if(state.tab==='admin') maybeShowDueOverlay_();
 });
@@ -7219,7 +7243,7 @@ document.addEventListener('click',e=>{
   const a=el.dataset.act, p=state.pick;
   switch(a){
     case 'home-go': state.tab = el.dataset.to; render(); window.scrollTo({top:0,behavior:'smooth'});
-      if(state.tab==='orders' && state.track.rows===null && state.orders.length) loadTrack();
+      if(state.tab==='orders') maybeLoadTrack_();
       if(state.tab==='new') loadStock();
       break;
     case 'home-sec': state.tab='new'; state.newSection = el.dataset.to; save(LS_SECTION, state.newSection); render(); window.scrollTo({top:0,behavior:'smooth'}); loadStock(); break;
@@ -7324,6 +7348,7 @@ document.addEventListener('click',e=>{
     case 'all-xls':   exportExcel(state.orders.map(mergeProducedFromTrack_),'كل_الطلبات'); break;
     case 'resend':    withOrder(el,o=>shareOrderImage(mergeProducedFromTrack_(o))); break;
     case 'ord-again':  withOrder(el,o=>{
+      if(o.restored){ toast('الطلب ده اتسترجع من جهاز تاني — التكرار من الجهاز اللي اتبعت منه'); return; }
       if(state.editingId){ toast('إنت في وضع تعديل طلب — خلّصه أو الغيه الأول'); return; }
       if(state.cart.length && !confirm('السلة فيها أصناف دلوقتي — تستبدلها بأصناف الطلب ده؟')) return;
       state.cart = JSON.parse(JSON.stringify(o.items||[]));
@@ -7332,6 +7357,7 @@ document.addEventListener('click',e=>{
       toast('اتنسخ الطلب للسلة — عدّل الكميات وابعته');
     }); break;
     case 'ord-edit':   withOrder(el,o=>{
+      if(o.restored){ toast('الطلب ده اتسترجع من جهاز تاني — التعديل من الجهاز اللي اتبعت منه'); return; }
       const live = (state.track.rows||[]).find(r=>String(r.id)===String(o.id));
       if(isOrderLocked_(live)){ toast('الطلب دخل التنفيذ في المصنع، مينفعش يتعدّل دلوقتي'); return; }
       state.cart = JSON.parse(JSON.stringify(o.items));
@@ -9698,7 +9724,7 @@ document.addEventListener('focusin', e => {
 
 renderNow();
 loadStock();   // أرصدة المخزن بتتحمّل في الخلفية من غير ما تعطّل فتح التطبيق
-if(state.orders.length) setTimeout(()=>{ if(state.track.rows===null && !state.track.loading) loadTrack(); }, 700);   // حالة الأوردرات للصفحة الرئيسية
+if(state.orders.length || phoneKey_()) setTimeout(maybeLoadTrack_, 700);   // حالة الأوردرات للصفحة الرئيسية
 preloadDoorImages_();   // نبدأ تحميل صور الأبواب بدري عشان تبقى جاهزة وقت التصدير
 // لو التخزين كان مخرب وقت الفتح، نقول للمستخدم بدل ما نسكت. الأصل المخرب
 // محفوظ في مفتاح جانبي (wpc_orders_corrupt) فلسه ينفع يترجع يدويًا.
@@ -9847,6 +9873,31 @@ function applyAdmFilter_(){
   document.querySelectorAll('.ord[data-grp]').forEach(c=>{ c.hidden = !!q && !ordNorm_(c.dataset.grp).includes(q); });
 }
 document.addEventListener('input',e=>{ if(e.target && e.target.id==='admQ'){ _admQ=e.target.value; applyAdmFilter_(); } });
+
+/* ===== استرجاع الطلبات على جهاز جديد برقم الموبايل (v241) ===== */
+function phoneKey_(){ const p = toLatinDigits_(state.profile.phone||'').replace(/[\s+\-]/g,'').replace(/^(00)?20/,''); return phoneOk(p) ? p.replace(/^0/,'') : ''; }
+function maybeLoadTrack_(){
+  if(state.track.loading) return;
+  const ph = phoneKey_();
+  if((state.track.rows===null && (state.orders.length || ph)) || (ph && state.track.phoneUsed!==ph)) loadTrack();
+}
+function mergeRestored_(rows){
+  try{
+    const have = new Set(state.orders.map(o=>String(o.id)));
+    const gone = new Set((loadDeleted_()||[]).map(String));
+    let added = 0;
+    (rows||[]).forEach(r=>{
+      if(!r || r.id==null || have.has(String(r.id)) || gone.has(String(r.id)) || _deletedIds.has(String(r.id)) || r.superseded) return;
+      const qty = Number(r.qty)||0;
+      state.orders.push({ id:String(r.id), displayNo:r.displayNo, editCount:r.editCount||0,
+        ts: Number(r.ts) || (r.date ? Date.parse(r.date) : 0) || Date.now(), date:r.date||'',
+        customer:r.customer||'', note:r.note||'', total:Number(r.total)||0, qty,
+        items:[{title:'أوردر مسترجع من جهاز تاني — '+qty+' قطعة', qty, restored:true}], restored:true });
+      added++;
+    });
+    if(added){ state.orders.sort((a,b)=>(b.ts||0)-(a.ts||0)); saveOrders_(state.orders); toast('رجّعنا '+added+' طلب من جهاز تاني برقم موبايلك'); }
+  }catch(e){}
+}
 </script>
 </body>
 </html>
