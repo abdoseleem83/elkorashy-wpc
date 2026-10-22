@@ -2097,6 +2097,15 @@ html[data-theme="dark"]{--dd-bg:#1E2450;--dd-bd:#4A53A0;--dd-in:#161B3E;--dd-ink
 .dd .ddB{background:var(--dd-in);padding:11px 12px 12px}
 /* v241 — طلب مسترجع من جهاز تاني: بنخفي اللي محتاج أصناف */
 .ord[data-restored] [data-act="ord-edit"],.ord[data-restored] [data-act="ord-again"],.ord[data-restored] [data-act="ord-pdf"],.ord[data-restored] [data-act="ord-xls"],.ord[data-restored] [data-act="resend"]{display:none!important}
+
+/* v242 — «خيارات إضافية»: النوع / التدعيم / الطباعة في ٣ أعمدة */
+.exCols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:start}
+.exCol .miniLbl{margin:0 0 7px!important;text-align:center;font-size:12px}
+.exCol .miniChips{display:flex;flex-direction:column;align-items:stretch;gap:7px}
+.exCol .miniChip{width:100%;text-align:center;white-space:normal;line-height:1.25;padding:9px 4px!important;font-size:12.5px!important;min-height:38px;display:flex;align-items:center;justify-content:center}
+.dd .ddB .fld.sm{margin-top:12px}
+.hgtStep{margin:2px 0 4px}
+.hgtStep>span{display:block;margin-bottom:6px;font-weight:700;color:var(--danger-ink,#C6362D)}
 </style>
 </head>
 <body>
@@ -2305,7 +2314,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v241';
+const APP_BUILD   = 'v244';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3547,13 +3556,13 @@ function viewNew(){
     const A = (n)=> isC ? 'cust-'+n : 'size-'+n;
     const wA = isC ? '' : ` data-w="${w}"`;
     const bits = [];
-    if(e.hafr) bits.push('حفر'); if(e.wood) bits.push('تدعيم'); if(e.print) bits.push('طباعة'); if(!isC && e.height) bits.push('ارتفاع '+e.height);
-    const extras = dd('ex'+w, 'خيارات إضافية', bits.join('، ') || 'حفر · تدعيم · طباعة · ارتفاع',
-      `<div class="miniLbl">النوع</div><div class="miniChips">${hafrMiniChips(e.hafr,w)}</div>
-       <div class="miniLbl">التدعيم</div><div class="miniChips">${woodMiniChips(e.wood,w)}</div>
-       <div class="miniLbl">الطباعة</div><div class="miniChips">${printMiniChips(e.print,w)}</div>
-       ${isC?'':`<label class="fld sm"><span style="color:var(--danger)">ارتفاع الفتحة المعمارية (سم)</span>
-        <input type="text" inputmode="decimal" class="hgtIn" value="${esc(e.height||'')}" placeholder="استاندر ${DOOR_STD_HEIGHT}" data-act="size-height" data-w="${w}"></label>`}`);
+    if(e.hafr) bits.push('حفر'); if(e.wood) bits.push('تدعيم'); if(e.print) bits.push('طباعة'); 
+    const extras = dd('ex'+w, 'خيارات إضافية', bits.join('، ') || 'حفر · تدعيم · طباعة',
+      `<div class="exCols">
+         <div class="exCol"><div class="miniLbl">النوع</div><div class="miniChips">${hafrMiniChips(e.hafr,w)}</div></div>
+         <div class="exCol"><div class="miniLbl">التدعيم</div><div class="miniChips">${woodMiniChips(e.wood,w)}</div></div>
+         <div class="exCol"><div class="miniLbl">الطباعة</div><div class="miniChips">${printMiniChips(e.print,w)}</div></div>
+       </div>`);
     const frameStep = `<div class="miniLbl">١) الحلق</div><div class="miniChips">${frameMiniChips(e.frame,w)}</div>`;
     const afterFrame = e.frame==null
       ? `<div class="stepHint">اختار الحلق (أو «بدون») عشان يظهر البرور</div>`
