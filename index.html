@@ -2009,6 +2009,51 @@ body.hasFloat #view{padding-bottom:84px}
 .hm2-q .qi{border-radius:20px;box-shadow:0 8px 18px -10px var(--qc)}
 .hm2-k .ki{box-shadow:0 6px 14px -8px var(--kc)}
 .ct-steps span svg.i .d{fill-opacity:.35}
+
+/* ============ v238 — شاشة المصنع ============ */
+.ad-hero{position:relative;overflow:hidden;border-radius:24px;padding:16px;color:#fff;margin-bottom:14px;
+  background:linear-gradient(160deg,#0E2A57 0%,#0A1B3D 55%,#071229 100%);box-shadow:0 14px 34px -14px rgba(7,18,41,.75),inset 0 0 0 1px rgba(111,193,250,.16)}
+.ad-hero .g1,.ad-hero .g2{position:absolute;border-radius:50%;filter:blur(36px);pointer-events:none}
+.ad-hero .g1{width:150px;height:150px;top:-60px;inset-inline-end:-20px;background:rgba(217,164,65,.30)}
+.ad-hero .g2{width:140px;height:140px;bottom:-70px;inset-inline-start:-20px;background:rgba(63,169,245,.32)}
+.ad-hero>*{position:relative}
+.ad-top{display:flex;align-items:center;gap:12px}
+.ad-ico{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18)}
+.ad-ico svg.i{width:26px;height:26px}
+.ad-top small{display:block;font-size:12.5px;opacity:.78}.ad-top b{display:block;font-size:24px;margin-top:2px}
+.ad-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:15px}
+.ad-k{padding:10px 4px;border-radius:15px;text-align:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);box-shadow:0 10px 20px -14px var(--kc)}
+.ad-k b{display:block;font-size:24px;line-height:1.1;color:var(--kc);font-variant-numeric:tabular-nums}
+.ad-k span{display:block;font-size:10.5px;margin-top:4px;opacity:.85;white-space:nowrap}
+.ad-card{margin-bottom:14px}
+.ad-q{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:14px;font-size:14px}
+.ad-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:11.5px;color:var(--muted);font-weight:700}
+.ad-legend span{display:inline-flex;align-items:center;gap:6px}
+.ad-legend i{width:18px;height:6px;border-radius:6px;background:var(--line)}
+.ad-legend i.g{background:#4FC08A}.ad-legend i.a{background:#D9A441}.ad-legend i.r{background:rgba(160,170,190,.55)}
+.ad-tools{display:flex;flex-direction:column;gap:13px}
+.ad-tg{padding:11px;border-radius:16px;background:rgba(63,169,245,.06);border:1px solid var(--line)}
+.ad-tl{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--muted);margin-bottom:9px}
+.ad-tl svg.i{width:15px;height:15px}
+.ad-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ad-row .btn{white-space:nowrap;font-size:12.5px;padding-inline:6px}
+.ad-row.ad-end{grid-template-columns:1fr 1fr}
+.ad-tg .ad-row:only-child{margin:0}
+.ord[data-grp]{border-radius:18px}
+.grp-hd{padding:12px}
+.grp-ord{border-radius:12px}
+
+/* v238 — تظبيط صفوف الطلبات وأزرار الأدوات في المصنع */
+.ad-row .btn:last-child:nth-child(odd){grid-column:1/-1}
+.grp-ord{display:flex!important;flex-wrap:wrap;align-items:center;gap:7px 8px}
+.grp-ord>span[style]{flex:1 0 100%!important;height:0;margin:0}
+.grp-ord .grp-b{flex:1 1 calc(50% - 5px);justify-content:center;white-space:nowrap}
+.grp-all{display:flex;flex-wrap:wrap;align-items:center;gap:7px 8px}
+.grp-all>span{flex:1 0 100%;font-size:11.5px;font-weight:700;color:var(--muted)}
+.grp-all .grp-b{flex:1 1 calc(50% - 5px);justify-content:center}
+.grp-all{display:flex!important;flex-wrap:wrap!important}
+.grp-all>span{flex:1 0 100%!important;width:100%!important;text-align:start}
+.grp-all .grp-b{flex:1 1 calc(50% - 5px)!important;width:auto!important;margin:0!important}
 </style>
 </head>
 <body>
@@ -2217,7 +2262,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v237';
+const APP_BUILD   = 'v238';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -6860,18 +6905,25 @@ function viewAdmin(){
            ${ico('warn')} النت مقطوع — دي آخر نسخة محفوظة، اضغط «تحديث» لما النت يرجع</div>`
       : '');
 
-  const headerBtns = `${staleBar}<div class="toolgrid">
-        <button class="btn act-tool sm" data-act="adm-reload">${ico("refresh")}${a.loading?'بيحدّث…':'تحديث'}</button>
+  const headerBtns = `${staleBar}<div class="ad-tools">
+      <div class="ad-tg"><span class="ad-tl">${ico("clock")} عرض</span><div class="ad-row">
+        <button class="btn ${a.viewStock?'brand':'act-edit'} sm" data-act="adm-toggle-stock">${ico("box")}${a.viewStock?'رجوع للطلبات':'أرصدة المخزن'}</button>
+        <button class="btn ${viewingArchive?'brand':'act-edit'} sm" data-act="adm-toggle-archive">${ico("folder")}${viewingArchive?'رجوع للطلبات':'الأرشيف'}</button>
+        <button class="btn act-money sm" data-act="adm-prices-open">${ico("money")}الأسعار</button>
+      </div></div>
+      <div class="ad-tg"><span class="ad-tl">${ico("doc")} تقارير</span><div class="ad-row">
         <button class="btn act-report sm" data-act="adm-pending-pdf">${ico("doc")}متبقي PDF</button>
         <button class="btn act-report sm" data-act="adm-pending-xls">${ico("sheet")}متبقي إكسيل</button>
         <button class="btn act-report sm" data-act="adm-full-pdf">${ico("report")}تقرير كامل</button>
         <button class="btn act-report sm" data-act="adm-full-xls">${ico("sheet")}كل الطلبات إكسيل</button>
-        <button class="btn ${a.viewStock?'brand':'act-edit'} sm" data-act="adm-toggle-stock">${ico("box")}${a.viewStock?'رجوع للطلبات':'أرصدة المخزن'}</button>
-        <button class="btn ${viewingArchive?'brand':'act-edit'} sm" data-act="adm-toggle-archive">${ico("folder")}${viewingArchive?'رجوع للطلبات':'الأرشيف'}</button>
-        <button class="btn act-money sm" data-act="adm-prices-open">${ico("money")}الأسعار</button>
-        ${viewingArchive?`<button class="btn act-del sm" data-act="adm-clear-delivered">${ico("trash")}حذف المؤرشف</button>`:''}
+      </div></div>
+      ${viewingArchive?`<div class="ad-tg"><span class="ad-tl">${ico("trash")} الأرشيف</span><div class="ad-row">
+        <button class="btn act-del sm" data-act="adm-clear-delivered">${ico("trash")}حذف المؤرشف</button></div></div>`:''}
+      <div class="ad-row ad-end">
+        <button class="btn act-tool sm" data-act="adm-reload">${ico("refresh")}${a.loading?'بيحدّث…':'تحديث'}</button>
         <button class="btn act-tool sm" data-act="adm-logout">${ico("lock")}خروج</button>
-      </div>`;
+      </div>
+    </div>`;
 
   if(a.pricesOpen) return viewAdminPrices() + verBar();
 
@@ -7086,13 +7138,27 @@ function viewAdmin(){
   }).join('');
   _adminCards = بالكارت;
 
-  _adminShell = `<section class="card">
-      <div class="step"><span class="n">${viewingArchive?ico("folder","lg"):ico("factory","lg")}</span><h2>${viewingArchive?'الأرشيف':'متابعة المصنع'}</h2><span class="hint">${list.length} طلب · ${order.length} عميل</span></div>
-      <div class="note" style="margin-top:0">${viewingArchive?'الطلبات المؤرشفة (اتسلمت أو اتأرشفت يدوي) — مش بتظهر في التقارير.':'اضغط اسم العميل عشان تشوف طلباته، وبعدين «الأصناف والإنتاج» جوه كل طلب عشان تسجّل الإنتاج وتشوف المتبقي. تسليم الطلب بيأرشفه أوتوماتيك.'}</div>
-      ${viewingArchive?'':dueStripHTML_(list)}
+  const _cn = {new:0,prog:0,ready:0,done:0};
+  list.forEach(o=>{ const g=ordGroup_(o.status); if(g in _cn) _cn[g]++; });
+  const _k = (n,t,c)=>`<div class="ad-k" style="--kc:${c}"><b>${n}</b><span>${t}</span></div>`;
+  _adminShell = `<section class="ad-hero"><div class="g1"></div><div class="g2"></div>
+      <div class="ad-top"><span class="ad-ico">${viewingArchive?ico("folder","lg"):ico("factory","lg")}</span>
+        <div><small>${viewingArchive?'الطلبات المؤرشفة':'لوحة متابعة المصنع'}</small><b>${list.length} طلب</b></div></div>
+      <div class="ad-kpis">${_k(_cn.new,'جديدة','#3FA9F5')}${_k(_cn.prog,'تحت التنفيذ','#D9A441')}${_k(_cn.ready,'جاهزة','#4FC08A')}${_k(_cn.done,'اتسلّمت','#9A8CF0')}</div>
+    </section>
+    ${viewingArchive?'':dueStripHTML_(list)}
+    <section class="card ad-card">
+      <div class="step"><span class="n">${ico("search","lg")}</span><h2>دوّر على عميل</h2></div>
+      <input type="search" id="admQ" class="ad-q" placeholder="اكتب اسم العميل…" value="${esc(_admQ)}" autocomplete="off">
+      <div class="note" style="margin-top:8px">${viewingArchive?'الطلبات المؤرشفة (اتسلمت أو اتأرشفت يدوي) — مش بتظهر في التقارير.':'اضغط اسم العميل عشان تشوف طلباته، وجوّه كل طلب غيّر الحالة وتابع الأصناف والإنتاج.'}</div>
+      <div class="ad-legend"><span><i class="g"></i>جاهز</span><span><i class="a"></i>تحت التنفيذ</span><span><i class="r"></i>لسه ما بدأش</span></div>
+    </section>
+    <section class="card ad-card">
+      <div class="step"><span class="n">${ico("parts","lg")}</span><h2>أدوات وتقارير</h2></div>
       ${headerBtns}
       ${srvBuildNote_()}
     </section>
+    <div class="hm-h"><span>${viewingArchive?'عملاء الأرشيف':'العملاء وطلباتهم'}</span></div>
     ${ADMIN_CARDS_MARK}${verBar()}`;
   return _adminShell.replace(ADMIN_CARDS_MARK, rows);
 }
@@ -9732,10 +9798,18 @@ function updateCartFloat_(){
   el.innerHTML = ico('cart')+'<span>السلة · '+cartCount()+' صنف</span>'+tot+'<em>عرض السلة ‹</em>';
   const t=document.getElementById('tabs'); el.style.bottom=((t&&!t.hidden?t.offsetHeight:0)+10)+'px';
 }
-(function(){ const _rn=renderNow; renderNow=function(){ const r=_rn.apply(this,arguments); try{ updateCartFloat_(); applyOrdFilter_(); }catch(_){} return r; }; })();
+(function(){ const _rn=renderNow; renderNow=function(){ const r=_rn.apply(this,arguments); try{ updateCartFloat_(); applyOrdFilter_(); applyAdmFilter_(); }catch(_){} return r; }; })();
 
 document.addEventListener('click',e=>{ const b=e.target.closest && e.target.closest('[data-hmk]');
   if(b){ _ordF.st=b.dataset.hmk; _ordF.q=''; state.tab='orders'; render(); window.scrollTo({top:0}); } });
+
+/* ===== بحث العملاء في شاشة المصنع (v238) ===== */
+let _admQ = '';
+function applyAdmFilter_(){
+  const q = ordNorm_(_admQ);
+  document.querySelectorAll('.ord[data-grp]').forEach(c=>{ c.hidden = !!q && !ordNorm_(c.dataset.grp).includes(q); });
+}
+document.addEventListener('input',e=>{ if(e.target && e.target.id==='admQ'){ _admQ=e.target.value; applyAdmFilter_(); } });
 </script>
 </body>
 </html>
