@@ -2106,6 +2106,39 @@ html[data-theme="dark"]{--dd-bg:#1E2450;--dd-bd:#4A53A0;--dd-in:#161B3E;--dd-ink
 .dd .ddB .fld.sm{margin-top:12px}
 .hgtStep{margin:2px 0 4px}
 .hgtStep>span{display:block;margin-bottom:6px;font-weight:700;color:var(--danger-ink,#C6362D)}
+
+/* ============ v245 — أيقونات أكبر على الكمبيوتر ============ */
+@media (min-width:820px){
+  main.wrap{width:100%}
+  .tabs button{flex:0 1 210px;font-size:15px;padding:12px 10px 10px;gap:7px}
+  .tabs button .i.lg{width:34px;height:34px}
+  .tabs button.on .i{transform:translateY(-1px) scale(1.06)}
+  .verstrip button{padding:9px 13px;font-size:13px}
+  .verstrip button svg.i{width:20px;height:20px}
+  .btn svg.i{width:21px;height:21px}
+  .btn.sm svg.i{width:19px;height:19px}
+  /* الرئيسية */
+  .hm2-cart{width:56px;height:56px;border-radius:18px}.hm2-cart svg.i{width:28px;height:28px}
+  .hm2-new{font-size:18px;padding:17px}.hm2-new svg.i{width:24px;height:24px}
+  .hm2-k .ki{width:50px!important;height:50px!important;border-radius:16px!important}
+  .hm2-k .ki svg.i{width:28px!important;height:28px!important}
+  .hm2-k b{font-size:30px!important}.hm2-k .kt{font-size:13px!important}
+  .hm2-q .qi{width:68px;height:68px;border-radius:22px}.hm2-q .qi svg.i{width:32px;height:32px}
+  .hm2-q .qt{font-size:13.5px!important}
+  /* طلب جديد */
+  .secTile .ti{width:42px;height:42px;border-radius:13px}.secTile .ti .i{width:24px;height:24px}
+  .secTile{font-size:13.5px}
+  /* السلة والمصنع */
+  .ct-steps span{font-size:13.5px;padding:8px 14px}.ct-steps span svg.i{width:19px;height:19px}
+  .ad-ico{width:62px;height:62px;border-radius:20px}.ad-ico svg.i{width:34px;height:34px}
+  .ad-k b{font-size:30px}.ad-k span{font-size:13px}
+  .adH .n{width:46px;height:46px;border-radius:15px}.adH .n svg.i{width:26px;height:26px}
+  .adH>svg.i:last-child{width:24px;height:24px}
+  .adH .tt b{font-size:18px}.adH .tt small{font-size:13px}
+  .ad-tl svg.i{width:18px;height:18px}.ad-tl{font-size:13.5px}
+  .step .n svg.i{width:24px;height:24px}
+  .ordChip{font-size:14px!important}
+}
 </style>
 </head>
 <body>
@@ -2314,7 +2347,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v244';
+const APP_BUILD   = 'v245';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
