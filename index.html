@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ELKORASHI DOORS — طلبات أبواب WPC</title>
-<meta name="theme-color" content="#2E7FF0">
-<script>(function(){try{var t=localStorage.getItem('wpc_theme');if(t!=='dark'&&t!=='light')t='light';document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='dark'?'#0A1830':'#2E7FF0');}catch(e){}})();</script>
+<meta name="theme-color" content="#1B5FD0">
+<script>(function(){try{var t=localStorage.getItem('wpc_theme');if(t!=='dark'&&t!=='light')t='light';document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='dark'?'#0A1830':'#1B5FD0');}catch(e){}})();</script>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
@@ -2139,6 +2139,31 @@ html[data-theme="dark"]{--dd-bg:#1E2450;--dd-bd:#4A53A0;--dd-in:#161B3E;--dd-ink
   .step .n svg.i{width:24px;height:24px}
   .ordChip{font-size:14px!important}
 }
+
+/* ============ v247 — لمسة احترافية: ألوان أعمق، زوايا أنعم، ظلال ناعمة، شريط سفلي عائم ============ */
+:root{--r-card:20px;--r-ctl:14px;--sh-1:0 1px 2px rgba(16,32,64,.06),0 6px 18px rgba(16,32,64,.07);--sh-2:0 2px 4px rgba(16,32,64,.08),0 14px 34px rgba(16,32,64,.12);--grad-brand:linear-gradient(135deg,#2E7FF0 0%,#1B5FD0 55%,#16409A 100%)}
+html[data-theme="dark"]{--sh-1:0 1px 2px rgba(0,0,0,.35),0 8px 22px rgba(0,0,0,.28);--sh-2:0 2px 4px rgba(0,0,0,.4),0 16px 36px rgba(0,0,0,.4);--grad-brand:linear-gradient(135deg,#3FA9F5 0%,#2A7FE0 60%,#1F5CB8 100%)}
+.card{border-radius:var(--r-card);box-shadow:var(--sh-1)}
+.btn{border-radius:var(--r-ctl);letter-spacing:.1px}
+.btn:not(.ghost):not(.sm):not(.danger){background-image:var(--grad-brand);box-shadow:0 8px 20px rgba(31,92,184,.28)}
+.btn:active{transform:scale(.98)}
+.chip{border-radius:12px;transition:transform .12s var(--ease),box-shadow .15s,border-color .15s}
+.chip:active{transform:scale(.97)}
+.chip.on{box-shadow:0 6px 16px rgba(31,92,184,.28)}
+input,select,textarea{border-radius:12px}
+input:focus,select:focus,textarea:focus{outline:none;box-shadow:0 0 0 3px rgba(63,169,245,.28)}
+header.top{background-image:linear-gradient(135deg,#16409A 0%,#1B5FD0 60%,#2E7FF0 100%);box-shadow:0 8px 28px rgba(22,64,154,.28);border-radius:0 0 26px 26px}
+html[data-theme="dark"] header.top{background-image:linear-gradient(135deg,#0A1830 0%,#12305E 100%);box-shadow:0 8px 28px rgba(0,0,0,.45)}
+.hero{border-radius:24px;box-shadow:var(--sh-2)}
+.secTile{border-radius:18px;box-shadow:var(--sh-1);transition:transform .14s var(--ease),box-shadow .18s}
+.secTile:active{transform:scale(.96)}
+.secTile.on{box-shadow:0 10px 24px rgba(31,92,184,.22)}
+@media (max-width:720px){
+  .tabs{position:fixed;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));z-index:50;border:1px solid var(--line);border-radius:22px;
+    background:color-mix(in srgb,var(--card) 88%,transparent);-webkit-backdrop-filter:saturate(1.4) blur(14px);backdrop-filter:saturate(1.4) blur(14px);box-shadow:var(--sh-2);padding:5px}
+  .tabs button{border-bottom:0!important;border-radius:16px}
+  body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+}
 </style>
 </head>
 <body>
@@ -2347,7 +2372,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v246';
+const APP_BUILD   = 'v247';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
