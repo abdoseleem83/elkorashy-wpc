@@ -2347,7 +2347,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v245';
+const APP_BUILD   = 'v246';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2795,7 +2795,7 @@ const state = {
   br:{size:'6×9', code:'', rods:1, len:BROR_ROD_M_DEFAULT, unit:'m'},
   sp:{code:'', qty:1}, // شريط — بالمتر، الكمية بتقبل كسور
   vn:{code:'', qty:1}, // قشرة — بالمتر، الكمية بتقبل كسور
-  mb:{wall:10, code:'', doorW:'', custom:false, w:'', h:'', qty:1}, // معبرة — wall = سمك الحيطة، doorW = عرض الباب الاستاندر، custom = مقاس خاص (w/h بالسم)
+  mb:{wall:10, wallCustom:false, wallTxt:'', code:'', doorW:'', custom:false, w:'', h:'', qty:1}, // معبرة — wall = سمك الحيطة (wallCustom/wallTxt = مقاس آخر مكتوب بالإيد)، doorW = عرض الباب الاستاندر، custom = مقاس خاص (w/h بالسم)
   pd:{code:'', qty:1}, // ألواح بروديوم — code = كود/لون الباب (إجباري زي البرور)، qty = عدد الألواح
   acc:{},
   touched:false,             // اتضغط إرسال؟ عشان نوضّح الحقول الناقصة
@@ -3924,7 +3924,8 @@ function viewNew(){
   const mbCodeChips = DOORS.map(d=>`
     <button class="chip ${mbSt.code===d.code?'on':''}" data-act="mb-code" data-code="${d.code}"${doorChipStyle_(d.code,mbSt.code===d.code)}>${d.code} — ${esc(d.name)}</button>`).join('');
   const mbWallChips = MABRA_WALLS.map(c=>`
-    <button class="chip ${mbSt.wall===c?'on':''}" data-act="mb-wall" data-w="${c}">${c} سم</button>`).join('');
+    <button class="chip ${!mbSt.wallCustom&&mbSt.wall===c?'on':''}" data-act="mb-wall" data-w="${c}">${c} سم</button>`).join('')
+    + `<button class="chip ${mbSt.wallCustom?'on':''}" data-act="mb-wall-custom">مقاس آخر</button>`;
   const mbSizeChips = SIZES.map(z=>`
     <button class="chip ${!mbSt.custom&&String(mbSt.doorW)===String(z.w)?'on':''}" data-act="mb-doorw" data-w="${z.w}">${z.w} سم</button>`).join('')
     + `<button class="chip ${mbSt.custom?'on':''}" data-act="mb-custom">مقاس خاص</button>`;
@@ -3935,6 +3936,9 @@ function viewNew(){
     <div class="chips">${mbCodeChips}</div>
     <div class="sol-h" style="margin:12px 0 6px">سمك الحيطة <span style="font-weight:400;color:var(--muted)">(زي مقاس الحلق)</span></div>
     <div class="chips">${mbWallChips}</div>
+    ${mbSt.wallCustom?`
+    <label class="fld" style="margin-top:9px"><span>سمك الحيطة (سم) <b class="req">*</b></span>
+      <input type="text" inputmode="decimal" value="${esc(mbSt.wallTxt)}" placeholder="مثال 12" data-act="mb-wall-txt"></label>`:''}
     <div class="sol-h" style="margin:12px 0 6px">العرض <b class="req">*</b> <span style="font-weight:400;color:var(--muted)">(الارتفاع الاستاندر ${DOOR_STD_HEIGHT} سم)</span></div>
     <div class="chips">${mbSizeChips}</div>
     ${mbSt.custom?`
@@ -3946,7 +3950,7 @@ function viewNew(){
     </div>`:''}
     <label class="fld" style="margin-top:12px"><span>العدد</span>
       <input type="text" inputmode="numeric" value="${esc(mbSt.qty)}" placeholder="مثال 2" data-act="mb-qty"></label>
-    <button class="btn ghost sm" style="margin-top:9px" data-act="add-mb" ${(mbSt.code&&mbD.w>0&&mbD.h>0&&mbQty_()>0)?'':'disabled'}>${mbBtnLabel_()}</button>
+    <button class="btn ghost sm" style="margin-top:9px" data-act="add-mb" ${(mbSt.code&&mbWall_()>0&&mbD.w>0&&mbD.h>0&&mbQty_()>0)?'':'disabled'}>${mbBtnLabel_()}</button>
   </section>`;
 
   const secEmpty = `
@@ -7364,7 +7368,8 @@ document.addEventListener('click',e=>{
     case 'br-size': state.br.size=el.dataset.size; render(); break;
     case 'br-code': state.br.code=el.dataset.code; render(); break;
     case 'mb-code': state.mb.code=el.dataset.code; render(); break;
-    case 'mb-wall': state.mb.wall=Number(el.dataset.w); render(); break;
+    case 'mb-wall': state.mb.wall=Number(el.dataset.w); state.mb.wallCustom=false; render(); break;
+    case 'mb-wall-custom': state.mb.wallCustom=!state.mb.wallCustom; if(state.mb.wallCustom) state.mb.wallTxt=''; else state.mb.wall=MABRA_WALLS.includes(state.mb.wall)?state.mb.wall:10; render(); break;
     case 'mb-doorw': state.mb.doorW=el.dataset.w; state.mb.custom=false; render(); break;
     case 'mb-custom': state.mb.custom=!state.mb.custom; if(state.mb.custom) state.mb.doorW=''; render(); break;
     case 'add-mb': addMabra(); break;
@@ -7692,6 +7697,7 @@ document.addEventListener('input',e=>{
   if(a==='br-rods'){ state.br.rods=el.value; refreshRodBtn('add-br'); return; }
   if(a==='br-len'){ state.br.len=decIn_(el.value); render(); return; }
   if(a==='mb-qty'){ state.mb.qty=el.value; refreshMabraBtn_(); return; }
+  if(a==='mb-wall-txt'){ state.mb.wallTxt=el.value; refreshMabraBtn_(); return; }
   if(a==='mb-w'){ state.mb.w=el.value; refreshMabraBtn_(); return; }
   if(a==='mb-h'){ state.mb.h=el.value; refreshMabraBtn_(); return; }
   if(a==='pd-qty'){ state.pd.qty=el.value; refreshPanelBtn(); return; }
@@ -8006,6 +8012,12 @@ function mbDims_(){
   if(m.custom) return { w:Number(decIn_(m.w))||0, h:Number(decIn_(m.h))||0 };
   return { w:Number(m.doorW)||0, h:DOOR_STD_HEIGHT };
 }
+// سمك الحيطة: واحد من الاستاندر (10/15/20) أو مقاس آخر مكتوب بالإيد
+function mbWall_(){
+  const m = state.mb;
+  if(m.wallCustom){ const n = Number(decIn_(m.wallTxt)); return n>0 ? Math.round(n*100)/100 : 0; }
+  return Number(m.wall)||0;
+}
 function mbQty_(){ return Math.max(0, Math.round(Number(decIn_(String(state.mb.qty==null?'':state.mb.qty)))||0)); }
 function mbNum_(n){ return String(Math.round(Number(n)*100)/100); }
 function mbSpec_(wall, h, w){ return wall+' سم — '+mbNum_(h)+'×'+mbNum_(w); }
@@ -8016,27 +8028,30 @@ function parseMabraSpec_(spec){
 function mbBtnLabel_(){
   const st=state.mb, d=mbDims_(), q=mbQty_();
   if(!st.code) return 'اختر اللون الأول (كود الباب)';
+  if(!(mbWall_()>0)) return 'اكتب سمك الحيطة';
   if(!(d.w>0)) return st.custom ? 'اكتب عرض المعبرة' : 'اختر العرض';
   if(!(d.h>0)) return 'اكتب ارتفاع المعبرة';
   if(!(q>0)) return 'اكتب عدد المعابر';
-  return `أضف ${q} معبرة — ${st.wall} سم — ${mbNum_(d.h)}×${mbNum_(d.w)} — ${st.code}`;
+  return `أضف ${q} معبرة — ${mbNum_(mbWall_())} سم — ${mbNum_(d.h)}×${mbNum_(d.w)} — ${st.code}`;
 }
 // بيتحدّث من غير render كامل عشان الكيبورد ما يقفلش وإحنا بنكتب
 function refreshMabraBtn_(){
   const b=document.querySelector('[data-act="add-mb"]'); if(!b) return;
   const st=state.mb, d=mbDims_();
-  b.disabled=!(st.code && d.w>0 && d.h>0 && mbQty_()>0);
+  b.disabled=!(st.code && mbWall_()>0 && d.w>0 && d.h>0 && mbQty_()>0);
   b.textContent=mbBtnLabel_();
 }
 function addMabra(){
   const st = state.mb, d = mbDims_();
   if(!st.code){ toast('اختر اللون (كود الباب) الأول'); return; }
+  const wall = mbWall_();
+  if(!(wall>0)){ toast('اكتب سمك الحيطة'); return; }
   if(!(d.w>0)){ toast(st.custom?'اكتب عرض المعبرة':'اختر العرض'); return; }
   if(!(d.h>0)){ toast('اكتب ارتفاع المعبرة'); return; }
   const qty = mbQty_();
   if(qty<=0){ toast('اكتب عدد المعابر'); return; }
   const dName = (DOORS.find(x=>x.code===doorCode_(st.code))||{}).name || '';
-  const spec = mbSpec_(st.wall, d.h, d.w);
+  const spec = mbSpec_(mbNum_(wall), d.h, d.w);
   const key = 'mabra|'+st.code+'|'+spec;
   const ex = state.cart.find(it=>it.kind==='mabra' && it.key===key);
   if(ex){ ex.qty += qty; }
@@ -8044,13 +8059,13 @@ function addMabra(){
     state.cart.push({
       kind:'mabra', key, qty, code:st.code, price:MABRA_PRICE, unit:'معبرة', spec,
       title: 'معبرة '+spec+' — '+st.code+(dName?' '+dName:''),
-      titleEn: 'Mabra '+st.wall+' cm - '+mbNum_(d.h)+'x'+mbNum_(d.w)+' - '+st.code
+      titleEn: 'Mabra '+mbNum_(wall)+' cm - '+mbNum_(d.h)+'x'+mbNum_(d.w)+' - '+st.code
     });
   }
   saveCart_();
   clearPulledLine_();
   toast('اتضاف '+qty+' معبرة');
-  state.mb = {wall:st.wall, code:'', doorW:'', custom:false, w:'', h:'', qty:1};
+  state.mb = {wall:st.wall, wallCustom:st.wallCustom, wallTxt:st.wallTxt, code:'', doorW:'', custom:false, w:'', h:'', qty:1};
   render();
 }
 
@@ -8147,7 +8162,7 @@ function resetPickerFor_(kind){
   } else if(kind==='bror'){
     state.br = {size:'6×9', code:'', rods:1, len:BROR_ROD_M_DEFAULT, unit:'m'};
   } else if(kind==='mabra'){
-    state.mb = {wall:10, code:'', doorW:'', custom:false, w:'', h:'', qty:1};
+    state.mb = {wall:10, wallCustom:false, wallTxt:'', code:'', doorW:'', custom:false, w:'', h:'', qty:1};
   } else if(kind==='panel'){
     state.pd = {code:'', qty:1};
   } else if(kind==='strip' || kind==='veneer'){
@@ -8286,7 +8301,7 @@ function editCartLine(i){
   } else if(it.kind==='mabra'){
     const sp = parseMabraSpec_(it.spec) || {};
     const std = SIZES.some(z=>z.w===sp.w) && sp.h===DOOR_STD_HEIGHT;
-    state.mb = {wall: MABRA_WALLS.includes(sp.wall)?sp.wall:10, code:it.code||'', doorW: std?String(sp.w):'',
+    state.mb = {wall: MABRA_WALLS.includes(sp.wall)?sp.wall:10, wallCustom: !!sp.wall && !MABRA_WALLS.includes(sp.wall), wallTxt: (sp.wall && !MABRA_WALLS.includes(sp.wall)) ? String(sp.wall) : '', code:it.code||'', doorW: std?String(sp.w):'',
                 custom: !std, w: std?'':String(sp.w||''), h: std?'':String(sp.h||''), qty: it.qty||1};
     state.newSection='mabra'; save(LS_SECTION,state.newSection);
   } else if(it.kind==='panel'){
