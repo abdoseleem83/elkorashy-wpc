@@ -9281,6 +9281,12 @@ function docRowHTML_(it, idx, priced, showFrameHCol, oddFrameW, titleTxt){
     // سطر الحلق بيكتب عرض الحلق، وسطر البرور بيكتب مقاسه، في نفس خانات الجدول
     if(it.kind==='frame'){ frameW = docFrameCm_(it) || '—'; }
     else { brorTxt = docBrorSize_(it) || '—'; }
+  } else if(it.kind==='mabra'){
+    // المعبرة: العرض والارتفاع بيتسحبوا من المواصفات ('15 سم — 131×220') ويتحطوا في خانتيهم
+    const sp = parseMabraSpec_(it.spec);
+    if(sp){ widthTxt = sp.w; heightTxt = sp.h; }
+    unit = itemUnitAr_(it.unit) || 'معبرة';
+    if(unit==='—') unit='معبرة';
   } else {
     // الوحدة ممكن تيجي من السيرفر بالإنجليزي ('pc'/'door'/'rod 220cm') لأن كده
     // بتتخزّن في الشيت. itemUnitAr_ بتعرّبها، ولو كانت عربي أصلًا بترجّعها زي ما هي.
