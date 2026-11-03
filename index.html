@@ -2426,19 +2426,6 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2aVRVaUVubR3w
    ============================================================ */
 const BROR_ROD_CM = 226;
 
-/* ============================================================
-   متطلبات التقطيع للباب الواحد (بيانات المصنع)
-   الباب بياخد: ٣ أعواد حلق — عودين ٢٢٠ سم (القوائم) + عود ١١٠ سم (عارضة الحلق العلوية)
-                ٥ أعواد برور — كل عود ٢٢٦ سم
-   الأرقام دي بتتحسب أوتوماتيك لكل باب وبتظهر في مستند الطلب
-   عشان المصنع يعرف يقطّع على طول من غير حسابات بالإيد.
-   ============================================================ */
-const FRAME_PER_DOOR = [
-  { qty:2, cm:220, label:'قائم' },     // جنبي الباب
-  { qty:1, cm:110, label:'عارضة حلق علوية'  }      // أعلى الباب
-];
-const BROR_PER_DOOR  = { qty:5, cm:BROR_ROD_CM };
-
 // نص مختصر يتعرض جنب الباب في المستندات
 
 // بيبني نص الحلق شامل الارتفاع الخاص لو الموزع/العميل حدده (اختياري)
@@ -2609,14 +2596,6 @@ function doorChipStyle_(code, selected){
 }
 
 const SIZES = [{w:70,price:5200},{w:80,price:5200},{w:90,price:5400},{w:100,price:6000}];
-// لون مختلف لكارت مقاس معيّن في مستند الأوردر/عرض السعر (docTotalsHTML) — عشان يتميّز بسرعة عن باقي المقاسات.
-// عدّل المفتاح (رقم المقاس) والقيمة (اسم لون من SIZE_COLOR_PALETTE) حسب اللي محتاجه — سيبه فاضي {} لو مفيش تمييز مطلوب.
-const SIZE_COLOR_OVERRIDES = { 100:'brick' };
-const SIZE_COLOR_PALETTE = {
-  brick: {bg:'#F6E4DA', border:'#E3B196', text:'#8A3A1E'},
-  blue:  {bg:'#EAF2FA', border:'#B9D4EA', text:'#002050'}   // اللون الافتراضي (زي ما كان قبل كده)
-};
-function sizeColor_(w){ return SIZE_COLOR_PALETTE[SIZE_COLOR_OVERRIDES[w]] || SIZE_COLOR_PALETTE.blue; }
 let CUSTOM_EXTRA = 300;
 let HAFR_EXTRA = 600;   // باب حفر — زيادة ثابتة فوق سعر الباب العادي لنفس المقاس
 let WOOD_EXTRA = 300;   // تدعيم خشب — بند مستقل تحت الباب، بيتحسب لكل باب متختار له
@@ -3597,14 +3576,6 @@ function viewNew(){
     const wAttr = w==='custom' ? '' : ` data-w="${w}"`;
     return FRAMES.map(f=>`<button class="miniChip ${sel===f.cm?'on':''}" data-act="${act}"${wAttr} data-cm="${f.cm}">${f.cm} سم</button>`).join('')
       +`<button class="miniChip ${sel===0?'on':''}" data-act="${act}"${wAttr} data-cm="0">بدون</button>`;
-  };
-  // اختيار نوع الحلق: كامل (طقم كامل شامل مع الباب زي المعتاد) أو أعواد (عدد أعواد إضافي منفصل عن كمية الباب)
-  const frameKindChips=(kind,w)=>{
-    const act = w==='custom' ? 'cust-frame-kind' : 'size-frame-kind';
-    const wAttr = w==='custom' ? '' : ` data-w="${w}"`;
-    const k = kind||'full';
-    return `<button class="miniChip iconChip ${k==='full'?'on':''}" data-act="${act}"${wAttr} data-k="full">${ico('door')}</button>`
-      +`<button class="miniChip iconChip ${k==='rods'?'on':''}" data-act="${act}"${wAttr} data-k="rods">${ico('ruler')}<span>أعواد</span></button>`;
   };
   const dbrorMiniChips=(sel,w)=>{
     const act = w==='custom' ? 'cust-dbror' : 'size-dbror';
@@ -7377,8 +7348,6 @@ document.addEventListener('click',e=>{
     case 'cust-qty-minus': if(Number(p.custom.qty)>0) p.custom.qty=Math.max(1,Number(p.custom.qty)-1); render(); break;
     case 'cust-qty-plus':  p.custom.qty=(Number(p.custom.qty)||0)+1; render(); break;
     case 'size-frame': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.frame=Number(el.dataset.cm); render(); break; }
-    case 'size-frame-kind': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.frameKind=el.dataset.k; render(); break; }
-    case 'cust-frame-kind': p.custom.frameKind=el.dataset.k; render(); break;
     case 'size-dbror': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.dbror=el.dataset.size; render(); break; }
     case 'size-hafr': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.hafr=(el.dataset.v==='1'); render(); break; }
     case 'cust-hafr': p.custom.hafr=(el.dataset.v==='1'); render(); break;
@@ -9294,11 +9263,6 @@ function docRowHTML_(it, idx, priced, showFrameHCol, oddFrameW, titleTxt){
     if(unit==='—') unit='قطعة';
   }
   const isCut = isCutLine_(it);
-  // لو مقاس الحلق (البرور) في السطر ده مختلف عن باقي أسطر الطلب، نبرز الخلية دي
-  // بخلفية تلفت النظر عشان المصنع ما يلخبطش بين حلق 15 وحلق 20 مثلًا في نفس الأوردر.
-  const frameWStyle = oddFrameW
-    ? 'background:#FFF3CD;color:#8A5A00;font-weight:700;border-radius:4px'
-    : 'color:#5B6B7D';
   // «خدمة قص» بتتشال من نص الملحوظة هنا لأنها بقت صف مستقل تحت الصنف
   const restNote = (it.kind==='door' && it.note)
     ? it.note.split(' — ').filter(x=>x.trim() && x.trim()!==CUT_SERVICE_NOTE_).join(' — ')
@@ -9398,9 +9362,6 @@ function docTotalsHTML(o){
   // ⚠️ ترتيب الكروت: الفلكس RTL بيرسم آخر عنصر على الشمال — .reverse() بيخلّي أول مجموعة في الجدول أول كارت من اليمين
   const keys=sortSizeKeys_(Object.keys(perSize)).reverse();
   const doorsTotal=keys.reduce((s,k)=>s+perSize[k],0);
-  // «خدمة قص» بند فلوس مش قطعة تتقطع — مابتتعدّش في إجمالي القطع
-  const counted=items.filter(it=>!isCutLine_(it));
-  const overallTotal=counted.reduce((s,it)=>s+(Number(it.qty)||0),0);
   // ⚠️ «الإجمالي الكلي» بيعدّ طقم الحلق كقطعة واحدة — وهو فعليًا ٣ عيدان. مابنغيّرش الحساب، بنوضّح الطقم كام عود.
   const setsQty = items.reduce((s,it)=>s+(it.isSet?(Number(it.qty)||0):0),0);
   const setsNote = setsQty
@@ -9472,51 +9433,6 @@ function withCutLines_(o){
 function withoutCutLines_(o){
   if(!o || !(o.items||[]).some(quoteOnlyLine_)) return o;
   return Object.assign({}, o, { items:(o.items||[]).filter(it=>!quoteOnlyLine_(it)) });
-}
-// طلبات قديمة لنفس العميل لسه ما خلصتش (مش «تم التسليم» ولا «ملغي» ولا اتعدّلت بطلب جديد)
-// — بتبان كملحوظة في ورقة الأوردر والرسالة عشان المصنع يعرف إن فيه شغل مفتوح للعميل ده.
-// مستند الأدمن: بندوّر في طلبات المصنع بنفس رقم الموبايل. مستند العميل: طلبات جهازه.
-function otherOpenOrders_(o){
-  if(!o) return [];
-  // ⚠️ باج كان هنا: الملحوظة كانت بتجيب كل الطلبات المفتوحة على الحساب/الجهاز (نفس رقم الموبايل)،
-  // والموزّع الواحد عنده عملاء كتير — فعميل جديد كان يطلع له أرقام طلبات ناس تانية.
-  // «العميل» هنا = صاحب الأوردر، فبنقارن بالاسم، ولو الطلب ده مالوش اسم مفيش ملحوظة.
-  const custKey = normName_(o.customer);
-  if(!custKey) return [];
-  const skip = new Set([String(o.id||''), String(o.replacesId||'')].filter(Boolean));
-  const out = [];
-  const push = (x, status) => {
-    if(!x || skip.has(String(x.id))) return;
-    if(normName_(x.customer)!==custKey) return;
-    if(DUE_DONE_STATUSES.includes(status) || x.superseded) return;
-    // طلب قديم من قبل الترقيم التسلسلي: مالوش رقم، فمنكتبش كوده الداخلي الطويل
-    // (#W260904-002419ATB) — بنكتب «طلب» وتاريخه (من الكود نفسه) عشان يتعرف.
-    let no = orderNoText_(x);
-    if(!x.displayNo){
-      const dm = /W(\d{2})(\d{2})(\d{2})/.exec(String(x.id||''));
-      no = dm ? ('طلب '+dm[3]+'/'+dm[2]) : ('طلب '+shortIdText_(x.id));
-    }
-    out.push({ no, st: (STATUS[status]||STATUS.New).ar });
-  };
-  try{
-    if(o.fromAdmin){
-      const ph = String(o.phone||'').replace(/\D/g,'').slice(-10);
-      if(!ph) return [];
-      ((state.admin&&state.admin.rows)||[]).forEach(x=>{
-        if(String(x.phone||'').replace(/\D/g,'').slice(-10)===ph) push(x, x.status||'New');
-      });
-    } else {
-      (state.orders||[]).forEach(x=>push(x, homeStatus_(x)));
-    }
-  }catch(e){ return []; }
-  return out;
-}
-function openOrdersNoteHTML_(o){
-  const list = otherOpenOrders_(o);
-  if(!list.length) return '';
-  const nums = list.slice(0,8).map(x=>esc(x.no)).join('، ') + (list.length>8 ? ' وغيرهم' : '');
-  return `<div style="margin-top:12px;padding:9px 14px;background:#FFF3D6;border:1.5px solid #E8B94A;border-inline-start:6px solid #D99A0B;border-radius:9px;font-family:Arial,'Helvetica Neue',sans-serif;font-size:13.5px;font-weight:800;color:#000;line-height:1.7">
-    ملحوظة: للعميل ${list.length>1?'طلبات سابقة':'طلب سابق'} لسه ما خلص${list.length>1?'تش':''} — رقم <span style="color:#B3261E">${nums}</span></div>`;
 }
 
 function docHTML(o,mode,priced){
