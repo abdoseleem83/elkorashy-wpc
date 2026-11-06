@@ -63,7 +63,9 @@ const أين = await pg.evaluate(()=>{
   const o = { id:'P1', no:'1/1', name:'اسلام', phone:'01000000000', date:'2026-09-10',
               items:[باب, طبع, خشب], total:5200*2+400+600 };
   const ورقة = docHTML(o,'order',true), عرض = docHTML(o,'quote',true), رسالة = buildMessage(o);
-  const بند = /<b>طباعة<\/b>/;            // سطر البند المستقل بسعره في الجدول
+  // سطر البند المستقل بسعره في الجدول: صف أول خلية فيه رقم وتاني خلية اسمها «طباعة…»
+  const بند = { test: h => { const d=document.createElement('div'); d.innerHTML=h;
+    return [...d.querySelectorAll('tbody tr')].some(tr=>/^طباعة/.test((tr.children[1]||{}).textContent?.trim()||'')); } };
   const علامة = /\(طباعة\)/;              // العلامة على سطر الباب
   return { بند_عرض: بند.test(عرض), بند_ورقة: بند.test(ورقة),
            بند_واتساب: /طباعة\s*—\s*70/.test(رسالة),
@@ -148,7 +150,8 @@ const عدّ = await pg.evaluate(()=>{
     unitPrice:5200, qty:2, w:'70', frame:0, dbror:'', frameHeight:0, doorHeight:0, print:true, note:''};
   const طبع = {kind:'acc', id:'PRINT', code:'PRINT', unit:'باب', qty:2, price:200, title:'طباعة — 70 سم'};
   const o = { id:'P2', no:'2', name:'ا', phone:'01', date:'2026-09-10', items:[باب,طبع], total:10800 };
-  return /الإجمالي الكلي<\/b><\/span><b>(\d+) قطعة/.exec(docHTML(o,'order',true));
+  // الصف بقى «إجمالي الأبواب N باب» (الإجمالي الكلي اتشال) — بنقرا النص من غير الـHTML
+  return /إجمالي الأبواب\s*(\d+) باب/.exec(docHTML(o,'order',true).replace(/<[^>]+>/g,' ').replace(/\s+/g,' '));
 });
 check('إجمالي القطع بيعدّ الأبواب بس', عدّ && عدّ[1]==='2', عدّ ? عدّ[1] : 'مالقيناش');
 

@@ -157,14 +157,10 @@ await b2.close();
 const sw = fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 check('ملف الصورة اسمه اتغيّر', fs.existsSync(new URL('../img/doors/A013.jpg', import.meta.url)));
 check('والقديم مابقاش موجود', !fs.existsSync(new URL('../img/doors/A015.jpg', import.meta.url)));
-check('الكاش بيجيب الصورة الجديدة', /A013\.jpg/.test(sw) && !/A015\.jpg/.test(sw));
-// ⚠️ ما نقفلش على رقم بعينه: أي تغيير أصول جديد بيزوّده تاني والاختبار
-// يفضل يفشل على الفاضي. الشرط الحقيقي إنه اتحرّك عن 'a1' (اللي كان قبل ما
-// اسم الصورة يتغيّر) — كاش الصور دايم، فمن غير الزيادة دي الأجهزة تفضل
-// شايفة الصورة القديمة.
-const assetVer = (/ASSET_VERSION = '([^']+)'/.exec(sw) || [])[1];
-check('ورقم إصدار الأصول اتزوّد (عشان الأجهزة تجيبها)',
-  !!assetVer && assetVer !== 'a1', String(assetVer));
+// الـsw.js بقى بسيط (من 2 أكتوبر): الصفحة من الشبكة + offline.html احتياطي، ومفيش كاش للصور
+// — فالصورة الجديدة بتوصل لوحدها، ومفيش ASSET_VERSION. المهم ماتفضلش أي إشارة للاسم القديم.
+check('الـsw مافيهوش اسم الصورة القديمة', !/A015\.jpg/.test(sw));
+check('ومافيهوش كاش صور بيخلّي الأجهزة تشوف القديمة', !/ASSET_VERSION|img\/doors/.test(sw));
 
 const gs = fs.readFileSync(new URL('../apps_script.gs', import.meta.url), 'utf8');
 check('السيرفر عنده نفس خريطة الأكواد', /DOOR_CODE_ALIASES_ = \{ 'A015': 'A013' \}/.test(gs));

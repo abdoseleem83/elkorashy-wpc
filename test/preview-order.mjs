@@ -44,13 +44,13 @@ check('فتحت بسرعة (أقل من 2 ثانية)', took < 2000, took+'ms');
 const r = await pg.evaluate(()=>{
   const o=document.getElementById('reportPreviewOverlay'); if(!o) return null;
   const t=o.textContent;
-  const nums=[...o.querySelectorAll('div')].filter(d=>/^\d+(\/\d+)?$/.test(d.textContent.trim())&&getComputedStyle(d).fontSize==='38px')
+  const nums=[...o.querySelectorAll('div')].filter(d=>/^\d+(\/\d+)?$/.test(d.textContent.trim())&&getComputedStyle(d).fontSize==='28px'&&d.getAttribute('dir')==='ltr')
     .map(d=>d.textContent.trim());
   return {الأرقام:nums, نص:t,
     فيه_معدل: t.includes('التعديل رقم 2 — بتاريخ'),
     فيه_تاريخ_التعديل: t.includes('04/09/2026'),
     عنوان_معدّل: t.includes('رقم طلب الأوردر — معدّل'),
-    الطلبين: (t.match(/طلب أوردر/g)||[]).length};
+    الطلبين: (t.match(/رقم طلب الأوردر/g)||[]).length};
 });
 check('رقم الطلب المعدّل «52/2»', r && r.الأرقام.includes('52/2'), r && r.الأرقام.join(' , '));
 check('الطلب غير المعدّل رقمه عادي «61»', r && r.الأرقام.includes('61'));

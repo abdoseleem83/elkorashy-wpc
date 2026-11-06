@@ -14,15 +14,17 @@ async function newPage(){
   return pg;
 }
 async function fillProfile(pg){
+  await pg.click('[data-tab="new"]'); await pg.waitForTimeout(300);   // أول شاشة بقت «الرئيسية»؛ البيانات في «طلب جديد»
   await pg.fill('[data-act="prof"][data-k="name"]','محمد القرشي');
   await pg.fill('[data-act="prof"][data-k="phone"]','01012345678');
   await pg.fill('[data-act="cust-name"]','ورشة النور');
 }
 async function addDoor(pg){
-  await pg.click('.secnav button'); await pg.waitForTimeout(300);
+  await pg.click('[data-act="sec"][data-s="doors"]'); await pg.waitForTimeout(300);   // أزرار الأقسام (بدل .secnav)
   await pg.click('[data-act="pick-door"]'); await pg.waitForTimeout(400);
   await pg.click('[data-act="toggle-size"]'); await pg.waitForTimeout(300);
   await pg.click('[data-act="size-frame"]'); await pg.click('[data-act="size-dbror"]'); await pg.waitForTimeout(300);
+  await pg.click('[data-act="size-qty-plus"]'); await pg.waitForTimeout(250);   // الكمية بقت فاضية في الأول — «إضافة» معطّلة لحد ما تتحدد
   await pg.click('[data-act="add-door"]'); await pg.waitForTimeout(500);
 }
 
@@ -30,7 +32,7 @@ console.log('\n══ ١. الفتح والتنقل ══');
 { const pg=await newPage();
   check('المكتبات التقيلة مش محمّلة عند الفتح',
     await pg.evaluate(()=>typeof html2canvas==='undefined' && !window.jspdf && typeof ExcelJS==='undefined'));
-  check('التبويبات الأربعة ظاهرة', (await pg.$$('#tabs button:not([hidden])')).length===4);
+  check('التبويبات الخمسة ظاهرة', (await pg.$$('#tabs button:not([hidden])')).length===5);   // + «الرئيسية»
   check('شارة السلة مخفية وهي فاضية',
     await pg.evaluate(()=>document.getElementById('cartBadge').classList.contains('zero')));
   for(const t of ['cart','orders','admin','new']){ await pg.click(`[data-tab="${t}"]`); await pg.waitForTimeout(350); }

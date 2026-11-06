@@ -1,5 +1,7 @@
 import fs from 'fs';
-const fn = fs.readFileSync('/tmp/fn.js','utf8');
+// الدالة بتتسحب من السكربت نفسه (كان بيقرا ملف مؤقت /tmp/fn.js مش موجود)
+const gs = fs.readFileSync(new URL('../apps_script.gs', import.meta.url), 'utf8');
+const fn = /function adjustStockForItems_\(items, dir\)\{[\s\S]*?\n\}/.exec(gs)[0];
 
 function makeSheet(rows){                 // محاكاة بسيطة لـ Sheets
   const data = rows.map(r=>r.slice());
@@ -15,6 +17,9 @@ function makeSheet(rows){                 // محاكاة بسيطة لـ Sheets
 }
 let SH;
 globalThis.sheet_ = ()=>SH;
+// دوال/ثوابت السكربت اللي adjustStockForItems_ بتعتمد عليها (اتضافت بعد كتابة الاختبار)
+globalThis.DOOR_CODE_ALIASES_ = { 'A015': 'A013' };
+globalThis.doorCode_ = c => { const k = String(c == null ? '' : c).trim(); return globalThis.DOOR_CODE_ALIASES_[k] || k; };
 globalThis.SHEET_STOCK=''; globalThis.HEAD_STOCK=[];
 const adjust = new Function('items','dir', fn.replace(/^function adjustStockForItems_\(items, dir\)\{/,'').replace(/\}$/,''));
 

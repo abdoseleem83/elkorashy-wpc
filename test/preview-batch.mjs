@@ -51,7 +51,7 @@ const r2 = await pg.evaluate(async()=>{
   await previewCustomerOrder_('ورشة النور');
   const ov = document.getElementById('reportPreviewOverlay');
   return {فتحت: !!ov, محمّل:Object.keys(state.admin.items).length,
-          عدد_الأوراق: (ov ? ov.textContent.match(/طلب أوردر/g)||[] : []).length};
+          عدد_الأوراق: (ov ? ov.textContent.match(/رقم طلب الأوردر/g)||[] : []).length};
 });
 check('فشل النداء المجمّع ← بيرجع لنداء لكل طلب', r2.محمّل === 14, 'محمّل='+r2.محمّل);
 check('والمعاينة لسه بتفتح', r2.فتحت);

@@ -13,6 +13,7 @@ await pg.goto(process.env.APP_URL || 'http://localhost:8100/index.html',{waitUnt
 await pg.waitForTimeout(1300);
 
 // ═══ ١) القسم بيقول صريح إن مفيش لزوم لباب ═══
+await pg.evaluate(()=>{ state.tab='new'; renderNow(); }); await pg.waitForTimeout(250);   // أول شاشة بقت «الرئيسية»
 await pg.click('[data-act="sec"][data-s="frame"]');
 await pg.waitForTimeout(250);
 const شرح = await pg.evaluate(()=>{

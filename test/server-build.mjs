@@ -36,7 +36,8 @@ const حالة = await pg.evaluate(async(WANT)=>{
     state.admin.open = true; state.admin.pw = 'x'; state.tab = 'admin';
     state.admin.rows = [{id:'A1', displayNo:1, customer:'ع', date:'2026-09-01', qty:1, total:10}];
   };
-  const نص = () => { جهّز(); renderNow(); return document.getElementById('view').textContent; };
+  // سطر نسخة السكربت بقى جوه «أدوات وتقارير» (قسم بيتفتح) — لازم نفتحه الأول
+  const نص = () => { جهّز(); _ui['adm-tools'] = true; renderNow(); return document.getElementById('view').textContent; };
 
   state.admin.srv = undefined;      نتيجة.لسه = نص();
   state.admin.srv = WANT;           نتيجة.تمام = نص();

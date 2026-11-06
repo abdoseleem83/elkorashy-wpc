@@ -6,6 +6,11 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+// الـsw.js بيحمّل workbox من storage.googleapis.com — من غير إنترنت ما بيتسجّلش، فالاختبار ده بيتخطّى نفسه
+try { const c = new AbortController(); setTimeout(()=>c.abort(), 5000);
+      const r = await fetch('https://storage.googleapis.com/workbox-cdn/releases/5.1.2/workbox-sw.js', {method:'HEAD', signal:c.signal});
+      if(!r.ok) throw new Error('http '+r.status);
+} catch(e) { console.log('⏭️  مكتبة workbox مش متاحة (مفيش إنترنت) — تخطّي'); process.exit(0); }
 let pass=0, fail=0;
 const check=(n,ok,x='')=>{ console.log((ok?'✅':'❌')+' '+n+(x?'  — '+x:'')); ok?pass++:fail++; };
 

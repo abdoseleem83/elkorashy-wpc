@@ -72,17 +72,18 @@ const ctx = {
   String, Number, Object, Array, Date, JSON, RegExp, Math, isNaN, parseFloat,
   Utilities:{ formatDate:(d,tz,f)=> f==='yyyy-MM-dd' ? d.toISOString().slice(0,10) : d.toISOString().slice(11,16) },
   sheet_: n => mkSheet(n), adjustStockForItems_: ()=>{},
-  nextOrderDisplayNo_: ()=>501, findRow_: ()=>-1, clearItemRows_: ()=>{}
+  nextOrderDisplayNo_: ()=>501, findRow_: ()=>-1, clearItemRows_: ()=>{},
+  notifyNewOrder_: ()=>{}, logError_: ()=>{}          // الإشعار (واتساب) وتسجيل الأخطاء مش محل الاختبار ده
 };
 ['TZ','SHEET_ORDERS','SHEET_ITEMS','CUT_SERVICE_CODE_','WOOD_SERVICE_CODE_','PRINT_SERVICE_CODE_','PRICE_NOTE',
- 'COL_STATUS','COL_NOTE','COL_REPLACES','COL_DISPLAY_NO','COL_EDITED_AT'].forEach(n=>{
+ 'COL_STATUS','COL_NOTE','COL_REPLACES','COL_DISPLAY_NO','COL_EDITED_AT','COL_DUE'].forEach(n=>{
   const m = new RegExp('var '+n+'\\s*=\\s*(.+?);').exec(gs); if(m) ctx[n]=eval(m[1]);
 });
 const arr = n => eval('['+new RegExp('var '+n+'\\s*=\\s*\\[([\\s\\S]*?)\\];').exec(gs)[1]+']');
 ctx.HEAD_ORDERS = arr('HEAD_ORDERS'); ctx.HEAD_ITEMS = arr('HEAD_ITEMS');
 vm.createContext(ctx);
 vm.runInContext([grab('isServiceCode_'),grab('sanitizeCell_'),grab('sanitizeRow_'),
-                 grab('warehouseEn_'),grab('digitsOnly_'),grab('saveOrder_'),
+                 grab('warehouseEn_'),grab('digitsOnly_'),grab('cleanIsoDate_'),grab('addDaysIso_'),'var DUE_DEFAULT_DAYS_ = 14;',grab('saveOrder_'),
                  grab('itemsFromRows_')].join('\n'), ctx);
 ctx.saveOrder_(طلب);
 const rows1 = شيت.Order_Items.map(r=>r.slice());

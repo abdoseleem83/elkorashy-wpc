@@ -17,7 +17,8 @@ for(const عرض of [360, 412]){
     window.toast=()=>{}; window.busy=()=>{};
     window.__برّه = ()=>{
       const جواه_تمرير = el=>{ for(let n=el.parentElement;n&&n!==document.body;n=n.parentElement){
-          if(/auto|scroll/.test(getComputedStyle(n).overflowX)) return true; } return false; };
+          // أي أب بيقصّ (hidden/clip) أو بيسكرول مابيعملش سكرول أفقي للصفحة — زي دوائر الإضاءة الزخرفية جوه الهيرو
+          if(/auto|scroll|hidden|clip/.test(getComputedStyle(n).overflowX)) return true; } return false; };
       const خارج=[];
       document.querySelectorAll('#view *').forEach(el=>{
         if(جواه_تمرير(el)) return;

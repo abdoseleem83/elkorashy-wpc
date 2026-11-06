@@ -52,8 +52,8 @@ const info = await pg.evaluate(() => {
     hasCustomer: o.textContent.includes('ورشة النور'),
     hasPdfBtn: !!o.querySelector('[data-act="rpv-pdf"]'),
     // شكل مستند «طلب أوردر» مش تقرير الأبواب المعلّقة
-    isOrderDoc: o.textContent.includes('طلب أوردر') && !o.textContent.includes('تقرير الأبواب المعلّقة'),
-    // شريط رقم الأوردر: في النص، أحمر، تقيل، وكبير
+    isOrderDoc: o.textContent.includes('رقم طلب الأوردر') && !o.textContent.includes('تقرير الأبواب المعلّقة'),
+    // شريط رقم الأوردر: في النص، كحلي، تقيل، وكبير
     band: (() => {
       // الطلب معدّل مرتين، فالرقم بيبان مركّب: «417/2»
       const el = [...o.querySelectorAll('div')].find(d => d.textContent.trim() === '417/2');
@@ -74,9 +74,9 @@ check('محتوى التقرير ظاهر', info && info.hasCustomer);
 check('فيها زرار «تصدير PDF»', info && info.hasPdfBtn);
 check('بشكل مستند «طلب أوردر»', info && info.isOrderDoc);
 check('رقم الأوردر «417/2» ظاهر في النص', info && info.band && info.band.align === 'center');
-check('رقم الأوردر أحمر', info && info.band && info.band.color === 'rgb(179, 38, 30)', info && info.band && info.band.color);
+check('رقم الأوردر كحلي (هوية v222)', info && info.band && info.band.color === 'rgb(10, 31, 68)', info && info.band && info.band.color);
 check('رقم الأوردر تقيل (900)', info && info.band && info.band.weight === '900', info && info.band && info.band.weight);
-check('رقم الأوردر كبير (≥32px)', info && info.band && info.band.size >= 32, info && info.band && info.band.size + 'px');
+check('رقم الأوردر كبير (≥28px)', info && info.band && info.band.size >= 28, info && info.band && info.band.size + 'px');
 check('سطر «التعديل رقم N — بتاريخ» ظاهر', info && info.hasEditBadge);
 check('الحلق الكامل «طقم» مش «عود»', info && info.setUnitAr);
 check('اسم الإكسسوار متعرّب', info && info.accNameAr);

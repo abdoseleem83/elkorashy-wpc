@@ -118,12 +118,15 @@ const عرض = await pg.evaluate(({سعر, قص})=>{
   const o = { id:'W1', no:'1/1', name:'اسلام', phone:'01000000000', date:'2026-09-09',
               items:[باب(false,1), باب(true,2), قصL], total: سعر*3 + قص*2 };
   const html = docHTML(o,'quote',true);
-  // بنقص من أول جدول الأصناف عشان أرقام الترويسة (زي الموبايل) ما تتحسبش
-  const جدول = html.slice(html.indexOf('<tbody'));
-  const أرقام = [...جدول.matchAll(/font-weight:700">([\d,\.]+)<\/td>/g)].map(m=>Number(m[1].replace(/,/g,'')));
-  const تحت = /(\d[\d,\.]*) ج<\/td>/.exec(html);
-  return { مجموع_السطور: أرقام.reduce((a,c)=>a+c,0),
-           المكتوب: تحت ? Number(تحت[1].replace(/,/g,'')) : null };
+  // بنقرا الجدول نفسه (مش تعبير نصي على الـCSS — بيتكسر مع أي تغيير تصميم):
+  // سطور الأصناف = الصفوف اللي أول خلية فيها رقم، والإجمالي = صف «الإجمالي».
+  const d = document.createElement('div'); d.innerHTML = html;
+  const num = t => Number(String(t).replace(/[^\d.]/g,'')) || 0;
+  const rows = [...d.querySelectorAll('tbody tr')].map(tr=>[...tr.children].map(td=>td.textContent.trim()));
+  const سطور = rows.filter(r=>/^\d+$/.test(r[0]));
+  const إجمالي = rows.find(r=>r[0]==='الإجمالي');
+  return { مجموع_السطور: سطور.reduce((s,r)=>s+num(r[r.length-1]),0),
+           المكتوب: إجمالي ? num(إجمالي[إجمالي.length-1]) : null };
 }, {سعر, قص});
 check('سطور عرض السعر بتجمع على الإجمالي المكتوب تحتها',
   عرض.مجموع_السطور === عرض.المكتوب, `${عرض.مجموع_السطور} مقابل ${عرض.المكتوب}`);

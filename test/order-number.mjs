@@ -56,8 +56,9 @@ const doc = await pg.evaluate(() => {
   );
   const p = document.getElementById('paper');
   p.innerHTML = docHTML(o, 'order');
-  return [...p.querySelectorAll('div')]
-    .filter(d => getComputedStyle(d).fontSize === '38px')
+  // رقم الأوردر في ورقة الأوردر: dir=ltr وخط ٢٨px (التصميم v222 — كان ٣٨px)
+  return [...p.querySelectorAll('div[dir="ltr"]')]
+    .filter(d => getComputedStyle(d).fontSize === '28px')
     .map(d => d.textContent.trim());
 });
 check('المستند بيعرض نفس الرقم «417/2»', doc.includes('417/2'), doc.join(' , '));

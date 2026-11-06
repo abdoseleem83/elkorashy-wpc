@@ -59,6 +59,8 @@ check('والأرقام العربية', كتابة.أرقام_عربية==='3',
 
 // ٤) الخانة في الشاشة بقت نصية بعلامة عشرية (زي خانة طول عود الحلق) مش number
 //    — input[type=number] بيرفض «٢٫٢٦٥» وبيقصّ الكسر حسب الـstep
+await pg.evaluate(()=>{ state.tab='new'; renderNow(); });   // الصفحة الرئيسية بقت لوحة؛ شاشة الأوردر الجديد بتتفتح بالتبويب
+await pg.waitForTimeout(250);
 await pg.click('[data-act="sec"][data-s="bror"]');
 await pg.waitForTimeout(250);
 const خانة = await pg.evaluate(()=>{

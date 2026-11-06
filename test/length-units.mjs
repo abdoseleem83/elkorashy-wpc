@@ -110,6 +110,7 @@ check('والأوصاف الصحيحة القديمة زي ما هي', rt.صحي
   JSON.stringify(rt.صحيح));
 
 // ═══ ٧) تبديل الوحدة بيحوّل اللي مكتوب (مش بيغيّر معناه) ═══
+await pg.evaluate(()=>{ state.tab='new'; renderNow(); }); await pg.waitForTimeout(250);   // أول شاشة بقت «الرئيسية»
 await pg.click('[data-act="sec"][data-s="frame"]');
 await pg.waitForTimeout(250);
 const sw = await pg.evaluate(async()=>{

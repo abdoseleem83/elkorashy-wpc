@@ -23,11 +23,12 @@ const صندوق = sel => pg.evaluate(s=>{
 // ═══ التبويبات تحت وثابتة ═══
 const nav = await صندوق('#tabs');
 check('شريط التبويبات ثابت (مابيتحركش مع التمرير)', nav && nav.fixed===true, JSON.stringify(nav));
-check('ومكانه تحت الشاشة', nav && Math.abs(nav.bottom - nav.vh) <= 2, `${nav&&nav.bottom} من ${nav&&nav.vh}`);
+// الشريط عايم (v250): بيبعد عن حرف الشاشة بهامش ١٠ بكسل
+check('ومكانه تحت الشاشة', nav && nav.vh - nav.bottom >= 0 && nav.vh - nav.bottom <= 14, `${nav&&nav.bottom} من ${nav&&nav.vh}`);
 check('ومساحة اللمس كافية (٤٤ بكسل على الأقل لكل زرار)',
   (await pg.evaluate(()=>[...document.querySelectorAll('#tabs button')]
      .every(b=>b.getBoundingClientRect().height>=44))), '');
-check('التبويبات الأربعة لسه ظاهرة', (await pg.$$('#tabs button:not([hidden])')).length===4);
+check('التبويبات الخمسة ظاهرة (الرئيسية، طلب جديد، السلة، تابع طلبك، المصنع)', (await pg.$$('#tabs button:not([hidden])')).length===5);
 
 // ═══ الهيدر: الإصدار وزراير التحديث/التثبيت ═══
 check('رقم الإصدار ظاهر في الهيدر', /^v\d+/.test((await pg.textContent('#vsVer')||'').trim()),

@@ -90,7 +90,7 @@ const عدّ = await pg.evaluate(()=>{
   const خشب = {kind:'acc', id:'WOOD', code:'WOOD', unit:'باب', qty:2, price:300, title:'تدعيم خشب — 70 سم'};
   const o = { id:'W2', no:'2', name:'ا', phone:'01', date:'2026-09-10', items:[باب,خشب], total:11000 };
   const html = docHTML(o,'order',true);
-  return { قطع: /الإجمالي الكلي<\/b><\/span><b>(\d+) قطعة/.exec(html) };
+  return { قطع: /إجمالي الأبواب\s*(\d+) باب/.exec(html.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ')) };
 });
 check('إجمالي القطع بيعدّ الأبواب بس', عدّ.قطع && عدّ.قطع[1]==='2',
   عدّ.قطع ? عدّ.قطع[1] : 'مالقيناش');

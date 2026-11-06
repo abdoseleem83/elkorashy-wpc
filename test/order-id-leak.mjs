@@ -28,6 +28,7 @@ for(const نص of نصوص){
   نظيف = نظيف.replace(/\w+_?\(\s*o\.id\s*,[^)]*\)/g, '');
   if(!/\bo\.id\b|\bstate\.editingId\b/.test(نظيف)) continue;
   if(/الكود الداخلي/.test(نظيف)) continue;                // مقصود
+  if(/displayNo[\s\S]*:\s*esc\(o\.id\)\)/.test(نظيف)) continue;  // fallback مقصود: الطلب اللي لسه مالوش رقم بيعرض كوده (ورقة الأوردر)
   const حول = نظيف.replace(/\s+/g,' ');
   const عند = Math.max(0, حول.search(/\bo\.id\b|\bstate\.editingId\b/) - 45);
   تسريبات.push(حول.slice(عند, عند+95));
