@@ -1899,30 +1899,3 @@ function logError_(err) {
     if (last > ERR_KEEP_ + 1) sh.deleteRows(2, last - ERR_KEEP_ - 1);
   } catch (e) {}
 }
-
-/* ============================================================
-   اختبار سريع — شغّله من المحرر بعد ما تلزق الكود.
-   لازم يظهرلك سطر تجريبي في الشيت، امسحه بعد كده.
-   ============================================================ */
-function testOrder() {
-  saveOrder_({
-    id: 'W-TEST-1',
-    ts: Date.now(),
-    name: 'Test Distributor',
-    phone: '01000000000',
-    region: 'Tanta',
-    warehouse: 'مصنع إنشاص',
-    total: 11623.64,
-    msg: 'Test message',
-    items: [
-      { kind: 'door', title: 'باب WPC A05 — بني', titleEn: 'WPC Door A05 - Brown',
-        code: 'A05', sizeTxt: '90 سم', sizeEn: '90 cm', unitPrice: 5400, qty: 2,
-        frame: 10, dbror: '6×9', mill: 'smart', millAr: 'سمارت', millEn: 'Smart' },
-      { kind: 'frame', key: 'حلق15', spec: '15 سم', title: 'حلق باب 15 سم — عود 2.15 م',
-        titleEn: 'Door Frame 15 cm - 2.15m rod', price: 309.90, qty: 2 },
-      { kind: 'bror', key: 'برور6×9', spec: '6×9', title: 'برور 6×9 — عود 2.15 م',
-        titleEn: 'Bror 6x9 - 2.15m rod', price: 170.84, qty: 1 },
-      { kind: 'acc', title: 'جوان', titleEn: 'Gasket', price: 6, qty: 5.5, unit: 'متر' }
-    ]
-  });
-}
