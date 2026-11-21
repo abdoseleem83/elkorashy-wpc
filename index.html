@@ -2444,7 +2444,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v253';
+const APP_BUILD   = 'v254';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2851,7 +2851,7 @@ const state = {
     reserved:null, reservedAt:0, reservedLoading:false,
     pricesOpen:false, priceEdit:null,
     groupOpen:{}, groupPdfBusy:null,
-    qtyEditOpen:{}, qtyEdit:{}, qtyBusy:null, itemDelBusy:null,
+    qtyEditOpen:{}, qtyEdit:{}, qtyBusy:null, itemDelBusy:null, recvEdit:{}, recvBusy:null,
     srv:undefined, srvErr:'', srvChecking:false,   // نسخة السكربت المنشور
     metaEdit:{}, metaBusy:null,
     prodEdit:{}, prodBusy:null},
@@ -5011,6 +5011,9 @@ async function refreshOrderItems_(id){
   Object.keys(state.admin.qtyEdit || {}).forEach(k=>{
     if(k.indexOf(id+':')===0) delete state.admin.qtyEdit[k];
   });
+  Object.keys(state.admin.recvEdit || {}).forEach(k=>{
+    if(k.indexOf(id+':')===0) delete state.admin.recvEdit[k];
+  });
   try{ await loadOrderItems_(id); }catch(e){}
   render();
 }
@@ -5021,12 +5024,28 @@ async function setItemQty_(id, idx, qty){
     params:'&id=' + encodeURIComponent(id) + '&idx=' + idx + '&qty=' + encodeURIComponent(qty) + itemIdParams_(id, idx),
     onOk(d){
       const it = (state.admin.items[id]||[])[idx];
-      if(it){ it.qty = d.qty; it.produced = d.produced; }
+      if(it){ it.qty = d.qty; it.produced = d.produced; if(d.received!==undefined) it.received = d.received; }
       applyOrderTotals_(id, d.totals);
       delete state.admin.qtyEdit[key];
       if(d.cutChanged) refreshOrderItems_(id);
     },
     okMsg:'اتحدّثت الكمية'
+  });
+}
+
+// بيسجّل الكمية اللي العميل استلمها فعلًا من صنف. كل التقارير بعد كده بتحسب على المتبقي (الكمية - المستلم)
+async function setItemReceived_(id, idx, received){
+  const key = id+':'+idx;
+  return adminAction_({
+    busyField:'recvBusy', busyKey:key, action:'setItemReceived',
+    params:'&id=' + encodeURIComponent(id) + '&idx=' + idx + '&received=' + encodeURIComponent(received) + itemIdParams_(id, idx),
+    onOk(d){
+      const it = (state.admin.items[id]||[])[idx];
+      if(it) it.received = d.received;
+      delete state.admin.recvEdit[key];
+      state.admin.reserved = null;   // المحجوز لعملاء اتغيّر — يتحسب من جديد
+    },
+    okMsg:'اتسجّل الاستلام'
   });
 }
 
@@ -6597,9 +6616,29 @@ async function fetchPendingOrders_(){
   if(!APPS_SCRIPT_URL || !state.admin.pw) return null;
   const d = await jsonp(APPS_SCRIPT_URL + '?action=listWithItems' + admParams_());
   if(!d || !d.ok) throw new Error((d && d.error) || 'رد غير متوقع');
-  const orders = d.orders || [];
+  const orders = applyReceived_(d.orders || []);
   if(!orders.length){ toast('مفيش طلبات لسه'); return null; }
   return orders;
+}
+
+// كل التقارير بتحسب على «المتبقي للعميل»: لو استلم جزء من صنف، الكمية بتنقص بالمستلم،
+// والجاهز بينقص بيه برضه (اللي استلمه كان جاهز أصلًا). الصنف اللي اتسلّم كله بيختفي.
+// الطلب نفسه (مستنده وكارته في الشاشة) بيفضل بالكمية الأصلية — ده للتقارير بس.
+function applyReceived_(orders){
+  return (orders||[]).map(o=>{
+    if(!o.items || !o.items.some(it=>Number(it.received)>0)) return o;
+    const items = [];
+    o.items.forEach(it=>{
+      const q0 = Number(it.qty)||0;
+      const rec = Math.max(0, Math.min(q0, Number(it.received)||0));
+      if(!rec){ items.push(it); return; }
+      const qty = q0 - rec;
+      if(qty<=0) return;
+      const produced = Math.max(0, Math.min(qty, (Number(it.produced)||0) - rec));
+      items.push({...it, qty, produced, orderedQty:q0});
+    });
+    return {...o, items};
+  });
 }
 
 // معاينة طلب العميل على الشاشة — نفس اللي بيطلع في الـ PDF بالظبط، بس من غير
@@ -7322,17 +7361,30 @@ function prodTableHTML_(oid, its, a, qtyMode){
       const qBusy = a.qtyBusy === qKey;
       const dBusy = a.itemDelBusy === qKey;
       const draft = a.qtyEdit.hasOwnProperty(qKey) ? a.qtyEdit[qKey] : qty;
+      const received = Math.max(0, Math.min(qty, Number(it.received)||0));
+      const leftQty = qty - received;
+      const rBusy = a.recvBusy === qKey;
+      const rDraft = a.recvEdit.hasOwnProperty(qKey) ? a.recvEdit[qKey] : received;
       return `<tr>
         <td style="padding:6px 7px;text-align:right;font-size:12.5px">${title}</td>
         <td style="padding:6px 5px;text-align:center;font-size:12.5px;color:#A9BCD4;white-space:nowrap">${esc(sizeText_(it))}</td>
-        <td style="padding:6px 5px;text-align:center" colspan="2">
-          <div style="display:flex;align-items:center;justify-content:center;gap:4px">
+        <td style="padding:6px 3px;text-align:center">
+          <div style="display:flex;align-items:center;justify-content:center;gap:3px">
             <input type="number" inputmode="numeric" min="1" value="${esc(draft)}"
               data-act="item-qty-set" data-id="${esc(oid)}" data-idx="${idx}"
-              style="width:48px;text-align:center;border:1px solid var(--line);border-radius:6px;padding:4px 2px;font-size:13px;font-weight:700">
-            <button class="btn sm" data-act="adm-qty-save" data-id="${esc(oid)}" data-idx="${idx}" ${qBusy?'disabled':''} style="font-size:11.5px;padding:4px 6px">${qBusy?'…':ico('check')}</button>
+              style="width:42px;text-align:center;border:1px solid var(--line);border-radius:6px;padding:4px 2px;font-size:13px;font-weight:700">
+            <button class="btn sm" data-act="adm-qty-save" data-id="${esc(oid)}" data-idx="${idx}" ${qBusy?'disabled':''} style="font-size:11.5px;padding:4px 5px">${qBusy?'…':ico('check')}</button>
           </div>
         </td>
+        <td style="padding:6px 3px;text-align:center">
+          <div style="display:flex;align-items:center;justify-content:center;gap:3px">
+            <input type="number" inputmode="numeric" min="0" max="${qty}" value="${esc(rDraft)}"
+              data-act="item-recv-set" data-id="${esc(oid)}" data-idx="${idx}"
+              style="width:42px;text-align:center;border:1px solid var(--line);border-radius:6px;padding:4px 2px;font-size:13px;font-weight:700">
+            <button class="btn sm" data-act="adm-recv-save" data-id="${esc(oid)}" data-idx="${idx}" ${rBusy?'disabled':''} style="font-size:11.5px;padding:4px 5px">${rBusy?'…':ico('check')}</button>
+          </div>
+        </td>
+        <td style="padding:6px 3px;text-align:center;font-size:13px"><b style="color:${leftQty>0?'var(--danger-ink)':'var(--ok-ink)'}">${leftQty}</b></td>
         <td style="padding:6px 5px;text-align:center">
           <button class="btn act-del sm" data-act="adm-item-del" data-id="${esc(oid)}" data-idx="${idx}" ${dBusy?'disabled':''} style="font-size:11.5px;padding:4px 6px">${dBusy?'…':ico('trash')}</button>
         </td>
@@ -7381,7 +7433,7 @@ function prodTableHTML_(oid, its, a, qtyMode){
     <table class="stktbl" style="min-width:0">
       <thead><tr>
         ${qtyMode
-          ? `<th style="text-align:right">الصنف</th><th>المقاس</th><th colspan="2">الكمية</th><th>حذف</th>`
+          ? `<th style="text-align:right">الصنف</th><th>المقاس</th><th>الكمية</th><th>المستلم</th><th>المتبقي</th><th>حذف</th>`
           : `<th style="text-align:right">الصنف</th><th>المقاس</th><th>مطلوب</th><th>جاهز</th><th>متبقي</th><th>متاح</th>`}
       </tr></thead>
       <tbody>${rows}</tbody>
@@ -8207,6 +8259,17 @@ document.addEventListener('click',e=>{
       setItemQty_(el.dataset.id, Number(el.dataset.idx), q);
       break;
     }
+    case 'adm-recv-save': {
+      const key = el.dataset.id+':'+el.dataset.idx;
+      const it = (state.admin.items[el.dataset.id]||[])[Number(el.dataset.idx)];
+      const draft = state.admin.recvEdit.hasOwnProperty(key) ? state.admin.recvEdit[key] : (it && it.received) || 0;
+      const r = parseInt(toLatinDigits_(String(draft)), 10);
+      if(!isFinite(r) || r < 0){ toast('اكتب رقم صحيح للكمية المستلمة'); break; }
+      const maxQ = Number(it && it.qty) || 0;
+      if(r > maxQ){ toast('المستلم مايزيدش عن المطلوب ('+maxQ+')'); break; }
+      setItemReceived_(el.dataset.id, Number(el.dataset.idx), r);
+      break;
+    }
     case 'adm-item-del': {
       if(!confirm('حذف الصنف ده من الطلب؟')) break;
       deleteOrderItem_(el.dataset.id, Number(el.dataset.idx));
@@ -8234,7 +8297,7 @@ document.addEventListener('click',e=>{
         viewStock:false, stockBusy:null, stockDraft:{},
         pricesOpen:false, priceEdit:null,
         groupOpen:{}, groupPdfBusy:null,
-        qtyEditOpen:{}, qtyEdit:{}, qtyBusy:null, itemDelBusy:null,
+        qtyEditOpen:{}, qtyEdit:{}, qtyBusy:null, itemDelBusy:null, recvEdit:{}, recvBusy:null,
         prodEdit:{}, prodBusy:null};
       sessionStorage.removeItem('wpc_adm');
       if(adminPollTimer){ clearInterval(adminPollTimer); adminPollTimer=null; }
@@ -8381,6 +8444,11 @@ document.addEventListener('input',e=>{
   if(a==='item-qty-set'){
     const key = el.dataset.id+':'+el.dataset.idx;
     state.admin.qtyEdit[key] = el.value;
+    return;
+  }
+  if(a==='item-recv-set'){
+    const key = el.dataset.id+':'+el.dataset.idx;
+    state.admin.recvEdit[key] = el.value;
     return;
   }
   if(a==='meta-customer'){

@@ -165,13 +165,14 @@ var HEAD_ITEMS = [
   'Order No', 'Date', 'Distributor', 'Type', 'Item', 'Colour Code',
   'Size', 'Included with Door', 'Milling', 'Unit', 'Qty', 'Unit Price', 'Line Total', 'Available',
   'Frame (cm)', 'Bror', 'Frame Height (cm)', 'Width (cm)', 'Produced Qty', 'Door Height (cm)',
-  'For Door Width (cm)', 'Item Note'
+  'For Door Width (cm)', 'Item Note', 'Received Qty'
 ];
 var COL_ITEM_QTY = 11;     // الكمية — ومعاها Unit Price وLine Total ورا بعض
                            // (بيتكتبوا التلاتة مرة واحدة، شوف syncItemQty_)
 var COL_ITEM_WIDTH = 18;  // العرض بالسم كرقم خام (بس للأبواب) — بيتستخدم لخصم/رجوع رصيد المخزون بدقة
 var COL_ITEM_AVAIL = 14;   // عمود "متاح؟" في تبويب Order_Items — Y/N، بيتحدّث من شاشة المصنع
 var COL_ITEM_PRODUCED = 19; // عمود "الكمية المنتجة" — رقم من صفر لحد الكمية المطلوبة، بيتحدّث من شاشة المصنع
+var COL_ITEM_RECEIVED = 23; // «المستلم» — اللي العميل استلمه فعلًا من الصنف (من صفر لحد الكمية). التقارير بتحسب على المتبقي = الكمية - المستلم
 var COL_ITEM_DOORHEIGHT = 20; // ارتفاع الضلفة (سم) — اختياري، بس للأبواب المقاس القياسي (لو مختلف عن الاستاندر 210)
 // عمودين جداد (v28) بيخزّنوا قيمة الحلق/البرور خام (منفصلين عن نص "Included with Door" الإنجليزي)
 // عشان شاشة المصنع تقدر تعرضهم في عمودين منفصلين بالعربي بدل نص متلاصق واحد
@@ -771,10 +772,12 @@ function doGet(e) {
         rowIQ[10] = newQtyIQ;                              // Qty
         rowIQ[12] = unitPriceIQ * newQtyIQ;                // Line Total
         rowIQ[COL_ITEM_PRODUCED - 1] = producedIQ;
+        var receivedIQ = Math.min(newQtyIQ, Number(rowIQ[COL_ITEM_RECEIVED - 1]) || 0);   // المستلم كمان مايزيدش عن المطلوب
+        rowIQ[COL_ITEM_RECEIVED - 1] = receivedIQ;
         rowRngIQ.setValues([rowIQ]);
         var cutIQ = syncCutRows_(shIQ, idIQ);   // كمية بند القص تمشي مع كمية الباب
         var totalsIQ = recomputeOrderTotals_(idIQ);
-        return reply({ ok: true, qty: newQtyIQ, produced: producedIQ, totals: totalsIQ,
+        return reply({ ok: true, qty: newQtyIQ, produced: producedIQ, received: receivedIQ, totals: totalsIQ,
                        cutChanged: cutIQ > 0 }, cb);
       } finally {
         try { lockIQ.releaseLock(); } catch (eIQ) {}
@@ -850,6 +853,40 @@ function doGet(e) {
         return reply({ ok: true, produced: producedIP }, cb);
       } finally {
         try { lockIP.releaseLock(); } catch (eIP) {}
+      }
+    }
+
+    // تسجيل الكمية اللي العميل استلمها فعلًا من صنف (من صفر لحد الكمية المطلوبة).
+    // مستقل عن «الجاهز»: الجاهز = اتصنّع، المستلم = خرج للعميل. التقارير بتحسب على المتبقي.
+    if (action === 'setItemReceived') {
+      if (!checkAdminPw_(e.parameter.pw, e.parameter.dev)) {
+        return reply({ ok: false, error: adminPwError_() }, cb);
+      }
+      var lockIR = LockService.getScriptLock();
+      try {
+        lockIR.waitLock(15000);
+        var shIR = sheet_(SHEET_ITEMS, HEAD_ITEMS);
+        var idIR = String(e.parameter.id || '');
+        var idxIR = Number(e.parameter.idx || 0);
+        var lastIR = shIR.getLastRow();
+        if (lastIR < 2) return reply({ ok: false, error: 'الطلب مش موجود' }, cb);
+        var idsIR = shIR.getRange(2, 1, lastIR - 1, 1).getValues();
+        var foundIR = -1, countIR = -1;
+        for (var iIR = 0; iIR < idsIR.length; iIR++) {
+          if (String(idsIR[iIR][0]) === idIR) {
+            countIR++;
+            if (countIR === idxIR) { foundIR = iIR + 2; break; }
+          }
+        }
+        if (foundIR < 0) return reply({ ok: false, error: 'الصنف مش موجود' }, cb);
+        var rowIR = shIR.getRange(foundIR, 1, 1, HEAD_ITEMS.length).getValues()[0];
+        if (!itemMatches_(rowIR, e)) return reply({ ok: false, error: ITEM_MOVED_ERR_ }, cb);
+        var qtyIR = Number(rowIR[10]) || 0;   // عمود Qty
+        var receivedIR = Math.max(0, Math.min(qtyIR, Math.round(Number(e.parameter.received) || 0)));
+        shIR.getRange(foundIR, COL_ITEM_RECEIVED).setValue(receivedIR);
+        return reply({ ok: true, received: receivedIR }, cb);
+      } finally {
+        try { lockIR.releaseLock(); } catch (eIR) {}
       }
     }
 
@@ -1022,7 +1059,8 @@ function doGet(e) {
             doorHeight: valsILW[iILW][19] || '',
             milling:  valsILW[iILW][8],
             forDoorWidth: valsILW[iILW][20] || '',
-            itemNote: valsILW[iILW][21] || ''
+            itemNote: valsILW[iILW][21] || '',
+            received: Number(valsILW[iILW][22]) || 0   // Received Qty (COL_ITEM_RECEIVED)
           });
         }
       }
@@ -1325,7 +1363,8 @@ function saveOrder_(o) {
       0,   // Produced Qty — يبدأ صفر لكل صنف جديد، وبيتحدّث بعدين من شاشة المصنع
       (isDoor || String(it.code||'') === CUT_SERVICE_CODE_) ? (it.doorHeight || '') : '',
       isRod ? (it.doorW || '') : '',      // الحلق/البرور ده لباب مقاس كام (اختياري)
-      sanitizeCell_(it.note || '')         // ملاحظة حرة على الصنف (اختياري)
+      sanitizeCell_(it.note || ''),        // ملاحظة حرة على الصنف (اختياري)
+      0                                    // Received Qty — يبدأ صفر، وبيتسجّل من شاشة المصنع لما العميل يستلم
     ]);
   }
 
@@ -1779,7 +1818,8 @@ function itemsFromRows_(rows){
       produced:  Number(r[18]) || 0,
       doorHeight: r[19] || '',
       forDoorWidth: r[20] || '',
-      itemNote:  r[21] || ''
+      itemNote:  r[21] || '',
+      received:  Number(r[22]) || 0   // Received Qty (COL_ITEM_RECEIVED)
     });
   }
   return out;

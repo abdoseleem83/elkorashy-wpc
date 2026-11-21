@@ -12,7 +12,7 @@ const HEAD_ITEMS = arr('HEAD_ITEMS'), HEAD_ORDERS = arr('HEAD_ORDERS');
 const cols = {}; { const re=/var (COL_[A-Z_]+)\s*=\s*(\d+);/g; let m; while((m=re.exec(gs))) cols[m[1]]=Number(m[2]); }
 
 const أعمدة_الأصناف = { COL_ITEM_AVAIL:'Available', COL_ITEM_WIDTH:'Width (cm)',
-  COL_ITEM_PRODUCED:'Produced Qty', COL_ITEM_DOORHEIGHT:'Door Height (cm)' };
+  COL_ITEM_PRODUCED:'Produced Qty', COL_ITEM_DOORHEIGHT:'Door Height (cm)', COL_ITEM_RECEIVED:'Received Qty' };
 const أعمدة_الطلبات = { COL_STATUS:'Status', COL_NOTE:'Note to Distributor', COL_UPDATED:'Status Updated',
   COL_ARCHIVED:'Archived', COL_CUSTOMER:'Customer', COL_ORDNOTE:'Order Note',
   COL_CUST_PHONE:'Customer Phone', COL_SUPERSEDED:'Superseded', COL_REPLACES:'Replaces Order',
