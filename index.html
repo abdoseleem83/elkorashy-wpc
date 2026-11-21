@@ -2035,6 +2035,13 @@ body.hasFloat #view{padding-bottom:84px}
 .ad-row .btn{white-space:nowrap;font-size:12.5px;padding-inline:6px}
 .ad-row.ad-end{grid-template-columns:1fr 1fr}
 .ad-tg .ad-row:only-child{margin:0}
+/* v259 — مجموعات شريط الأدوات منسدلة */
+.ad-tg.ad-sub{padding:0;overflow:hidden}
+.ad-subH{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 11px;background:none;border:0;text-align:start;color:inherit;cursor:pointer;font-family:inherit}
+.ad-subH .ad-tl{margin:0}
+.ad-subH>svg.i:last-child{flex:none;width:16px;height:16px;color:var(--muted);transform:rotate(-90deg);transition:transform .22s ease}
+.ad-sub.open .ad-subH>svg.i:last-child{transform:rotate(90deg)}
+.ad-sub .ad-row{padding:0 11px 11px}
 .ord[data-grp]{border-radius:18px}
 .grp-hd{padding:12px}
 .grp-ord{border-radius:12px}
@@ -2444,7 +2451,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v258';
+const APP_BUILD   = 'v259';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -7844,29 +7851,32 @@ function viewAdmin(){
            ${ico('warn')} النت مقطوع — دي آخر نسخة محفوظة، اضغط «تحديث» لما النت يرجع</div>`
       : '');
 
+  // v259 — مجموعات شريط الأدوات بقت منسدلة: كل قسم يفتح لوحده بدل زحمة الأزرار
+  const toolGrp_ = (key, icn, title, defOpen, inner) => {
+    const open = uiOpen_(key, defOpen);
+    return `<div class="ad-tg ad-sub${open?' open':''}"><button class="ad-subH" data-act="ui-toggle" data-k="${key}" aria-expanded="${open}"><span class="ad-tl">${ico(icn)} ${title}</span>${ico("chev")}</button>${open?`<div class="ad-row">${inner}</div>`:''}</div>`;
+  };
+
   const headerBtns = `${staleBar}<div class="ad-tools">
-      <div class="ad-tg"><span class="ad-tl">${ico("clock")} عرض</span><div class="ad-row">
+      ${toolGrp_('adm-grp-view','clock','عرض', a.viewStock||viewingArchive||a.viewCustRem, `
         <button class="btn ${a.viewStock?'brand':'act-edit'} sm" data-act="adm-toggle-stock">${ico("box")}${a.viewStock?'رجوع للطلبات':'أرصدة المخزن'}</button>
         <button class="btn ${viewingArchive?'brand':'act-edit'} sm" data-act="adm-toggle-archive">${ico("folder")}${viewingArchive?'رجوع للطلبات':'الأرشيف'}</button>
         <button class="btn act-money sm" data-act="adm-prices-open">${ico("money")}الأسعار</button>
-        <button class="btn ${a.viewCustRem?'brand':'act-edit'} sm" data-act="adm-toggle-custrem">${ico("report")}${a.viewCustRem?'رجوع للطلبات':'المتبقي للعملا'}</button>
-      </div></div>
-      <div class="ad-tg"><span class="ad-tl">${ico("doc")} تقارير</span><div class="ad-row">
+        <button class="btn ${a.viewCustRem?'brand':'act-edit'} sm" data-act="adm-toggle-custrem">${ico("report")}${a.viewCustRem?'رجوع للطلبات':'المتبقي للعملا'}</button>`)}
+      ${toolGrp_('adm-grp-reports','doc','تقارير', false, `
         <button class="btn act-report sm" data-act="adm-pending-pdf">${ico("doc")}متبقي PDF</button>
         <button class="btn act-report sm" data-act="adm-pending-xls">${ico("sheet")}متبقي إكسيل</button>
         <button class="btn act-report sm" data-act="adm-req-pdf">${ico("doc")}الأبواب المطلوبة PDF</button>
         <button class="btn act-report sm" data-act="adm-req-xls">${ico("sheet")}الأبواب المطلوبة إكسيل</button>
         <button class="btn act-report sm" data-act="adm-full-pdf">${ico("report")}تقرير كامل</button>
-        <button class="btn act-report sm" data-act="adm-full-xls">${ico("sheet")}كل الطلبات إكسيل</button>
-      </div></div>
-      <div class="ad-tg"><span class="ad-tl">${ico("box")} توزيع الرصيد</span><div class="ad-row">
+        <button class="btn act-report sm" data-act="adm-full-xls">${ico("sheet")}كل الطلبات إكسيل</button>`)}
+      ${toolGrp_('adm-grp-alloc','box','توزيع الرصيد', false, `
         <button class="btn act-report sm" data-act="adm-alloc-cust-pdf">${ico("doc")}العملاء PDF</button>
         <button class="btn act-report sm" data-act="adm-alloc-cust-xls">${ico("sheet")}العملاء إكسيل</button>
         <button class="btn act-report sm" data-act="adm-alloc-doors-pdf">${ico("doc")}المطلوب تصنيعه PDF</button>
-        <button class="btn act-report sm" data-act="adm-alloc-doors-xls">${ico("sheet")}المطلوب تصنيعه إكسيل</button>
-      </div></div>
-      ${viewingArchive?`<div class="ad-tg"><span class="ad-tl">${ico("trash")} الأرشيف</span><div class="ad-row">
-        <button class="btn act-del sm" data-act="adm-clear-delivered">${ico("trash")}حذف المؤرشف</button></div></div>`:''}
+        <button class="btn act-report sm" data-act="adm-alloc-doors-xls">${ico("sheet")}المطلوب تصنيعه إكسيل</button>`)}
+      ${viewingArchive?toolGrp_('adm-grp-arch','trash','الأرشيف', false, `
+        <button class="btn act-del sm" data-act="adm-clear-delivered">${ico("trash")}حذف المؤرشف</button>`):''}
       <div class="ad-row ad-end">
         <button class="btn act-tool sm" data-act="adm-reload">${ico("refresh")}${a.loading?'بيحدّث…':'تحديث'}</button>
         <button class="btn act-tool sm" data-act="adm-logout">${ico("lock")}خروج</button>
