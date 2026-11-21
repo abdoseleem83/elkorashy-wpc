@@ -21,24 +21,34 @@ if (workbox.navigationPreload.isSupported()) {
   workbox.navigationPreload.enable();
 }
 
+// فتح التطبيق بقى فوري: بنعرض آخر نسخة محفوظة من الصفحة على طول، وفي نفس
+// الوقت بنجيب أحدث نسخة من الشبكة ونخزّنها للفتحة الجاية. لو فيه إصدار جديد
+// فحص الإصدار جوّه التطبيق بيظهر تنبيه التحديث، وزرار «تحديث» بيمسح الكاش
+// وبيحمّل أحدث نسخة (doUpdate) — فمافيش نسخة قديمة ممكن تعلّق.
+const PAGE_CACHE = "wpc-pages-v1";
 self.addEventListener('fetch', (event) => {
   if (event.request.mode === 'navigate') {
     event.respondWith((async () => {
-      try {
-        const preloadResp = await event.preloadResponse;
-
-        if (preloadResp) {
-          return preloadResp;
+      const pageCache = await caches.open(PAGE_CACHE);
+      const cachedResp = await pageCache.match(event.request, { ignoreSearch: true });
+      const networkPromise = (async () => {
+        try {
+          const preloadResp = await event.preloadResponse;
+          const networkResp = preloadResp || await fetch(event.request);
+          if (networkResp && networkResp.ok) pageCache.put(event.request, networkResp.clone());
+          return networkResp;
+        } catch (error) {
+          return null;
         }
-
-        const networkResp = await fetch(event.request);
-        return networkResp;
-      } catch (error) {
-
-        const cache = await caches.open(CACHE);
-        const cachedResp = await cache.match(offlineFallbackPage);
+      })();
+      if (cachedResp) {
+        networkPromise.catch(() => {});
         return cachedResp;
       }
+      const fresh = await networkPromise;
+      if (fresh) return fresh;
+      const cache = await caches.open(CACHE);
+      return cache.match(offlineFallbackPage);
     })());
   }
 });

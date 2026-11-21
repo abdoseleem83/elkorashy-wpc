@@ -20,6 +20,10 @@
      مكتبة xlsx اتشالت خالص — كانت مكرّرة مع ExcelJS اللي بيعمل نفس الشغل وأحسن. -->
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+<link rel="preconnect" href="https://script.google.com" crossorigin>
+<link rel="dns-prefetch" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+<link rel="dns-prefetch" href="https://script.googleusercontent.com">
 <style>
 :root{
   /* ---- هوية «الداكن الأنيق» (v186) ----
@@ -2451,7 +2455,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v259';
+const APP_BUILD   = 'v260';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -6594,21 +6598,21 @@ async function buildAllocDoorsExcel_(d){
 }
 
 // ---------- تقرير ٣: المتبقي للعملاء حسب الكود ----------
-// نفس أرقام «توزيع الرصيد على العملاء» بالظبط (من buildAllocationData_، من غير
-// أي حساب جديد) بس مترتبة زي ما المصنع طلب: كل كود باب في جزء لوحده، وتحته
-// العملاء، وقدّام كل عميل المتبقي له في كل مقاس (70/80/90/100/خاص).
-// «المتبقي» = الكمية اللي لسه مطلوبة للعميل (المطلوب ناقص المستلم/الجاهز)
-// قبل خصم رصيد المخزن — نفس «المتبقي للعميل» اللي كل التقارير بتحسب عليه.
+// من buildAllocationData_ (نفس توزيع الرصيد على العملاء، من غير أي حساب جديد):
+// كل كود باب في جزء لوحده، وتحته العملاء، وقدّام كل عميل المتبقي له التصنيع
+// في كل مقاس (70/80/90/100/خاص) بعد خصم رصيد المخزن — الرصيد بيتوزّع على
+// الطلبات الأقدم أول، زي تقرير «توزيع الرصيد على العملاء» بالظبط.
+// العميل اللي الرصيد بيغطّي باقي طلبه كله مش بيظهر في التقرير.
 function allocCustByCodeHTML_(d){
   const now = new Date();
   const dateStr = now.toLocaleDateString('ar-EG');
   const timeStr = now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
-  const td = 'text-align:center;padding:7px 6px;border:1px solid #DCE4EC';
-  const th = 'padding:7px 6px;color:#fff;font-weight:700;border:1px solid #12314F';
+  const td = 'text-align:center;padding:4px 5px;border:1px solid #DCE4EC';
+  const th = 'padding:4px 5px;color:#fff;font-weight:700;border:1px solid #12314F';
   const doorName = c=>{ const x = DOORS.find(y=>y.code===c); return x ? x.name : ''; };
   const custsOfCode = c=>{
     const list = [];
-    d.sizes.forEach(g=>(d.custBy[g]||[]).forEach(n=>{ if(!list.includes(n) && d.cell(g,c,n)) list.push(n); }));
+    d.sizes.forEach(g=>(d.custBy[g]||[]).forEach(n=>{ const x=d.cell(g,c,n); if(!list.includes(n) && x && x.rem>0) list.push(n); }));
     return list;
   };
   const blocks = d.codes.map(c=>{
@@ -6617,17 +6621,17 @@ function allocCustByCodeHTML_(d){
     const rows = custs.map((n,ri)=>{
       const cs = d.sizes.map(g=>{
         const x = d.cell(g,c,n);
-        const v = x ? x.req : 0;
+        const v = x ? x.rem : 0;
         return `<td style="${td};font-weight:700;color:${v>0?'#233246':'#B7C0CA'}">${v>0?v:'—'}</td>`;
       }).join('');
       return `<tr style="background:${ri%2?'#FAFBFC':'#FFFFFF'}">
         <td style="${td};text-align:right;font-weight:700;color:#233246">${esc(n)}</td>${cs}</tr>`;
     }).join('');
-    return `<div class="rpt-cbc-block" style="margin-top:16px;border:1px solid #E3E7EC;border-radius:12px;overflow:hidden;break-inside:avoid;box-shadow:0 1px 4px rgba(20,36,58,.06)">
-      <div style="background:#12314F;color:#fff;font-weight:700;font-size:14px;padding:9px 14px">
-        <span>${esc(c)} <span style="font-weight:400;color:#B9CCE3;font-size:10.5px">${esc(doorName(c))}</span></span>
+    return `<div class="rpt-cbc-block keep-blk" style="margin-top:9px;border:1px solid #E3E7EC;border-radius:12px;overflow:hidden;break-inside:avoid;box-shadow:0 1px 4px rgba(20,36,58,.06)">
+      <div style="background:#12314F;color:#fff;font-weight:700;font-size:13px;padding:6px 10px">
+        <span>${esc(c)} <span style="font-weight:400;color:#B9CCE3;font-size:10px">${esc(doorName(c))}</span></span>
       </div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <table style="width:100%;border-collapse:collapse;font-size:11.5px">
         <thead><tr style="background:#1B4A78">
           <th style="${th};text-align:right">المتبقي للعملا</th>
           ${d.sizes.map(g=>`<th style="${th};width:64px">${g==='خاص'?'خاص':g}</th>`).join('')}
@@ -6636,15 +6640,15 @@ function allocCustByCodeHTML_(d){
       </table>
     </div>`;
   }).join('');
-  return `<div style="font-family:Arial,'Helvetica Neue',sans-serif;direction:rtl;background:#fff;padding:32px 28px;color:#14243A;">
-    ${allocBanner_('المتبقي للعملاء حسب الكود', esc(COMPANY_AR)+'  •  '+dateStr+' — الساعة '+timeStr+'  •  قبل خصم رصيد المخزن', '')}
+  return `<div style="font-family:Arial,'Helvetica Neue',sans-serif;direction:rtl;background:#fff;padding:14px 12px;color:#14243A;">
+    ${allocBanner_('المتبقي للعملاء حسب الكود', esc(COMPANY_AR)+'  •  '+dateStr+' — الساعة '+timeStr+'  •  بعد خصم رصيد المخزن — الأقدم أول', '')}
     ${blocks}
   </div>`;
 }
 
 async function buildAllocCustByCodePdf_(d){
   if(!await needLibs_('html2canvas','jspdf')) return;
-  const {canvas, breaksPx} = await renderPaper_(allocCustByCodeHTML_(d), { breakSelector: '.rpt-cbc-block' });
+  const {canvas, breaksPx} = await renderPaper_(allocCustByCodeHTML_(d));
   await canvasToPdf_(canvas, 'المتبقي_للعملاء_حسب_الكود_'+isoLocal_()+'.pdf', { hardBreaksPx: breaksPx });
 }
 
@@ -6676,7 +6680,7 @@ async function buildAllocCustByCodeExcel_(d){
   let r = 3;
   d.codes.forEach(code=>{
     const custs = [];
-    d.sizes.forEach(g=>(d.custBy[g]||[]).forEach(nm=>{ if(!custs.includes(nm) && d.cell(g,code,nm)) custs.push(nm); }));
+    d.sizes.forEach(g=>(d.custBy[g]||[]).forEach(nm=>{ const x=d.cell(g,code,nm); if(!custs.includes(nm) && x && x.rem>0) custs.push(nm); }));
     if(!custs.length) return;
     ws.getCell(r,1).value = code;
     for(let c=1;c<=n+1;c++) style(ws.getCell(r,c), NAVY, WHITE, true, 12);
@@ -6698,7 +6702,7 @@ async function buildAllocCustByCodeExcel_(d){
         const x = d.cell(g,code,nm);
         const cell = ws.getCell(r,i+2);
         style(cell, null, 'FF14243A', true);
-        if(x && x.req>0) cell.value = x.req;
+        if(x && x.rem>0) cell.value = x.rem;
       });
       r++;
     });
@@ -7900,17 +7904,17 @@ function viewAdmin(){
     if(a.custRemLoading && !d){
       body = `<div class="empty"><span class="em">${ico("clock","xl")}</span><p>جارٍ تحميل المتبقي للعملاء…</p></div>`;
     }else if(!d || !d.codes.length){
-      body = `<div class="empty"><span class="em">${ico("clip","xl")}</span><p>مفيش أبواب متبقية للعملاء دلوقتي.</p></div>`;
+      body = `<div class="empty"><span class="em">${ico("clip","xl")}</span><p>مفيش أبواب متبقية للتصنيع دلوقتي.</p></div>`;
     }else{
       const blocks = d.codes.map(c=>{
         const custs = [];
-        d.sizes.forEach(g=>(d.custBy[g]||[]).forEach(n=>{ if(!custs.includes(n) && d.cell(g,c,n)) custs.push(n); }));
+        d.sizes.forEach(g=>(d.custBy[g]||[]).forEach(n=>{ const x=d.cell(g,c,n); if(!custs.includes(n) && x && x.rem>0) custs.push(n); }));
         if(!custs.length) return '';
         const dn = (DOORS.find(x=>x.code===c)||{}).name || '';
         const rows = custs.map(n=>{
           const cs = d.sizes.map(g=>{
             const x = d.cell(g,c,n);
-            const v = x ? x.req : 0;
+            const v = x ? x.rem : 0;
             return `<td style="padding:7px 4px;text-align:center;font-weight:700;font-size:14px;color:${v>0?'var(--ink)':'var(--muted)'}">${v>0?v:'—'}</td>`;
           }).join('');
           return `<tr style="border-top:1px solid var(--line)">
@@ -7927,8 +7931,8 @@ function viewAdmin(){
           </table>
         </div>`;
       }).join('');
-      body = `<div class="note" style="margin-top:10px">«المتبقي للعملا» = اللي لسه مطلوب تسليمه لكل عميل
-        (الكمية ناقص اللي استلمه)، قبل خصم رصيد المخزن.</div>${blocks}`;
+      body = `<div class="note" style="margin-top:10px">«المتبقي للعملا» = اللي لسه محتاج يتصنّع لكل عميل
+        بعد خصم الموجود في المخزن (الرصيد بيتوزّع على الطلبات الأقدم أول، زي تقرير «توزيع الرصيد»).</div>${blocks}`;
     }
     return `<section class="card">
       <div class="step"><span class="n">${ico("report","lg")}</span><h2>المتبقي للعملاء</h2>
