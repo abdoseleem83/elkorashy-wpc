@@ -2266,6 +2266,59 @@ html[data-theme="dark"] .chip.on,html[data-theme="dark"] .miniChip.on{color:#061
 input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 28%,transparent)}
 .tabs button.on,.tabs button.on .i{color:var(--brand)!important}
 </style>
+<style>
+/* v4 home — هادئة ونظيفة */
+.hm4{padding:2px 2px 0}
+.hm4-head{display:flex;justify-content:space-between;align-items:center;padding:2px 2px 0}
+.hm4-head .who small{display:block;font-size:12px;color:var(--muted);font-weight:600}
+.hm4-head .who b{display:block;font-size:19px;color:var(--ink);margin-top:1px}
+.hm4-cart{position:relative;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--card);border:1px solid var(--line);color:var(--ink)}
+.hm4-cart svg.i{width:19px;height:19px}
+.hm4-cart span{position:absolute;top:-5px;inset-inline-start:-5px;background:#F0736A;color:#fff;font-size:10px;font-weight:800;border-radius:12px;padding:1px 6px}
+.hm4-new{margin-top:12px;width:100%;padding:14px;border-radius:14px;background:linear-gradient(180deg,var(--brand-lt),var(--brand));color:#fff;font-weight:800;font-size:15.5px;box-shadow:0 10px 20px -12px rgba(63,169,245,.75)}
+.hm4-new:active{transform:scale(.99)}
+.hm4-sec{display:flex;justify-content:space-between;align-items:center;margin:20px 2px 8px;font-size:12.5px;font-weight:800;color:var(--muted)}
+.hm4-all{font-size:12px;font-weight:700;color:var(--brand)}
+.hm4-last{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 10px;width:100%;text-align:start;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.hm4-last .ln{font-size:16px;font-weight:800;color:var(--ink)}
+.hm4-last .ln small{font-size:12px;color:var(--muted);font-weight:600;margin-inline-start:6px}
+.hm4-last .lst{font-size:12.5px;font-weight:800}
+.hm4-last .lp{flex-basis:100%;height:4px;border-radius:3px;background:var(--line);margin-top:8px;overflow:hidden}
+.hm4-last .lp i{display:block;height:100%;border-radius:3px;background:var(--brand)}
+.hm4-st-New,.hm4-st-Received{color:var(--brand)}
+.hm4-st-In-Progress{color:var(--warn-ink,#D9A441)}
+.hm4-st-Ready{color:var(--ok-ink,#3FAF7C)}
+.hm4-st-Delivered{color:var(--muted)}
+.hm4-st-Cancelled{color:var(--danger-ink,#F0736A)}
+.hm4-sum{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;padding:0 2px;font-size:13px}
+.hm4-bit{font-size:13px;font-weight:700;color:var(--muted);padding:2px 0}
+.hm4-bit b{color:var(--ink);font-variant-numeric:tabular-nums}
+.hm4-sep{color:var(--line)}
+.hm4-dim{color:var(--muted);font-size:12.5px;padding:4px 2px}
+.hm4-ord{display:flex;align-items:center;gap:10px;width:100%;padding:11px 2px;border-bottom:1px solid var(--line);text-align:start}
+.hm4-ord .on{font-weight:800;font-size:14px;color:var(--ink);min-width:56px}
+.hm4-ord .oc{flex:1;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm4-ord .os{font-size:12px;font-weight:700}
+.hm4-svc{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.hm4-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:13px 14px;text-align:start;border-bottom:1px solid var(--line);color:var(--ink)}
+.hm4-row:last-child{border-bottom:none}
+.hm4-row .rt{font-size:14px;font-weight:700}
+.hm4-row .rt small{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px}
+.hm4-row svg.i{width:15px;height:15px;color:var(--muted);flex:0 0 auto;transform:rotate(90deg)}
+.hm7-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.hm7-t{display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px 8px 16px;border-radius:18px;font-family:inherit;
+  background:linear-gradient(160deg,var(--tint),transparent 80%),var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
+.hm7-t .pic{width:64px;height:64px;border-radius:18px;display:grid;place-items:center;background:color-mix(in srgb,var(--tc) 15%,transparent);color:var(--tc)}
+.hm7-t .pic svg.i{width:36px;height:36px}
+.hm7-t .nm{font-size:14.5px;font-weight:800;color:var(--ink)}
+.hm7-t:active{transform:scale(.97)}
+.hm7-t:nth-child(5):last-child{grid-column:1/-1;width:calc(50% - 5px);justify-self:center}
+
+/* v263 — الخط ايريل بولد على الرئيسية */
+.hm4,.hm4 .who small,.hm4 .who b,.hm7-t .nm{font-family:Arial,Helvetica,sans-serif}
+.hm4 .who b{font-weight:700}
+.hm7-t .nm{font-weight:700}
+</style>
 </head>
 <body>
 
@@ -2473,7 +2526,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v262';
+const APP_BUILD   = 'v263';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3539,60 +3592,24 @@ function homeDueChip_(o){
   return `<span class="due ${inf.cls}">${esc(t)}</span>`;
 }
 function viewHome(){
-  const orders = [...state.orders].sort((a,b)=>(Number(b.ts)||0)-(Number(a.ts)||0));
-  const last = orders[0];
-  const active = orders.filter(o=>!['Delivered','Cancelled'].includes(homeStatus_(o)));
   const name = (state.profile.name||'').trim();
   const cartN = state.cart.length;
-  let lastHtml = '';
-  if(last){
-    const st = homeStatus_(last), n = HOME_STEPS_[st]||1, stInf = STATUS[st]||STATUS.New;
-    const cust = last.customer ? esc(last.customer)+' · ' : '';
-    lastHtml = `<div class="hm-last" data-act="home-go" data-to="orders">
-      <div class="r"><span class="sm">آخر أوردر</span><span style="background:rgba(255,255,255,.92);color:#0C447C;border-radius:20px;padding:1px 10px;font-size:11.5px;font-weight:700">${esc(stInf.ar)}</span></div>
-      <div class="r" style="align-items:baseline;margin-top:3px"><span class="no">${esc(orderNoText_(last))}</span><span class="sm">${cust}${esc(last.qty||0)} قطعة</span></div>
-      <div class="hm-steps">${[1,2,3,4].map(i=>`<i class="${i<=n?'on':''}"></i>`).join('')}</div>
-      <div class="hm-sl"><span>استلام ← تنفيذ ← جاهز ← تسليم</span></div>
-    </div>`;
-  }
-  // ---- v235: رئيسية جديدة: هيرو + كروت أرقام + اختصارات + أوردرات شغّالة بشريط تقدّم ----
   const hr = new Date().getHours();
   const greet = hr<5 ? 'سهرانين النهارده؟' : hr<12 ? 'صباح الخير' : hr<17 ? 'نهارك سعيد' : 'مساء الخير';
-  const cnt = {new:0,prog:0,ready:0,done:0};
-  orders.forEach(o=>{ const g=ordGroup_(homeStatus_(o)); if(g in cnt) cnt[g]++; });
-  const kpi = (k, ic, t, col)=>`<button class="hm2-k" data-hmk="${k}" style="--kc:${col}">
-      <span class="ki">${ico(ic)}</span><b>${cnt[k]}</b><span class="kt">${t}</span></button>`;
-  const kpis = kpi('new','doc','جديدة','#3FA9F5') + kpi('prog','factory','تحت التنفيذ','#D9A441')
-             + kpi('ready','checkC','جاهزة','#4FC08A') + kpi('done','truck','اتسلّمت','#9A8CF0');
-  const q = (act, to, ic, t, col, badge)=>`<button class="hm2-q" data-act="${act}" ${to?`data-to="${to}"`:''} style="--qc:${col}">
-      ${badge?`<span class="bd">${badge}</span>`:''}<span class="qi">${ico(ic)}</span><span class="qt">${t}</span></button>`;
-  const quick = [
-    last ? q('home-repeat','','refresh','كرّر آخر أوردر','#4FC08A') : '',
-    q('home-sec','doors','door','الأبواب','#3FA9F5'),
-    q('home-sec','acc','parts','الإكسسوارات','#D9A441'),
-    q('home-bank','','money','التحويل','#F0736A'),
-    FACTORY_PHONE ? q('home-call','','phone','المصنع','#4FC08A') : ''
-  ].join('');
-  const shown = active.slice(0,3);
-  const list = shown.length ? shown.map(o=>{ const n = HOME_STEPS_[homeStatus_(o)]||1;
-    return `<div class="hm2-o" data-act="home-go" data-to="orders">
-      <div class="oh"><b>${esc(orderNoText_(o))}</b><span class="oc">${o.customer?esc(o.customer):''}</span><span class="dc">${homeDueChip_(o)}</span></div>
-      <div class="os">${esc(o.qty||0)} قطعة · ${esc((STATUS[homeStatus_(o)]||STATUS.New).ar)}</div>
-      <div class="hm2-p"><i style="width:${n*25}%"></i></div></div>`; }).join('')
-    : `<div class="hm-empty">مفيش أوردرات شغالة دلوقتي — ابدأ بأوردر جديد.</div>`;
-  return `<section class="hm2-hero">
-      <div class="g1"></div><div class="g2"></div>
-      <div class="hm2-top"><div><small>${greet} 👋</small><b>${name?esc(name):'في القرشي أبواب WPC'}</b></div>
-        <button class="hm2-cart" data-act="home-go" data-to="cart" aria-label="السلة">${ico('cart')}${cartN?`<span>${cartN}</span>`:''}</button></div>
-      <button class="hm2-new" data-act="home-go" data-to="new">${ico('plus')} أوردر جديد</button>
-      ${lastHtml}
-    </section>
-    <div class="hm-h"><span>حالة أوردراتك</span>${orders.length?`<button data-act="home-go" data-to="orders">كل الأوردرات (${orders.length})</button>`:''}</div>
-    <div class="hm2-ks">${kpis}</div>
-    <div class="hm-h"><span>اختصارات سريعة</span></div>
-    <div class="hm2-qs">${quick}</div>
-    <div class="hm-h"><span>أوردراتك الشغالة</span>${active.length>3?`<button data-act="home-go" data-to="orders">عرض الكل (${active.length})</button>`:''}</div>
-    ${list}${verBar()}`;
+  // v7 — الرئيسية = الأقسام نفسها: شبكة برسومات المنتج، كل كارت يفتح قسمه مباشرة
+  const t = (to,ic,nm,col)=>`<button class="hm7-t" data-act="home-sec" data-to="${to}" style="--tc:${col};--tint:${col}22">
+      <span class="pic">${ico(ic)}</span><span class="nm">${nm}</span></button>`;
+  const grid = t('doors','door2','الأبواب','#3FA9F5')
+             + t('acc','hinge','الإكسسوارات','#D9A441')
+             + t('frame','frame','الحلوق','#4FC08A')
+             + t('bror','bror','البرور','#9A8CF0')
+             + t('mabra','mabra','المعابر','#F0736A');
+  return `<div class="hm4">
+    <div class="hm4-head"><div class="who"><small>${greet}</small><b>${name?esc(name):'القرشي أبواب WPC'}</b></div>
+      <button class="hm4-cart" data-act="home-go" data-to="cart" aria-label="السلة">${ico('cart')}${cartN?`<span>${cartN}</span>`:''}</button></div>
+    <div class="hm7-grid">${grid}</div>
+    ${verBar()}
+  </div>`;
 }
 function showBankOverlay_(){
   const old = document.getElementById('bankOverlay'); if(old) old.remove();
@@ -4582,6 +4599,8 @@ async function canvasToPdf_(canvas, filename, opts){
 
 const ICONS = {
   door:    '<path class="d" d="M6.5 3.5h11v17h-11z"/><path d="M6.5 3.5h11v17h-11z"/><path d="M4.5 20.5h15"/><path d="M9.2 6.6h5.6v4.6H9.2z"/><circle cx="14.7" cy="14.6" r=".9"/>',
+  door2:   '<path class="d" d="M6.8 3.5h10.4v17H6.8z"/><path d="M6.8 3.5h10.4v17H6.8z"/><path d="M4.4 20.5h15.2"/><path d="M9 6.2h6v5H9z"/><path d="M9 13.2h6v5.3H9z"/><circle cx="14.9" cy="12.2" r=".8"/>',
+  hinge:   '<path class="d" d="M4 7h6v10H4z"/><path d="M4 7h6v10H4z"/><path class="d" d="M14 7h6v10h-6z"/><path d="M14 7h6v10h-6z"/><path d="M10 8.2h4M10 12h4M10 15.8h4"/><circle cx="7" cy="9.6" r=".55"/><circle cx="7" cy="14.4" r=".55"/><circle cx="17" cy="9.6" r=".55"/><circle cx="17" cy="14.4" r=".55"/>',
   parts:   '<circle class="d" cx="12" cy="12" r="3.6"/><circle cx="12" cy="12" r="3.6"/><path d="M12 3.2v2.4M12 18.4v2.4M3.2 12h2.4M18.4 12h2.4M5.8 5.8l1.7 1.7M16.5 16.5l1.7 1.7M5.8 18.2l1.7-1.7M16.5 7.5l1.7-1.7"/>',
   frame:   '<path class="d" d="M5 3.8h14V21h-3.2V7H8.2v14H5z"/><path d="M5 21V3.8h14V21"/><path d="M8.2 21V7h7.6v14"/>',
   bror:    '<path class="d" d="M3.5 9h17v6h-17z"/><path d="M3.5 9h17v6h-17z"/><path d="M7.5 9v6M12 9v6M16.5 9v6"/>',
