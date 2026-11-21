@@ -2455,7 +2455,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v260';
+const APP_BUILD   = 'v261';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2860,6 +2860,7 @@ const state = {
     viewArchive:false, archRows:null, archLoading:false, archBusy:null,
     viewStock:false, stockBusy:null, stockDraft:{}, stockPdfBusy:false,
     viewCustRem:false, custRem:null, custRemAt:0, custRemLoading:false,
+    viewReports:false,
     reserved:null, reservedAt:0, reservedLoading:false,
     pricesOpen:false, priceEdit:null,
     groupOpen:{}, groupPdfBusy:null,
@@ -3175,9 +3176,9 @@ function stockReportHTML_(){
 
   const sizeHeaders = SIZES.map(sz=>`<th colspan="3" style="padding:6px;color:#fff;font-weight:700;border:1px solid #12314F">${sz.w} سم</th>`).join('');
   const subHeaders = SIZES.map(()=>`
-      <th style="padding:5px 3px;color:#fff;font-weight:600;font-size:9px;border:1px solid #12314F">الرصيد</th>
-      <th style="padding:5px 3px;color:#fff;font-weight:600;font-size:9px;border:1px solid #12314F">مطلوب</th>
-      <th style="padding:5px 3px;color:#fff;font-weight:600;font-size:9px;border:1px solid #12314F">متبقي</th>`).join('');
+      <th style="padding:5px 3px;color:#fff;font-weight:600;font-size:11px;border:1px solid #12314F">الرصيد</th>
+      <th style="padding:5px 3px;color:#fff;font-weight:600;font-size:11px;border:1px solid #12314F">مطلوب</th>
+      <th style="padding:5px 3px;color:#fff;font-weight:600;font-size:11px;border:1px solid #12314F">متبقي</th>`).join('');
 
   const trs = rows.map((r,idx)=>{
     const zebra = idx%2===1 ? 'background:#F6F8FA' : 'background:#FFFFFF';
@@ -3187,7 +3188,7 @@ function stockReportHTML_(){
       <td style="text-align:center;padding:6px 4px;border:1px solid #DCE4EC;color:${c.res>0?'#B3261E':'#B7C0CA'}">${c.res>0?c.res:'—'}</td>
       <td style="text-align:center;padding:6px 4px;border:1px solid #DCE4EC;font-weight:700;background:${c.free>0?'#E7F6EC':'#FBE7E7'};color:${c.free>0?'#1E8E52':'#B3261E'}">${c.free}</td>`).join('');
     return `<tr style="${zebra}">
-      <td style="text-align:right;padding:6px 8px;border:1px solid #DCE4EC;font-weight:700;color:#233246;white-space:nowrap">${esc(r.code)} <span style="font-weight:400;color:#8A97A6;font-size:9.5px">${esc(r.name)}</span></td>
+      <td style="text-align:right;padding:6px 8px;border:1px solid #DCE4EC;font-weight:700;color:#233246;white-space:nowrap">${esc(r.code)} <span style="font-weight:400;color:#8A97A6;font-size:11px">${esc(r.name)}</span></td>
       ${cells}
     </tr>`;
   }).join('');
@@ -3205,12 +3206,12 @@ function stockReportHTML_(){
         <div style="font-size:11px;color:#6B7A8C;margin-top:2px">${esc(COMPANY_AR)} — ${dateStr} — الساعة ${timeStr}</div>
       </div>
     </div>
-    <div style="margin-top:12px;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px;font-size:10.5px;color:#8FA3BD;line-height:1.7">
+    <div style="margin-top:12px;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px;font-size:11.5px;color:#8FA3BD;line-height:1.7">
       <b style="color:#233246">الرصيد</b> = الكمية الجاهزة فعليًا بالمخزن (قبل خصم أي حجز).
       <b style="color:#B3261E">مطلوب</b> = منها مطلوب لطلبات عملاء معلّقة (لسه ما اتصنّعتش/ما اتسلّمتش).
       <b style="color:#1E8E52">متبقي</b> = الرصيد الفاضي فعليًا بعد خصم المطلوب (اللي تقدر تبيعه لعميل جديد دلوقتي). لو رقم بالسالب معناه المطلوب أكتر من الرصيد الموجود.
     </div>
-    <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:14px">
+    <table style="width:100%;border-collapse:collapse;font-size:12.5px;margin-top:14px">
       <thead>
         <tr style="background:#12314F">
           <th rowspan="2" style="text-align:right;padding:6px 8px;color:#fff;font-weight:700;border:1px solid #12314F">الكود</th>
@@ -4453,6 +4454,22 @@ async function shareOrDownload_(blob, filename, title){
   return false;
 }
 
+// بيرجّع ارتفاع آخر سطر فيه محتوى فعلي على اللوحة (مش خلفية بيضاء) + هامش صغير.
+// بدونه أي سنتيمتر زيادة عن آخر صفحة (هوامش/حشو أبيض) كان بيطلع صفحة أخيرة فاضية تمامًا.
+function contentBottomPx_(canvas, pxPerMm){
+  try{
+    const w = canvas.width, h = canvas.height;
+    const data = canvas.getContext('2d').getImageData(0, 0, w, h).data;
+    for(let i = data.length - 4; i >= 0; i -= 16){
+      if(data[i] < 242 || data[i+1] < 242 || data[i+2] < 242){
+        const row = Math.floor((i >> 2) / w);
+        return Math.min(h, row + 1 + Math.round(4 * pxPerMm));   // ~٤ مم تحت آخر محتوى
+      }
+    }
+  }catch(e){}
+  return canvas.height;
+}
+
 // بتقطّع الـ canvas لصفحات A4. لو opts.hardBreaksPx موجودة، كل نقطة فيها بتبدأ صفحة جديدة إجباريًا
 // (مثلاً بداية كل طلب في تقرير) — والمقطع اللي أطول من صفحة واحدة بيتقسّم تلقائي زي العادي جواه.
 async function canvasToPdf_(canvas, filename, opts){
@@ -4464,8 +4481,9 @@ async function canvasToPdf_(canvas, filename, opts){
   const usableH = PH - FOOT_H;
   const pxPerMm = canvas.width / PW;
   const pageHpx  = Math.floor(usableH * pxPerMm); // المحتوى بيتقص على الارتفاع المتاح بس
+  const effH = contentBottomPx_(canvas, pxPerMm);   // قص أي مساحة بيضاء زيادة في الآخر (مانع الصفحة الفاضية)
 
-  const hardBreaks = (opts.hardBreaksPx||[]).filter(y=>y>0 && y<canvas.height).sort((a,b)=>a-b);
+  const hardBreaks = (opts.hardBreaksPx||[]).filter(y=>y>0 && y<effH).sort((a,b)=>a-b);
   // لو بلوك «لازم يفضل مع بعضه» هيتقطع بين صفحتين، نبدأ صفحة جديدة عنده (لو أقصر من صفحة)
   (canvas._keep||[]).forEach(([top,bot])=>{
     const prev = hardBreaks.filter(y=>y<=top).pop() || 0;
@@ -4474,8 +4492,8 @@ async function canvasToPdf_(canvas, filename, opts){
       hardBreaks.push(top); hardBreaks.sort((a,b)=>a-b);
     }
   });
-  const segBounds = [0, ...hardBreaks, canvas.height];
-  const segments = [];
+  const segBounds = [0, ...hardBreaks, effH];
+  let segments = [];
   for(let i=0;i<segBounds.length-1;i++){
     if(segBounds[i+1] > segBounds[i]) segments.push([segBounds[i], segBounds[i+1]]);
   }
@@ -4487,15 +4505,35 @@ async function canvasToPdf_(canvas, filename, opts){
   const ctx = slice.getContext('2d', { alpha:false });
   slice.width = canvas.width;
 
-  let totalPages = 0;
-  segments.forEach(([s,e])=>{ totalPages += Math.max(1, Math.ceil((e-s)/pageHpx)); });
+  // فواصل الأقسام وبلوكات keep ممكن تسيب شرائح كلها فراغ أبيض (ذيل مقطع بعد
+  // حد صفحة طبيعي مثلاً) فتطلع صفحة فاضية — نفحص كل شريحة ونشيل الفاضي منها.
+  const slices = [];
+  segments.forEach(([s,e])=>{
+    const sub = Math.max(1, Math.ceil((e-s)/pageHpx));
+    for(let j=0;j<sub;j++){
+      const sy = s + j*pageHpx;
+      slices.push([sy, Math.min(pageHpx, e-sy)]);
+    }
+  });
+  const probe = document.createElement('canvas');
+  const pctx = probe.getContext('2d', {willReadFrequently:true});
+  const sliceBlank = ([sy,sh])=>{
+    const pw = 48;
+    const ph = Math.max(1, Math.round(sh * pw / canvas.width));
+    probe.width = pw; probe.height = ph;
+    pctx.fillStyle = '#ffffff'; pctx.fillRect(0,0,pw,ph);
+    pctx.drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, pw, ph);
+    const d = pctx.getImageData(0,0,pw,ph).data;
+    for(let i=0;i<d.length;i+=4){ if(d[i]<246||d[i+1]<246||d[i+2]<246) return false; }
+    return true;
+  };
+  const keptSlices = slices.filter(sg=>!sliceBlank(sg));
+  if(keptSlices.length) slices.length = 0, slices.push(...keptSlices);
+
+  const totalPages = slices.length;
 
   let pageIdx = 0;
-  for(const [segStart, segEnd] of segments){
-    const subPages = Math.max(1, Math.ceil((segEnd-segStart)/pageHpx));
-    for(let j=0;j<subPages;j++){
-      const sy = segStart + j*pageHpx;
-      const sh = Math.min(pageHpx, segEnd - sy);
+  for(const [sy, sh] of slices){
       if(slice.height !== sh) slice.height = sh;
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0,0,slice.width,slice.height);
@@ -4511,7 +4549,6 @@ async function canvasToPdf_(canvas, filename, opts){
       }
       pageIdx++;
       if(pageIdx % 2 === 0) await yield_(0);          // منع تجميد الواجهة من غير ما نبطّأ التقرير
-    }
   }
   // ⚠️ المشاركة كانت خيار اختياري (opts.share) — واتنين من أربع نداءات نسيوه،
   // منهم مستند الطلب وعرض السعر نفسهم. النتيجة إن أهم ورقتين بيبعتهم المصنع
@@ -5477,8 +5514,8 @@ function itemSpecCells_(it){
 // ١) ملخص الطلبات  ٢) تفاصيل حسب العميل  ٣) إجمالي الأصناف
 function reportHTML(orders){
   const NAVY='#002050', BRAND='#1080C0', LIGHT='#EAF2FA', BRD='#DCE4EC', ZEBRA='#F7FAFC';
-  const th = `padding:6px 5px;background:${NAVY};color:#EAF2FA;font-size:10.5px;border:1px solid ${BRD};text-align:center`;
-  const td = `padding:5px;font-size:10.5px;border:1px solid ${BRD};text-align:center`;
+  const th = `padding:6px 5px;background:${NAVY};color:#EAF2FA;font-size:12px;border:1px solid ${BRD};text-align:center`;
+  const td = `padding:5px;font-size:12px;border:1px solid ${BRD};text-align:center`;
 
   // التقرير ده للأبواب بس — بنشيل الإكسسوارات والحلق/البرور المنفصلين من كل الأقسام التلاتة
   // من هنا مرة واحدة، وأي طلب مابقاش فيه ولا باب بيتشال بالكامل.
@@ -5554,11 +5591,11 @@ function reportHTML(orders){
           <td style="${td}">${esc(itemTypeAr_(it.type))}</td>
           <td style="${td}">${esc(it.code||'—')}</td>
           <td style="${td};text-align:right">${esc(itemNameAr_(it))}</td>
-          <td style="${td};font-size:10px;color:#5B6B7D">${esc(wh.w||'—')}</td>
-          <td style="${td};font-size:10px;color:#5B6B7D">${esc(wh.h||'—')}</td>
-          <td style="${td};font-size:10px;color:#5B6B7D">${esc(frameW)}</td>
-          ${showFrameHCol?`<td style="${td};font-size:10px;color:${frameH==='استاندر'?'#8A6512':'#5B6B7D'}">${esc(frameH)}</td>`:''}
-          <td style="${td};font-size:10px;color:#5B6B7D">${esc(brorTxt)}</td>
+          <td style="${td};font-size:11.5px;color:#5B6B7D">${esc(wh.w||'—')}</td>
+          <td style="${td};font-size:11.5px;color:#5B6B7D">${esc(wh.h||'—')}</td>
+          <td style="${td};font-size:11.5px;color:#5B6B7D">${esc(frameW)}</td>
+          ${showFrameHCol?`<td style="${td};font-size:11.5px;color:${frameH==='استاندر'?'#8A6512':'#5B6B7D'}">${esc(frameH)}</td>`:''}
+          <td style="${td};font-size:11.5px;color:#5B6B7D">${esc(brorTxt)}</td>
           <td style="${td}">${esc(itemUnitAr_(it.unit))}</td>
           <td style="${td}"><b>${Number(it.qty)||0}</b></td>
           <td style="${td};color:#1E8E52">${pp.produced}</td>
@@ -5566,7 +5603,7 @@ function reportHTML(orders){
           <td style="${td};${unavail?'color:#B3261E;font-weight:700':''}">${unavail?'غير متاح':'متاح'}</td>
         </tr>`;
       }).join('');
-      return `<div class="rpt-order-block" style="margin-top:8px;padding-top:2px">
+      return `<div class="rpt-order-block keep-blk" style="margin-top:8px;padding-top:2px">
         <div style="font-size:10px;color:#8A97A6;margin-bottom:2px">صاحب الحساب: ${esc(cust.name)}</div>
         <div style="background:${BRAND};color:#fff;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700">
           طلب ${esc(orderNoText_(o))} — ${esc(dateStr2_(o.date))} — ${esc(st.ar)}${o.customer?' — صاحب الأوردر: '+esc(o.customer):''}
@@ -5601,7 +5638,7 @@ function reportHTML(orders){
         <td style="${td};${(ct.qty-ct.produced)>0?'color:#B3261E;font-weight:700':''}">${ct.qty-ct.produced}</td>
       </tr>`).join('');
 
-    return `<div style="margin-top:14px;border:1px solid ${BRD};border-radius:10px;padding:10px 12px;break-inside:avoid">
+    return `<div class="keep-blk" style="margin-top:14px;border:1px solid ${BRD};border-radius:10px;padding:10px 12px;break-inside:avoid">
       <div style="background:${NAVY};color:#fff;padding:6px 11px;border-radius:7px;font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px">صاحب الحساب: ${esc(cust.name)}</div>
       ${ordBlocks}
       ${codeRows?`<div style="margin-top:9px">
@@ -5625,7 +5662,7 @@ function reportHTML(orders){
   }).join('');
 
   const sheet2 = `
-  <div style="margin-top:20px">
+  <div class="rpt-sec" style="margin-top:20px">
     <div style="background:${NAVY};color:#EAF2FA;padding:8px 12px;border-radius:8px;font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px">
       ٢ · تفاصيل الطلبات حسب العميل — ${data.length} عميل
     </div>
@@ -5651,7 +5688,7 @@ function reportHTML(orders){
   const grandPending = grandQty-grandProduced;
 
   const sheet3 = `
-  <div style="margin-top:20px">
+  <div class="rpt-sec" style="margin-top:20px">
     <div style="background:${NAVY};color:#EAF2FA;padding:8px 12px;border-radius:8px;font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px">
       ٣ · إجمالي الأصناف — كل العملاء
     </div>
@@ -5688,7 +5725,7 @@ function reportHTML(orders){
 
 async function buildFullReportPdf_(orders){
   if(!await needLibs_('html2canvas','jspdf')) return;
-  const {canvas, breaksPx} = await renderPaper_(reportHTML(orders), { breakSelector: '.rpt-order-block' });
+  const {canvas, breaksPx} = await renderPaper_(reportHTML(orders), { breakSelector: '.rpt-sec' });
   await canvasToPdf_(canvas, 'تقرير_الأبواب_'+isoLocal_()+'.pdf', { hardBreaksPx: breaksPx });
 }
 
@@ -5817,9 +5854,9 @@ function customerTableHTML_(cust, tint, showFrameHCol){
       <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;font-weight:700;color:#233246">${esc(it.code)}</td>
       <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;font-weight:700;color:${qtyColor}">${qtyVal}</td>
       <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4">${stCell}</td>
-      <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;color:#6B7A8C;font-size:10px">${esc(it.frameW)||'—'}</td>
-      ${showFrameHCol?`<td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;color:${frameHTxt==='استاندر'?'#8A6512':'#6B7A8C'};font-size:10px">${esc(frameHTxt)}</td>`:''}
-      <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;color:#6B7A8C;font-size:10px">${esc(it.dbror)||'—'}</td>
+      <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;color:#6B7A8C;font-size:11.5px">${esc(it.frameW)||'—'}</td>
+      ${showFrameHCol?`<td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;color:${frameHTxt==='استاندر'?'#8A6512':'#6B7A8C'};font-size:11.5px">${esc(frameHTxt)}</td>`:''}
+      <td style="text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4;color:#6B7A8C;font-size:11.5px">${esc(it.dbror)||'—'}</td>
     </tr>`;
   };
 
@@ -5829,7 +5866,7 @@ function customerTableHTML_(cust, tint, showFrameHCol){
   const subTable_ = (rows, headBg, headTxt, title, emptyTxt) => `
     <div style="margin-top:${title==='جاهز للتسليم'?'0':'12px'}">
       <div style="font-size:11.5px;font-weight:700;color:${headTxt};background:${headBg};padding:5px 10px;border-radius:6px 6px 0 0">${title}</div>
-      <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
         <thead><tr style="background:#12314F">
           <th style="padding:7px 4px;color:#fff;font-weight:700">عرض الفتحة المعمارية</th>
           <th style="padding:7px 4px;color:#fff;font-weight:700">ارتفاع الفتحة المعمارية</th>
@@ -5840,21 +5877,21 @@ function customerTableHTML_(cust, tint, showFrameHCol){
           ${showFrameHCol?`<th style="padding:7px 4px;color:#fff;font-weight:700">ارتفاع الحلق</th>`:''}
           <th style="padding:7px 6px;color:#fff;font-weight:700">البرور</th>
         </tr></thead>
-        <tbody>${rows || `<tr><td colspan="${colspan}" style="text-align:center;padding:10px;color:#8A97A6;font-size:10.5px">${emptyTxt}</td></tr>`}</tbody>
+        <tbody>${rows || `<tr><td colspan="${colspan}" style="text-align:center;padding:10px;color:#8A97A6;font-size:11.5px">${emptyTxt}</td></tr>`}</tbody>
       </table>
     </div>`;
 
   const readyRows = readyItems.map((it,idx)=>rowHTML_(it, idx, it.produced, '#1E8E52')).join('');
   const pendingRows = pendingItems.map((it,idx)=>rowHTML_(it, idx, it.qty-it.produced, '#B3261E')).join('');
 
-  return `<div class="rpt-cust-block" style="margin-top:18px;border:1px solid #E3E7EC;border-radius:13px;overflow:hidden;break-inside:avoid;box-shadow:0 1px 4px rgba(20,36,58,.06)">
+  return `<div class="rpt-cust-block keep-blk" style="margin-top:18px;border:1px solid #E3E7EC;border-radius:13px;overflow:hidden;break-inside:avoid;box-shadow:0 1px 4px rgba(20,36,58,.06)">
     <div style="font-size:14px;font-weight:700;color:#fff;background:linear-gradient(135deg, ${tint.line}, ${tint.line}CC);padding:11px 16px;display:flex;align-items:center;justify-content:space-between">
-      <span>👤 ${esc(cust.name)}</span>
+      <span>${esc(cust.name)}</span>
       <span style="font-size:10.5px;font-weight:400;opacity:.9">${items.length} صنف</span>
     </div>
     <div style="padding:12px 13px 13px">
-      ${subTable_(readyRows, '#E6F4EA', '#1E8E52', '✅ جاهز للتسليم', 'مفيش حاجة جاهزة لسه')}
-      ${subTable_(pendingRows, '#FDECEA', '#B3261E', '⏳ لسه متبقي / تحت التنفيذ', 'مفيش حاجة متبقية 🎉')}
+      ${subTable_(readyRows, '#E6F4EA', '#1E8E52', 'جاهز للتسليم', 'مفيش حاجة جاهزة لسه')}
+      ${subTable_(pendingRows, '#FDECEA', '#B3261E', 'لسه متبقي / تحت التنفيذ', 'مفيش حاجة متبقية')}
       <div style="display:flex;justify-content:space-between;align-items:center;background:${tint.head};border-radius:9px;padding:9px 14px;margin-top:10px">
         <span style="font-weight:700;font-size:12.5px;color:#233246">إجمالي عدد الأبواب</span>
         <span style="font-weight:700;font-size:19px;color:${tint.line}">${total}</span>
@@ -5883,7 +5920,7 @@ function pendingDoorsHTML(data){
       <img src="${ASSETS.logo}" style="height:46px;width:auto;background:#fff;border-radius:8px;padding:3px">
       <div style="flex:1">
         <div style="font-size:19px;font-weight:700;color:#fff">تقرير الأبواب المعلّقة</div>
-        <div style="font-size:10.5px;color:#B9CCE3;margin-top:3px">${esc(COMPANY_AR)}  •  ${dateStr} — الساعة ${timeStr}  •  الطلبات اللي لسه ما اتسلّمتش</div>
+        <div style="font-size:11.5px;color:#B9CCE3;margin-top:3px">${esc(COMPANY_AR)}  •  ${dateStr} — الساعة ${timeStr}  •  الطلبات اللي لسه ما اتسلّمتش</div>
       </div>
       <div style="text-align:left;border-right:1px solid rgba(255,255,255,.25);padding-right:16px">
         <div style="font-size:10px;color:#B9CCE3">إجمالي الأبواب</div>
@@ -5891,13 +5928,13 @@ function pendingDoorsHTML(data){
         <div style="font-size:9.5px;color:#B9CCE3;margin-top:1px">${data.length} عميل</div>
       </div>
     </div>
-    <div style="display:flex;gap:14px;margin-top:10px;font-size:9.5px;color:#4B5A6B">
+    <div style="display:flex;gap:14px;margin-top:10px;font-size:10.5px;color:#4B5A6B">
       <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#1E8E52;margin-left:4px"></span>متاح بالمخزن</span>
       <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#B8790A;margin-left:4px"></span>الكمية أكبر من المتاح</span>
       <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#B3261E;margin-left:4px"></span>غير متاح بالمخزن</span>
     </div>
     ${cards}
-    <div style="margin-top:18px;padding:10px 14px;background:rgba(255,255,255,.04);border-radius:9px;font-size:10px;color:#8FA3BD;border:1px solid #22304A">
+    <div style="margin-top:18px;padding:10px 14px;background:rgba(255,255,255,.04);border-radius:9px;font-size:11px;color:#8FA3BD;border:1px solid #22304A">
       الأكواد المتاحة: ${esc(codesTxt)}  |  المقاسات المتاحة (سم): 60، 70، 80، 90، 100
     </div>
   </div>`;
@@ -5907,7 +5944,7 @@ async function buildPendingDoorsPdf_(orders){
   const data = buildPendingDoorsData_(orders);
   if(!data.length){ toast('مفيش طلبات معلّقة'); return; }
   if(!await needLibs_('html2canvas','jspdf')) return;
-  const {canvas, breaksPx} = await renderPaper_(pendingDoorsHTML(data), { breakSelector: '.rpt-cust-block' });
+  const {canvas, breaksPx} = await renderPaper_(pendingDoorsHTML(data));
   await canvasToPdf_(canvas, 'تقرير_الأبواب_المعلقة_'+isoLocal_()+'.pdf', { hardBreaksPx: breaksPx });
 }
 
@@ -6008,16 +6045,16 @@ async function buildPendingDoorsExcel_(orders){
     const readyItems = items.filter(it=>it.produced>0);
     const pendingItems = items.filter(it=>(it.qty-it.produced)>0);
 
-    subHeader_(READY_FILL, READY_TXT, '✅ جاهز للتسليم');
+    subHeader_(READY_FILL, READY_TXT, 'جاهز للتسليم');
     colHeader_();
     if(readyItems.length) readyItems.forEach((it,idx)=>itemRow_(it, idx, it.produced, PROD_GREEN));
     else emptyRow_('مفيش حاجة جاهزة لسه');
 
     ws.addRow([]);
-    subHeader_(PEND_FILL, PEND_TXT, '⏳ لسه متبقي / تحت التنفيذ');
+    subHeader_(PEND_FILL, PEND_TXT, 'لسه متبقي / تحت التنفيذ');
     colHeader_();
     if(pendingItems.length) pendingItems.forEach((it,idx)=>itemRow_(it, idx, it.qty-it.produced, PEND_RED));
-    else emptyRow_('مفيش حاجة متبقية 🎉');
+    else emptyRow_('مفيش حاجة متبقية');
 
     mergedRow('إجمالي عدد الأبواب:  '+total+'   (جاهز '+totalProduced+' · متبقي '+(total-totalProduced)+')', tint, NAVY, true, 12);
     ws.addRow([]);
@@ -6092,23 +6129,23 @@ function requiredDoorsHTML_(data){
     const rows = g.rows.map((r,idx)=>{
       const zebra = idx%2===1 ? '#FAFBFC' : '#FFFFFF';
       const typeCell = r.special
-        ? `<span style="display:inline-block;padding:2.5px 10px;border-radius:20px;font-size:10.5px;font-weight:700;background:#FFF4E0;color:#B8790A;white-space:nowrap">خاص — ${esc(r.sizeLbl)}</span>`
-        : `<span style="display:inline-block;padding:2.5px 10px;border-radius:20px;font-size:10.5px;font-weight:700;background:#E7F6EC;color:#1E8E52">استاندر</span>`;
+        ? `<span style="display:inline-block;padding:2.5px 10px;border-radius:20px;font-size:11.5px;font-weight:700;background:#FFF4E0;color:#B8790A;white-space:nowrap">خاص — ${esc(r.sizeLbl)}</span>`
+        : `<span style="display:inline-block;padding:2.5px 10px;border-radius:20px;font-size:11.5px;font-weight:700;background:#E7F6EC;color:#1E8E52">استاندر</span>`;
       return `<tr style="background:${zebra}">
-        <td style="${td};font-weight:700;color:#233246">${esc(r.code)} <span style="font-weight:400;color:#8A97A6;font-size:10px">${esc(doorName(r.code))}</span></td>
+        <td style="${td};font-weight:700;color:#233246">${esc(r.code)} <span style="font-weight:400;color:#8A97A6;font-size:11px">${esc(doorName(r.code))}</span></td>
         <td style="${td}">${typeCell}</td>
         <td style="${td};font-weight:700;font-size:13px;color:#233246">${r.qty}</td>
         <td style="${td};font-weight:700;color:#1E8E52">${r.produced}</td>
         <td style="${td};font-weight:700;color:${r.pending>0?'#B3261E':'#1E8E52'}">${r.pending}</td>
       </tr>`;
     }).join('');
-    return `<div class="rpt-cust-block" style="margin-top:18px;border:1px solid #E3E7EC;border-radius:13px;overflow:hidden;break-inside:avoid;box-shadow:0 1px 4px rgba(20,36,58,.06)">
+    return `<div class="rpt-cust-block keep-blk" style="margin-top:18px;border:1px solid #E3E7EC;border-radius:13px;overflow:hidden;break-inside:avoid;box-shadow:0 1px 4px rgba(20,36,58,.06)">
       <div style="font-size:15px;font-weight:700;color:#fff;background:linear-gradient(135deg, ${tint.line}, ${tint.line}CC);padding:11px 16px;display:flex;align-items:center;justify-content:space-between">
-        <span>🚪 ${title}</span>
+        <span>${title}</span>
         <span style="font-size:11px;font-weight:400;opacity:.92">${g.rows.length} صنف</span>
       </div>
       <div style="padding:10px 13px 13px">
-        <table style="width:100%;border-collapse:collapse;font-size:11.5px">
+        <table style="width:100%;border-collapse:collapse;font-size:12.5px">
           <thead><tr style="background:#12314F">
             <th style="padding:7px 6px;color:#fff;font-weight:700">الكود</th>
             <th style="padding:7px 6px;color:#fff;font-weight:700">النوع / المقاس</th>
@@ -6133,7 +6170,7 @@ function requiredDoorsHTML_(data){
       <img src="${ASSETS.logo}" style="height:46px;width:auto;background:#fff;border-radius:8px;padding:3px">
       <div style="flex:1">
         <div style="font-size:19px;font-weight:700;color:#fff">تقرير الأبواب المطلوبة</div>
-        <div style="font-size:10.5px;color:#B9CCE3;margin-top:3px">${esc(COMPANY_AR)}  •  ${dateStr} — الساعة ${timeStr}  •  كل الطلبات اللي لسه ما اتسلّمتش</div>
+        <div style="font-size:11.5px;color:#B9CCE3;margin-top:3px">${esc(COMPANY_AR)}  •  ${dateStr} — الساعة ${timeStr}  •  كل الطلبات اللي لسه ما اتسلّمتش</div>
       </div>
       <div style="text-align:left;border-right:1px solid rgba(255,255,255,.25);padding-right:16px">
         <div style="font-size:10px;color:#B9CCE3">إجمالي المطلوب</div>
@@ -6149,7 +6186,7 @@ async function buildRequiredDoorsPdf_(orders){
   const data = buildRequiredDoorsData_(orders);
   if(!data.length){ toast('مفيش أبواب مطلوبة'); return; }
   if(!await needLibs_('html2canvas','jspdf')) return;
-  const {canvas, breaksPx} = await renderPaper_(requiredDoorsHTML_(data), { breakSelector: '.rpt-cust-block' });
+  const {canvas, breaksPx} = await renderPaper_(requiredDoorsHTML_(data));
   await canvasToPdf_(canvas, 'تقرير_الأبواب_المطلوبة_'+isoLocal_()+'.pdf', { hardBreaksPx: breaksPx });
 }
 
@@ -6192,7 +6229,7 @@ async function buildRequiredDoorsExcel_(orders){
   data.forEach((g,gi)=>{
     const fill = GRP_FILL[gi % GRP_FILL.length], tint = GRP_TINT[gi % GRP_TINT.length];
     const title = g.w==null ? 'مقاسات أخرى' : 'أبواب '+g.w+' سم';
-    mergedRow('🚪 '+title, fill, WHITE, 13);
+    mergedRow(title, fill, WHITE, 13);
     const hdr = ws.addRow(['الكود','النوع / المقاس','المطلوب','جاهز','متبقي']);
     hdr.eachCell(c=>{
       c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:fill}};
@@ -6319,7 +6356,7 @@ function allocBanner_(title, sub, statsHTML){
       <img src="${ASSETS.logo}" style="height:46px;width:auto;background:#fff;border-radius:8px;padding:3px">
       <div style="flex:1">
         <div style="font-size:19px;font-weight:700;color:#fff">${title}</div>
-        <div style="font-size:10.5px;color:#B9CCE3;margin-top:3px">${sub}</div>
+        <div style="font-size:11.5px;color:#B9CCE3;margin-top:3px">${sub}</div>
       </div>
       ${statsHTML}
     </div>`;
@@ -6331,7 +6368,7 @@ function allocCustomersHTML_(d){
   const dateStr = now.toLocaleDateString('ar-EG');
   const timeStr = now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
   const td = 'text-align:center;padding:7px 5px;border-bottom:1px solid #EEF1F4';
-  const th = 'padding:6px 4px;color:#fff;font-weight:700;font-size:10.5px;border-left:1px solid rgba(255,255,255,.18)';
+  const th = 'padding:6px 4px;color:#fff;font-weight:700;font-size:11.5px;border-left:1px solid rgba(255,255,255,.18)';
   const doorName = c=>{ const x = DOORS.find(y=>y.code===c); return x ? x.name : ''; };
   const num = (v,color)=> v==null ? '<span style="color:#B7C0CA">—</span>' : `<b style="color:${color}">${v}</b>`;
   const CH = 3;   // عدد العملاء في الجدول الواحد — أكتر من كده الصفحة بتزحم
@@ -6353,7 +6390,7 @@ function allocCustomersHTML_(d){
             : `<td style="${td}"></td><td style="${td}"></td><td style="${td}"></td>`;
         }).join('');
         return `<tr style="background:${ri%2?'#FAFBFC':'#FFFFFF'}">
-          <td style="${td};font-weight:700;color:#233246;text-align:right">${esc(c)} <span style="font-weight:400;color:#8A97A6;font-size:9.5px">${esc(doorName(c))}</span></td>${cs}</tr>`;
+          <td style="${td};font-weight:700;color:#233246;text-align:right">${esc(c)} <span style="font-weight:400;color:#8A97A6;font-size:10.5px">${esc(doorName(c))}</span></td>${cs}</tr>`;
       }).join('');
       const tot = part.map(n=>{
         const t = {req:0, got:0, rem:0};
@@ -6362,13 +6399,13 @@ function allocCustomersHTML_(d){
       }).join('');
       const custHead = part.map(n=>`<th colspan="3" style="${th};font-size:12px;background:${tint.line}">${esc(n)}</th>`).join('');
       const subHead = part.map(()=>`<th style="${th}">مطلوب</th><th style="${th}">متاح</th><th style="${th}">متبقي له</th>`).join('');
-      blocks.push(`<div class="rpt-cust-block" style="margin-top:18px;border:1px solid #E3E7EC;border-radius:13px;overflow:hidden;break-inside:avoid;box-shadow:0 1px 4px rgba(20,36,58,.06)">
+      blocks.push(`<div class="rpt-cust-block keep-blk" style="margin-top:18px;border:1px solid #E3E7EC;border-radius:13px;overflow:hidden;break-inside:avoid;box-shadow:0 1px 4px rgba(20,36,58,.06)">
         <div style="font-size:15px;font-weight:700;color:#fff;background:linear-gradient(135deg, ${tint.line}, ${tint.line}CC);padding:11px 16px;display:flex;align-items:center;justify-content:space-between">
-          <span>🚪 ${title}${i>0?' (تابع)':''}</span>
+          <span>${title}${i>0?' (تابع)':''}</span>
           <span style="font-size:11px;font-weight:400;opacity:.95">مطلوب ${gt.req} · متاح ${gt.got} · يتصنّع ${gt.rem}</span>
         </div>
         <div style="padding:10px 13px 13px">
-          <table style="width:100%;border-collapse:collapse;font-size:11.5px">
+          <table style="width:100%;border-collapse:collapse;font-size:12.5px">
             <thead>
               <tr style="background:#12314F"><th rowspan="2" style="${th}">الكود</th>${custHead}</tr>
               <tr style="background:#12314F">${subHead}</tr>
@@ -6412,11 +6449,11 @@ function allocDoorsHTML_(d){
     }).join('');
     all += rowTot;
     return `<tr style="background:${ri%2?'#FAFBFC':'#FFFFFF'}">
-      <td style="${td};font-weight:700;color:#233246;text-align:right">${esc(c)} <span style="font-weight:400;color:#8A97A6;font-size:10px">${esc(doorName(c))}</span></td>
+      <td style="${td};font-weight:700;color:#233246;text-align:right">${esc(c)} <span style="font-weight:400;color:#8A97A6;font-size:11px">${esc(doorName(c))}</span></td>
       ${cs}<td style="${td};font-weight:700;font-size:13px;background:#F0F4F8;color:#002050">${rowTot}</td></tr>`;
   }).join('');
   const head1 = d.sizes.map(g=>`<th style="${th}">${g==='خاص'?'خاص':g}</th>`).join('');
-  const head2 = d.sizes.map(()=>`<th style="${th};font-size:10px;font-weight:400">مطلوب</th>`).join('');
+  const head2 = d.sizes.map(()=>`<th style="${th};font-size:11px;font-weight:400">مطلوب</th>`).join('');
   const totRow = d.sizes.map(g=>`<td style="${td};font-weight:700;font-size:13px">${colTot[g]||0}</td>`).join('');
   const stats = `<div style="text-align:left;border-right:1px solid rgba(255,255,255,.25);padding-right:16px">
       <div style="font-size:10px;color:#B9CCE3">إجمالي المطلوب تصنيعه</div>
@@ -6426,7 +6463,7 @@ function allocDoorsHTML_(d){
     ${allocBanner_('الأبواب المطلوب تصنيعها', esc(COMPANY_AR)+'  •  '+dateStr+' — الساعة '+timeStr+'  •  بعد خصم رصيد المخزن', stats)}
     <div style="margin-top:18px;border:1px solid #E3E7EC;border-radius:13px;overflow:hidden;box-shadow:0 1px 4px rgba(20,36,58,.06)">
       <div style="padding:10px 13px 13px">
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <table style="width:100%;border-collapse:collapse;font-size:12.5px">
           <thead>
             <tr style="background:#12314F"><th rowspan="2" style="${th}">الكود</th><th colspan="${d.sizes.length}" style="${th};text-align:center">المقاس (سم)</th><th rowspan="2" style="${th}">الإجمالي</th></tr>
             <tr style="background:#12314F">${head1}</tr>
@@ -6443,7 +6480,7 @@ function allocDoorsHTML_(d){
 
 async function buildAllocCustomersPdf_(d){
   if(!await needLibs_('html2canvas','jspdf')) return;
-  const {canvas, breaksPx} = await renderPaper_(allocCustomersHTML_(d), { breakSelector: '.rpt-cust-block' });
+  const {canvas, breaksPx} = await renderPaper_(allocCustomersHTML_(d));
   await canvasToPdf_(canvas, 'توزيع_الرصيد_على_العملاء_'+isoLocal_()+'.pdf', { hardBreaksPx: breaksPx });
 }
 async function buildAllocDoorsPdf_(d){
@@ -6629,9 +6666,9 @@ function allocCustByCodeHTML_(d){
     }).join('');
     return `<div class="rpt-cbc-block keep-blk" style="margin-top:9px;border:1px solid #E3E7EC;border-radius:12px;overflow:hidden;break-inside:avoid;box-shadow:0 1px 4px rgba(20,36,58,.06)">
       <div style="background:#12314F;color:#fff;font-weight:700;font-size:13px;padding:6px 10px">
-        <span>${esc(c)} <span style="font-weight:400;color:#B9CCE3;font-size:10px">${esc(doorName(c))}</span></span>
+        <span>${esc(c)} <span style="font-weight:400;color:#B9CCE3;font-size:11px">${esc(doorName(c))}</span></span>
       </div>
-      <table style="width:100%;border-collapse:collapse;font-size:11.5px">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
         <thead><tr style="background:#1B4A78">
           <th style="${th};text-align:right">المتبقي للعملا</th>
           ${d.sizes.map(g=>`<th style="${th};width:64px">${g==='خاص'?'خاص':g}</th>`).join('')}
@@ -7862,23 +7899,16 @@ function viewAdmin(){
   };
 
   const headerBtns = `${staleBar}<div class="ad-tools">
-      ${toolGrp_('adm-grp-view','clock','عرض', a.viewStock||viewingArchive||a.viewCustRem, `
-        <button class="btn ${a.viewStock?'brand':'act-edit'} sm" data-act="adm-toggle-stock">${ico("box")}${a.viewStock?'رجوع للطلبات':'أرصدة المخزن'}</button>
+      <div class="ad-row" style="gap:6px">
+        <button class="btn ${a.viewStock?'brand':'act-edit'}" data-act="adm-toggle-stock" style="flex:1">${ico("box")}${a.viewStock?'رجوع للطلبات':'أرصدة المخزن'}</button>
+        <button class="btn ${a.viewCustRem?'brand':'act-edit'}" data-act="adm-toggle-custrem" style="flex:1">${ico("report")}${a.viewCustRem?'رجوع للطلبات':'المتبقي للعملاء'}</button>
+      </div>
+      ${toolGrp_('adm-grp-view','clock','عرض', viewingArchive, `
         <button class="btn ${viewingArchive?'brand':'act-edit'} sm" data-act="adm-toggle-archive">${ico("folder")}${viewingArchive?'رجوع للطلبات':'الأرشيف'}</button>
-        <button class="btn act-money sm" data-act="adm-prices-open">${ico("money")}الأسعار</button>
-        <button class="btn ${a.viewCustRem?'brand':'act-edit'} sm" data-act="adm-toggle-custrem">${ico("report")}${a.viewCustRem?'رجوع للطلبات':'المتبقي للعملا'}</button>`)}
-      ${toolGrp_('adm-grp-reports','doc','تقارير', false, `
-        <button class="btn act-report sm" data-act="adm-pending-pdf">${ico("doc")}متبقي PDF</button>
-        <button class="btn act-report sm" data-act="adm-pending-xls">${ico("sheet")}متبقي إكسيل</button>
-        <button class="btn act-report sm" data-act="adm-req-pdf">${ico("doc")}الأبواب المطلوبة PDF</button>
-        <button class="btn act-report sm" data-act="adm-req-xls">${ico("sheet")}الأبواب المطلوبة إكسيل</button>
-        <button class="btn act-report sm" data-act="adm-full-pdf">${ico("report")}تقرير كامل</button>
-        <button class="btn act-report sm" data-act="adm-full-xls">${ico("sheet")}كل الطلبات إكسيل</button>`)}
-      ${toolGrp_('adm-grp-alloc','box','توزيع الرصيد', false, `
-        <button class="btn act-report sm" data-act="adm-alloc-cust-pdf">${ico("doc")}العملاء PDF</button>
-        <button class="btn act-report sm" data-act="adm-alloc-cust-xls">${ico("sheet")}العملاء إكسيل</button>
-        <button class="btn act-report sm" data-act="adm-alloc-doors-pdf">${ico("doc")}المطلوب تصنيعه PDF</button>
-        <button class="btn act-report sm" data-act="adm-alloc-doors-xls">${ico("sheet")}المطلوب تصنيعه إكسيل</button>`)}
+        <button class="btn act-money sm" data-act="adm-prices-open">${ico("money")}الأسعار</button>`)}
+      <div class="ad-row">
+        <button class="btn ${a.viewReports?'brand':'act-report'}" data-act="adm-toggle-reports" style="width:100%">${ico("report")}${a.viewReports?'رجوع للطلبات':'التقارير والتصدير'}</button>
+      </div>
       ${viewingArchive?toolGrp_('adm-grp-arch','trash','الأرشيف', false, `
         <button class="btn act-del sm" data-act="adm-clear-delivered">${ico("trash")}حذف المؤرشف</button>`):''}
       <div class="ad-row ad-end">
@@ -7895,6 +7925,32 @@ function viewAdmin(){
       ${headerBtns}
     </section>
     <div class="empty"><span class="em">${ico("clock","xl")}</span><p>جارٍ تحميل الأرشيف…</p></div>${verBar()}`;
+  }
+
+  // ---------- شاشة التقارير والتصدير — كل التقارير في مكان واحد بدل قوائم متفرقة ----------
+  if(a.viewReports){
+    const rptBtns = (pdfAct, xlsAct) =>
+      `<button class="btn act-report sm" data-act="${pdfAct}">${ico("doc")}PDF</button>`
+      + (xlsAct ? `<button class="btn act-report sm" data-act="${xlsAct}">${ico("sheet")}إكسيل</button>` : '');
+    const rptRow = (title, desc, btns) => `<div style="border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-top:9px">
+        <b style="font-size:14px">${title}</b>
+        <div class="note" style="margin-top:2px">${desc}</div>
+        <div class="btnrow" style="margin-top:8px">${btns}</div>
+      </div>`;
+    return `<section class="card">
+      <div class="step"><span class="n">${ico("report","lg")}</span><h2>التقارير والتصدير</h2>
+        <span class="hint">كل التقارير في مكان واحد</span></div>
+      ${headerBtns}
+      <div class="hm-h" style="margin-top:14px"><span>تقارير الطلبات</span></div>
+      ${rptRow('التقرير الكامل', 'كل الطلبات النشطة: ملخص + تفاصيل كل عميل + إجمالي الأصناف', rptBtns('adm-full-pdf','adm-full-xls'))}
+      ${rptRow('الأبواب المعلّقة', 'الأبواب اللي لسه ما اتسلّمتش، مجمّعة حسب العميل', rptBtns('adm-pending-pdf','adm-pending-xls'))}
+      ${rptRow('الأبواب المطلوبة', 'إجمالي الأبواب المطلوبة حسب الكود والمقاس', rptBtns('adm-req-pdf','adm-req-xls'))}
+      <div class="hm-h" style="margin-top:16px"><span>المخزن والتوزيع</span></div>
+      ${rptRow('أرصدة المخزن', 'جرد المخزن الحالي مع المطلوب للعملاء منه', rptBtns('stock-pdf'))}
+      ${rptRow('المتبقي للعملاء حسب الكود', 'المتبقي لكل عميل بعد خصم رصيد المخزن — الأقدم أول', rptBtns('adm-allocbycode-pdf','adm-allocbycode-xls'))}
+      ${rptRow('توزيع الرصيد على العملاء', 'إزاي رصيد المخزن بيتوزّع على طلبات العملاء', rptBtns('adm-alloc-cust-pdf','adm-alloc-cust-xls'))}
+      ${rptRow('المطلوب تصنيعه', 'الأبواب المطلوب تصنيعها بعد خصم رصيد المخزن', rptBtns('adm-alloc-doors-pdf','adm-alloc-doors-xls'))}
+    </section>${verBar()}`;
   }
 
   // ---------- شاشة أرصدة المخزن ----------
@@ -8405,9 +8461,14 @@ document.addEventListener('click',e=>{
     case 'custrem-reload':       loadCustRemScreen_(true); break;
     case 'adm-toggle-custrem':
       state.admin.viewCustRem = !state.admin.viewCustRem;
-      if(state.admin.viewCustRem){ state.admin.viewArchive = false; state.admin.viewStock = false; }
+      if(state.admin.viewCustRem){ state.admin.viewArchive = false; state.admin.viewStock = false; state.admin.viewReports = false; }
       render();
       if(state.admin.viewCustRem) loadCustRemScreen_(true);
+      break;
+    case 'adm-toggle-reports':
+      state.admin.viewReports = !state.admin.viewReports;
+      if(state.admin.viewReports){ state.admin.viewArchive = false; state.admin.viewStock = false; state.admin.viewCustRem = false; }
+      render();
       break;
     case 'adm-full-pdf':     exportAdminFullReport(); break;
     case 'adm-full-xls':     exportAdminExcel(); break;
@@ -8419,6 +8480,7 @@ document.addEventListener('click',e=>{
       if(state.admin.viewArchive){
         state.admin.viewStock = false;
         state.admin.viewCustRem = false;
+        state.admin.viewReports = false;
         if(!state.admin.archRows) state.admin.archLoading = true;   // نمنع ومضة "مفيش طلبات" قبل ما التحميل يخلص
       }
       render();
@@ -8426,7 +8488,7 @@ document.addEventListener('click',e=>{
       break;
     case 'adm-toggle-stock':
       state.admin.viewStock = !state.admin.viewStock;
-      if(state.admin.viewStock){ state.admin.viewArchive = false; state.admin.viewCustRem = false; }
+      if(state.admin.viewStock){ state.admin.viewArchive = false; state.admin.viewCustRem = false; state.admin.viewReports = false; }
       state.admin.stockDraft = {};
       render();
       if(state.admin.viewStock){ loadStock(true); loadReserved(true); }
@@ -8508,6 +8570,7 @@ document.addEventListener('click',e=>{
         viewArchive:false, archRows:null, archLoading:false, archBusy:null,
         viewStock:false, stockBusy:null, stockDraft:{},
         viewCustRem:false, custRem:null, custRemAt:0, custRemLoading:false,
+    viewReports:false,
         pricesOpen:false, priceEdit:null,
         groupOpen:{}, groupPdfBusy:null,
         qtyEditOpen:{}, qtyEdit:{}, qtyBusy:null, itemDelBusy:null, recvEdit:{}, recvBusy:null,
@@ -10250,7 +10313,7 @@ function docRows(o, priced, showFrameHCol){
 
   let n=0, rows='';
   order.forEach((k,gi)=>{
-    rows += `<tr><td colspan="${colspan}" style="${gi>0?'border-top:2px dashed #5B6B7D;':''}background:#F9E4DB;padding:10px 12px;font-family:Arial,'Helvetica Neue',sans-serif;font-weight:800;color:#A0451F;font-size:14px">🚪 أبواب مقاس ${esc(k)}</td></tr>`;
+    rows += `<tr><td colspan="${colspan}" style="${gi>0?'border-top:2px dashed #5B6B7D;':''}background:#F9E4DB;padding:10px 12px;font-family:Arial,'Helvetica Neue',sans-serif;font-weight:800;color:#A0451F;font-size:14px">أبواب مقاس ${esc(k)}</td></tr>`;
     groups[k].forEach(it=>{
       const oddFrameW = dominantFrameW!=null && it.frame && String(it.frame)!==dominantFrameW;
       rows += docRowHTML_(it, ++n, priced, showFrameHCol, oddFrameW);
