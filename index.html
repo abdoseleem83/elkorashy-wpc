@@ -2444,7 +2444,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v252';
+const APP_BUILD   = 'v253';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -6221,6 +6221,377 @@ async function exportRequiredDoorsExcel_(){
   });
 }
 
+// ============================================================
+// توزيع الرصيد على العملاء — بعد ما المصنع يسجّل رصيد المخزن، كل كود+مقاس بيتوزّع
+// على الطلبات المعلّقة بالأقدم أول: العميل ياخد من المتاح لحد ما يخلص، واللي زاد عن
+// الرصيد = المطلوب تصنيعه. المقاس الخاص مش متتبّع في المخزن فبيتصنّع كله.
+// المطلوب = الكمية - الجاهز (نفس منطق «مطلوب لعملاء» في شاشة الأرصدة).
+// ============================================================
+function buildAllocationData_(orders){
+  const pending = (orders||[])
+    .filter(o=>o.status!=='Cancelled' && o.status!=='Delivered')
+    .slice()
+    .sort((a,b)=> String(a.date||'').localeCompare(String(b.date||'')) || String(a.id||'').localeCompare(String(b.id||'')));
+  const left = {}, avail = {}, cells = {}, custBy = {}, sizeSet = new Set(), codeSet = new Set();
+  pending.forEach(o=>{
+    const cust = String(o.customer||'').trim() || o.dist || '—';
+    (o.items||[]).forEach(it=>{
+      if(it.type!=='Door') return;
+      const remain = Math.max(0, (Number(it.qty)||0) - (Number(it.produced)||0));
+      if(remain<=0) return;
+      const code = String(it.code||'').trim() || '—';
+      const w = doorWidthGroup_(it.size);
+      const g = w!=null ? String(w) : 'خاص';
+      let got = 0;
+      if(w!=null){
+        const sk = code+'|'+w;
+        if(!(sk in left)){ left[sk] = Math.max(0, Number(stockFor(code, w))||0); avail[sk] = left[sk]; }
+        got = Math.min(remain, left[sk]);
+        left[sk] -= got;
+      }
+      const ck = g+'|'+code+'|'+cust;
+      const c = cells[ck] || (cells[ck] = {req:0, got:0, rem:0});
+      c.req += remain; c.got += got; c.rem += remain-got;
+      sizeSet.add(g); codeSet.add(code);
+      const list = custBy[g] || (custBy[g] = []);
+      if(!list.includes(cust)) list.push(cust);
+    });
+  });
+  const sizes = [...sizeSet].sort((a,b)=> a==='خاص'?1 : b==='خاص'?-1 : Number(a)-Number(b));
+  const idx = c=>{ const i = DOORS.findIndex(d=>d.code===c); return i<0 ? 999 : i; };
+  const codes = [...codeSet].sort((a,b)=> idx(a)-idx(b) || a.localeCompare(b));
+  const cell = (g,code,cust)=> cells[g+'|'+code+'|'+cust] || null;
+  // إجمالي الكود في مقاس واحد (على كل العملاء)
+  const sum = (g,code)=>{
+    const t = {req:0, got:0, rem:0};
+    (custBy[g]||[]).forEach(n=>{ const c = cell(g,code,n); if(c){ t.req+=c.req; t.got+=c.got; t.rem+=c.rem; } });
+    return t;
+  };
+  const grand = {req:0, got:0, rem:0};
+  sizes.forEach(g=>codes.forEach(c=>{ const s = sum(g,c); grand.req+=s.req; grand.got+=s.got; grand.rem+=s.rem; }));
+  return { sizes, codes, custBy, cell, sum, grand, avail };
+}
+
+// بيحمّل الرصيد + الطلبات المعلّقة ويحسب التوزيع (null لو فيه مشكلة وفي toast بيوضّحها)
+async function loadAllocData_(){
+  await loadStock(true);
+  if(!state.stock.rows){ toast('تعذّر تحميل أرصدة المخزن'); return null; }
+  const orders = await fetchPendingOrders_();
+  if(!orders) return null;
+  const d = buildAllocationData_(orders);
+  if(!d.sizes.length){ toast('مفيش أبواب مطلوبة'); return null; }
+  return d;
+}
+
+// الكودات اللي لسه عليها تصنيع (متبقي > 0 في أي مقاس) — للتقرير التاني
+function allocToMakeCodes_(d){
+  return d.codes.filter(c=>d.sizes.some(g=>d.sum(g,c).rem>0));
+}
+
+function allocBanner_(title, sub, statsHTML){
+  return `<div style="display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#002050,#0B3A75);border-radius:14px;padding:16px 20px">
+      <img src="${ASSETS.logo}" style="height:46px;width:auto;background:#fff;border-radius:8px;padding:3px">
+      <div style="flex:1">
+        <div style="font-size:19px;font-weight:700;color:#fff">${title}</div>
+        <div style="font-size:10.5px;color:#B9CCE3;margin-top:3px">${sub}</div>
+      </div>
+      ${statsHTML}
+    </div>`;
+}
+
+// ---------- تقرير ١: توزيع الرصيد على العملاء ----------
+function allocCustomersHTML_(d){
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ar-EG');
+  const timeStr = now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+  const td = 'text-align:center;padding:7px 5px;border-bottom:1px solid #EEF1F4';
+  const th = 'padding:6px 4px;color:#fff;font-weight:700;font-size:10.5px;border-left:1px solid rgba(255,255,255,.18)';
+  const doorName = c=>{ const x = DOORS.find(y=>y.code===c); return x ? x.name : ''; };
+  const num = (v,color)=> v==null ? '<span style="color:#B7C0CA">—</span>' : `<b style="color:${color}">${v}</b>`;
+  const CH = 3;   // عدد العملاء في الجدول الواحد — أكتر من كده الصفحة بتزحم
+  const blocks = [];
+  d.sizes.forEach((g,gi)=>{
+    const custs = d.custBy[g]||[];
+    const codes = d.codes.filter(c=>custs.some(n=>d.cell(g,c,n)));
+    const title = g==='خاص' ? 'مقاسات خاصة' : 'مقاس '+g+' سم';
+    const gt = {req:0, got:0, rem:0};
+    codes.forEach(c=>{ const s = d.sum(g,c); gt.req+=s.req; gt.got+=s.got; gt.rem+=s.rem; });
+    const tint = CUST_TINTS_[gi % CUST_TINTS_.length];
+    for(let i=0;i<custs.length;i+=CH){
+      const part = custs.slice(i,i+CH);
+      const rows = codes.map((c,ri)=>{
+        const cs = part.map(n=>{
+          const x = d.cell(g,c,n);
+          return x
+            ? `<td style="${td};font-weight:700;color:#233246">${x.req}</td><td style="${td}">${num(x.got, x.got>0?'#1E8E52':'#8A97A6')}</td><td style="${td}">${num(x.rem, x.rem>0?'#B3261E':'#1E8E52')}</td>`
+            : `<td style="${td}"></td><td style="${td}"></td><td style="${td}"></td>`;
+        }).join('');
+        return `<tr style="background:${ri%2?'#FAFBFC':'#FFFFFF'}">
+          <td style="${td};font-weight:700;color:#233246;text-align:right">${esc(c)} <span style="font-weight:400;color:#8A97A6;font-size:9.5px">${esc(doorName(c))}</span></td>${cs}</tr>`;
+      }).join('');
+      const tot = part.map(n=>{
+        const t = {req:0, got:0, rem:0};
+        codes.forEach(c=>{ const x = d.cell(g,c,n); if(x){ t.req+=x.req; t.got+=x.got; t.rem+=x.rem; } });
+        return `<td style="${td};font-weight:700">${t.req}</td><td style="${td};font-weight:700;color:#1E8E52">${t.got}</td><td style="${td};font-weight:700;color:${t.rem>0?'#B3261E':'#1E8E52'}">${t.rem}</td>`;
+      }).join('');
+      const custHead = part.map(n=>`<th colspan="3" style="${th};font-size:12px;background:${tint.line}">${esc(n)}</th>`).join('');
+      const subHead = part.map(()=>`<th style="${th}">مطلوب</th><th style="${th}">متاح</th><th style="${th}">متبقي له</th>`).join('');
+      blocks.push(`<div class="rpt-cust-block" style="margin-top:18px;border:1px solid #E3E7EC;border-radius:13px;overflow:hidden;break-inside:avoid;box-shadow:0 1px 4px rgba(20,36,58,.06)">
+        <div style="font-size:15px;font-weight:700;color:#fff;background:linear-gradient(135deg, ${tint.line}, ${tint.line}CC);padding:11px 16px;display:flex;align-items:center;justify-content:space-between">
+          <span>🚪 ${title}${i>0?' (تابع)':''}</span>
+          <span style="font-size:11px;font-weight:400;opacity:.95">مطلوب ${gt.req} · متاح ${gt.got} · يتصنّع ${gt.rem}</span>
+        </div>
+        <div style="padding:10px 13px 13px">
+          <table style="width:100%;border-collapse:collapse;font-size:11.5px">
+            <thead>
+              <tr style="background:#12314F"><th rowspan="2" style="${th}">الكود</th>${custHead}</tr>
+              <tr style="background:#12314F">${subHead}</tr>
+            </thead>
+            <tbody>${rows}
+              <tr style="background:${tint.head}"><td style="${td};font-weight:700;text-align:right">الإجمالي</td>${tot}</tr>
+            </tbody>
+          </table>
+        </div>
+      </div>`);
+    }
+  });
+  const stats = `<div style="text-align:left;border-right:1px solid rgba(255,255,255,.25);padding-right:16px">
+      <div style="font-size:10px;color:#B9CCE3">يتصنّع</div>
+      <div style="font-size:22px;font-weight:700;color:#fff">${d.grand.rem}</div>
+      <div style="font-size:9.5px;color:#B9CCE3;margin-top:1px">مطلوب ${d.grand.req} · متاح ${d.grand.got}</div>
+    </div>`;
+  return `<div style="font-family:Arial,'Helvetica Neue',sans-serif;direction:rtl;background:#fff;padding:32px 28px;color:#14243A;">
+    ${allocBanner_('توزيع الرصيد على العملاء', esc(COMPANY_AR)+'  •  '+dateStr+' — الساعة '+timeStr+'  •  الأقدم أول', stats)}
+    ${blocks.join('')}
+  </div>`;
+}
+
+// ---------- تقرير ٢: الأبواب المطلوب تصنيعها ----------
+function allocDoorsHTML_(d){
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ar-EG');
+  const timeStr = now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+  const td = 'text-align:center;padding:8px 6px;border-bottom:1px solid #EEF1F4';
+  const th = 'padding:7px 6px;color:#fff;font-weight:700;border-left:1px solid rgba(255,255,255,.18)';
+  const doorName = c=>{ const x = DOORS.find(y=>y.code===c); return x ? x.name : ''; };
+  const codes = allocToMakeCodes_(d);
+  const colTot = {};
+  let all = 0;
+  const rows = codes.map((c,ri)=>{
+    let rowTot = 0;
+    const cs = d.sizes.map(g=>{
+      const r = d.sum(g,c).rem;
+      rowTot += r; colTot[g] = (colTot[g]||0) + r;
+      return `<td style="${td};font-weight:700;font-size:13px;color:${r>0?'#B3261E':'#B7C0CA'}">${r>0?r:'—'}</td>`;
+    }).join('');
+    all += rowTot;
+    return `<tr style="background:${ri%2?'#FAFBFC':'#FFFFFF'}">
+      <td style="${td};font-weight:700;color:#233246;text-align:right">${esc(c)} <span style="font-weight:400;color:#8A97A6;font-size:10px">${esc(doorName(c))}</span></td>
+      ${cs}<td style="${td};font-weight:700;font-size:13px;background:#F0F4F8;color:#002050">${rowTot}</td></tr>`;
+  }).join('');
+  const head1 = d.sizes.map(g=>`<th style="${th}">${g==='خاص'?'خاص':g}</th>`).join('');
+  const head2 = d.sizes.map(()=>`<th style="${th};font-size:10px;font-weight:400">مطلوب</th>`).join('');
+  const totRow = d.sizes.map(g=>`<td style="${td};font-weight:700;font-size:13px">${colTot[g]||0}</td>`).join('');
+  const stats = `<div style="text-align:left;border-right:1px solid rgba(255,255,255,.25);padding-right:16px">
+      <div style="font-size:10px;color:#B9CCE3">إجمالي المطلوب تصنيعه</div>
+      <div style="font-size:22px;font-weight:700;color:#fff">${all}</div>
+    </div>`;
+  return `<div style="font-family:Arial,'Helvetica Neue',sans-serif;direction:rtl;background:#fff;padding:32px 28px;color:#14243A;">
+    ${allocBanner_('الأبواب المطلوب تصنيعها', esc(COMPANY_AR)+'  •  '+dateStr+' — الساعة '+timeStr+'  •  بعد خصم رصيد المخزن', stats)}
+    <div style="margin-top:18px;border:1px solid #E3E7EC;border-radius:13px;overflow:hidden;box-shadow:0 1px 4px rgba(20,36,58,.06)">
+      <div style="padding:10px 13px 13px">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="background:#12314F"><th rowspan="2" style="${th}">الكود</th><th colspan="${d.sizes.length}" style="${th};text-align:center">المقاس (سم)</th><th rowspan="2" style="${th}">الإجمالي</th></tr>
+            <tr style="background:#12314F">${head1}</tr>
+            <tr style="background:#1B4A78"><th style="${th};font-weight:400;font-size:10px"></th>${head2}<th style="${th}"></th></tr>
+          </thead>
+          <tbody>${rows}
+            <tr style="background:#EAF2FA"><td style="${td};font-weight:700;text-align:right">الإجمالي</td>${totRow}<td style="${td};font-weight:700;font-size:14px;color:#B3261E">${all}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function buildAllocCustomersPdf_(d){
+  if(!await needLibs_('html2canvas','jspdf')) return;
+  const {canvas, breaksPx} = await renderPaper_(allocCustomersHTML_(d), { breakSelector: '.rpt-cust-block' });
+  await canvasToPdf_(canvas, 'توزيع_الرصيد_على_العملاء_'+isoLocal_()+'.pdf', { hardBreaksPx: breaksPx });
+}
+async function buildAllocDoorsPdf_(d){
+  if(!allocToMakeCodes_(d).length){ toast('كل المطلوب متاح في المخزن — مفيش حاجة تتصنّع'); return; }
+  if(!await needLibs_('html2canvas','jspdf')) return;
+  const {canvas} = await renderPaper_(allocDoorsHTML_(d));
+  await canvasToPdf_(canvas, 'الأبواب_المطلوب_تصنيعها_'+isoLocal_()+'.pdf');
+}
+
+// إكسيل ١: نفس شكل الشيت — صفوف الأكواد، وفوق كل مقاس العملاء، وتحت كل عميل (مطلوب/متاح/متبقي له)
+async function buildAllocCustomersExcel_(d){
+  if(!await needLibs_('exceljs')) return;
+  const NAVY='FF002050', WHITE='FFFFFFFF', BORDER_CLR='FFDCE4EC';
+  const thin = {style:'thin', color:{argb:BORDER_CLR}};
+  const border = {top:thin,left:thin,right:thin,bottom:thin};
+  const GRP_FILL = ['FF1080C0','FFC08A3E','FF3E9B72','FF7C63C4','FFC25454','FF2C8FA3'];
+  const GRP_TINT = ['FFEAF2FA','FFFBF0E1','FFE7F5EE','FFF0EAFB','FFFBE7E7','FFE3F3F7'];
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('توزيع الرصيد على العملاء', { views:[{ rightToLeft:true, state:'frozen', xSplit:1, ySplit:5 }] });
+
+  // أعمدة: ١ = الكود، وبعدها لكل مقاس → لكل عميل ٣ أعمدة
+  const groups = [];   // {g, gi, n, c}
+  let col = 2;
+  d.sizes.forEach((g,gi)=>(d.custBy[g]||[]).forEach(n=>{ groups.push({g, gi, n, c:col}); col += 3; }));
+  const lastCol = col-1;
+  ws.getColumn(1).width = 14;
+  for(let c=2;c<=lastCol;c++) ws.getColumn(c).width = 10;
+
+  const now = new Date();
+  const dateTimeStr = now.toLocaleDateString('ar-EG') + ' — الساعة ' + now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+  const style = (cell, fill, font, bold, size)=>{
+    if(fill) cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:fill}};
+    cell.font = {bold:!!bold, color:{argb:font||'FF14243A'}, size:size||11, name:'Arial'};
+    cell.alignment = {horizontal:'center', vertical:'middle', wrapText:true};
+    cell.border = border;
+  };
+
+  ws.mergeCells(1,1,1,Math.max(lastCol,2));
+  ws.getCell(1,1).value = 'توزيع الرصيد على العملاء  —  '+dateTimeStr;
+  style(ws.getCell(1,1), NAVY, WHITE, true, 13);
+  ws.getCell(1,1).alignment = {horizontal:'right', vertical:'middle'};
+  ws.getRow(1).height = 22;
+
+  // صف ٣: المقاس، صف ٤: العميل، صف ٥: مطلوب/متاح/متبقي له
+  style(ws.getCell(3,1), NAVY, WHITE, true); ws.getCell(3,1).value = 'المقاس';
+  style(ws.getCell(4,1), NAVY, WHITE, true);
+  style(ws.getCell(5,1), NAVY, WHITE, true); ws.getCell(5,1).value = 'الكود';
+  d.sizes.forEach((g,gi)=>{
+    const gs = groups.filter(x=>x.g===g);
+    if(!gs.length) return;
+    const c1 = gs[0].c, c2 = gs[gs.length-1].c+2;
+    ws.mergeCells(3,c1,3,c2);
+    ws.getCell(3,c1).value = g==='خاص' ? 'خاص' : 'مقاس '+g;
+    for(let c=c1;c<=c2;c++) style(ws.getCell(3,c), GRP_FILL[gi%GRP_FILL.length], WHITE, true, 12);
+  });
+  groups.forEach(x=>{
+    ws.mergeCells(4,x.c,4,x.c+2);
+    ws.getCell(4,x.c).value = x.n;
+    for(let c=x.c;c<=x.c+2;c++) style(ws.getCell(4,c), GRP_TINT[x.gi%GRP_TINT.length], 'FF14243A', true);
+    ['مطلوب','متاح','متبقي له'].forEach((t,k)=>{ ws.getCell(5,x.c+k).value = t; style(ws.getCell(5,x.c+k), 'FFE9EEF4', 'FF14243A', true, 10); });
+  });
+
+  const tot = {};   // إجمالي كل عمود
+  d.codes.forEach(code=>{
+    const r = ws.addRow([code]);
+    style(r.getCell(1), null, 'FF14243A', true); r.getCell(1).alignment = {horizontal:'right', vertical:'middle'};
+    groups.forEach(x=>{
+      const v = d.cell(x.g, code, x.n);
+      for(let k=0;k<3;k++) style(r.getCell(x.c+k), null, 'FF14243A', k===0);
+      if(!v) return;
+      const vals = [v.req, v.got, v.rem];
+      vals.forEach((val,k)=>{
+        r.getCell(x.c+k).value = val;
+        tot[x.c+k] = (tot[x.c+k]||0) + val;
+      });
+      r.getCell(x.c+1).font = {bold:true, color:{argb: v.got>0 ? 'FF1E8E52' : 'FF8A97A6'}, size:11, name:'Arial'};
+      r.getCell(x.c+2).font = {bold:true, color:{argb: v.rem>0 ? 'FFB3261E' : 'FF1E8E52'}, size:11, name:'Arial'};
+    });
+  });
+  const tr = ws.addRow(['الإجمالي']);
+  style(tr.getCell(1), 'FFE9EEF4', 'FF002050', true);
+  for(let c=2;c<=lastCol;c++){ tr.getCell(c).value = tot[c]||0; style(tr.getCell(c), 'FFE9EEF4', 'FF002050', true); }
+
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const fname = 'توزيع_الرصيد_على_العملاء_'+isoLocal_()+'.xlsx';
+  await shareOrDownload_(blob, fname, fname);
+}
+
+// إكسيل ٢: صفوف الأكواد × المقاسات (70/80/90/100/خاص) — «مطلوب» = اللي يتصنّع بعد خصم الرصيد
+async function buildAllocDoorsExcel_(d){
+  const codes = allocToMakeCodes_(d);
+  if(!codes.length){ toast('كل المطلوب متاح في المخزن — مفيش حاجة تتصنّع'); return; }
+  if(!await needLibs_('exceljs')) return;
+  const NAVY='FF002050', WHITE='FFFFFFFF', BORDER_CLR='FFDCE4EC';
+  const thin = {style:'thin', color:{argb:BORDER_CLR}};
+  const border = {top:thin,left:thin,right:thin,bottom:thin};
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('المطلوب تصنيعه', { views:[{ rightToLeft:true, state:'frozen', xSplit:1, ySplit:3 }] });
+  const n = d.sizes.length;
+  ws.getColumn(1).width = 14;
+  for(let c=2;c<=n+2;c++) ws.getColumn(c).width = 12;
+  const style = (cell, fill, font, bold, size)=>{
+    if(fill) cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:fill}};
+    cell.font = {bold:!!bold, color:{argb:font||'FF14243A'}, size:size||11, name:'Arial'};
+    cell.alignment = {horizontal:'center', vertical:'middle'};
+    cell.border = border;
+  };
+  const now = new Date();
+  ws.mergeCells(1,1,1,n+2);
+  ws.getCell(1,1).value = 'الأبواب المطلوب تصنيعها  —  ' + now.toLocaleDateString('ar-EG') + ' — الساعة ' + now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+  style(ws.getCell(1,1), NAVY, WHITE, true, 13);
+  ws.getCell(1,1).alignment = {horizontal:'right', vertical:'middle'};
+  ws.getRow(1).height = 22;
+  // صف ٢: المقاس، صف ٣: «مطلوب»
+  ws.getCell(2,1).value = 'المقاس'; style(ws.getCell(2,1), NAVY, WHITE, true);
+  ws.getCell(3,1).value = 'الكود';  style(ws.getCell(3,1), NAVY, WHITE, true);
+  d.sizes.forEach((g,i)=>{
+    ws.getCell(2,i+2).value = g==='خاص' ? 'خاص' : Number(g);
+    style(ws.getCell(2,i+2), NAVY, WHITE, true, 12);
+    ws.getCell(3,i+2).value = 'مطلوب';
+    style(ws.getCell(3,i+2), 'FFE9EEF4', 'FF14243A', true, 10);
+  });
+  ws.getCell(2,n+2).value = 'الإجمالي'; style(ws.getCell(2,n+2), NAVY, WHITE, true, 12);
+  ws.getCell(3,n+2).value = 'مطلوب';    style(ws.getCell(3,n+2), 'FFE9EEF4', 'FF14243A', true, 10);
+
+  const colTot = Array(n).fill(0);
+  let all = 0;
+  codes.forEach(code=>{
+    const r = ws.addRow([code]);
+    style(r.getCell(1), null, 'FF14243A', true); r.getCell(1).alignment = {horizontal:'right', vertical:'middle'};
+    let rowTot = 0;
+    d.sizes.forEach((g,i)=>{
+      const v = d.sum(g,code).rem;
+      const c = r.getCell(i+2);
+      style(c, null, v>0 ? 'FFB3261E' : 'FFB7C0CA', true);
+      if(v>0){ c.value = v; rowTot += v; colTot[i] += v; }
+    });
+    const tc = r.getCell(n+2); tc.value = rowTot; style(tc, 'FFF0F4F8', 'FF002050', true);
+    all += rowTot;
+  });
+  const tr = ws.addRow(['الإجمالي']);
+  style(tr.getCell(1), 'FFE9EEF4', 'FF002050', true);
+  colTot.forEach((v,i)=>{ tr.getCell(i+2).value = v; style(tr.getCell(i+2), 'FFE9EEF4', 'FF002050', true); });
+  tr.getCell(n+2).value = all; style(tr.getCell(n+2), 'FFE9EEF4', 'FFB3261E', true, 12);
+
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const fname = 'الأبواب_المطلوب_تصنيعها_'+isoLocal_()+'.xlsx';
+  await shareOrDownload_(blob, fname, fname);
+}
+
+async function exportAllocCustomersPdf_(){
+  return withBusy_('جارٍ تجهيز توزيع الرصيد على العملاء (PDF)…', 'تعذّر تجهيز الـ PDF: ', async ()=>{
+    const d = await loadAllocData_(); if(d) await buildAllocCustomersPdf_(d);
+  });
+}
+async function exportAllocCustomersExcel_(){
+  return withBusy_('جارٍ تجهيز توزيع الرصيد على العملاء (إكسيل)…', 'تعذّر تجهيز الإكسيل: ', async ()=>{
+    const d = await loadAllocData_(); if(d) await buildAllocCustomersExcel_(d);
+  });
+}
+async function exportAllocDoorsPdf_(){
+  return withBusy_('جارٍ تجهيز الأبواب المطلوب تصنيعها (PDF)…', 'تعذّر تجهيز الـ PDF: ', async ()=>{
+    const d = await loadAllocData_(); if(d) await buildAllocDoorsPdf_(d);
+  });
+}
+async function exportAllocDoorsExcel_(){
+  return withBusy_('جارٍ تجهيز الأبواب المطلوب تصنيعها (إكسيل)…', 'تعذّر تجهيز الإكسيل: ', async ()=>{
+    const d = await loadAllocData_(); if(d) await buildAllocDoorsExcel_(d);
+  });
+}
+
 // بيجيب بيانات الطلبات المعلّقة بالتفصيل من السيرفر — مشتركة بين التلات أزرار التصدير
 async function fetchPendingOrders_(){
   if(!APPS_SCRIPT_URL || !state.admin.pw) return null;
@@ -7297,6 +7668,12 @@ function viewAdmin(){
         <button class="btn act-report sm" data-act="adm-full-pdf">${ico("report")}تقرير كامل</button>
         <button class="btn act-report sm" data-act="adm-full-xls">${ico("sheet")}كل الطلبات إكسيل</button>
       </div></div>
+      <div class="ad-tg"><span class="ad-tl">${ico("box")} توزيع الرصيد</span><div class="ad-row">
+        <button class="btn act-report sm" data-act="adm-alloc-cust-pdf">${ico("doc")}العملاء PDF</button>
+        <button class="btn act-report sm" data-act="adm-alloc-cust-xls">${ico("sheet")}العملاء إكسيل</button>
+        <button class="btn act-report sm" data-act="adm-alloc-doors-pdf">${ico("doc")}المطلوب تصنيعه PDF</button>
+        <button class="btn act-report sm" data-act="adm-alloc-doors-xls">${ico("sheet")}المطلوب تصنيعه إكسيل</button>
+      </div></div>
       ${viewingArchive?`<div class="ad-tg"><span class="ad-tl">${ico("trash")} الأرشيف</span><div class="ad-row">
         <button class="btn act-del sm" data-act="adm-clear-delivered">${ico("trash")}حذف المؤرشف</button></div></div>`:''}
       <div class="ad-row ad-end">
@@ -7765,6 +8142,10 @@ document.addEventListener('click',e=>{
     case 'adm-pending-xls':  exportPendingDoorsExcel_(); break;
     case 'adm-req-pdf':      exportRequiredDoorsPdf_(); break;
     case 'adm-req-xls':      exportRequiredDoorsExcel_(); break;
+    case 'adm-alloc-cust-pdf':   exportAllocCustomersPdf_(); break;
+    case 'adm-alloc-cust-xls':   exportAllocCustomersExcel_(); break;
+    case 'adm-alloc-doors-pdf':  exportAllocDoorsPdf_(); break;
+    case 'adm-alloc-doors-xls':  exportAllocDoorsExcel_(); break;
     case 'adm-full-pdf':     exportAdminFullReport(); break;
     case 'adm-full-xls':     exportAdminExcel(); break;
     case 'adm-clear-delivered': clearDeliveredOrders(); break;
