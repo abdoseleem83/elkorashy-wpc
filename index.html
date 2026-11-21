@@ -2444,7 +2444,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v255';
+const APP_BUILD   = 'v256';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3170,7 +3170,6 @@ function stockReportHTML_(){
   const trs = rows.map((r,idx)=>{
     const zebra = idx%2===1 ? 'background:#F6F8FA' : 'background:#FFFFFF';
     // العجز لكل مقاس لوحده — زيادة مقاس ما بتغطيش نقص مقاس تاني
-    const shortTxt = r.cells.filter(c=>c.free<0).map(c=>'محتاج باب '+c.w+' عدد '+(-c.free)).join(' · ');
     const cells = r.cells.map(c=>`
       <td style="text-align:center;padding:6px 4px;border:1px solid #DCE4EC;font-weight:700;color:#233246">${c.cur}</td>
       <td style="text-align:center;padding:6px 4px;border:1px solid #DCE4EC;color:${c.res>0?'#B3261E':'#B7C0CA'}">${c.res>0?c.res:'—'}</td>
@@ -3178,9 +3177,6 @@ function stockReportHTML_(){
     return `<tr style="${zebra}">
       <td style="text-align:right;padding:6px 8px;border:1px solid #DCE4EC;font-weight:700;color:#233246;white-space:nowrap">${esc(r.code)} <span style="font-weight:400;color:#8A97A6;font-size:9.5px">${esc(r.name)}</span></td>
       ${cells}
-      <td style="text-align:center;padding:6px 6px;border:1px solid #DCE4EC;font-weight:700;color:#1080C0">${r.total}</td>
-      <td style="text-align:center;padding:6px 6px;border:1px solid #DCE4EC;font-weight:700;color:${r.resTotal>0?'#B3261E':'#B7C0CA'}">${r.resTotal||'—'}</td>
-      <td style="text-align:center;padding:6px 6px;border:1px solid #DCE4EC;font-weight:700;background:${r.freeTotal>0 && !shortTxt?'#E7F6EC':'#FBE7E7'};color:${r.freeTotal>0 && !shortTxt?'#1E8E52':'#B3261E'}">${r.freeTotal}${shortTxt?`<div style="font-size:10px;font-weight:700;margin-top:2px">${shortTxt}</div>`:''}</td>
     </tr>`;
   }).join('');
 
@@ -3207,9 +3203,6 @@ function stockReportHTML_(){
         <tr style="background:#12314F">
           <th rowspan="2" style="text-align:right;padding:6px 8px;color:#fff;font-weight:700;border:1px solid #12314F">الكود</th>
           ${sizeHeaders}
-          <th rowspan="2" style="padding:6px;color:#fff;font-weight:700;border:1px solid #12314F">إجمالي الرصيد</th>
-          <th rowspan="2" style="padding:6px;color:#fff;font-weight:700;border:1px solid #12314F">إجمالي المطلوب</th>
-          <th rowspan="2" style="padding:6px;color:#fff;font-weight:700;border:1px solid #12314F">إجمالي المتبقي</th>
         </tr>
         <tr style="background:#12314F">${subHeaders}</tr>
       </thead>
@@ -7762,24 +7755,17 @@ function viewAdmin(){
           <input type="number" inputmode="numeric" min="0" value="${esc(val)}"
             data-act="stock-in" data-code="${esc(d.code)}" data-w="${sz.w}"
             class="stkin ${dirty?'dirty':''}" ${busy?'disabled':''}>
-          ${res>0?`<div style="text-align:center;font-size:11px;margin-top:2px"><span style="color:var(--danger-ink)">مطلوب ${res}</span> · <span style="color:${free<0?'var(--danger-ink)':'var(--ok-ink)'};font-weight:700">متبقي ${free}</span></div>`:''}
-        </td>`;
+                  </td>`;
       }).join('');
-      const total = stockTotalFor(d.code)||0;
-      const resTotal = SIZES.reduce((s,sz)=>s+(reservedFor(d.code, sz.w)||0),0);
-      const freeTotal = total-resTotal;
-      // العجز بيتحسب لكل مقاس لوحده — زيادة مقاس ما بتغطيش نقص مقاس تاني
-      const shortTxt = SIZES.map(sz=>{
+      const freeCells = SIZES.map(sz=>{
         const f = (stockFor(d.code, sz.w)||0) - (reservedFor(d.code, sz.w)||0);
-        return f<0 ? `محتاج باب ${sz.w} عدد ${-f}` : null;
-      }).filter(Boolean).join(' · ');
+        return `<td style="padding:5px 4px;text-align:center;font-size:14px;font-weight:700;color:${f<0?'var(--danger-ink)':'var(--ok-ink)'}">${f<0?'-'+(-f):f}</td>`;
+      }).join('');
       return `<tr>
         <td style="padding:5px 7px;white-space:nowrap"><b>${esc(d.code)}</b>
           <span style="color:var(--muted);font-size:12.5px"> ${esc(d.name)}</span></td>
         ${cells}
-        <td style="padding:5px 7px;text-align:center;color:var(--muted);font-size:12.5px">${total}</td>
-        <td style="padding:5px 7px;text-align:center;font-size:12.5px;color:${resTotal>0?'var(--danger-ink)':'var(--muted)'}">${resTotal||'—'}</td>
-        <td style="padding:5px 7px;text-align:center;font-size:12.5px;font-weight:700;color:${freeTotal>0?'var(--ok-ink)':'var(--danger-ink)'}">${freeTotal}${shortTxt?`<div style="margin-top:2px;font-size:11px;color:var(--danger-ink)">${shortTxt}</div>`:''}</td>
+        ${freeCells}
       </tr>`;
     }).join('');
 
@@ -7792,18 +7778,17 @@ function viewAdmin(){
       <div class="step"><span class="n">${ico("box","lg")}</span><h2>أرصدة المخزن</h2>
         <span class="hint">الجاهز للتسليم</span></div>
       <div class="note" style="margin-top:0">اكتب الكمية المتاحة لكل كود ومقاس. العميل هيشوف
-        «${esc(READY_HOURS_TXT)}» للأصناف اللي ليها رصيد. عمود «مطلوب لعملاء» بيوريك كام باب من نفس الكود/المقاس
-        لسه محجوز لطلبات عملاء معلّقة، عشان تعرف الرصيد الفاضي فعليًا. لو فيه مقاس ناقص
-        هيظهر تحت «متبقي فعليًا» مكتوب «محتاج باب … عدد …» — زيادة مقاس ما بتغطيش نقص مقاس تاني.</div>
+        «${esc(READY_HOURS_TXT)}» للأصناف اللي ليها رصيد. خانات «متبقي فعليًا» (٧٠ / ٨٠ / ٩٠ / ١٠٠) بتوريك الرصيد الفاضي
+        فعليًا لكل مقاس لوحده بعد خصم المطلوب لطلبات العملاء المعلّقة. الرقم بالسالب الأحمر معناه الناقص من المقاس ده.</div>
       ${headerBtns}
       <div style="overflow-x:auto;margin-top:12px">
         <table class="stktbl">
           <thead><tr>
-            <th style="text-align:right">الكود</th>
-            ${SIZES.map(sz=>`<th>${sz.w} سم</th>`).join('')}
-            <th>الإجمالي</th>
-            <th>مطلوب لعملاء</th>
-            <th>متبقي فعليًا</th>
+            <th rowspan="2" style="text-align:right">الكود</th>
+            ${SIZES.map(sz=>`<th rowspan="2">${sz.w} سم</th>`).join('')}
+            <th colspan="${SIZES.length}">متبقي فعليًا</th>
+          </tr><tr>
+            ${SIZES.map(sz=>`<th style="font-size:12px">${sz.w}</th>`).join('')}
           </tr></thead>
           <tbody>${rowsHtml}</tbody>
         </table>
