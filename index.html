@@ -2444,7 +2444,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v256';
+const APP_BUILD   = 'v257';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -7755,7 +7755,8 @@ function viewAdmin(){
           <input type="number" inputmode="numeric" min="0" value="${esc(val)}"
             data-act="stock-in" data-code="${esc(d.code)}" data-w="${sz.w}"
             class="stkin ${dirty?'dirty':''}" ${busy?'disabled':''}>
-                  </td>`;
+          ${res>0?`<div style="text-align:center;font-size:11px;margin-top:2px"><span style="color:var(--danger-ink)">مطلوب ${res}</span> · <span style="color:${free<0?'var(--danger-ink)':'var(--ok-ink)'};font-weight:700">متبقي ${free}</span></div>`:''}
+        </td>`;
       }).join('');
       const freeCells = SIZES.map(sz=>{
         const f = (stockFor(d.code, sz.w)||0) - (reservedFor(d.code, sz.w)||0);
@@ -7778,7 +7779,7 @@ function viewAdmin(){
       <div class="step"><span class="n">${ico("box","lg")}</span><h2>أرصدة المخزن</h2>
         <span class="hint">الجاهز للتسليم</span></div>
       <div class="note" style="margin-top:0">اكتب الكمية المتاحة لكل كود ومقاس. العميل هيشوف
-        «${esc(READY_HOURS_TXT)}» للأصناف اللي ليها رصيد. خانات «متبقي فعليًا» (٧٠ / ٨٠ / ٩٠ / ١٠٠) بتوريك الرصيد الفاضي
+        «${esc(READY_HOURS_TXT)}» للأصناف اللي ليها رصيد. تحت كل خانة «مطلوب» (المحجوز لطلبات العملاء) و«متبقي» للمقاس. وخانات «متبقي فعليًا» (٧٠ / ٨٠ / ٩٠ / ١٠٠) بتوريك الرصيد الفاضي
         فعليًا لكل مقاس لوحده بعد خصم المطلوب لطلبات العملاء المعلّقة. الرقم بالسالب الأحمر معناه الناقص من المقاس ده.</div>
       ${headerBtns}
       <div style="overflow-x:auto;margin-top:12px">
