@@ -2074,6 +2074,24 @@ body.hasFloat #view{padding-bottom:84px}
 .ad-dd.open .adH{border-bottom:1px solid var(--line)}
 .adB{padding:12px 14px 14px}
 
+/* v262 — شبكة كروت الأقسام المربعة في شاشة المصنع: كل اتنين جمب بعض */
+.ad-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.ad-sq{margin-bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;
+  padding:18px 8px 15px;text-align:center;color:inherit;font-family:inherit;
+  background:linear-gradient(160deg,var(--sq-tint),transparent 75%),var(--card);
+  transition:border-color .18s ease,box-shadow .18s ease}
+.ad-sq .n{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--sq-g1),var(--sq-g2));color:#fff;box-shadow:0 8px 18px -8px var(--sq-g2)}
+.ad-sq .tt b{display:block;font-size:13.5px;line-height:1.4}
+.ad-sq .tt small{display:block;font-size:10.5px;color:var(--muted);margin-top:3px;font-weight:600}
+.ad-sq.on{border-color:var(--sq-g2);box-shadow:0 0 0 1px var(--sq-g2),var(--shadow)}
+/* كل قسم ليه لون مميّز من نفس باليت التطبيق: أزرق للعرض، أخضر للمخزن،
+   موف للتقارير، ودهبي للعملاء */
+.ad-sq.t-blue{--sq-tint:rgba(63,169,245,.13);--sq-g1:#6FC1FA;--sq-g2:#3FA9F5}
+.ad-sq.t-green{--sq-tint:rgba(79,192,138,.14);--sq-g1:#6FD3A6;--sq-g2:#3FAF7C}
+.ad-sq.t-violet{--sq-tint:rgba(154,140,240,.16);--sq-g1:#B3A8F6;--sq-g2:#8F82EC}
+.ad-sq.t-gold{--sq-tint:rgba(217,164,65,.16);--sq-g1:#F1C16B;--sq-g2:#D9A441}
+
 /* v239 — ضبط وتنسيق الرئيسية */
 .hm2-ks{grid-template-columns:repeat(4,1fr)!important;gap:8px!important;margin-bottom:16px!important}
 .hm2-k{grid-template-columns:1fr!important;grid-template-areas:"i" "n" "t"!important;justify-items:center;text-align:center!important;gap:6px!important;padding:12px 4px 10px!important;border-radius:16px!important}
@@ -2455,7 +2473,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v261';
+const APP_BUILD   = 'v262';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -7879,6 +7897,7 @@ function viewAdmin(){
 
   const viewingArchive = !!a.viewArchive;
   const list = viewingArchive ? a.archRows : a.rows;
+  const lst = list || [];
 
   // شريط بيوضّح إن المعروض نسخة محفوظة وإن التحديث شغّال — عشان المصنع ما ياخدش
   // قرار على أرقام قديمة وهو فاكرها لحظية
@@ -7892,43 +7911,83 @@ function viewAdmin(){
            ${ico('warn')} النت مقطوع — دي آخر نسخة محفوظة، اضغط «تحديث» لما النت يرجع</div>`
       : '');
 
-  // v259 — مجموعات شريط الأدوات بقت منسدلة: كل قسم يفتح لوحده بدل زحمة الأزرار
-  const toolGrp_ = (key, icn, title, defOpen, inner) => {
-    const open = uiOpen_(key, defOpen);
-    return `<div class="ad-tg ad-sub${open?' open':''}"><button class="ad-subH" data-act="ui-toggle" data-k="${key}" aria-expanded="${open}"><span class="ad-tl">${ico(icn)} ${title}</span>${ico("chev")}</button>${open?`<div class="ad-row">${inner}</div>`:''}</div>`;
-  };
-
-  const headerBtns = `${staleBar}<div class="ad-tools">
-      <div class="ad-row" style="gap:6px">
-        <button class="btn ${a.viewStock?'brand':'act-edit'}" data-act="adm-toggle-stock" style="flex:1">${ico("box")}${a.viewStock?'رجوع للطلبات':'أرصدة المخزن'}</button>
-        <button class="btn ${a.viewCustRem?'brand':'act-edit'}" data-act="adm-toggle-custrem" style="flex:1">${ico("report")}${a.viewCustRem?'رجوع للطلبات':'المتبقي للعملاء'}</button>
-      </div>
-      ${toolGrp_('adm-grp-view','clock','عرض', viewingArchive, `
-        <button class="btn ${viewingArchive?'brand':'act-edit'} sm" data-act="adm-toggle-archive">${ico("folder")}${viewingArchive?'رجوع للطلبات':'الأرشيف'}</button>
-        <button class="btn act-money sm" data-act="adm-prices-open">${ico("money")}الأسعار</button>`)}
+  // ---------- v262 — شاشة المصنع صفحة واحدة بأقسام بتفتح وتتلم ----------
+  // بدل ما كل أداة (أرصدة / متبقي / تقارير) تاخد الشاشة كلها وتحتاج زرار
+  // «رجوع للطلبات»، بقت أقسام تحت بعض في نفس الصفحة: أدوات العرض، الأرصدة
+  // والمتبقي للعملاء، التقارير، العملاء وطلباتهم. كل قسم ليه عنوان وأيقونة —
+  // تضغط عليه يفتح محتواه تحته، وتضغط تاني يتلم. المحتوى كله مقفول في البداية.
+  // أدوات العرض: الأرشيف والأسعار + تحديث وخروج (وحذف المؤرشف جوّه الأرشيف)
+  const toolsBody_ = () => `<div class="ad-tools">
       <div class="ad-row">
-        <button class="btn ${a.viewReports?'brand':'act-report'}" data-act="adm-toggle-reports" style="width:100%">${ico("report")}${a.viewReports?'رجوع للطلبات':'التقارير والتصدير'}</button>
+        <button class="btn ${viewingArchive?'brand':'act-edit'} sm" data-act="adm-toggle-archive">${ico("folder")}${viewingArchive?'رجوع للطلبات':'الأرشيف'}</button>
+        <button class="btn act-money sm" data-act="adm-prices-open">${ico("money")}الأسعار</button>
       </div>
-      ${viewingArchive?toolGrp_('adm-grp-arch','trash','الأرشيف', false, `
-        <button class="btn act-del sm" data-act="adm-clear-delivered">${ico("trash")}حذف المؤرشف</button>`):''}
+      ${viewingArchive?`<div class="ad-row"><button class="btn act-del sm" data-act="adm-clear-delivered">${ico("trash")}حذف المؤرشف</button></div>`:''}
       <div class="ad-row ad-end">
         <button class="btn act-tool sm" data-act="adm-reload">${ico("refresh")}${a.loading?'بيحدّث…':'تحديث'}</button>
         <button class="btn act-tool sm" data-act="adm-logout">${ico("lock")}خروج</button>
       </div>
-    </div>`;
+    </div>${srvBuildNote_()}`;
+
+  // الأرصدة والمتبقي للعملاء: زرارين بيبدّلوا المحتوى اللي تحتهم في نفس المكان،
+  // وضغطة تانية على الزرار الشغّال بتلمّ المحتوى.
+  const balBody_ = () => {
+    const pick = `<div class="ad-row" style="gap:6px">
+        <button class="btn ${a.viewStock?'brand':'act-edit'}" data-act="adm-toggle-stock" style="flex:1">${ico("box")}أرصدة المخزن</button>
+        <button class="btn ${a.viewCustRem?'brand':'act-edit'}" data-act="adm-toggle-custrem" style="flex:1">${ico("report")}المتبقي للعملاء</button>
+      </div>`;
+    if(a.viewCustRem) return pick + custRemBody_();
+    if(a.viewStock) return pick + stockBody_();
+    return pick + `<div class="note" style="margin-top:10px">اختار «أرصدة المخزن» أو «المتبقي للعملاء» — المحتوى هيفتح تحتهم هنا على طول.</div>`;
+  };
+
+  // العملاء وطلباتهم: البحث + كروت العملاء. مكان الكروت بيفضل ماركر بيتبدّل
+  // بعد بناء الكروت (نفس نظام التحديث الجزئي الموجود).
+  const custBody_ = () => `
+      <input type="search" id="admQ" class="ad-q" placeholder="اكتب اسم العميل…" value="${esc(_admQ)}" autocomplete="off">
+      <div class="note" style="margin-top:8px">${viewingArchive?'الطلبات المؤرشفة (اتسلمت أو اتأرشفت يدوي) — مش بتظهر في التقارير.':'اضغط اسم العميل عشان تشوف طلباته، وجوّه كل طلب غيّر الحالة وتابع الأصناف والإنتاج.'}</div>
+      <div class="ad-legend"><span><i class="g"></i>جاهز</span><span><i class="a"></i>تحت التنفيذ</span><span><i class="r"></i>لسه ما بدأش</span></div>
+      ${!lst.length
+        ? `<div class="empty"><span class="em">${ico("clip","xl")}</span><p>${viewingArchive?'مفيش طلبات مؤرشفة.':'مفيش طلبات نشطة لسه.'}</p></div>`
+        : ADMIN_CARDS_MARK}`;
+
+  // الكروت المربعة: كل اتنين جمب بعض في مربع، وضغطة على الكارت تفتح محتوى
+  // القسم تحت الشبكة في كارت لوحده بعنوانه، وضغطة تانية (على الكارت أو على
+  // العنوان) تلمّه. المحتوى كله مقفول في البداية.
+  const secDefs_ = () => [
+    ['adm-sec-tools','filter','أدوات العرض','الأرشيف · الأسعار · تحديث · خروج', toolsBody_, 't-blue'],
+    ['adm-sec-bal','box','الأرصدة والمتبقي للعملاء','أرصدة المخزن · المتبقي للعملاء', balBody_, 't-green'],
+    ['adm-sec-reports','report','التقارير','تقارير الطلبات والمخزن والتصدير', reportsBody_, 't-violet'],
+    ['adm-sec-cust','user',viewingArchive?'عملاء الأرشيف':'العملاء وطلباتهم','دوّر على عميل وتابع طلباته', custBody_, 't-gold'],
+  ];
+  const secsGrid_ = () => `<div class="ad-grid">${secDefs_().map(d=>{
+      const on = uiOpen_(d[0],false);
+      return `<button class="card ad-sq ${d[5]}${on?' on':''}" data-act="ui-toggle" data-k="${d[0]}" aria-expanded="${on}">
+        <span class="n">${ico(d[1],"lg")}</span>
+        <span class="tt"><b>${d[2]}</b><small>${d[3]}</small></span>
+      </button>`;
+    }).join('')}</div>`;
+  const secsOpen_ = () => secDefs_().filter(d=>uiOpen_(d[0],false)).map(d=>`<section class="card ad-card ad-dd open">
+      <button class="adH" data-act="ui-toggle" data-k="${d[0]}" aria-expanded="true">
+        <span class="n">${ico(d[1],"lg")}</span>
+        <span class="tt"><b>${d[2]}</b><small>اضغط للإخفاء</small></span>
+        ${ico("chev")}
+      </button>
+      <div class="adB">${d[4]()}</div>
+    </section>`).join('');
 
   if(a.pricesOpen) return viewAdminPrices() + verBar();
 
   if(viewingArchive && a.archLoading){
     return `<section class="card">
       <div class="step"><span class="n">${ico("folder","lg")}</span><h2>الأرشيف</h2></div>
-      ${headerBtns}
+      <div class="btnrow"><button class="btn act-edit" data-act="adm-toggle-archive">${ico("back")}رجوع للطلبات</button></div>
     </section>
     <div class="empty"><span class="em">${ico("clock","xl")}</span><p>جارٍ تحميل الأرشيف…</p></div>${verBar()}`;
   }
 
   // ---------- شاشة التقارير والتصدير — كل التقارير في مكان واحد بدل قوائم متفرقة ----------
-  if(a.viewReports){
+  const reportsBody_ = () => {
     const rptBtns = (pdfAct, xlsAct) =>
       `<button class="btn act-report sm" data-act="${pdfAct}">${ico("doc")}PDF</button>`
       + (xlsAct ? `<button class="btn act-report sm" data-act="${xlsAct}">${ico("sheet")}إكسيل</button>` : '');
@@ -7937,11 +7996,7 @@ function viewAdmin(){
         <div class="note" style="margin-top:2px">${desc}</div>
         <div class="btnrow" style="margin-top:8px">${btns}</div>
       </div>`;
-    return `<section class="card">
-      <div class="step"><span class="n">${ico("report","lg")}</span><h2>التقارير والتصدير</h2>
-        <span class="hint">كل التقارير في مكان واحد</span></div>
-      ${headerBtns}
-      <div class="hm-h" style="margin-top:14px"><span>تقارير الطلبات</span></div>
+    return `<div class="hm-h"><span>تقارير الطلبات</span></div>
       ${rptRow('التقرير الكامل', 'كل الطلبات النشطة: ملخص + تفاصيل كل عميل + إجمالي الأصناف', rptBtns('adm-full-pdf','adm-full-xls'))}
       ${rptRow('الأبواب المعلّقة', 'الأبواب اللي لسه ما اتسلّمتش، مجمّعة حسب العميل', rptBtns('adm-pending-pdf','adm-pending-xls'))}
       ${rptRow('الأبواب المطلوبة', 'إجمالي الأبواب المطلوبة حسب الكود والمقاس', rptBtns('adm-req-pdf','adm-req-xls'))}
@@ -7949,12 +8004,11 @@ function viewAdmin(){
       ${rptRow('أرصدة المخزن', 'جرد المخزن الحالي مع المطلوب للعملاء منه', rptBtns('stock-pdf'))}
       ${rptRow('المتبقي للعملاء حسب الكود', 'المتبقي لكل عميل بعد خصم رصيد المخزن — الأقدم أول', rptBtns('adm-allocbycode-pdf','adm-allocbycode-xls'))}
       ${rptRow('توزيع الرصيد على العملاء', 'إزاي رصيد المخزن بيتوزّع على طلبات العملاء', rptBtns('adm-alloc-cust-pdf','adm-alloc-cust-xls'))}
-      ${rptRow('المطلوب تصنيعه', 'الأبواب المطلوب تصنيعها بعد خصم رصيد المخزن', rptBtns('adm-alloc-doors-pdf','adm-alloc-doors-xls'))}
-    </section>${verBar()}`;
-  }
+      ${rptRow('المطلوب تصنيعه', 'الأبواب المطلوب تصنيعها بعد خصم رصيد المخزن', rptBtns('adm-alloc-doors-pdf','adm-alloc-doors-xls'))}`;
+  };
 
-  // ---------- شاشة أرصدة المخزن ----------
-  if(a.viewCustRem){
+  // ---------- محتوى «المتبقي للعملاء» و«أرصدة المخزن» — بيفتحوا جوّه قسم الأرصدة ----------
+  const custRemBody_ = () => {
     const d = a.custRem;
     let body;
     if(a.custRemLoading && !d){
@@ -7990,20 +8044,15 @@ function viewAdmin(){
       body = `<div class="note" style="margin-top:10px">«المتبقي للعملا» = اللي لسه محتاج يتصنّع لكل عميل
         بعد خصم الموجود في المخزن (الرصيد بيتوزّع على الطلبات الأقدم أول، زي تقرير «توزيع الرصيد»).</div>${blocks}`;
     }
-    return `<section class="card">
-      <div class="step"><span class="n">${ico("report","lg")}</span><h2>المتبقي للعملاء</h2>
-        <span class="hint">حسب الكود والمقاس</span></div>
-      ${headerBtns}
-      ${body}
+    return `${body}
       <div class="btnrow" style="margin-top:12px">
         <button class="btn ghost sm" data-act="custrem-reload">${ico("refresh")}${a.custRemLoading?'بيحدّث…':'تحديث'}</button>
         <button class="btn act-report sm" data-act="adm-allocbycode-pdf">${ico("doc")}تصدير PDF</button>
         <button class="btn act-report sm" data-act="adm-allocbycode-xls">${ico("sheet")}تصدير إكسيل</button>
-      </div>
-    </section>${verBar()}`;
-  }
+      </div>`;
+  };
 
-  if(a.viewStock){
+  const stockBody_ = () => {
     const rowsHtml = DOORS.map(d=>{
       const cells = SIZES.map(sz=>{
         const key = d.code+'|'+sz.w;
@@ -8038,13 +8087,9 @@ function viewAdmin(){
       return Number(a.stockDraft[k]) !== Number(stockFor(c, Number(w))||0);
     }).length;
 
-    return `<section class="card">
-      <div class="step"><span class="n">${ico("box","lg")}</span><h2>أرصدة المخزن</h2>
-        <span class="hint">الجاهز للتسليم</span></div>
-      <div class="note" style="margin-top:0">اكتب الكمية المتاحة لكل كود ومقاس. العميل هيشوف
+    return `<div class="note" style="margin-top:10px">اكتب الكمية المتاحة لكل كود ومقاس. العميل هيشوف
         «${esc(READY_HOURS_TXT)}» للأصناف اللي ليها رصيد. تحت كل خانة «مطلوب» (المحجوز لطلبات العملاء) و«متبقي» للمقاس. وخانات «متبقي فعليًا» (٧٠ / ٨٠ / ٩٠ / ١٠٠) بتوريك الرصيد الفاضي
         فعليًا لكل مقاس لوحده بعد خصم المطلوب لطلبات العملاء المعلّقة. الرقم بالسالب الأحمر معناه الناقص من المقاس ده.</div>
-      ${headerBtns}
       <div style="overflow-x:auto;margin-top:12px">
         <table class="stktbl">
           <thead><tr>
@@ -8062,18 +8107,9 @@ function viewAdmin(){
           ${dirtyCount?`حفظ ${dirtyCount} تعديل`:'مفيش تعديلات'}</button>
         <button class="btn ghost sm" data-act="stock-reload">${ico("refresh")}تحديث</button>
         <button class="btn act-report sm" data-act="stock-pdf" ${a.stockPdfBusy?'disabled':''}>${ico("doc")}${a.stockPdfBusy?'…':'تصدير PDF'}</button>
-      </div>
-    </section>${verBar()}`;
-  }
+      </div>`;
+  };
 
-
-  if(!list || !list.length){
-    return `<section class="card">
-      <div class="step"><span class="n">${viewingArchive?ico("folder","lg"):ico("factory","lg")}</span><h2>${viewingArchive?'الأرشيف':'متابعة المصنع'}</h2></div>
-      ${headerBtns}
-    </section>
-    <div class="empty"><span class="em">${ico("clip","xl")}</span><p>${viewingArchive?'مفيش طلبات مؤرشفة.':'مفيش طلبات نشطة لسه.'}</p></div>${verBar()}`;
-  }
 
   const orderCardHTML_ = o=>{
     const busy = a.busy === o.id;
@@ -8154,6 +8190,12 @@ function viewAdmin(){
   };
 
   // ---------- تجميع طلبات كل عميل في قايمة منسدلة ----------
+  // v262 — قسم «العملاء وطلباتهم» مقفول في البداية، فمانبنيش كروت العملاء
+  // (أغلى جزء في الرسمة) غير لما القسم يكون مفتوح فعلًا.
+  const custSecOpen = uiOpen_('adm-sec-cust', false);
+  let rows = '';
+  let بالكارت = [];
+  if(custSecOpen && lst.length){
   const groups = {};
   const order = [];
   list.forEach(o=>{
@@ -8164,8 +8206,7 @@ function viewAdmin(){
 
   // كل كارت عميل بيتبني لوحده وبيتخزّن بمفتاحه — عشان الرسمة الجاية تقدر
   // تحدّث الكارت اللي اتغيّر بس بدل ما تستبدل الشاشة كلها.
-  const بالكارت = [];
-  const rows = order.map(name=>{
+  rows = order.map(name=>{
     const orders = groups[name];
     const open = !!a.groupOpen[name];
     const totalQty = orders.reduce((s,o)=>s+(Number(o.qty)||0),0);
@@ -8202,36 +8243,22 @@ function viewAdmin(){
     بالكارت.push({ مفتاح: name, html: كارت });
     return كارت;
   }).join('');
+  }
   _adminCards = بالكارت;
 
-  const _toolsOpen = uiOpen_('adm-tools', false);
-  const _toolsInner = headerBtns.startsWith(staleBar) ? headerBtns.slice(staleBar.length) : headerBtns;
   const _cn = {new:0,prog:0,ready:0,done:0};
-  list.forEach(o=>{ const g=ordGroup_(o.status); if(g in _cn) _cn[g]++; });
+  lst.forEach(o=>{ const g=ordGroup_(o.status); if(g in _cn) _cn[g]++; });
   const _k = (n,t,c)=>`<div class="ad-k" style="--kc:${c}"><b>${n}</b><span>${t}</span></div>`;
   _adminShell = `<section class="ad-hero"><div class="g1"></div><div class="g2"></div>
       <div class="ad-top"><span class="ad-ico">${viewingArchive?ico("folder","lg"):ico("factory","lg")}</span>
-        <div><small>${viewingArchive?'الطلبات المؤرشفة':'لوحة متابعة المصنع'}</small><b>${list.length} طلب</b></div></div>
+        <div><small>${viewingArchive?'الطلبات المؤرشفة':'لوحة متابعة المصنع'}</small><b>${lst.length} طلب</b></div></div>
       <div class="ad-kpis">${_k(_cn.new,'جديدة','#3FA9F5')}${_k(_cn.prog,'تحت التنفيذ','#D9A441')}${_k(_cn.ready,'جاهزة','#4FC08A')}${_k(_cn.done,'اتسلّمت','#9A8CF0')}</div>
     </section>
-    ${viewingArchive?'':dueStripHTML_(list)}
-    <section class="card ad-card">
-      <div class="step"><span class="n">${ico("search","lg")}</span><h2>دوّر على عميل</h2></div>
-      <input type="search" id="admQ" class="ad-q" placeholder="اكتب اسم العميل…" value="${esc(_admQ)}" autocomplete="off">
-      <div class="note" style="margin-top:8px">${viewingArchive?'الطلبات المؤرشفة (اتسلمت أو اتأرشفت يدوي) — مش بتظهر في التقارير.':'اضغط اسم العميل عشان تشوف طلباته، وجوّه كل طلب غيّر الحالة وتابع الأصناف والإنتاج.'}</div>
-      <div class="ad-legend"><span><i class="g"></i>جاهز</span><span><i class="a"></i>تحت التنفيذ</span><span><i class="r"></i>لسه ما بدأش</span></div>
-    </section>
+    ${viewingArchive?'':dueStripHTML_(lst)}
     ${staleBar}
-    <section class="card ad-card ad-dd${_toolsOpen?' open':''}">
-      <button class="adH" data-act="ui-toggle" data-k="adm-tools" aria-expanded="${_toolsOpen}">
-        <span class="n">${ico("parts","lg")}</span>
-        <span class="tt"><b>أدوات وتقارير</b><small>${_toolsOpen?'اضغط للإخفاء':'عرض · تقارير · تحديث · خروج'}</small></span>
-        ${ico("chev")}
-      </button>
-      ${_toolsOpen?`<div class="adB">${_toolsInner}${srvBuildNote_()}</div>`:''}
-    </section>
-    <div class="hm-h"><span>${viewingArchive?'عملاء الأرشيف':'العملاء وطلباتهم'}</span></div>
-    ${ADMIN_CARDS_MARK}${verBar()}`;
+    ${secsGrid_()}
+    ${secsOpen_()}
+    ${verBar()}`;
   return _adminShell.replace(ADMIN_CARDS_MARK, rows);
 }
 
