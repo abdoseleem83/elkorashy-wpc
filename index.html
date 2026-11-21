@@ -2444,7 +2444,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v257';
+const APP_BUILD   = 'v258';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2848,6 +2848,7 @@ const state = {
     itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null,
     viewArchive:false, archRows:null, archLoading:false, archBusy:null,
     viewStock:false, stockBusy:null, stockDraft:{}, stockPdfBusy:false,
+    viewCustRem:false, custRem:null, custRemAt:0, custRemLoading:false,
     reserved:null, reservedAt:0, reservedLoading:false,
     pricesOpen:false, priceEdit:null,
     groupOpen:{}, groupPdfBusy:null,
@@ -6585,6 +6586,148 @@ async function buildAllocDoorsExcel_(d){
   await shareOrDownload_(blob, fname, fname);
 }
 
+// ---------- تقرير ٣: المتبقي للعملاء حسب الكود ----------
+// نفس أرقام «توزيع الرصيد على العملاء» بالظبط (من buildAllocationData_، من غير
+// أي حساب جديد) بس مترتبة زي ما المصنع طلب: كل كود باب في جزء لوحده، وتحته
+// العملاء، وقدّام كل عميل المتبقي له في كل مقاس (70/80/90/100/خاص).
+// «المتبقي» = الكمية اللي لسه مطلوبة للعميل (المطلوب ناقص المستلم/الجاهز)
+// قبل خصم رصيد المخزن — نفس «المتبقي للعميل» اللي كل التقارير بتحسب عليه.
+function allocCustByCodeHTML_(d){
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ar-EG');
+  const timeStr = now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+  const td = 'text-align:center;padding:7px 6px;border:1px solid #DCE4EC';
+  const th = 'padding:7px 6px;color:#fff;font-weight:700;border:1px solid #12314F';
+  const doorName = c=>{ const x = DOORS.find(y=>y.code===c); return x ? x.name : ''; };
+  const custsOfCode = c=>{
+    const list = [];
+    d.sizes.forEach(g=>(d.custBy[g]||[]).forEach(n=>{ if(!list.includes(n) && d.cell(g,c,n)) list.push(n); }));
+    return list;
+  };
+  const blocks = d.codes.map(c=>{
+    const custs = custsOfCode(c);
+    if(!custs.length) return '';
+    const rows = custs.map((n,ri)=>{
+      const cs = d.sizes.map(g=>{
+        const x = d.cell(g,c,n);
+        const v = x ? x.req : 0;
+        return `<td style="${td};font-weight:700;color:${v>0?'#233246':'#B7C0CA'}">${v>0?v:'—'}</td>`;
+      }).join('');
+      return `<tr style="background:${ri%2?'#FAFBFC':'#FFFFFF'}">
+        <td style="${td};text-align:right;font-weight:700;color:#233246">${esc(n)}</td>${cs}</tr>`;
+    }).join('');
+    return `<div class="rpt-cbc-block" style="margin-top:16px;border:1px solid #E3E7EC;border-radius:12px;overflow:hidden;break-inside:avoid;box-shadow:0 1px 4px rgba(20,36,58,.06)">
+      <div style="background:#12314F;color:#fff;font-weight:700;font-size:14px;padding:9px 14px">
+        <span>${esc(c)} <span style="font-weight:400;color:#B9CCE3;font-size:10.5px">${esc(doorName(c))}</span></span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:#1B4A78">
+          <th style="${th};text-align:right">المتبقي للعملا</th>
+          ${d.sizes.map(g=>`<th style="${th};width:64px">${g==='خاص'?'خاص':g}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+  return `<div style="font-family:Arial,'Helvetica Neue',sans-serif;direction:rtl;background:#fff;padding:32px 28px;color:#14243A;">
+    ${allocBanner_('المتبقي للعملاء حسب الكود', esc(COMPANY_AR)+'  •  '+dateStr+' — الساعة '+timeStr+'  •  قبل خصم رصيد المخزن', '')}
+    ${blocks}
+  </div>`;
+}
+
+async function buildAllocCustByCodePdf_(d){
+  if(!await needLibs_('html2canvas','jspdf')) return;
+  const {canvas, breaksPx} = await renderPaper_(allocCustByCodeHTML_(d), { breakSelector: '.rpt-cbc-block' });
+  await canvasToPdf_(canvas, 'المتبقي_للعملاء_حسب_الكود_'+isoLocal_()+'.pdf', { hardBreaksPx: breaksPx });
+}
+
+// إكسيل بنفس شكل الشيت اللي المصنع طلبه: كل كود في جزء لوحده، سطر «المتبقي للعملا»
+// فوقه المقاسات، وتحت كل عميل المتبقي له في كل مقاس — وسطر فاضي بين كل كود والتالي
+async function buildAllocCustByCodeExcel_(d){
+  if(!await needLibs_('exceljs')) return;
+  const NAVY='FF12314F', MID='FF1B4A78', WHITE='FFFFFFFF', BORDER_CLR='FFDCE4EC';
+  const thin = {style:'thin', color:{argb:BORDER_CLR}};
+  const border = {top:thin,left:thin,right:thin,bottom:thin};
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('المتبقي للعملاء', { views:[{ rightToLeft:true }] });
+  const n = d.sizes.length;
+  ws.getColumn(1).width = 20;
+  for(let c=2;c<=n+1;c++) ws.getColumn(c).width = 9;
+  const style = (cell, fill, font, bold, size)=>{
+    if(fill) cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:fill}};
+    cell.font = {bold:!!bold, color:{argb:font||'FF14243A'}, size:size||11, name:'Arial'};
+    cell.alignment = {horizontal:'center', vertical:'middle'};
+    cell.border = border;
+  };
+  const now = new Date();
+  const dateTimeStr = now.toLocaleDateString('ar-EG') + ' — الساعة ' + now.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+  ws.mergeCells(1,1,1,n+1);
+  ws.getCell(1,1).value = 'المتبقي للعملاء حسب الكود  —  '+dateTimeStr;
+  style(ws.getCell(1,1), NAVY, WHITE, true, 11);
+  ws.getCell(1,1).alignment = {horizontal:'right', vertical:'middle', wrapText:true};
+  ws.getRow(1).height = 30;
+  let r = 3;
+  d.codes.forEach(code=>{
+    const custs = [];
+    d.sizes.forEach(g=>(d.custBy[g]||[]).forEach(nm=>{ if(!custs.includes(nm) && d.cell(g,code,nm)) custs.push(nm); }));
+    if(!custs.length) return;
+    ws.getCell(r,1).value = code;
+    for(let c=1;c<=n+1;c++) style(ws.getCell(r,c), NAVY, WHITE, true, 12);
+    ws.getCell(r,1).alignment = {horizontal:'right', vertical:'middle', border};
+    r++;
+    ws.getCell(r,1).value = 'المتبقي للعملا';
+    style(ws.getCell(r,1), MID, WHITE, true, 11);
+    ws.getCell(r,1).alignment = {horizontal:'right', vertical:'middle'};
+    d.sizes.forEach((g,i)=>{
+      ws.getCell(r,i+2).value = g==='خاص' ? 'خاص' : Number(g);
+      style(ws.getCell(r,i+2), MID, WHITE, true, 11);
+    });
+    r++;
+    custs.forEach(nm=>{
+      ws.getCell(r,1).value = nm;
+      style(ws.getCell(r,1), null, 'FF14243A', true);
+      ws.getCell(r,1).alignment = {horizontal:'right', vertical:'middle'};
+      d.sizes.forEach((g,i)=>{
+        const x = d.cell(g,code,nm);
+        const cell = ws.getCell(r,i+2);
+        style(cell, null, 'FF14243A', true);
+        if(x && x.req>0) cell.value = x.req;
+      });
+      r++;
+    });
+    r++;   // سطر فاضي بين كل كود والتالي
+  });
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const fname = 'المتبقي_للعملاء_حسب_الكود_'+isoLocal_()+'.xlsx';
+  await shareOrDownload_(blob, fname, fname);
+}
+
+// تحميل بيانات شاشة «المتبقي للعملاء» — نفس بيانات تقارير التوزيع، للعرض جوّه التطبيق
+async function loadCustRemScreen_(force){
+  const a = state.admin;
+  if(a.custRemLoading) return;
+  if(!force && a.custRem && Date.now()-a.custRemAt < 60000) return;   // كاش دقيقة
+  a.custRemLoading = true; render();
+  try{
+    await loadStock(true);
+    const orders = await fetchPendingOrders_();
+    a.custRem = orders ? buildAllocationData_(orders) : null;
+    a.custRemAt = Date.now();
+  }catch(err){ /* التوست من fetchPendingOrders_ بيوضّح */ }
+  a.custRemLoading = false; render();
+}
+async function exportAllocCustByCodePdf_(){
+  return withBusy_('جارٍ تجهيز المتبقي للعملاء (PDF)…', 'تعذّر تجهيز الـ PDF: ', async ()=>{
+    const d = await loadAllocData_(); if(d) await buildAllocCustByCodePdf_(d);
+  });
+}
+async function exportAllocCustByCodeExcel_(){
+  return withBusy_('جارٍ تجهيز المتبقي للعملاء (إكسيل)…', 'تعذّر تجهيز الإكسيل: ', async ()=>{
+    const d = await loadAllocData_(); if(d) await buildAllocCustByCodeExcel_(d);
+  });
+}
+
 async function exportAllocCustomersPdf_(){
   return withBusy_('جارٍ تجهيز توزيع الرصيد على العملاء (PDF)…', 'تعذّر تجهيز الـ PDF: ', async ()=>{
     const d = await loadAllocData_(); if(d) await buildAllocCustomersPdf_(d);
@@ -6743,7 +6886,7 @@ async function loadOrderItemsMany_(ids){
 // بتعرض HTML التقرير في طبقة فوق الشاشة، مصغّر ليدخل في عرض الموبايل.
 // التقرير مرسوم بعرض A4 ثابت (794 بكسل)، فبنعمله scale حسب عرض الشاشة
 // عشان يتقري من غير تمرير أفقي.
-function showReportPreview_(html, title, orderId){
+function showReportPreview_(html, title, orderId, pdfKind){
   const old = document.getElementById('reportPreviewOverlay'); if(old) old.remove();
   const ov = document.createElement('div');
   ov.id = 'reportPreviewOverlay';
@@ -6752,7 +6895,7 @@ function showReportPreview_(html, title, orderId){
     <div class="rpv-bar">
       <b>معاينة — ${esc(title||'')}</b>
       <button class="rpv-bank ${state.showBank===false?'':'on'}" data-act="rpv-bank" title="إظهار/إخفاء بيانات التحويل البنكي">${ico('money')}<span>الحساب</span></button>
-      <button class="rpv-pdf" data-act="rpv-pdf" data-name="${esc(title||'')}"${orderId?` data-id="${esc(orderId)}"`:''}>${ico('doc')}تصدير PDF</button>
+      <button class="rpv-pdf" data-act="rpv-pdf" data-name="${esc(title||'')}"${orderId?` data-id="${esc(orderId)}"`:''}${pdfKind?` data-kind="${esc(pdfKind)}"`:''}>${ico('doc')}تصدير PDF</button>
       <button class="rpv-x" data-act="rpv-close" aria-label="إغلاق المعاينة">${ico('x')}</button>
     </div>
     <div class="rpv-scroll"><div class="rpv-fit"><div class="rpv-page">${html}</div></div></div>`;
@@ -7706,6 +7849,7 @@ function viewAdmin(){
         <button class="btn ${a.viewStock?'brand':'act-edit'} sm" data-act="adm-toggle-stock">${ico("box")}${a.viewStock?'رجوع للطلبات':'أرصدة المخزن'}</button>
         <button class="btn ${viewingArchive?'brand':'act-edit'} sm" data-act="adm-toggle-archive">${ico("folder")}${viewingArchive?'رجوع للطلبات':'الأرشيف'}</button>
         <button class="btn act-money sm" data-act="adm-prices-open">${ico("money")}الأسعار</button>
+        <button class="btn ${a.viewCustRem?'brand':'act-edit'} sm" data-act="adm-toggle-custrem">${ico("report")}${a.viewCustRem?'رجوع للطلبات':'المتبقي للعملا'}</button>
       </div></div>
       <div class="ad-tg"><span class="ad-tl">${ico("doc")} تقارير</span><div class="ad-row">
         <button class="btn act-report sm" data-act="adm-pending-pdf">${ico("doc")}متبقي PDF</button>
@@ -7740,6 +7884,55 @@ function viewAdmin(){
   }
 
   // ---------- شاشة أرصدة المخزن ----------
+  if(a.viewCustRem){
+    const d = a.custRem;
+    let body;
+    if(a.custRemLoading && !d){
+      body = `<div class="empty"><span class="em">${ico("clock","xl")}</span><p>جارٍ تحميل المتبقي للعملاء…</p></div>`;
+    }else if(!d || !d.codes.length){
+      body = `<div class="empty"><span class="em">${ico("clip","xl")}</span><p>مفيش أبواب متبقية للعملاء دلوقتي.</p></div>`;
+    }else{
+      const blocks = d.codes.map(c=>{
+        const custs = [];
+        d.sizes.forEach(g=>(d.custBy[g]||[]).forEach(n=>{ if(!custs.includes(n) && d.cell(g,c,n)) custs.push(n); }));
+        if(!custs.length) return '';
+        const dn = (DOORS.find(x=>x.code===c)||{}).name || '';
+        const rows = custs.map(n=>{
+          const cs = d.sizes.map(g=>{
+            const x = d.cell(g,c,n);
+            const v = x ? x.req : 0;
+            return `<td style="padding:7px 4px;text-align:center;font-weight:700;font-size:14px;color:${v>0?'var(--ink)':'var(--muted)'}">${v>0?v:'—'}</td>`;
+          }).join('');
+          return `<tr style="border-top:1px solid var(--line)">
+            <td style="padding:7px 8px;font-weight:700">${esc(n)}</td>${cs}</tr>`;
+        }).join('');
+        return `<div style="margin-top:12px;border:1px solid var(--line);border-radius:12px;overflow:hidden">
+          <div style="padding:9px 12px;font-weight:800;font-size:14px;background:var(--surface-2)"><b>${esc(c)}</b> <span style="color:var(--muted);font-size:12px;font-weight:400">${esc(dn)}</span></div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead><tr style="color:var(--muted);font-size:11.5px">
+              <th style="text-align:right;padding:6px 8px;font-weight:600">المتبقي للعملا</th>
+              ${d.sizes.map(g=>`<th style="padding:6px 4px;width:52px;font-weight:600">${g==='خاص'?'خاص':g}</th>`).join('')}
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+      }).join('');
+      body = `<div class="note" style="margin-top:10px">«المتبقي للعملا» = اللي لسه مطلوب تسليمه لكل عميل
+        (الكمية ناقص اللي استلمه)، قبل خصم رصيد المخزن.</div>${blocks}`;
+    }
+    return `<section class="card">
+      <div class="step"><span class="n">${ico("report","lg")}</span><h2>المتبقي للعملاء</h2>
+        <span class="hint">حسب الكود والمقاس</span></div>
+      ${headerBtns}
+      ${body}
+      <div class="btnrow" style="margin-top:12px">
+        <button class="btn ghost sm" data-act="custrem-reload">${ico("refresh")}${a.custRemLoading?'بيحدّث…':'تحديث'}</button>
+        <button class="btn act-report sm" data-act="adm-allocbycode-pdf">${ico("doc")}تصدير PDF</button>
+        <button class="btn act-report sm" data-act="adm-allocbycode-xls">${ico("sheet")}تصدير إكسيل</button>
+      </div>
+    </section>${verBar()}`;
+  }
+
   if(a.viewStock){
     const rowsHtml = DOORS.map(d=>{
       const cells = SIZES.map(sz=>{
@@ -8161,8 +8354,9 @@ document.addEventListener('click',e=>{
     case 'rpv-pdf': {
       // المعاينة ممكن تكون لطلب واحد أو لكل طلبات العميل — زرار التصدير بيتبع
       // اللي اتعرض فعلاً، مش دايمًا كل طلبات العميل.
-      const n = el.dataset.name, id = el.dataset.id;
+      const n = el.dataset.name, id = el.dataset.id, kind = el.dataset.kind;
       closeReportPreview_();
+      if(kind==='allocByCode'){ exportAllocCustByCodePdf_(); break; }
       if(id){
         const o = adminOrderById_(id);
         // الطلب ممكن يكون اتشال من الشاشة (تحديث أو أرشفة) والمعاينة لسه مفتوحة
@@ -8192,6 +8386,15 @@ document.addEventListener('click',e=>{
     case 'adm-alloc-cust-xls':   exportAllocCustomersExcel_(); break;
     case 'adm-alloc-doors-pdf':  exportAllocDoorsPdf_(); break;
     case 'adm-alloc-doors-xls':  exportAllocDoorsExcel_(); break;
+    case 'adm-allocbycode-pdf':  exportAllocCustByCodePdf_(); break;
+    case 'adm-allocbycode-xls':  exportAllocCustByCodeExcel_(); break;
+    case 'custrem-reload':       loadCustRemScreen_(true); break;
+    case 'adm-toggle-custrem':
+      state.admin.viewCustRem = !state.admin.viewCustRem;
+      if(state.admin.viewCustRem){ state.admin.viewArchive = false; state.admin.viewStock = false; }
+      render();
+      if(state.admin.viewCustRem) loadCustRemScreen_(true);
+      break;
     case 'adm-full-pdf':     exportAdminFullReport(); break;
     case 'adm-full-xls':     exportAdminExcel(); break;
     case 'adm-clear-delivered': clearDeliveredOrders(); break;
@@ -8201,6 +8404,7 @@ document.addEventListener('click',e=>{
       state.admin.viewArchive = !state.admin.viewArchive;
       if(state.admin.viewArchive){
         state.admin.viewStock = false;
+        state.admin.viewCustRem = false;
         if(!state.admin.archRows) state.admin.archLoading = true;   // نمنع ومضة "مفيش طلبات" قبل ما التحميل يخلص
       }
       render();
@@ -8208,7 +8412,7 @@ document.addEventListener('click',e=>{
       break;
     case 'adm-toggle-stock':
       state.admin.viewStock = !state.admin.viewStock;
-      if(state.admin.viewStock) state.admin.viewArchive = false;
+      if(state.admin.viewStock){ state.admin.viewArchive = false; state.admin.viewCustRem = false; }
       state.admin.stockDraft = {};
       render();
       if(state.admin.viewStock){ loadStock(true); loadReserved(true); }
@@ -8289,6 +8493,7 @@ document.addEventListener('click',e=>{
         itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null, pendingCount:0,
         viewArchive:false, archRows:null, archLoading:false, archBusy:null,
         viewStock:false, stockBusy:null, stockDraft:{},
+        viewCustRem:false, custRem:null, custRemAt:0, custRemLoading:false,
         pricesOpen:false, priceEdit:null,
         groupOpen:{}, groupPdfBusy:null,
         qtyEditOpen:{}, qtyEdit:{}, qtyBusy:null, itemDelBusy:null, recvEdit:{}, recvBusy:null,
