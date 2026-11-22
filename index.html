@@ -2526,7 +2526,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v269';
+const APP_BUILD   = 'v270';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -9802,6 +9802,7 @@ function editCartLine(i){
     state.newSection='acc'; save(LS_SECTION,state.newSection);
   }
 
+  state.newStep='items';
   state.tab='new'; render(); window.scrollTo({top:0,behavior:'smooth'});
   toast('عدّل البيانات وادوس «أضف» تاني عشان يتحدّث في السلة');
 }
