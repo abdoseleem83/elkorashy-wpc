@@ -1114,7 +1114,9 @@ input.bad{background:#FFF3F2;box-shadow:0 0 0 3px rgba(198,54,45,.10)}
 /* ---------- التوست واللودر والمعاينة ---------- */
 #toast{background:var(--navy);color:#fff;border-color:transparent;box-shadow:var(--e3)}
 #busy{background:rgba(15,39,64,.28)}
-#busy .b{background:#fff}
+#busy .b{background:#fff;color:var(--ink)}
+#busy .sp{border-color:var(--line);border-top-color:var(--brand)}
+#busyTxt{display:block;max-width:330px;line-height:1.6;font-weight:700}
 .rpv{background:rgba(15,39,64,.55)}
 .rpv-bar{background:#fff;color:var(--ink);border-bottom:1px solid var(--line)}
 .rpv-pdf{background:linear-gradient(180deg,var(--brand-lt),var(--brand));color:#fff}
@@ -2366,7 +2368,7 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px color-mix(in srgb,v
 </div>
 
 <div id="paper"></div>
-<div id="busy"><div class="b"><div class="sp"></div><span id="busyTxt">جارٍ التجهيز…</span></div></div>
+<div id="busy" role="status" aria-live="polite"><div class="b"><div class="sp"></div><span id="busyTxt">جارٍ التجهيز…</span></div></div>
 <div id="toast"></div>
 
 <script>
@@ -2481,23 +2483,20 @@ function ensureLib_(name){
   if(LIB_READY[name] && LIB_READY[name]()) return Promise.resolve(true);
   if(_libPromises[name]) return _libPromises[name];
   _libPromises[name] = new Promise((resolve, reject)=>{
-    const sc = document.createElement('script');
-    sc.src = LIB_URLS[name];
-    sc.async = true;
-    const fail = () => { delete _libPromises[name]; sc.remove(); reject(new Error(name)); };
-    sc.onload = () => {
-      // ⚠️ onload لوحده مش كفاية. لو الشبكة اعترضت الطلب ورجّعت صفحة HTML بحالة 200
-      // (بوابات الواي فاي العامة والفنادق بتعمل كده كتير)، الوسم بيعتبرها «تحميل ناجح»
-      // والمكتبة مش موجودة أصلًا. ساعتها الكود كان هيكمّل ويقع على html2canvas is not
-      // defined من غير ما المستخدم يشوف أي رسالة — يدوس PDF ومفيش أي رد فعل.
-      // فبنتأكد إن المكتبة عرّفت نفسها فعلاً قبل ما نقول إنها جاهزة.
-      if(LIB_READY[name] && LIB_READY[name]()) resolve(true);
-      else fail();
-    };
-    sc.onerror = fail;
-    document.head.appendChild(sc);
+    const sc=document.createElement('script');let settled=false;
+    const fail=()=>{if(settled)return;settled=true;clearTimeout(timer);delete _libPromises[name];sc.remove();reject(new Error('تعذّر تحميل أدوات التصدير في الوقت المحدد'));};
+    const timer=setTimeout(fail,25000);
+    sc.src=LIB_URLS[name];sc.async=true;
+    sc.onload=()=>{if(settled)return;if(!(LIB_READY[name]&&LIB_READY[name]())){fail();return;}settled=true;clearTimeout(timer);resolve(true);};
+    sc.onerror=fail;document.head.appendChild(sc);
   });
   return _libPromises[name];
+}
+// Read-only export waits are bounded. This helper never edits order or artwork data.
+async function waitExportResource_(work,ms,message){
+  let timer;
+  try{return await Promise.race([Promise.resolve(work),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(message)),ms);})]);}
+  finally{clearTimeout(timer);}
 }
 // بتحمّل مجموعة مكتبات مع بعض وبتوري رسالة واضحة لو النت مقطوع.
 // بترجّع true لو كله تمام، و false لو فشل — فكل مكان بيستخدمها بيعمل return عادي.
@@ -2514,7 +2513,7 @@ async function needLibs_(...names){
     await Promise.all(missing.map(ensureLib_));
     return true;
   }catch(e){
-    toast('محتاج نت أول مرة عشان يجهّز الملف — جرّب تاني وانت متصل');
+    toast('تعذّر تحميل أدوات التصدير؛ الطلب والصور محفوظين. تأكد من الاتصال وجرّب PDF مرة أخرى',6500);
     return false;
   }finally{
     if(wasOn) busy(true, wasTxt);   // العملية الأكبر لسه شغّالة — سيب الشاشة مفتوحة
@@ -2531,7 +2530,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v272';
+const APP_BUILD   = 'v273';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -4815,7 +4814,7 @@ async function renderPaper_(html, opts){
   const paper = document.getElementById('paper');
   paper.innerHTML = html;
   await yield_(60);
-  await Promise.all([...paper.querySelectorAll('img')].map(im=>im.decode().catch(()=>{throw new Error('تعذّر تحميل صورة في الورقة؛ جرّب تاني قبل المشاركة');})));                       // تفتح مجال للصور/الخطوط تتحمّل
+  await waitExportResource_(Promise.all([...paper.querySelectorAll('img')].map(im=>im.decode())),20000,'انتهت مهلة تحميل صورة في الورقة؛ الطلب والصور الأصلية محفوظين');                       // تفتح مجال للصور/الخطوط تتحمّل
   const el = paper.firstElementChild;
   const w = el.offsetWidth || 794;
   const h = el.offsetHeight || 1123;
@@ -10949,7 +10948,8 @@ async function prepareDocFinishes_(o){
     if(_docFinishTiles_.has(code))return;
     const model=DOORS.find(d=>d.code===code);if(!model||!model.img)return;
     if(!_docFinishLoads_.has(code))_docFinishLoads_.set(code,(async()=>{
-      const im=new Image();im.crossOrigin='anonymous';im.src=model.img;await im.decode();
+      const im=new Image();im.crossOrigin='anonymous';im.src=model.img;
+      try{await waitExportResource_(im.decode(),20000,'انتهت مهلة تحميل صورة الموديل '+code);}catch(err){im.src='';throw err;}
       const cr=docModelCrop_(code),cv=document.createElement('canvas');cv.width=40;cv.height=120;
       cv.getContext('2d').drawImage(im,(cr[0]+cr[2]*.32)*im.naturalWidth,(cr[1]+cr[3]*.28)*im.naturalHeight,cr[2]*.22*im.naturalWidth,cr[3]*.35*im.naturalHeight,0,0,40,120);
       _docFinishTiles_.set(code,cv.toDataURL('image/png'));
@@ -11264,16 +11264,21 @@ function docHTML(o,mode,priced){
   </div>`;
 }
 
+let _pdfDocBusy_=false;
 async function makeDoc(o,mode,priced){
   if(!o.items || !o.items.length){toast('مفيش أصناف');return;}
-  if(!await needLibs_('html2canvas','jspdf')) return;
-  busy(true,'جارٍ تجهيز المستند…');
+  if(_pdfDocBusy_){toast('تجهيز PDF شغّال بالفعل، انتظر النتيجة');return;}
+  _pdfDocBusy_=true;busy(true,'١ / ٤ · تحميل أدوات PDF…');
   try{
-    await preparePrintDocument_(o);
-    const {canvas} = await renderPaper_(docHTML(o,mode,priced));
-    await canvasToPdf_(canvas, (mode==='quote'?'عرض_سعر_':'طلب_')+orderNoText_(o).replace('/','-')+(priced?'_بالسعر':'')+'.pdf');
-  }catch(err){ toast('تعذّر تجهيز الـ PDF: '+(err&&err.message?err.message:err)); }
-  busy(false);
+    if(!await needLibs_('html2canvas','jspdf'))return;
+    busy(true,'٢ / ٤ · تجهيز صور ومرفقات الطلب…');
+    await waitExportResource_(preparePrintDocument_(o),90000,'انتهت مهلة تجهيز المرفقات؛ الطلب والصور الأصلية محفوظين');
+    busy(true,'٣ / ٤ · رسم صفحات الطلب…');await yield_(0);
+    const {canvas}=await renderPaper_(docHTML(o,mode,priced));
+    busy(true,'٤ / ٤ · تجهيز ملف PDF…');await yield_(0);
+    await canvasToPdf_(canvas,(mode==='quote'?'عرض_سعر_':'طلب_')+orderNoText_(o).replace('/','-')+(priced?'_بالسعر':'')+'.pdf');
+  }catch(err){toast('تعذّر تجهيز الـ PDF: '+(err&&err.message?err.message:err),7000);}
+  finally{_pdfDocBusy_=false;busy(false);const paper=document.getElementById('paper');if(paper)paper.innerHTML='';}
 }
 
 /* ============================================================
