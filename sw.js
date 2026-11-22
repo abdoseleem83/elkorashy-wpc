@@ -1,54 +1,11 @@
-importScripts('https://storage.googleapis.com/workbox-cdn/releases/5.1.2/workbox-sw.js');
-
-const CACHE = "pwabuilder-page";
-
-const offlineFallbackPage = "offline.html";
-
-self.addEventListener("message", (event) => {
-  if (event.data && event.data.type === "SKIP_WAITING") {
-    self.skipWaiting();
-  }
-});
-
-self.addEventListener('install', async (event) => {
-  event.waitUntil(
-    caches.open(CACHE)
-      .then((cache) => cache.add(offlineFallbackPage))
-  );
-});
-
-if (workbox.navigationPreload.isSupported()) {
-  workbox.navigationPreload.enable();
-}
-
-// فتح التطبيق بقى فوري: بنعرض آخر نسخة محفوظة من الصفحة على طول، وفي نفس
-// الوقت بنجيب أحدث نسخة من الشبكة ونخزّنها للفتحة الجاية. لو فيه إصدار جديد
-// فحص الإصدار جوّه التطبيق بيظهر تنبيه التحديث، وزرار «تحديث» بيمسح الكاش
-// وبيحمّل أحدث نسخة (doUpdate) — فمافيش نسخة قديمة ممكن تعلّق.
-const PAGE_CACHE = "wpc-pages-v1";
-self.addEventListener('fetch', (event) => {
-  if (event.request.mode === 'navigate') {
-    event.respondWith((async () => {
-      const pageCache = await caches.open(PAGE_CACHE);
-      const cachedResp = await pageCache.match(event.request, { ignoreSearch: true });
-      const networkPromise = (async () => {
-        try {
-          const preloadResp = await event.preloadResponse;
-          const networkResp = preloadResp || await fetch(event.request);
-          if (networkResp && networkResp.ok) pageCache.put(event.request, networkResp.clone());
-          return networkResp;
-        } catch (error) {
-          return null;
-        }
-      })();
-      if (cachedResp) {
-        networkPromise.catch(() => {});
-        return cachedResp;
-      }
-      const fresh = await networkPromise;
-      if (fresh) return fresh;
-      const cache = await caches.open(CACHE);
-      return cache.match(offlineFallbackPage);
-    })());
-  }
-});
+/* App assets only. Orders, accounts, artwork and server requests never enter this cache. */
+const SHELL_CACHE='wpc-shell-v280';
+const RES_CACHE='wpc-resources-v280';
+const CORE=['./index.html','./offline.html','./manifest.json','./img/logo.png','./img/mark.png','./html2canvas.js','./jspdf.js','./exceljs.js',...['A01','A02','A03','A04','A05','A06','A07','A08','A09','A010','A013'].map(c=>'./img/doors/'+c+'.jpg')];
+self.addEventListener('install',event=>{event.waitUntil((async()=>{const c=await caches.open(SHELL_CACHE);await c.addAll(CORE);})());});
+self.addEventListener('message',e=>{if(e.data&&e.data.type==='SKIP_WAITING')self.skipWaiting();});
+self.addEventListener('activate',event=>{event.waitUntil((async()=>{await self.clients.claim();})());});
+self.addEventListener('fetch',event=>{const r=event.request,u=new URL(r.url);if(r.method!=='GET'||u.origin!==self.location.origin)return;
+if(r.mode==='navigate'){event.respondWith((async()=>{const c=await caches.open(SHELL_CACHE);try{const n=await fetch(r);if(n.ok&&n.headers.get('content-type')?.includes('text/html'))await c.put('./index.html',n.clone());return n;}catch(e){return await c.match('./index.html')||await c.match('./offline.html');}})());return;}
+if(!/\/img\//.test(u.pathname)&&!/(?:html2canvas|jspdf|exceljs)\.js$/.test(u.pathname)&&!/(?:manifest\.json|icon-\d+\.png)$/.test(u.pathname))return;
+event.respondWith((async()=>{const core=await caches.open(SHELL_CACHE),res=await caches.open(RES_CACHE),hit=await core.match(r,{ignoreSearch:true})||await res.match(r,{ignoreSearch:true});if(hit)return hit;const n=await fetch(r);if(n.ok)await res.put(r,n.clone());return n;})());});
