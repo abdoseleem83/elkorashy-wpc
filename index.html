@@ -2526,7 +2526,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v265';
+const APP_BUILD   = 'v266';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3232,6 +3232,7 @@ async function preparePrintDocument_(o){
     if(!d||!d.ok||!d.dataUrl)throw new Error(d&&d.error||'تعذّر تحميل التصميم؛ لم يتم تجهيز ورقة ناقصة');
     _printThumbs.set(ref,d.dataUrl);
   }
+  await prepareDocFinishes_(o);
 }
 async function downloadPrintOriginal_(orderId,ref){
   try{
@@ -5546,6 +5547,7 @@ function adminDocItem_(it, tierKey){
     titleEn: String(it.title||''),   // الاسم الإنجليزي المحفوظ — منه بنقرا عرض الحلق في المستند
     // نفس حكاية الكسور: مستند المصنع كان بياخد الجزء الصحيح من طول العود بس
     rodCm: (String(it.unit||'').match(/^rod\s+(\d+(?:\.\d+)?)/)||[])[1] || '',
+    doorW: kind==='frame' ? (it.forDoorWidth||'') : '',
     unitPrice: price, price: price,
     frame: it.frame||'', dbror: it.dbror||'', frameHeight: it.frameHeight||'', doorHeight: it.doorHeight||'',
     printArt: it.printArt||'', engraveArt:it.engraveArt||'',   // صورة الطباعة — بتوصل لرسمة الباب في ملخص الورقة
@@ -10640,13 +10642,13 @@ function docRowHTML_(it, idx, priced, showFrameHCol, oddFrameW, titleTxt){
     : val(frameW);
   return `<tr${isCut?' style="background:#FFF8E8"':''}>
     <td style="${T};font-size:12px;color:#444">${idx}</td>
-    <td style="${T};text-align:right;padding-inline:8px;overflow-wrap:anywhere"><b style="font-size:14px">${esc(shownTitle).replace(/(طباعة|حفر)/g,'<span style="color:#B3261E">$1</span>')}</b>${restNote?`<br><span style="font-size:12.5px;font-weight:700;color:#B3261E">${esc(restNote)}</span>`:''}</td>
+    <td style="${T};text-align:right;padding-inline:8px;overflow-wrap:anywhere"><b style="font-size:14px">${docInlineDims_(shownTitle).replace(/(طباعة|حفر)/g,'<span style="color:#B3261E">$1</span>')}</b>${restNote?`<br><span style="font-size:12.5px;font-weight:700;color:#B3261E">${esc(restNote)}</span>`:''}</td>
     <td style="${T};white-space:nowrap"><b style="font-size:16px;color:#000">${qty}</b> <span style="font-size:11px;color:#333">${esc(unit)}</span></td>
     <td style="${T};${SEP}">${val(widthTxt)}</td>
     <td style="${T}">${val(heightTxt)}</td>
     <td style="${T};${SEP}">${frameWCell}</td>
     ${showFrameHCol?`<td style="${T}">${frameH==='استاندر'?`<span style="color:#8A6512;font-size:12px;font-weight:700">استاندر</span>`:val(frameH)}</td>`:''}
-    <td style="${T};${SEP}">${val(brorTxt)}</td>
+    <td style="${T};${SEP}">${val(brorTxt,'display:inline-block;direction:ltr')}</td>
     ${priced?(it.included
       ? `<td style="${T};${SEP};font-size:12px;color:#8A6512">مشمول</td><td style="${T};font-size:12px;color:#8A6512">مشمول</td>`
       : `<td style="${T};${SEP}">${money(it.kind==='door'?it.unitPrice:it.price)}</td>
@@ -10714,68 +10716,150 @@ function docRows(o, priced, showFrameHCol){
   return rows;
 }
 
-// صندوق إجماليات لكل مقاس باب + إجمالي الأبواب + الإجمالي الكلي — نفس فكرة التقرير الشامل بس لطلب واحد
+// v266: drawings use only components and measurements recorded on each order line.
+const _docFinishTiles_=new Map();
+const _docFinishLoads_=new Map();
+function docModelCrop_(code){
+  const outer=({A01:[.14,.135,.56,.77],A02:[.18,.08,.60,.82],A03:[.25,.10,.55,.78],A04:[.21,.08,.56,.80],A05:[.13,.16,.57,.78],A06:[.29,0,.58,.85],A07:[.17,.08,.59,.75],A08:[.23,.07,.58,.82],A09:[.15,.12,.48,.68],A010:[.22,.04,.64,.85],A013:[.23,0,.64,.88]})[doorCode_(code)]||[0,0,1,1];
+  return [outer[0]+outer[2]*.12,outer[1]+outer[3]*.065,outer[2]*.76,outer[3]*.90];
+}
+async function prepareDocFinishes_(o){
+  const codes=[...new Set((o.items||[]).filter(it=>['door','frame','bror'].includes(it.kind)).map(it=>doorCode_(it.code||'')).filter(Boolean))];
+  await Promise.all(codes.map(async code=>{
+    if(_docFinishTiles_.has(code))return;
+    const model=DOORS.find(d=>d.code===code);if(!model||!model.img)return;
+    if(!_docFinishLoads_.has(code))_docFinishLoads_.set(code,(async()=>{
+      const im=new Image();im.crossOrigin='anonymous';im.src=model.img;await im.decode();
+      const cr=docModelCrop_(code),cv=document.createElement('canvas');cv.width=40;cv.height=120;
+      cv.getContext('2d').drawImage(im,(cr[0]+cr[2]*.32)*im.naturalWidth,(cr[1]+cr[3]*.28)*im.naturalHeight,cr[2]*.22*im.naturalWidth,cr[3]*.35*im.naturalHeight,0,0,40,120);
+      _docFinishTiles_.set(code,cv.toDataURL('image/png'));
+    })().catch(()=>{_docFinishLoads_.delete(code);throw new Error('تعذّر تحميل لون الموديل '+code+'، حاول تاني قبل تصدير الورقة');}));
+    await _docFinishLoads_.get(code);
+  }));
+}
+function docFinishStyle_(code){
+  const key=doorCode_(code||''),model=DOORS.find(d=>d.code===key),sw=model&&DOOR_COLOR_SWATCH[model.name],tile=_docFinishTiles_.get(key);
+  return 'background-color:'+(sw?sw.bg:'#F1F1EF')+';'+(tile?`background-image:url('${tile}');background-size:40px 120px;background-repeat:repeat;`:'');
+}
+function docWoodU_(code,width,height,thickness){
+  const paint=docFinishStyle_(code),edge='border:1px solid #746B5F;box-sizing:border-box;';
+  return `<div data-part-shape="frame-set" data-finish-code="${esc(doorCode_(code||''))}" style="width:${width}px;height:${height}px;position:relative"><div style="position:absolute;left:0;top:0;width:${thickness}px;height:100%;${paint}${edge}"></div><div style="position:absolute;right:0;top:0;width:${thickness}px;height:100%;${paint}${edge}"></div><div style="position:absolute;left:0;top:0;width:100%;height:${thickness}px;${paint}${edge}"></div></div>`;
+}
+function docInlineDims_(value){
+  return esc(value).replace(/(\d+(?:\.\d+)?\s*[×xX]\s*\d+(?:\.\d+)?)/g,'<span dir="ltr" style="display:inline-block;direction:ltr">$1</span>');
+}
+function docDrawingNotes_(o){
+  const text=String(o.note||o.ordNote||'').trim();
+  if(!text) return '';
+  const rows=text.split(/\r\n?|\n/);
+  const lineHTML=line=>`<div class="keep-blk" style="white-space:pre-wrap;overflow-wrap:anywhere;min-height:1.5em">${line?esc(line):'&nbsp;'}</div>`;
+  const keep=rows.length<=8&&text.length<=600?' class="keep-blk"':'';
+  const head=`<div class="keep-blk" style="break-inside:avoid"><div style="font-size:11.5px;font-weight:700;color:#444;margin-bottom:3px">ملاحظات عامة على الأوردر</div>${lineHTML(rows[0])}</div>`;
+  return `<div data-drawing-notes="1"${keep} style="margin-top:10px;padding:10px 13px;background:#FFF3D6;border:2px solid #E8B94A;border-inline-start:7px solid #D99A0B;border-radius:9px;font-size:13.5px;font-weight:800;line-height:1.5;color:#000">${head}${rows.slice(1).map(lineHTML).join('')}</div>`;
+}
+function docDrawingParts_(it){
+  // Unlike edit-form hydration, this parser never invents missing standard lengths.
+  const parts=[];
+  const re=/(قائم|عارضة حلق علوية|عارضة|عود)\s+(\d+(?:\.\d+)?)\s*سم\s*(?:×|x)\s*(\d+(?:\.\d+)?)/g;
+  let m;
+  while((m=re.exec(String(it.spec||it.sizeEn||it.size||'')))){
+    if(Number(m[2])>0&&Number(m[3])>0) parts.push({label:m[1],cm:Number(m[2]),qty:Number(m[3])});
+  }
+  if(!parts.length&&it.customSet&&Number(it.setsQty)>0){
+    const sets=Number(it.setsQty);
+    if(Number(it.jambCm)>0) parts.push({label:'قائم',cm:Number(it.jambCm),qty:sets*JAMBS_PER_SET});
+    if(Number(it.headerCm)>0) parts.push({label:'عارضة حلق علوية',cm:Number(it.headerCm),qty:sets*HEADERS_PER_SET});
+    (it.extra||[]).forEach(p=>{if(Number(p.cm)>0&&Number(p.qty)>0)parts.push({label:'عود',cm:Number(p.cm),qty:Number(p.qty)});});
+  }
+  return parts;
+}
+function docStandaloneDrawingCards_(items, palette){
+  return items.filter(it=>it.kind==='frame'||it.kind==='bror').map((it,i)=>{
+    const isFrame=it.kind==='frame', isSet=isFrame&&(!!it.isSet||String(it.unit||'')==='set');
+    const parts=isFrame&&!isSet?docDrawingParts_(it):[];
+    const composed=isFrame&&(isSet||(parts.some(p=>p.label==='قائم')&&parts.some(p=>p.label.indexOf('عارضة')===0)));
+    const [bg,bd]=palette[(i+2)%palette.length];
+    const paint=docFinishStyle_(it.code);
+    const qty=Number(it.qty)||0, partsTotal=parts.reduce((s,p)=>s+p.qty,0);
+    const mismatch=parts.length>0&&Math.abs(partsTotal-qty)>.0001;
+    const measure=isFrame?docFrameCm_(it):docBrorSize_(it);
+    const rod=Number(it.rodCm)>0?Number(it.rodCm):Number((String(it.unit||'').match(/^rod\s+(\d+(?:\.\d+)?)/)||[])[1])||0;
+    const detail=parts.length
+      ? parts.map(p=>`<div>${esc(p.label)} ${esc(p.cm)} سم${mismatch?'':` × ${esc(p.qty)}`}</div>`).join('')
+      : isSet?'<div>أطوال الطقم: استاندر</div>'
+      : `<div>${rod?'طول العود '+esc(rod)+' سم':'طول العود غير مسجّل'}</div>`;
+    const drawing=composed
+      ? docWoodU_(it.code,44,70,6)
+      : `<div data-part-shape="rod" data-finish-code="${esc(doorCode_(it.code||''))}" style="width:${isFrame?19:14}px;height:70px;${paint}border:1px solid #746B5F;box-sizing:border-box"></div>`;
+    const label=isFrame?(isSet?'حلق كامل':composed?'حلق مفصّل':'حلق أعواد'):'برور';
+    return `<div data-standalone-part="${isFrame?'frame':'bror'}" class="keep-blk" style="flex:0 1 164px;min-width:140px;max-width:220px;background:${bg};border:1.5px solid ${bd};border-radius:10px;padding:5px 9px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
+      <div style="font-size:12px;font-weight:900">${label} <span dir="ltr" style="display:inline-block;font-size:10.5px">${esc(doorCode_(it.code||''))||'بدون كود'}</span></div>
+      <div style="font-size:11px;font-weight:800;margin:2px 0">${isFrame?'مقاس الحلق: ':'مقاس البرور: '}${measure?'<span dir="ltr" style="display:inline-block;direction:ltr">'+esc(measure)+'</span>'+(isFrame?' سم':''):'غير مسجّل'}</div>
+      <div style="display:flex;align-items:center;justify-content:center;height:76px">${drawing}</div>
+      <div data-part-dimensions="1" style="font-size:10.5px;line-height:1.4;font-weight:700">${detail}${it.doorW?`<div>لباب مقاس ${esc(it.doorW)} سم</div>`:''}</div>
+      ${mismatch?'<div data-part-warning="1" style="font-size:10px;font-weight:800;color:#A32119;margin-top:3px">تفصيل العدد لا يطابق إجمالي الأعواد المسجّل، يُراجع قبل التنفيذ.</div>':''}
+      <div data-part-quantity="1" style="display:inline-block;background:#fff;border:1.5px solid ${bd};border-radius:8px;padding:1px 9px;margin-top:3px;font-size:16px;font-weight:900;line-height:1.35">${qty} <span style="font-size:11px">${isSet?'طقم':'عود'}</span></div>
+      ${isSet?`<div style="font-size:10px;margin-top:2px">= ${qty*RODS_PER_SET} عود حلق</div>`:''}
+    </div>`;
+  }).join('');
+}
 function docTotalsHTML(o){
-  const items=o.items||[];
-  const doorItems=items.filter(it=>it.kind==='door');
-  if(!doorItems.length) return '';
-  // Each model and print design keeps its own quantity and catalog photograph.
+  const items=o.items||[], doorItems=items.filter(it=>it.kind==='door');
+  const standalone=items.filter(it=>it.kind==='frame'||it.kind==='bror');
+  if(!doorItems.length&&!standalone.length) return '';
   const groups={};
   doorItems.forEach(it=>{
     const base=doorSizeText_(it.sizeTxt,it.doorHeight)||'';
     const isP=!!(it.print || PRINT_MARK_RE_.test((it.title||'')+(it.titleEn||'')));
-    const code=doorCode_(it.code||'');
-    const art=isP ? String(it.printArt||'') : '';
+    const code=doorCode_(it.code||''), art=isP?String(it.printArt||''):'';
     const isE=!!(it.hafr||/\(حفر\)|\(Carved\)/i.test((it.title||'')+(it.titleEn||'')));
     const engraving=isE?String(it.engraveArt||''):'';
-    const k=JSON.stringify([base,code,isP,art,isE,engraving]);
-    if(!groups[k]) groups[k]={base,isP,isE,code,qty:0,wh:null,art,engraving};
+    const frame=Number(it.frame)>0?Number(it.frame):0;
+    const frameHeight=frame&&Number(it.frameHeight)>0?Number(it.frameHeight):0;
+    const dbror=String(it.dbror||'').trim();
+    // Same model/size with different ordered components must not share one drawing.
+    const k=JSON.stringify([base,code,isP,art,isE,engraving,frame,frameHeight,dbror]);
+    if(!groups[k])groups[k]={base,isP,isE,code,qty:0,wh:null,art,engraving,frame,frameHeight,dbror};
     groups[k].qty+=(Number(it.qty)||0);
-    if(!groups[k].wh){ const wh=doorWH_(it.sizeEn||it.size||'',it.doorHeight); if(wh.w&&wh.h) groups[k].wh=wh; }
+    if(!groups[k].wh){const wh=doorWH_(it.sizeEn||it.size||'',it.doorHeight);if(wh.w&&wh.h)groups[k].wh=wh;}
   });
   const baseKeys=sortSizeKeys_([...new Set(Object.values(groups).map(g=>g.base))]);
-  const keys=[]; baseKeys.forEach(b=>Object.keys(groups).filter(k=>groups[k].base===b).forEach(k=>keys.push(k)));
+  const keys=[];baseKeys.forEach(b=>Object.keys(groups).filter(k=>groups[k].base===b).forEach(k=>keys.push(k)));
   const doorsTotal=keys.reduce((s,k)=>s+groups[k].qty,0);
-  // ⚠️ «الإجمالي الكلي» بيعدّ طقم الحلق كقطعة واحدة — وهو فعليًا ٣ عيدان. مابنغيّرش الحساب، بنوضّح الطقم كام عود.
-  const setsQty = items.reduce((s,it)=>s+(it.isSet?(Number(it.qty)||0):0),0);
-  const setsNote = setsQty
-    ? `<div style="display:flex;justify-content:space-between;font-size:11.5px;padding:2px 0;color:#000"><span>منهم ${setsQty} طقم حلق</span><b>= ${setsQty*RODS_PER_SET} عود</b></div>`
-    : '';
-    const PAL = [['#E3F0FF','#9CC3EE'],['#FFF1D6','#EBC46E'],['#E2F6E9','#8ED1A5'],['#F1E6FF','#C4A4EE'],['#FFE5E3','#EE9F98'],['#DFF6F8','#8ACFD8'],['#FDE6F1','#E79DC2'],['#EEF2D4','#C3CF7E']];
-  const cards = keys.map((k,i)=>{
-    const [bg,bd]=PAL[i%PAL.length],g=groups[k];
-    const model=DOORS.find(d=>d.code===g.code);
-    const photo=model&&model.img||'';
-    // Catalog-photo crops retain the actual frame and leaf while removing room margins.
-    const crop=({A01:[.14,.135,.56,.77],A02:[.18,.08,.60,.82],A03:[.25,.10,.55,.78],A04:[.21,.08,.56,.80],A05:[.13,.16,.57,.78],A06:[.29,0,.58,.85],A07:[.17,.08,.59,.75],A08:[.23,.07,.58,.82],A09:[.15,.12,.48,.68],A010:[.22,.04,.64,.85],A013:[.23,0,.64,.88]})[g.code]||[0,0,1,1];
+  const PAL=[['#E3F0FF','#9CC3EE'],['#FFF1D6','#EBC46E'],['#E2F6E9','#8ED1A5'],['#F1E6FF','#C4A4EE'],['#FFE5E3','#EE9F98'],['#DFF6F8','#8ACFD8'],['#FDE6F1','#E79DC2'],['#EEF2D4','#C3CF7E']];
+  const cards=keys.map((k,i)=>{
+    const [bg,bd]=PAL[i%PAL.length],g=groups[k],model=DOORS.find(d=>d.code===g.code),photo=model&&model.img||'';
+    const outer=({A01:[.14,.135,.56,.77],A02:[.18,.08,.60,.82],A03:[.25,.10,.55,.78],A04:[.21,.08,.56,.80],A05:[.13,.16,.57,.78],A06:[.29,0,.58,.85],A07:[.17,.08,.59,.75],A08:[.23,.07,.58,.82],A09:[.15,.12,.48,.68],A010:[.22,.04,.64,.85],A013:[.23,0,.64,.88]})[g.code]||[0,0,1,1];
+    // Isolate the model's leaf. Frame/trim bands below are conditional schematic highlights.
+    const crop=[outer[0]+outer[2]*.12,outer[1]+outer[3]*.065,outer[2]*.76,outer[3]*.90];
     const imageStyle=`position:absolute;max-width:none;width:${100/crop[2]}%;height:${100/crop[3]}%;left:${-100*crop[0]/crop[2]}%;top:${-100*crop[1]/crop[3]}%;display:block`;
     const art=_printThumbs.get(g.art)||(/^data:image\/(?:png|jpeg|webp);base64,/i.test(g.art)?g.art:'');
     const engraving=_printThumbs.get(g.engraving)||(/^data:image\/(?:png|jpeg|webp);base64,/i.test(g.engraving)?g.engraving:'');
     const previews=g.isP&&g.isE?[{src:art,label:'طباعة'},{src:engraving,label:'حفر'}]:[{src:art||engraving,label:g.isP?'طباعة':g.isE?'حفر':''}];
-    const pictures=previews.map(pr=>`<div>
-      <div style="display:flex;align-items:center;justify-content:center;gap:3px;margin:4px 0">
-        <div style="position:relative;width:52px;height:108px;background:#fff;border:1px solid #CCC;border-radius:3px;overflow:hidden">
-          ${photo?`<img data-door-model="${esc(g.code)}" src="${esc(photo)}" style="${imageStyle}">`:`<span style="font-size:11px">صورة الموديل غير متاحة</span>`}
-          ${pr.src?`<img data-print-overlay="1" src="${esc(pr.src)}" style="position:absolute;top:8%;left:12%;width:76%;height:89%;object-fit:fill;opacity:.92">`:''}
-        </div>
-        ${g.wh?`<div style="position:relative;width:17px;height:108px"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(90deg);font-size:10.5px;font-weight:800;white-space:nowrap">الطول ${g.wh.h} سم</span></div>`:''}
-      </div>
-      ${pr.label?`<div style="font-size:10px;font-weight:800;color:#B3261E;line-height:1.3">معاينة ${pr.label}${pr.src?'':(_printExpiredRefs.has(g.art)||_printExpiredRefs.has(g.engraving)?' · انتهت مدة حفظ التصميم':' · التصميم غير محمّل')}</div>`:''}
-    </div>`).join('');
-    return `<div style="flex:0 1 ${previews.length>1?'205':'125'}px;min-width:98px;background:${bg};border:1.5px solid ${bd};border-radius:10px;padding:6px 4px 5px;text-align:center;color:#000;box-sizing:border-box">
-      <div style="font-size:11px;font-weight:800;line-height:1.3">${g.wh?'العرض '+g.wh.w+' سم':esc(g.base)}</div>
+    const pictures=previews.map(pr=>{
+      let assembly=`<div data-door-leaf="1" style="position:relative;width:52px;height:108px;background:#EFECE5;border:1px solid #777;overflow:hidden;box-sizing:border-box">${photo?`<img data-door-model="${esc(g.code)}" src="${esc(photo)}" style="${imageStyle}">`:'<span style="font-size:10px">ضلفة<br>صورة الموديل غير متاحة</span>'}${pr.src?`<img data-print-overlay="1" src="${esc(pr.src)}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;opacity:.92">`:''}</div>`;
+      if(g.frame)assembly=`<div data-door-frame="${g.frame}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:5px 5px 0;border:1px solid #746B5F;border-bottom:0;${docFinishStyle_(g.code)}line-height:0">${assembly}</div>`;
+      if(g.dbror)assembly=`<div data-door-bror="${esc(g.dbror)}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:4px 4px 0;border:1px solid #746B5F;border-bottom:0;${docFinishStyle_(g.code)}line-height:0">${assembly}</div>`;
+      return `<div><div style="display:flex;align-items:center;justify-content:center;gap:3px;margin:4px 0;height:135px"><div>${assembly}</div>${g.wh?`<div style="position:relative;width:17px;height:126px"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(90deg);font-size:10.5px;font-weight:800;white-space:nowrap">الطول ${g.wh.h} سم</span></div>`:''}</div>${pr.label?`<div style="font-size:10px;font-weight:800;color:#B3261E;line-height:1.3">معاينة ${pr.label}${pr.src?'':(_printExpiredRefs.has(g.art)||_printExpiredRefs.has(g.engraving)?' · انتهت مدة حفظ التصميم':' · التصميم غير محمّل')}</div>`:''}</div>`;
+    }).join('');
+    return `<div data-door-drawing="1" class="keep-blk" style="flex:0 1 ${previews.length>1?'218':'146'}px;min-width:130px;background:${bg};border:1.5px solid ${bd};border-radius:10px;padding:7px 5px 6px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
+      <div style="font-size:11px;font-weight:800;line-height:1.3">${g.wh?'عرض الفتحة '+g.wh.w+' سم':esc(g.base)}</div>
       <div style="display:flex;justify-content:center;gap:4px">${pictures}</div>
       <div dir="ltr" style="font-size:11px;font-weight:800;margin:2px 0">${esc(g.code||'بدون كود')}</div>
-      <div style="display:inline-block;background:#fff;border:1.5px solid ${bd};border-radius:8px;padding:1px 10px;margin-top:2px;font-size:16px;font-weight:900;line-height:1.35">${g.qty} <span style="font-size:11px;font-weight:800">باب</span></div>
+      <div data-door-components="1" style="font-size:10.5px;line-height:1.55;font-weight:800;margin:3px 0;min-height:33px">${g.frame?`<div style="color:#493E31">حلق ${g.frame} سم${g.frameHeight?' · ارتفاع '+g.frameHeight+' سم':' · ارتفاع استاندر'}</div>`:''}${g.dbror?`<div style="color:#493E31">برور <span dir="ltr" style="display:inline-block;direction:ltr">${esc(g.dbror)}</span></div>`:''}${!g.frame&&!g.dbror?'<div>ضلفة فقط</div>':''}</div>
+      <div data-door-quantity="1" style="display:inline-block;background:#fff;border:1.5px solid ${bd};border-radius:8px;padding:1px 10px;margin-top:2px;font-size:16px;font-weight:900;line-height:1.35">${g.qty} <span style="font-size:11px;font-weight:800">باب</span></div>
       ${previews.length>1?'<div style="font-size:10px">نفس الأبواب، معاينتان للتصميمين</div>':''}
     </div>`;
   }).join('');
-  const sumRow = (lbl,val,unit)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:2px 0;font-size:14px;font-weight:800;color:#0A1F44"><span>${lbl}</span><span>${val} <span style="font-size:13px">${unit}</span></span></div>`;
-  return `<div class="keep-blk" style="margin-top:10px"><div style="display:flex;gap:6px;flex-wrap:wrap">${cards}</div>
-    <div style="margin-top:8px;background:#F3F6FA;border-radius:10px;padding:6px 16px">
-      ${sumRow('إجمالي الأبواب', doorsTotal, 'باب')}
-      ${setsNote}
-    </div></div>`;
+  const frameItems=standalone.filter(it=>it.kind==='frame'),brorItems=standalone.filter(it=>it.kind==='bror');
+  const frameRods=frameItems.reduce((s,it)=>s+(Number(it.qty)||0)*((it.isSet||String(it.unit||'')==='set')?RODS_PER_SET:1),0);
+  const brorRods=brorItems.reduce((s,it)=>s+(Number(it.qty)||0),0);
+  const sumRow=(label,val,unit)=>`<div style="display:flex;flex:1 1 285px;justify-content:space-between;align-items:baseline;gap:12px;padding:2px 0;font-size:13px;font-weight:800;color:#0A1F44"><span>${label}</span><span>${Math.round(val*10000)/10000} <span style="font-size:12px">${unit}</span></span></div>`;
+  return `<div data-order-drawings="1" style="margin-top:10px"><div class="keep-blk" style="break-inside:avoid"><div style="font-size:10px;color:#526171;margin-bottom:6px">رسومات توضيحية للمكونات وليست بمقياس رسم. المقاسات والأعداد المكتوبة هي المعتمدة. لون المكونات يتبع كود الموديل المسجّل.</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:stretch">${cards}${docStandaloneDrawingCards_(items,PAL)}</div></div>
+    ${docDrawingNotes_(o)}
+    <div class="keep-blk" style="display:flex;flex-wrap:wrap;column-gap:22px;margin-top:8px;background:#F3F6FA;border-radius:10px;padding:6px 16px;break-inside:avoid">${doorItems.length?sumRow('إجمالي الأبواب',doorsTotal,'باب'):''}${frameItems.length?sumRow('أعواد الحلق المنفصل',frameRods,'عود'):''}${brorItems.length?sumRow('أعواد البرور المنفصل',brorRods,'عود'):''}</div>
+    </div>`;
 }
 
 // الطلبات اللي اتعملت قبل ما «خدمة قص» تبقى بند (أو من جهاز لسه على نسخة قديمة)
