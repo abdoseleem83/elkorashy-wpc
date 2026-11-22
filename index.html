@@ -2526,7 +2526,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v263';
+const APP_BUILD   = 'v264';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3603,7 +3603,8 @@ function viewHome(){
              + t('acc','hinge','الإكسسوارات','#D9A441')
              + t('frame','frame','الحلوق','#4FC08A')
              + t('bror','bror','البرور','#9A8CF0')
-             + t('mabra','mabra','المعابر','#F0736A');
+             + t('mabra','mabra','المعابر','#F0736A')
+             + t('prodium','panel','ألواح بروديوم','#22B8B0');
   return `<div class="hm4">
     <div class="hm4-head"><div class="who"><small>${greet}</small><b>${name?esc(name):'القرشي أبواب WPC'}</b></div>
       <button class="hm4-cart" data-act="home-go" data-to="cart" aria-label="السلة">${ico('cart')}${cartN?`<span>${cartN}</span>`:''}</button></div>
@@ -7963,6 +7964,7 @@ function viewAdmin(){
   // العملاء وطلباتهم: البحث + كروت العملاء. مكان الكروت بيفضل ماركر بيتبدّل
   // بعد بناء الكروت (نفس نظام التحديث الجزئي الموجود).
   const custBody_ = () => `
+      ${trackingSummary_}
       <input type="search" id="admQ" class="ad-q" placeholder="اكتب اسم العميل…" value="${esc(_admQ)}" autocomplete="off">
       <div class="note" style="margin-top:8px">${viewingArchive?'الطلبات المؤرشفة (اتسلمت أو اتأرشفت يدوي) — مش بتظهر في التقارير.':'اضغط اسم العميل عشان تشوف طلباته، وجوّه كل طلب غيّر الحالة وتابع الأصناف والإنتاج.'}</div>
       <div class="ad-legend"><span><i class="g"></i>جاهز</span><span><i class="a"></i>تحت التنفيذ</span><span><i class="r"></i>لسه ما بدأش</span></div>
@@ -8268,12 +8270,13 @@ function viewAdmin(){
   const _cn = {new:0,prog:0,ready:0,done:0};
   lst.forEach(o=>{ const g=ordGroup_(o.status); if(g in _cn) _cn[g]++; });
   const _k = (n,t,c)=>`<div class="ad-k" style="--kc:${c}"><b>${n}</b><span>${t}</span></div>`;
-  _adminShell = `<section class="ad-hero"><div class="g1"></div><div class="g2"></div>
+  const trackingSummary_ = `<section class="ad-hero"><div class="g1"></div><div class="g2"></div>
       <div class="ad-top"><span class="ad-ico">${viewingArchive?ico("folder","lg"):ico("factory","lg")}</span>
         <div><small>${viewingArchive?'الطلبات المؤرشفة':'لوحة متابعة المصنع'}</small><b>${lst.length} طلب</b></div></div>
       <div class="ad-kpis">${_k(_cn.new,'جديدة','#3FA9F5')}${_k(_cn.prog,'تحت التنفيذ','#D9A441')}${_k(_cn.ready,'جاهزة','#4FC08A')}${_k(_cn.done,'اتسلّمت','#9A8CF0')}</div>
     </section>
-    ${viewingArchive?'':dueStripHTML_(lst)}
+    ${viewingArchive?'':dueStripHTML_(lst)}`;
+  _adminShell = `
     ${staleBar}
     ${secsGrid_()}
     ${secsOpen_()}
