@@ -2526,7 +2526,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v267';
+const APP_BUILD   = 'v268';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3037,6 +3037,7 @@ function save(k,v){
 /* v265: Private order artwork. Bytes and signing credentials live in IndexedDB,
    not order JSON, restoration lists, filenames, links, exports or console logs. */
 const _printThumbs = new Map();
+const _printMotifRefs = new Set();
 const _printExpiredRefs = new Set();
 const _printLifetimes = load('wpc_art_lifetimes_v265',{});
 function artworkExpiredForOrder_(o){
@@ -3103,15 +3104,47 @@ async function printSignedQuery_(action,orderId,ref,key){
   return '&orderId='+encodeURIComponent(orderId)+'&ref='+encodeURIComponent(ref)+'&ts='+ts+'&nonce='+nonce+'&proof='+proof;
 }
 function printDataUrl_(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result));r.onerror=()=>reject(new Error('تعذّر قراءة الصورة؛ اختارها تاني'));r.readAsDataURL(file);});}
+async function printHasAlpha_(data){
+  const im=new Image();im.src=data;await im.decode();
+  if(!im.width||!im.height||im.width*im.height>50000000)throw new Error('أبعاد الصورة كبيرة؛ اختار صورة أصغر');
+  const c=document.createElement('canvas');c.width=96;c.height=96;
+  const g=c.getContext('2d');g.drawImage(im,0,0,96,96);
+  const px=g.getImageData(0,0,96,96).data;let transparent=0,visible=0;
+  for(let i=3;i<px.length;i+=4){if(px[i]<240)transparent++;if(px[i]>16)visible++;}
+  return transparent>96*96*.03&&visible>0;
+}
+async function rememberPrintMotif_(ref,data){
+  if(data&&await printHasAlpha_(data))_printMotifRefs.add(ref);else _printMotifRefs.delete(ref);
+}
 async function printPreview_(data){
   const img=new Image();img.src=data;await img.decode();
   if(!img.width||!img.height||img.width*img.height>50000000) throw new Error('أبعاد الصورة كبيرة؛ اختار صورة أصغر');
+  const alpha=await printHasAlpha_(data);
   const scale=Math.min(1,1200/Math.max(img.width,img.height)),c=document.createElement('canvas');
   c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));
-  const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(img,0,0,c.width,c.height);
-  let thumb;for(const q of [.86,.72,.6]){thumb=c.toDataURL('image/jpeg',q);if(thumb.length<1300000)return thumb;}
-  while(thumb.length>=1300000){const small=document.createElement('canvas');small.width=Math.max(1,Math.floor(c.width*.7));small.height=Math.max(1,Math.floor(c.height*.7));small.getContext('2d').drawImage(c,0,0,small.width,small.height);c.width=small.width;c.height=small.height;c.getContext('2d').drawImage(small,0,0);thumb=c.toDataURL('image/jpeg',.72);}
+  const g=c.getContext('2d');if(!alpha){g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);}g.drawImage(img,0,0,c.width,c.height);
+  let thumb;
+  if(alpha)thumb=c.toDataURL('image/png');
+  else for(const q of [.86,.72,.6]){thumb=c.toDataURL('image/jpeg',q);if(thumb.length<1300000)return thumb;}
+  while(thumb.length>=1300000){const small=document.createElement('canvas');small.width=Math.max(1,Math.floor(c.width*.7));small.height=Math.max(1,Math.floor(c.height*.7));small.getContext('2d').drawImage(c,0,0,small.width,small.height);c.width=small.width;c.height=small.height;c.getContext('2d').drawImage(small,0,0);thumb=c.toDataURL(alpha?'image/png':'image/jpeg',.72);}
   return thumb;
+}
+async function attachPreparedPrintPreview_(entry,field,file,reset=false){
+  const previous=await printGet_(entry[field]);
+  if(!previous||!previous.data)throw new Error('اختار الصورة الأصلية أولًا؛ لم تتغيّر المرفقات');
+  let thumb;
+  if(reset)thumb=await printPreview_(previous.data);
+  else{
+    if(!file||file.type!=='image/png'||!file.size||file.size>5*1024*1024)throw new Error('اختار رسمة PNG بخلفية شفافة حتى ٥ ميجا');
+    const data=await printDataUrl_(file);
+    if(!await printHasAlpha_(data))throw new Error('الملف لازم يكون PNG بخلفية شفافة؛ صورة الباب الكاملة لا تنفصل تلقائيًا');
+    thumb=await printPreview_(data);
+  }
+  const rec={ref:'pa_'+printRandom_(16),key:printRandom_(32),data:previous.data,thumb,orders:[],created:Date.now()};
+  await printPut_(rec); // New immutable pair. Old orders and original bytes stay untouched.
+  await rememberPrintMotif_(rec.ref,thumb);_printThumbs.set(rec.ref,thumb);entry[field]=rec.ref;
+  if(!save('wpc_pick_draft_v265',state.pick))throw new Error('الصورة محفوظة، لكن تعذّر حفظ اختيارات الباب؛ لا تغلق الصفحة');
+  return rec.ref;
 }
 function printUploadHTML_(e,w,type='print'){
   const field=type==='engrave'?'engraveArt':'printArt',selected=type==='engrave'?e.hafr:e.print,label=type==='engrave'?'الحفر':'الطباعة';
@@ -3121,6 +3154,7 @@ function printUploadHTML_(e,w,type='print'){
     <b style="display:block;font-size:13px">شكل ${label} — إجباري</b>
     ${thumb?`<img src="${esc(thumb)}" alt="معاينة شكل الطباعة" style="width:52px;height:88px;object-fit:contain;display:block;margin:7px auto">`:''}
     <label class="btn outline" style="display:inline-flex;margin-top:7px;cursor:pointer">${ready?'تغيير صورة '+label:'اختار صورة '+label}<input type="file" accept="image/png,image/jpeg,image/webp" data-print-file="${esc(w)}" data-print-kind="${type}" style="position:absolute;width:1px;height:1px;opacity:0"></label>
+    ${ready?`<div style="margin-top:8px;border-top:1px solid #DDD;padding-top:8px"><label class="btn outline" style="display:inline-flex;cursor:pointer;min-height:44px;align-items:center">إرفاق رسمة شفافة للمعاينة<input type="file" accept="image/png" data-motif-file="${esc(w)}" data-print-kind="${type}" style="position:absolute;width:1px;height:1px;opacity:0"></label><button type="button" class="btn outline" data-motif-reset="${esc(w)}" data-print-kind="${type}" style="margin-top:5px;min-height:44px">استخدام معاينة الأصل</button><div style="font-size:11.5px;line-height:1.55;margin-top:6px">اختياري: رسمة PNG مُجهّزة بخلفية شفافة، وليست صورة باب كامل. تُعرض على بابنا بنفس نسبها واتجاهها، بدون مد أو قص أو عكس. الأصل يظل مرفقًا كما هو. لا يوجد فصل تلقائي للرسم من الصور، والمعاينة لا تعتمد مقاسات التنفيذ.</div></div>`:''}
     <div style="font-size:11.5px;line-height:1.5;margin-top:6px">${ready?'الصورة محفوظة على الجهاز، وتترفع للمصنع مع الطلب.':'اختار صورة قبل إضافة الباب للسلة.'} الأصل كما هو، حتى ٥ ميجا. المعاينة تقريبية ولا تحدد موضع التنفيذ النهائي. تتحذف نسخة Drive نهائيًا بعد ٧٢ ساعة من «جاهز للتحميل»، والمراجعة كل ساعة.</div>
   </div>`;
 }
@@ -3136,11 +3170,23 @@ document.addEventListener('change',async ev=>{
     const data=await printDataUrl_(file),thumb=await printPreview_(data);
     const rec={ref:'pa_'+printRandom_(16),key:printRandom_(32),data,thumb,orders:[],created:Date.now()};
     await printPut_(rec); // Never replace an earlier design until the new bytes are durable.
-    _printThumbs.set(rec.ref,thumb);entry[input.dataset.printKind==='engrave'?'engraveArt':'printArt']=rec.ref;
+    await rememberPrintMotif_(rec.ref,thumb);_printThumbs.set(rec.ref,thumb);entry[input.dataset.printKind==='engrave'?'engraveArt':'printArt']=rec.ref;
     if(!save('wpc_pick_draft_v265',state.pick))throw new Error('الصورة محفوظة، لكن تعذّر حفظ اختيارات الباب؛ لا تغلق الصفحة قبل إضافته للسلة');
     toast('اتحفظ شكل الطباعة على الجهاز؛ هيتحفظ مع الأوردر عند الإرسال');
   }catch(err){toast(err.message||'تعذّر حفظ الصورة؛ اختياراتك محفوظة',6500);}
   finally{busy(false);render();}
+});
+document.addEventListener('change',async ev=>{
+  const input=ev.target.closest&&ev.target.closest('input[data-motif-file]');if(!input||!input.files[0])return;
+  const entry=input.dataset.motifFile==='custom'?state.pick.custom:state.pick.sizes[Number(input.dataset.motifFile)];if(!entry)return;
+  try{busy(true,'جارٍ حفظ معاينة الرسمة مع الأصل…');await attachPreparedPrintPreview_(entry,input.dataset.printKind==='engrave'?'engraveArt':'printArt',input.files[0]);toast('اتحفظت معاينة الرسمة؛ الصورة الأصلية لم تتغيّر');}
+  catch(e){toast(e.message||'تعذّر حفظ المعاينة؛ الأصل محفوظ',6500);}finally{busy(false);render();}
+});
+document.addEventListener('click',async ev=>{
+  const b=ev.target.closest&&ev.target.closest('[data-motif-reset]');if(!b)return;ev.preventDefault();
+  const entry=b.dataset.motifReset==='custom'?state.pick.custom:state.pick.sizes[Number(b.dataset.motifReset)];if(!entry)return;
+  try{busy(true,'جارٍ استرجاع معاينة الأصل…');await attachPreparedPrintPreview_(entry,b.dataset.printKind==='engrave'?'engraveArt':'printArt',null,true);toast('تم استخدام معاينة الأصل، والطلبات السابقة لم تتغيّر');}
+  catch(e){toast(e.message||'تعذّر استرجاع المعاينة',6500);}finally{busy(false);render();}
 });
 let _printCapsCache;
 async function requireOrderCaps_(o){
@@ -3179,7 +3225,10 @@ async function hydrateFactoryArtCart_(){
     if(await printGet_(ref))continue;
     const d=await jsonp(APPS_SCRIPT_URL+'?action=printRead'+admParams_()+'&original=1&orderId='+encodeURIComponent(state.editingId)+'&ref='+encodeURIComponent(ref),60000);
     if(!d||!d.ok||!d.dataUrl)throw new Error('تعذّر تحميل أصل التصميم للتعديل؛ السلة والطلب القديم محفوظين');
-    const rec={ref:'pa_'+printRandom_(16),key:printRandom_(32),data:d.dataUrl,thumb:await printPreview_(d.dataUrl),orders:[],created:Date.now()};
+    const preview=await jsonp(APPS_SCRIPT_URL+'?action=printRead'+admParams_()+'&orderId='+encodeURIComponent(state.editingId)+'&ref='+encodeURIComponent(ref),60000);
+    if(!preview||!preview.ok||!preview.dataUrl)throw new Error('تعذّر تحميل معاينة التصميم للتعديل؛ الطلب القديم لم يتغيّر');
+    const rec={ref:'pa_'+printRandom_(16),key:printRandom_(32),data:d.dataUrl,thumb:preview.dataUrl,orders:[],created:Date.now()};
+    await rememberPrintMotif_(rec.ref,rec.thumb);
     await printPut_(rec);_printThumbs.set(rec.ref,rec.thumb);replacements.push({it,field,ref:rec.ref});
   }
   replacements.forEach(r=>r.it[r.field]=r.ref);
@@ -3232,6 +3281,7 @@ async function preparePrintDocument_(o){
     if(!d||!d.ok||!d.dataUrl)throw new Error(d&&d.error||'تعذّر تحميل التصميم؛ لم يتم تجهيز ورقة ناقصة');
     _printThumbs.set(ref,d.dataUrl);
   }
+  for(const ref of orderArtRefs_(o))if(!_printExpiredRefs.has(ref))await rememberPrintMotif_(ref,_printThumbs.get(ref));
   await prepareDocFinishes_(o);
 }
 async function downloadPrintOriginal_(orderId,ref){
@@ -3264,7 +3314,7 @@ async function restorePrintThumbnails_(){
   await sweepLocalArtwork_().catch(()=>{});
   const refs=new Set((state.cart||[]).flatMap(it=>[it.printArt,it.engraveArt]));
   Object.values(state.pick.sizes||{}).concat([state.pick.custom||{}]).forEach(e=>{refs.add(e.printArt);refs.add(e.engraveArt);});
-  for(const ref of refs){if(!printRefOk_(ref))continue;try{const rec=await printGet_(ref);if(rec&&rec.thumb)_printThumbs.set(ref,rec.thumb);}catch(e){}}
+  for(const ref of refs){if(!printRefOk_(ref))continue;try{const rec=await printGet_(ref);if(rec&&rec.thumb){_printThumbs.set(ref,rec.thumb);await rememberPrintMotif_(ref,rec.thumb);}}catch(e){}}
   render();
 }
 
@@ -10920,18 +10970,21 @@ function docTotalsHTML(o){
     const imageStyle=`position:absolute;max-width:none;width:${100/crop[2]}%;height:${100/crop[3]}%;left:${-100*crop[0]/crop[2]}%;top:${-100*crop[1]/crop[3]}%;display:block`;
     const art=_printThumbs.get(g.art)||(/^data:image\/(?:png|jpeg|webp);base64,/i.test(g.art)?g.art:'');
     const engraving=_printThumbs.get(g.engraving)||(/^data:image\/(?:png|jpeg|webp);base64,/i.test(g.engraving)?g.engraving:'');
-    const previews=g.isP&&g.isE?[{src:art,label:'طباعة'},{src:engraving,label:'حفر'}]:[{src:art||engraving,label:g.isP?'طباعة':g.isE?'حفر':''}];
+    const previews=g.isP&&g.isE?[{src:art,ref:g.art,label:'طباعة'},{src:engraving,ref:g.engraving,label:'حفر'}]:[{src:art||engraving,ref:art?g.art:g.engraving,label:g.isP?'طباعة':g.isE?'حفر':''}];
+    const prepared=previews.some(pr=>_printMotifRefs.has(pr.ref));
     const pictures=previews.map(pr=>{
-      let assembly=`<div data-door-leaf="1" style="position:relative;width:52px;height:108px;background:#EFECE5;border:1px solid #777;overflow:hidden;box-sizing:border-box">${photo?`<img data-door-model="${esc(g.code)}" src="${esc(photo)}" style="${imageStyle}">`:'<span style="font-size:10px">ضلفة<br>صورة الموديل غير متاحة</span>'}${pr.src?`<img data-print-overlay="1" src="${esc(pr.src)}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;opacity:.92">`:''}</div>`;
+      const motif=_printMotifRefs.has(pr.ref);
+      let assembly=`<div data-door-leaf="1" style="position:relative;width:${prepared?110:52}px;height:${prepared?236:108}px;background:#EFECE5;border:1px solid #777;overflow:hidden;box-sizing:border-box">${photo?`<img data-door-model="${esc(g.code)}" src="${esc(photo)}" style="${imageStyle}">`:'<span style="font-size:10px">ضلفة<br>صورة الموديل غير متاحة</span>'}${pr.src?`<img data-print-overlay="1" src="${esc(pr.src)}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:${motif?'contain':'fill'};opacity:${motif?'1':'.92'}">`:''}</div>`;
       if(g.frame)assembly=`<div data-door-frame="${g.frame}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:5px 5px 0;border:1px solid #746B5F;border-bottom:0;${docFinishStyle_(g.code)}line-height:0">${assembly}</div>`;
       if(g.dbror)assembly=`<div data-door-bror="${esc(g.dbror)}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:4px 4px 0;border:1px solid #746B5F;border-bottom:0;${docFinishStyle_(g.code)}line-height:0">${assembly}</div>`;
-      return `<div><div style="display:flex;align-items:center;justify-content:center;gap:3px;margin:4px 0;height:135px"><div>${assembly}</div>${g.wh?`<div style="position:relative;width:17px;height:126px"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(90deg);font-size:10.5px;font-weight:800;white-space:nowrap">الطول ${g.wh.h} سم</span></div>`:''}</div>${pr.label?`<div style="font-size:10px;font-weight:800;color:#B3261E;line-height:1.3">معاينة ${pr.label}${pr.src?'':(_printExpiredRefs.has(g.art)||_printExpiredRefs.has(g.engraving)?' · انتهت مدة حفظ التصميم':' · التصميم غير محمّل')}</div>`:''}</div>`;
+      return `<div><div style="display:flex;align-items:center;justify-content:center;gap:3px;margin:4px 0;height:${prepared?264:135}px"><div>${assembly}</div>${g.wh?`<div style="position:relative;width:17px;height:${prepared?250:126}px"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(90deg);font-size:10.5px;font-weight:800;white-space:nowrap">الطول ${g.wh.h} سم</span></div>`:''}</div>${pr.label?`<div style="font-size:10px;font-weight:800;color:#B3261E;line-height:1.3">معاينة ${pr.label}${motif?' · رسمة مُجهّزة':''}${pr.src?'':(_printExpiredRefs.has(g.art)||_printExpiredRefs.has(g.engraving)?' · انتهت مدة حفظ التصميم':' · التصميم غير محمّل')}</div>`:''}</div>`;
     }).join('');
-    return `<div data-door-drawing="1" class="keep-blk" style="flex:0 1 ${previews.length>1?'218':'146'}px;min-width:130px;background:${bg};border:1.5px solid ${bd};border-radius:10px;padding:7px 5px 6px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
+    return `<div data-door-drawing="1" class="keep-blk" style="flex:0 1 ${prepared?(previews.length>1?'330':'230'):(previews.length>1?'218':'146')}px;min-width:130px;background:${bg};border:1.5px solid ${bd};border-radius:10px;padding:7px 5px 6px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
       <div style="font-size:11px;font-weight:800;line-height:1.3">${g.wh?'عرض الفتحة '+g.wh.w+' سم':esc(g.base)}</div>
       <div style="display:flex;justify-content:center;gap:4px">${pictures}</div>
       <div dir="ltr" style="font-size:11px;font-weight:800;margin:2px 0">${esc(g.code||'بدون كود')}</div>
       <div data-door-components="1" style="font-size:10.5px;line-height:1.55;font-weight:800;margin:3px 0;min-height:33px">${g.frame?`<div style="color:#493E31">حلق ${g.frame} سم${g.frameHeight?' · ارتفاع '+g.frameHeight+' سم':' · ارتفاع استاندر'}</div>`:''}${g.dbror?`<div style="color:#493E31">برور <span dir="ltr" style="display:inline-block;direction:ltr">${esc(g.dbror)}</span></div>`:''}${!g.frame&&!g.dbror?'<div>ضلفة فقط</div>':''}</div>
+      ${prepared?'<div data-motif-caution="1" style="font-size:10px;line-height:1.5;color:#655134;margin:4px 0">رسمة مُجهّزة للمعاينة، بنفس نسب الملف واتجاهه، بدون مد أو قص. لا تعتمد مقاسات التنفيذ؛ يُراجع الأصل المرفق.</div>':''}
       <div data-door-quantity="1" style="display:inline-block;background:#fff;border:1.5px solid ${bd};border-radius:8px;padding:1px 10px;margin-top:2px;font-size:16px;font-weight:900;line-height:1.35">${g.qty} <span style="font-size:11px;font-weight:800">باب</span></div>
       ${previews.length>1?'<div style="font-size:10px">نفس الأبواب، معاينتان للتصميمين</div>':''}
     </div>`;
