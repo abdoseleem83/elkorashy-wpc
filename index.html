@@ -2349,7 +2349,8 @@ svg.flow-pictorial{stroke:none;fill:none;stroke-width:1}svg.flow-pictorial{overf
 @media(min-width:800px){.flow-doors img{height:155px}.flow-designs img{height:200px}}
 </style>
 <style>.flow-next279{display:flex;flex-direction:column;gap:9px;padding:12px}.flow-next279 .btn{width:100%;min-height:44px}#cartFloat{display:none!important}</style>
-<style>.cust-tile277 .cust-order279{display:flex;flex-direction:column;gap:1px}.cust-tile277 .cust-order279 small{font-size:10px;font-weight:500;line-height:1.5;color:var(--muted);direction:ltr}.cust-tile277>span{display:flex;flex-direction:column;gap:5px;width:100%}</style>
+<style>.cust-tile277 .cust-order279{display:flex;flex-direction:column;gap:1px}.cust-tile277 .cust-order279 small{font-size:10px;font-weight:500;line-height:1.5;color:var(--muted);direction:ltr}.cust-tile277>span{display:flex;flex-direction:column;gap:5px;width:100%}input::-webkit-inner-spin-button,input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}input[type=number]{-moz-appearance:textfield}
+</style>
 </head>
 <body>
 
@@ -2373,6 +2374,7 @@ svg.flow-pictorial{stroke:none;fill:none;stroke-width:1}svg.flow-pictorial{overf
 </div>
 
 
+<div id="offlineReady280" role="status" style="text-align:center;font-size:11px;color:var(--muted);padding:3px 10px">تجهيز ملفات الأوفلاين عند أول اتصال…</div>
 <main class="wrap" id="view"></main>
 <div style="text-align:center;padding:4px 12px 96px;font-size:12px"><a href="privacy.html" style="color:var(--brand-lt,#6FC1FA);text-decoration:underline" target="_blank" rel="noopener">سياسة الخصوصية</a></div>
 
@@ -2492,11 +2494,7 @@ function preloadDoorImages_(){
    على الموبايل. دلوقتي كل مكتبة بتتحمّل أول مرة تتطلب فيها بس، والوعد بتاعها
    بيتخزّن فمافيش تحميل مكرر، والـ Service Worker بيكاشها فالمرات الجاية فورية.
    ============================================================ */
-const LIB_URLS = {
-  html2canvas:'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
-  jspdf      :'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-  exceljs    :'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'
-};
+const LIB_URLS = {html2canvas:'html2canvas.js',jspdf:'jspdf.js',exceljs:'exceljs.js'};
 const LIB_READY = {
   html2canvas:()=>typeof html2canvas!=='undefined',
   jspdf      :()=>!!window.jspdf,
@@ -2550,11 +2548,11 @@ let _libsWarmed = false;
 function warmExportLibs_(){
   if(_libsWarmed) return;
   _libsWarmed = true;
-  const go = () => { ensureLib_('html2canvas').catch(()=>{}); ensureLib_('jspdf').catch(()=>{}); };
+  const go = () => { ensureLib_('html2canvas').catch(()=>{}); ensureLib_('jspdf').catch(()=>{}); ensureLib_('exceljs').catch(()=>{}); };
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v279';
+const APP_BUILD   = 'v280';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2978,14 +2976,14 @@ const state = {
   // (state.fr.unit) مش بالسنتي دايمًا — عشان اللي الموزّع بيكتبه يفضل زي ما هو
   // وهو بيكتب. التحويل لسنتي بيحصل في مكان واحد بس: frCm_().
   // أي مكان بيرجّع أطوال جاهزة بالسنتي (تعديل سطر من السلة) لازم يحط unit:'cm'.
-  fr:{cm:10, code:'', doorW:'', kind:'full', qty:1, brSize:'', brQty:5, brLen:'', nonStd:false, jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:'', unit:'cm'},   // حلق منفصل: kind = 'full' (طقم كامل — الكمية × [٢ قائم ٢٢٠سم + ١ عارضة حلق علوية ١١٠سم]، والارتفاع يتغيّر بس لو nonStd=true) أو 'rods' (أعواد حرة — عدد وطول بيحددهم المستخدم من غير قيمة افتراضية). doorW = مقاس الباب اللي الحلق ده ليه (70/80/90/100) — اختياري. note: ملحوظة اختيارية
+  fr:{cm:10, code:'', doorW:'', kind:'full', qty:'', brSize:'', brQty:'', brLen:'', nonStd:false, jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:'', unit:'cm'},   // حلق منفصل: kind = 'full' (طقم كامل — الكمية × [٢ قائم ٢٢٠سم + ١ عارضة حلق علوية ١١٠سم]، والارتفاع يتغيّر بس لو nonStd=true) أو 'rods' (أعواد حرة — عدد وطول بيحددهم المستخدم من غير قيمة افتراضية). doorW = مقاس الباب اللي الحلق ده ليه (70/80/90/100) — اختياري. note: ملحوظة اختيارية
   // len = طول العود **بالوحدة المكتوبة** (state.br.unit: 'm' افتراضيًا أو 'cm')،
   // والتحويل لسنتي في brRodCm_() بس. code = كود/لون الباب (إجباري زي الحلق).
-  br:{size:'6×9', code:'', rods:1, len:BROR_ROD_M_DEFAULT, unit:'m'},
-  sp:{code:'', qty:1}, // شريط — بالمتر، الكمية بتقبل كسور
-  vn:{code:'', qty:1}, // قشرة — بالمتر، الكمية بتقبل كسور
-  mb:{wall:10, wallCustom:false, wallTxt:'', code:'', doorW:'', custom:false, w:'', h:'', qty:1}, // معبرة — wall = سمك الحيطة (wallCustom/wallTxt = مقاس آخر مكتوب بالإيد)، doorW = عرض الباب الاستاندر، custom = مقاس خاص (w/h بالسم)
-  pd:{code:'', qty:1}, // ألواح بروديوم — code = كود/لون الباب (إجباري زي البرور)، qty = عدد الألواح
+  br:{size:'6×9', code:'', rods:'', len:BROR_ROD_M_DEFAULT, unit:'m'},
+  sp:{code:'', qty:''}, // شريط — بالمتر، الكمية بتقبل كسور
+  vn:{code:'', qty:''}, // قشرة — بالمتر، الكمية بتقبل كسور
+  mb:{wall:10, wallCustom:false, wallTxt:'', code:'', doorW:'', custom:false, w:'', h:'', qty:''}, // معبرة — wall = سمك الحيطة (wallCustom/wallTxt = مقاس آخر مكتوب بالإيد)، doorW = عرض الباب الاستاندر، custom = مقاس خاص (w/h بالسم)
+  pd:{code:'', qty:''}, // ألواح بروديوم — code = كود/لون الباب (إجباري زي البرور)، qty = عدد الألواح
   acc:{},
   touched:false,             // اتضغط إرسال؟ عشان نوضّح الحقول الناقصة
   customer:{name:'', phone:'', region:''},   // صاحب الأوردر لما يكون «عميل آخر» — الاسم إجباري، الرقم والعنوان اختياريين
@@ -3498,10 +3496,15 @@ function lenFromCm_(cm, u){
 // ⚠️ عدد الأعواد كان بيتقرّب لصحيح (Math.round) في كل مكان — فنص عود أو ربع
 // عود (تكملة) مكانش ينفع يتطلب أصلاً، والزرار كان بيقول «أضف ٣» والمستخدم
 // كاتب ٢.٥. بقى بيقبل الكسور زي الأطوال.
-function rodQty_(v){
-  const n = Number(decIn_(String(v==null?'':v))) || 0;
-  return n > 0 ? Math.round(n*100)/100 : 0;
+function quantityNumber_(v){
+  let s=toLatinDigits_(String(v==null?'':v)).trim().replace(/\u066B/g,'.').replace(/\u066C/g,'');
+  if(!s.includes('.'))s=s.replace(/[,،]/g,'.');
+  if(!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(s))return 0;
+  const n=Number(s);return Number.isFinite(n)&&n>0?n:0;
 }
+function wholeQuantity_(v){const n=quantityNumber_(v);return Number.isInteger(n)?n:0;}
+function rodQty_(v){return Math.round(quantityNumber_(v)*100)/100;}
+
 // طول عود البرور بالسنتي من اللي مكتوب في الشاشة (بالوحدة المختارة).
 // كان بيتقرّب لسنتي صحيح — فعود ٢.٢٦٥ م يتسجّل ٢٢٧ سم، نص سنتي يضيع من كل
 // عود والسعر (سعر المتر × الطول) يطلع غلط على الطلب كله.
@@ -3758,7 +3761,18 @@ async function saveStockDrafts(){
 function ownerOk_(){ return state.custMode!=='other' || !!state.customer.name.trim(); }
 function profileOk(){return !!state.profile.name.trim() && phoneOk(state.profile.phone) && ownerOk_();}
 
-function toast(m,ms){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms||2600);}
+function toast(m,ms,orderId){const t=document.getElementById('toast');t.textContent=m;t.dataset.orderId=orderId?String(orderId):'';t.dataset.expiresAt=String(Date.now()+(ms||2600));t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms||2600);}
+function expireToast280_(){const t=document.getElementById('toast');if(t&&Number(t.dataset.expiresAt)<=Date.now())t.classList.remove('show');}
+document.addEventListener('visibilitychange',expireToast280_);window.addEventListener('pageshow',expireToast280_);
+function clearOrderToast280_(id){const t=document.getElementById('toast');if(t&&t.dataset.orderId===String(id)){clearTimeout(toast._t);t.classList.remove('show');}}
+async function reconcileReceipt280_(o,hit){
+ if(!o||!hit||String(o.id)!==String(hit.id)||!hit.displayNo)return false;
+ cacheReceipt277_(o,hit);
+ if(String(hit.customerRegion||'')!==String(o.customerRegion||''))return false;
+ if(!await printStatusLinked_(o))return false;
+ markSent_(o.id);savePendingSync_(loadPendingSync_().filter(id=>String(id)!==String(o.id)));clearOrderToast280_(o.id);return true;
+}
+
 let _busyOn = false, _busyTxt = '';
 function busy(on,txt){
   const b=document.getElementById('busy');
@@ -3958,7 +3972,7 @@ function renderNow(){
   cb.classList.toggle('zero', cn===0);   // «0» أحمر على طول فوق السلة كان مشوّش
   updateAdmBadge();
 
-  const show = false; // v279: no duplicate fixed basket review bar
+  const show = false; // v280: no duplicate fixed basket review bar
   bar.hidden=!show;
   if(show){
     document.getElementById('barTotal').textContent=(pricesVisible()?money(cartTotal())+' ج':'—');
@@ -4123,9 +4137,7 @@ function viewNew(){
     return `<div class="sizeCard">
       <div class="scHead"><b>${w} سم</b>
         <div class="qty sm"><span class="qIc" aria-hidden="true">${ico('qty')}</span>
-          <button data-act="size-qty-minus" data-w="${w}">−</button>
           <input type="number" inputmode="numeric" min="1" value="${e.qty}" placeholder="الكمية" class="qtyEmpty" data-act="size-qty-set" data-w="${w}">
-          <button data-act="size-qty-plus" data-w="${w}">+</button>
         </div>
       </div>
       ${stockLine}
@@ -4141,9 +4153,7 @@ function viewNew(){
       </div>
       <div class="grp" style="margin-top:6px">الكمية</div>
       <div class="qty"><span class="qIc" aria-hidden="true">${ico('qty')}</span>
-        <button data-act="cust-qty-minus">−</button>
         <input type="number" inputmode="numeric" min="1" value="${p.custom.qty}" placeholder="الكمية" class="qtyEmpty" data-act="cust-qty-set">
-        <button data-act="cust-qty-plus">+</button>
       </div>
       <div class="note">سعر الباب زي المقاس العادي، و<b>«${CUT_SERVICE_NOTE_}»</b> بتتحط بند مستقل تحته بالكمية والسعر (${CUSTOM_EXTRA} ج للباب).</div>
       ${customReady_(p) ? stepsFor(p.custom,'custom') : `<div class="stepHint">اكتب العرض والارتفاع عشان تظهر باقي الاختيارات</div>`}
@@ -4193,19 +4203,17 @@ function viewNew(){
   const brRodCm=brRodCm_(state.br.len===''||state.br.len==null ? BROR_ROD_M_DEFAULT : state.br.len, state.br.unit);
   const brLinePrice=rodPrice(brSel.price, brRodCm);
 
-  const pdQty=Math.max(0,Math.round(Number(state.pd.qty)||0));
+  const pdQty=wholeQuantity_(state.pd.qty);
   // كود/لون الباب للوح البروديوم — إجباري زي البرور بالظبط
   const pdCodeChips=DOORS.map(d=>`
     <button class="chip ${state.pd.code===d.code?'on':''}" data-act="pd-code" data-code="${d.code}"${doorChipStyle_(d.code,state.pd.code===d.code)}>${d.code} — ${esc(d.name)}</button>`).join('');
 
   const accCards=ACCESSORIES.map(a=>{
-    const q=state.acc[a.id]||0;
+    const q=state.acc[a.id]||'';
     return `<div class="ac">
       <b>${esc(a.name)}</b>${pricesVisible()?`<div class="pr">${money(a.price)} ج/${esc(a.unit)}</div>`:''}
       <div class="qty"><span class="qIc" aria-hidden="true">${ico('qty')}</span>
-        <button data-act="acc-minus" data-id="${a.id}">−</button>
-        <input type="number" inputmode="decimal" min="0" step="0.5" value="${q}" data-act="acc-set" data-id="${a.id}">
-        <button data-act="acc-plus" data-id="${a.id}">+</button>
+        <input type="number" inputmode="decimal" min="0" step="any" value="${q}" placeholder="الكمية" data-act="acc-set" data-id="${a.id}">
       </div></div>`;}).join('');
   const accTotal=ACCESSORIES.reduce((s,a)=>s+(state.acc[a.id]||0)*a.price,0);
 
@@ -4324,7 +4332,7 @@ function viewNew(){
     </div>
     ${frBrOn?`
     <label class="fld" style="margin-top:9px;max-width:220px"><span>عدد البرور لكل طقم</span>
-      <input type="text" inputmode="decimal" placeholder="5" value="${esc(state.fr.brQty)}" data-act="fr-brqty"></label>
+      <input type="text" inputmode="decimal" placeholder="اكتب العدد" value="${esc(state.fr.brQty)}" data-act="fr-brqty"></label>
     <label class="fld" style="margin-top:9px;max-width:220px"><span>ارتفاع البرور (${frUnit}) <span style="font-weight:400;color:var(--muted)">— فاضي = ${BROR_ROD_CM} سم</span></span>
       <input type="text" inputmode="decimal" placeholder="${lenFromCm_(BROR_ROD_CM, state.fr.unit)}" value="${esc(state.fr.brLen)}" data-act="fr-brlen"></label>
     <div class="note" style="margin-top:6px">الإجمالي: <b>${frBrTotal||0}</b> عود برور ${esc(state.fr.brSize)} — ارتفاع العود <b>${frBrLenCm} سم</b>، وبتتسجل في الطلب كسطر برور بنفس لون الحلق.</div>`:''}
@@ -4363,7 +4371,7 @@ function viewNew(){
       <span>ملحوظة <span style="font-weight:400;color:var(--muted)">(اختياري)</span></span>
       <input type="text" placeholder="مثال: عارضة حلق علوية تكملة 60 سم" value="${esc(state.fr.note||'')}" data-act="fr-note">
     </label>
-    <button class="btn ghost sm" style="margin-top:9px" data-act="add-fr" ${frRods>0&&state.fr.code?'':'disabled'}>
+    <button class="btn ghost sm" style="margin-top:9px" data-act="add-fr" ${frRods>0&&state.fr.code&&(!frBrOn||frBrPerSet>0)?'':'disabled'}>
       ${!state.fr.code ? 'اختر اللون الأول (كود الباب)'
         : (frRods>0 ? (
             (frKind==='full' && !frNonStd)
@@ -4400,7 +4408,7 @@ function viewNew(){
     <div class="sol-h" style="margin-bottom:6px">اللون (كود الباب) <b class="req">*</b></div>
     <div class="chips">${pdCodeChips}</div>
     <label class="fld" style="margin-top:12px"><span>عدد الألواح</span>
-      <input type="number" inputmode="numeric" min="0" step="1" value="${esc(state.pd.qty)}" placeholder="مثال 2" data-act="pd-qty"></label>
+      <input type="number" inputmode="numeric" min="1" step="1" value="${esc(state.pd.qty)}" placeholder="مثال 2" data-act="pd-qty"></label>
     <button class="btn ghost sm" data-act="add-pd" ${pdQty>0&&state.pd.code?'':'disabled'}>
       ${!state.pd.code ? 'اختر اللون الأول (كود الباب)' : (pdQty>0 ? `أضف ${pdQty} لوح بروديوم — ${esc(state.pd.code)}` : 'اكتب عدد الألواح')}</button>
   </section>`;
@@ -4594,7 +4602,7 @@ function currentSummary(){
   const parts=[]; let totalQty=0, totalPrice=0;
   widths.forEach(w=>{
     const e=p.sizes[w];
-    const qty=Number(e.qty)||1; totalQty+=qty;
+    const qty=wholeQuantity_(e.qty); totalQty+=qty;
     const unit=priceForWidth(w,e.hafr); totalPrice+=unit*qty;
     // ارتفاع غير الاستاندر = خدمة قص، والتدعيم اختيار — الاتنين بنود بتتحسب
     if(Number(e.height)) totalPrice+=CUSTOM_EXTRA*qty;
@@ -4612,7 +4620,7 @@ function currentSummary(){
     parts.push(line);
   });
   if(customReady){
-    const w=Number(p.custom.w), h=Number(p.custom.h), qty=Number(p.custom.qty)||1;
+    const w=Number(p.custom.w), h=Number(p.custom.h), qty=wholeQuantity_(p.custom.qty);
     // خدمة القص بند مستقل — بتتحسب في الإجمالي زي أي صنف
     totalQty+=qty; totalPrice+=(priceForWidth(w,p.custom.hafr)*qty)+(CUSTOM_EXTRA*qty)
                               +(p.custom.wood?WOOD_EXTRA*qty:0)
@@ -4825,6 +4833,12 @@ async function renderPaper_(html, opts){
   paper.innerHTML = html;
   await yield_(60);
   await waitExportResource_(Promise.all([...paper.querySelectorAll('img')].map(im=>im.decode())),20000,'انتهت مهلة تحميل صورة في الورقة؛ الطلب والصور الأصلية محفوظين');                       // تفتح مجال للصور/الخطوط تتحمّل
+  for(const im of paper.querySelectorAll('img')){
+    if(!/^data:|^blob:/.test(im.src)&&new URL(im.src,location.href).origin===location.origin){
+      const c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;
+      c.getContext('2d').drawImage(im,0,0);im.src=c.toDataURL('image/png');await im.decode();
+    }
+  }
   const el = paper.firstElementChild;
   const w = el.offsetWidth || 794;
   const h = el.offsetHeight || 1123;
@@ -5260,6 +5274,11 @@ async function loadTrack(){
       }
     });
     if(changedLocal) saveOrders_(state.orders);
+    for(const id of loadPendingSync_()){
+      const lo=state.orders.find(o=>String(o.id)===String(id));
+      const hit=state.track.rows.find(r=>String(r.id)===String(id));
+      if(lo&&hit&&String(lo.phone||'').trim()===phone){try{await reconcileReceipt280_(lo,hit);}catch(e){}}
+    }
   }catch(err){
     state.track.err = err.message || String(err);
   }
@@ -8868,7 +8887,7 @@ document.addEventListener('click',e=>{
     case 'fr-nonstd-toggle': state.fr.nonStd=!state.fr.nonStd;
       if(!state.fr.nonStd){ state.fr.jambCm=lenFromCm_(220, state.fr.unit); state.fr.headerCm=lenFromCm_(110, state.fr.unit); state.fr.extra=[]; }
       render(); break;
-    case 'fr-extra-add': state.fr.extra=[...(state.fr.extra||[]), {cm:'',qty:1}]; render(); break;
+    case 'fr-extra-add': state.fr.extra=[...(state.fr.extra||[]), {cm:'',qty:''}]; render(); break;
     // ⚠️ تبديل الوحدة لازم يحوّل اللي مكتوب: لو ٢٢٠ سم فضلت ٢٢٠ وإحنا بقينا
     // بالمتر، الطلب يطلع ٢٢٠ متر. بنحوّل كل خانة طول في الشاشة مرة واحدة.
     case 'fr-unit': {
@@ -9249,9 +9268,9 @@ document.addEventListener('input',e=>{
   if(a==='cust-frame-rodqty'){ state.pick.custom.frameRodQty=el.value; return; }
   if(a==='size-frame-fordoors'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.frameForDoors=el.value; return; }
   if(a==='cust-frame-fordoors'){ state.pick.custom.frameForDoors=el.value; return; }
-  if(a==='size-qty-set'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.qty=(parseInt(el.value,10)>0?parseInt(el.value,10):''); refreshSummary(); return; }
-  if(a==='cust-qty-set'){ const wasReady=customReady_(state.pick); state.pick.custom.qty=(parseInt(el.value,10)>0?parseInt(el.value,10):''); refreshSummary(); if(wasReady!==customReady_(state.pick)) render(); return; }
-  if(a==='acc-set'){ state.acc[el.dataset.id]=Math.max(0,parseFloat(el.value)||0); refreshAccBtn(); return; }
+  if(a==='size-qty-set'){ const w=Number(el.dataset.w); const e=state.pick.sizes[w]; if(e) e.qty=el.value; refreshSummary(); return; }
+  if(a==='cust-qty-set'){ const wasReady=customReady_(state.pick); state.pick.custom.qty=el.value; refreshSummary(); if(wasReady!==customReady_(state.pick)) render(); return; }
+  if(a==='acc-set'){ state.acc[el.dataset.id]=rodQty_(el.value); refreshAccBtn(); return; }
   if(a==='fr-jambCm'){ state.fr.jambCm=decIn_(el.value); render(); return; }
   if(a==='fr-headerCm'){ state.fr.headerCm=decIn_(el.value); render(); return; }
   if(a==='fr-qty'){ state.fr.qty=el.value; render(); return; }
@@ -9339,7 +9358,7 @@ function doorReady_(p){
   const ws = Object.keys(p.sizes).map(Number);
   const cr = customReady_(p);
   if(!p.code || (!ws.length && !cr)) return false;
-  if(!ws.every(w=>Number(p.sizes[w].qty)>0 && p.sizes[w].frame!=null && p.sizes[w].dbror!=null)) return false;
+  if(!ws.every(w=>wholeQuantity_(p.sizes[w].qty)>0 && p.sizes[w].frame!=null && p.sizes[w].dbror!=null)) return false;
   return !p.customOn || (cr && p.custom.frame!=null && p.custom.dbror!=null);
 }
 function refreshSummary(){
@@ -9351,7 +9370,7 @@ function refreshSummary(){
 // زرار إضافة ألواح البروديوم — بيتحدّث من غير render كامل عشان الكيبورد ما يقفلش وإحنا بنكتب
 function refreshPanelBtn(){
   const b=document.querySelector('[data-act="add-pd"]'); if(!b) return;
-  const q=Math.max(0,Math.round(Number(state.pd.qty)||0));
+  const q=wholeQuantity_(state.pd.qty);
   b.disabled=!(q>0 && state.pd.code);
   b.textContent = !state.pd.code ? 'اختر اللون الأول (كود الباب)'
     : (q>0 ? `أضف ${q} لوح بروديوم — ${state.pd.code}` : 'اكتب عدد الألواح');
@@ -9374,6 +9393,7 @@ function refreshRodBtn(act){
    السلة
    ============================================================ */
 async function addDoor(){
+  if(Object.values(state.pick.sizes||{}).some(e=>!wholeQuantity_(e.qty))||(state.pick.customOn&&!wholeQuantity_(state.pick.custom.qty))){toast('اكتب عدد أبواب صحيح أكبر من صفر');return;}
   const p=state.pick;
   const widths = Object.keys(p.sizes).map(Number).filter(w=>(Number((p.sizes[w]||{}).qty)||0)>0);
   const customReady = customReady_(p);
@@ -9392,7 +9412,7 @@ async function addDoor(){
 
   widths.forEach(w=>{
     const e=p.sizes[w];
-    const qty=Number(e.qty)||1;
+    const qty=wholeQuantity_(e.qty);
     // ارتفاع الفتحة المعمارية اختياري ولكل مقاس ارتفاعه الخاص بيه (المقاس الخاص أصلًا بياخد ارتفاعه من حقل الطول بتاعه)
     const doorHeight = e.height ? Number(e.height) : 0;
     const sizeTxt=w+' سم', sizeEn=w+' cm', unitPrice=priceForWidth(w,e.hafr);
@@ -9412,7 +9432,7 @@ async function addDoor(){
   });
 
   if(customReady){
-    const w=Number(p.custom.w), h=Number(p.custom.h), qty=Number(p.custom.qty)||1;
+    const w=Number(p.custom.w), h=Number(p.custom.h), qty=wholeQuantity_(p.custom.qty);
     // ⚠️ المقاس الخاص كان بيتضاف عليه CUSTOM_EXTRA في السعر. دلوقتي السعر زي
     // سعر المقاس العادي بالظبط، و«خدمة قص» بتتكتب كسطر تحت الصنف — تبان
     // للمصنع وللعميل من غير ما تتحسب في الفلوس.
@@ -9443,6 +9463,7 @@ async function addDoor(){
 }
 
 function addRod(kind){
+  if(kind==='frame'&&state.fr.kind!=='rods'&&state.fr.brSize&&!(rodQty_(state.fr.brQty)>0)){toast('اكتب عدد البرور لكل طقم');return;}
   const isFrame = kind==='frame';
   const st = isFrame?state.fr:state.br;
   if(!st.code){toast('اختر اللون (كود الباب) الأول — الحلق/البرور بيتصنّع بلون');return;}
@@ -9570,8 +9591,8 @@ function addRod(kind){
     // بالمتر، وإلا الطلب اللي بعده يطلع «٢٢٠ متر».
     state.fr.jamb=2; state.fr.header=1;
     state.fr.jambCm=lenFromCm_(220, state.fr.unit); state.fr.headerCm=lenFromCm_(110, state.fr.unit);
-    state.fr.extra=[]; state.fr.rods=''; state.fr.rodsCm=''; state.fr.doorW=''; state.fr.note=''; state.fr.qty=1; state.fr.nonStd=false;
-    state.fr.brSize=''; state.fr.brQty=5; state.fr.brLen='';
+    state.fr.extra=[]; state.fr.rods=''; state.fr.rodsCm=''; state.fr.doorW=''; state.fr.note=''; state.fr.qty=''; state.fr.nonStd=false;
+    state.fr.brSize=''; state.fr.brQty=''; state.fr.brLen='';
   } else {
     const b = BRORS.find(x=>x.size===st.size)||BRORS[0];
     const rods = rodQty_(st.rods);
@@ -9582,7 +9603,7 @@ function addRod(kind){
       'برور '+b.size+' — عود '+rodCm+' سم'+(st.code?' — '+st.code+(dName?' '+dName:''):''),
       'Bror '+b.size+' - '+rodCm+'cm rod'+(st.code?' - '+st.code:''));
     added = rods;
-    state.br.rods=1; state.br.len=lenFromCm_(rodCm, state.br.unit) || BROR_ROD_M_DEFAULT;
+    state.br.rods=''; state.br.len=lenFromCm_(rodCm, state.br.unit) || BROR_ROD_M_DEFAULT;
   }
 
   saveCart_();
@@ -9603,7 +9624,7 @@ function mbWall_(){
   if(m.wallCustom){ const n = Number(decIn_(m.wallTxt)); return n>0 ? Math.round(n*100)/100 : 0; }
   return Number(m.wall)||0;
 }
-function mbQty_(){ return Math.max(0, Math.round(Number(decIn_(String(state.mb.qty==null?'':state.mb.qty)))||0)); }
+function mbQty_(){ return wholeQuantity_(state.mb.qty); }
 function mbNum_(n){ return String(Math.round(Number(n)*100)/100); }
 function mbSpec_(wall, h, w){ return wall+' سم — '+mbNum_(h)+'×'+mbNum_(w); }
 function parseMabraSpec_(spec){
@@ -9650,14 +9671,14 @@ function addMabra(){
   saveCart_();
   clearPulledLine_();
   toast('اتضاف '+qty+' معبرة');
-  state.mb = {wall:st.wall, wallCustom:st.wallCustom, wallTxt:st.wallTxt, code:'', doorW:'', custom:false, w:'', h:'', qty:1};
+  state.mb = {wall:st.wall, wallCustom:st.wallCustom, wallTxt:st.wallTxt, code:'', doorW:'', custom:false, w:'', h:'', qty:''};
   render();
 }
 
 function addPanel(){
   const st = state.pd;
   if(!st.code){toast('اختر اللون (كود الباب) الأول — الحلق/البرور بيتصنّع بلون');return;}
-  const qty = Math.max(0, Math.round(Number(st.qty)||0));
+  const qty = wholeQuantity_(st.qty);
   if(qty<=0){toast('اكتب عدد الألواح');return;}
   const dName = (DOORS.find(x=>x.code===doorCode_(st.code))||{}).name || '';
   const key = 'panel|'+st.code;
@@ -9674,7 +9695,7 @@ function addPanel(){
   saveCart_();
   clearPulledLine_();
   toast('اتضاف '+qty+' لوح بروديوم');
-  state.pd={code:'', qty:1};
+  state.pd={code:'', qty:''};
   render();
 }
 
@@ -9709,14 +9730,14 @@ function addMeter_(k){
   saveCart_();
   clearPulledLine_();
   toast('اتضاف '+qty+' متر '+m.ar);
-  state[m.st] = {code:'', qty:1};
+  state[m.st] = {code:'', qty:''};
   render();
 }
 
 function addAccessories(){
   let n=0;
   ACCESSORIES.forEach(a=>{
-    const q=state.acc[a.id]||0; if(!q) return;
+    const q=state.acc[a.id]||''; if(!q) return;
     const ex=state.cart.find(it=>it.kind==='acc'&&it.id===a.id);
     if(ex) ex.qty=Math.round((ex.qty+q)*100)/100;
     else state.cart.push({kind:'acc',id:a.id,title:a.name,titleEn:a.en,price:a.price,qty:q,unit:a.unit});
@@ -9742,16 +9763,16 @@ function resetPickerFor_(kind){
       custom:{w:'',h:'',qty:'',frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,
               frameKind:null,frameRodQty:'',frameForDoors:''}};
   } else if(kind==='frame'){
-    state.fr = {cm:10, code:'', doorW:'', kind:'full', qty:1, brSize:'', brQty:5, brLen:'', nonStd:false,
+    state.fr = {cm:10, code:'', doorW:'', kind:'full', qty:'', brSize:'', brQty:'', brLen:'', nonStd:false,
                 jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:'', unit:'cm'};
   } else if(kind==='bror'){
-    state.br = {size:'6×9', code:'', rods:1, len:BROR_ROD_M_DEFAULT, unit:'m'};
+    state.br = {size:'6×9', code:'', rods:'', len:BROR_ROD_M_DEFAULT, unit:'m'};
   } else if(kind==='mabra'){
-    state.mb = {wall:10, wallCustom:false, wallTxt:'', code:'', doorW:'', custom:false, w:'', h:'', qty:1};
+    state.mb = {wall:10, wallCustom:false, wallTxt:'', code:'', doorW:'', custom:false, w:'', h:'', qty:''};
   } else if(kind==='panel'){
-    state.pd = {code:'', qty:1};
+    state.pd = {code:'', qty:''};
   } else if(kind==='strip' || kind==='veneer'){
-    state[METER_KINDS_[kind].st] = {code:'', qty:1};
+    state[METER_KINDS_[kind].st] = {code:'', qty:''};
   } else if(kind==='acc'){
     state.acc = {};
   }
@@ -10740,9 +10761,9 @@ async function submitOrder(){
       (async ()=>{
         busy(true, 'جارٍ تأكيد رقم الطلب مع المصنع…');
         let waiting=true;
-        const uiTimer=setTimeout(()=>{waiting=false;busy(false);toast('التأكيد أخد وقت أطول. الطلب والصورة محفوظين، والمتابعة شغالة بدون إعادة إرسال. ما تضغطش إرسال تاني؛ راجع تحقق من الاستلام.',10000);},15000);
+        const uiTimer=setTimeout(()=>{waiting=false;busy(false);if(loadSent_().map(String).includes(String(o.id)))return;toast('التأكيد أخد وقت أطول. الطلب والصورة محفوظين، والمتابعة شغالة بدون إعادة إرسال. ما تضغطش إرسال تاني؛ راجع تحقق من الاستلام.',10000,o.id);},15000);
         let received=false;try{received=await syncing;}catch(e){}finally{clearTimeout(uiTimer);busy(false);}
-        render();if(received===true){if(waiting)shareOrderImage(o);else toast('تأكد استلام المصنع برقم '+orderNoText_(o)+'. الصورة جاهزة من زر مشاركة صورة، لم نفتحها متأخرًا تلقائيًا.',10000);}else toast(o.displayNo?'المصنع سجّل الطلب برقم '+orderNoText_(o)+'، لكن تأكيد تفاصيل التصميم لم يكتمل. لا تعيد الإرسال؛ راجع الاستلام.':'الطلب محفوظ على جهازك، لكن استلام المصنع لم يتأكد. راجع تابع طلبك؛ لم نفتح المشاركة تلقائيًا',10000);
+        render();if(received===true||loadSent_().map(String).includes(String(o.id))){clearOrderToast280_(o.id);if(waiting)shareOrderImage(o);else toast('تأكد استلام المصنع برقم '+orderNoText_(o)+'. الصورة جاهزة من زر مشاركة صورة، لم نفتحها متأخرًا تلقائيًا.',10000);}else toast(o.displayNo?'المصنع سجّل الطلب برقم '+orderNoText_(o)+'، لكن تأكيد تفاصيل التصميم لم يكتمل. لا تعيد الإرسال؛ راجع الاستلام.':'الطلب محفوظ على جهازك، لكن استلام المصنع لم يتأكد. راجع تابع طلبك؛ لم نفتح المشاركة تلقائيًا',10000);
       })();
     }
     // ⚠️ باج كان هنا: الكتلة دي بتشتغل في الخلفية، وتحتها على طول كان بيتعمل
@@ -11394,22 +11415,19 @@ function toggleTheme_(){
 }
 
 async function doUpdate(){
-  busy(true,'جارٍ التحديث…');
-  try{
-    if('caches' in window){
-      const keys=await caches.keys();
-      await Promise.all(keys.map(k=>caches.delete(k)));
-    }
-    if('serviceWorker' in navigator){
-      const regs=await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map(r=>r.unregister()));
-    }
-  }catch(e){}
-  // بنضيف طابع وقت للرابط عشان نتخطى كاش المتصفح نفسه — location.reload لوحدها
-  // ممكن ترجّع نفس النسخة القديمة من الكاش.
-  const u = new URL(location.href);
-  u.searchParams.set('v', Date.now());
-  location.replace(u.toString());
+ if(!navigator.onLine){toast('النت مقطوع؛ النسخة والبيانات المحفوظة لسه موجودة. حدّث لما يرجع الاتصال',6000);return;}
+ busy(true,'جارٍ تجهيز التحديث من غير مسح البيانات…');
+ try{
+   if('serviceWorker' in navigator){
+     const reg=await navigator.serviceWorker.getRegistration();
+     if(reg){
+       await reg.update();
+       if(reg.installing)await new Promise((resolve,reject)=>{const w=reg.installing;const t=setTimeout(()=>reject(new Error('التحديث لم يجهز؛ النسخة المحفوظة لم تُمسح')),30000);w.addEventListener('statechange',()=>{if(w.state==='installed'){clearTimeout(t);resolve();}if(w.state==='redundant'){clearTimeout(t);reject(new Error('فشل تجهيز التحديث؛ المحفوظ لم يُمسح'));}});});
+       if(reg.waiting){await new Promise((resolve,reject)=>{const t=setTimeout(()=>reject(new Error('تعذّر تفعيل التحديث')),15000);navigator.serviceWorker.addEventListener('controllerchange',()=>{clearTimeout(t);resolve();},{once:true});reg.waiting.postMessage({type:'SKIP_WAITING'});});}
+     }
+   }
+   const u=new URL(location.href);u.searchParams.set('v',Date.now());location.replace(u.toString());
+ }catch(e){busy(false);toast(e.message||'التحديث لم يكتمل؛ المحفوظ لم يُمسح',6500);}
 }
 
 let deferredPrompt=null;
@@ -11520,7 +11538,7 @@ for(const [tab,kind] of Object.entries({home:"home",new:"door",cart:"cart",order
 /* Additive door workflow. Existing orders, legacy picker and server API stay intact. */
 const FLOW_KEY_='wpc_door_flow_v1';
 const FLOW_PRODUCTS_KEY_='wpc_product_drafts_v1';
-const flowBlankVariant_=()=>({w:'',h:'215',qty:'1',frame:15,frameHeight:'',dbror:'6×9'});
+const flowBlankVariant_=()=>({w:'',h:'215',qty:'',frame:15,frameHeight:'',dbror:'6×9'});
 const flowBlank_=()=>({stage:'categories',ownerChosen:false,ownerChoice278:'',code:'',source:'catalog',pattern:'',method:'print',wood:false,note:'',art:'',variants:[flowBlankVariant_()],edit:null});
 let doorFlow_=Object.assign(flowBlank_(),load(FLOW_KEY_,{}));
 let _flowBusy_=false;
@@ -11780,9 +11798,18 @@ function markUpdateReady(){
   toast('فيه إصدار جديد — اضغط 🔄 تحديث فوق');
 }
 
+async function checkOfflineReady280_(){
+ const el=document.getElementById('offlineReady280');if(!el)return;
+ try{const cache=await caches.open('wpc-shell-v280');const files=['index.html','img/logo.png','img/mark.png','html2canvas.js','jspdf.js','exceljs.js',...['A01','A02','A03','A04','A05','A06','A07','A08','A09','A010','A013'].map(c=>'img/doors/'+c+'.jpg')];
+ const ready=(await Promise.all(files.map(f=>cache.match(new URL(f,location.href).href)))).every(Boolean);
+ el.textContent=ready?'ملفات الأوفلاين جاهزة على الجهاز · الطلب ورسوماته لازم يكونوا محفوظين عليه':'ملفات الأوفلاين لسه بتتجهز؛ افتح التطبيق بالنت لحد ما تجهز';
+ }catch(e){el.textContent='تجهيز الأوفلاين لم يتأكد على الجهاز؛ افتحه بالنت أول مرة';}
+}
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>{
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg=>{
+      navigator.serviceWorker.ready.then(()=>checkOfflineReady280_());
+      navigator.serviceWorker.addEventListener('controllerchange',checkOfflineReady280_);
       // لو لقى نسخة جديدة مستنية، بننبّه على زرار التحديث فوق
       if(reg.waiting) markUpdateReady();
       reg.addEventListener('updatefound',()=>{
@@ -11906,7 +11933,7 @@ viewNew=function(){let html=flowViewBefore276_();const f=doorFlow_;if(!flowAccou
 async function verifyReceipt276_(o){if(!APPS_SCRIPT_URL||!o.phone){toast('رقم الحساب المحفوظ مع الطلب غير متاح؛ لا يمكن التحقق بدقة. الطلب لم يُرسل من التحقق',7000);return;}
  busy(true,'جارٍ التحقق من استلام المصنع، بدون إرسال…');
  try{const d=await jsonp(APPS_SCRIPT_URL+'?action=list&dev='+encodeURIComponent(deviceId_())+'&phone='+encodeURIComponent(o.phone));if(!d||!d.ok)throw new Error(d&&d.error||'تعذّر قراءة حالة المصنع');const hit=(d.orders||[]).find(x=>String(x.id)===String(o.id));
- if(hit&&hit.displayNo){cacheReceipt277_(o,hit);render();}const box=document.createElement('div');box.className='dueov';const found=!!hit;box.innerHTML=`<div class="box"><h3>${found?'المصنع مسجّل الطلب':'لم نجد تأكيد استلام لهذا الطلب'}</h3><p><bdi>${esc(o.id)}</bdi></p><p>${found?'رقم المصنع: '+esc(hit.displayNo||'غير متاح')+' · الحالة: '+esc(hit.status||'غير محددة'):'القراءة نجحت، لكن المرجع غير موجود تحت رقم الحساب المحفوظ مع هذا الطلب. لا تعيد الإرسال قبل التأكد من رقم الحساب والطلب الصحيح.'}</p><p>التحقق قراءة فقط، لم يرسل أو يلغِ أي طلب. وجود سجل لا يؤكد تفاصيل كل تصميم.</p><button class="btn brand" data-receipt-close276>تمام</button></div>`;box.querySelector('[data-receipt-close276]').onclick=()=>box.remove();document.body.appendChild(box);
+ const complete=hit?await reconcileReceipt280_(o,hit):false;if(hit&&hit.displayNo)render();const box=document.createElement('div');box.className='dueov';const found=!!hit;box.innerHTML=`<div class="box"><h3>${found?'المصنع مسجّل الطلب':'لم نجد تأكيد استلام لهذا الطلب'}</h3><p><bdi>${esc(o.id)}</bdi></p><p>${found?'رقم المصنع: '+esc(hit.displayNo||'غير متاح')+' · الحالة: '+esc(hit.status||'غير محددة'):'القراءة نجحت، لكن المرجع غير موجود تحت رقم الحساب المحفوظ مع هذا الطلب. لا تعيد الإرسال قبل التأكد من رقم الحساب والطلب الصحيح.'}</p><p>التحقق قراءة فقط، لم يرسل أو يلغِ أي طلب. ${complete?'تم التأكد من عنوان العميل وربط مرفقات هذا الطلب، واتشال من المعلّق على الجهاز.':'وجود سجل لا يؤكد تفاصيل كل تصميم؛ المعلّق يفضل محفوظًا لو التحقق الكامل لم يكتمل.'}</p><button class="btn brand" data-receipt-close276>تمام</button></div>`;box.querySelector('[data-receipt-close276]').onclick=()=>box.remove();document.body.appendChild(box);
  }catch(e){toast('تعذّر التحقق: '+e.message+'؛ ده مش دليل إن الطلب ما وصلش. لم يُرسل أي شيء',8000);}finally{busy(false);}}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act="verify-receipt-276"]');if(b){const o=state.orders.find(x=>String(x.id)===String(b.dataset.id));if(o)verifyReceipt276_(o);}});
 function stickyOffset276_(){const bar=document.getElementById('appbar');document.documentElement.style.setProperty('--flow-sticky-top276',(bar?bar.getBoundingClientRect().height:0)+'px');}
