@@ -2526,7 +2526,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v268';
+const APP_BUILD   = 'v269';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3037,6 +3037,8 @@ function save(k,v){
 /* v265: Private order artwork. Bytes and signing credentials live in IndexedDB,
    not order JSON, restoration lists, filenames, links, exports or console logs. */
 const _printThumbs = new Map();
+// Complete original-file references, separate from any legacy prepared preview.
+const _printOriginalThumbs = new Map();
 const _printMotifRefs = new Set();
 const _printExpiredRefs = new Set();
 const _printLifetimes = load('wpc_art_lifetimes_v265',{});
@@ -3065,7 +3067,7 @@ async function sweepLocalArtwork_(){
       if(protectedRefs.has(rec.ref)||!Array.isArray(rec.orders)||!rec.orders.length)continue;
       if(rec.orders.every(id=>artworkExpiredForOrder_({id}))){
         /* Keep device originals: another offline draft/tab may still need them. Drive expiry is server-controlled. */
-        _printThumbs.delete(rec.ref);_printExpiredRefs.add(rec.ref);
+        _printThumbs.delete(rec.ref);_printOriginalThumbs.delete(rec.ref);_printExpiredRefs.add(rec.ref);
       }
     }
   }finally{_printSweepRunning=false;}
@@ -3149,12 +3151,12 @@ async function attachPreparedPrintPreview_(entry,field,file,reset=false){
 function printUploadHTML_(e,w,type='print'){
   const field=type==='engrave'?'engraveArt':'printArt',selected=type==='engrave'?e.hafr:e.print,label=type==='engrave'?'الحفر':'الطباعة';
   if(!selected) return '';
-  const ready=printRefOk_(e[field]),thumb=_printThumbs.get(e[field])||'';
+  const ready=printRefOk_(e[field]),thumb=_printOriginalThumbs.get(e[field])||'';
   return `<div style="padding:10px;margin-top:8px;border:1.5px solid ${ready?'#7DBE93':'#E5A449'};border-radius:10px;background:#FAFCFF">
     <b style="display:block;font-size:13px">شكل ${label} — إجباري</b>
     ${thumb?`<img src="${esc(thumb)}" alt="معاينة شكل الطباعة" style="width:52px;height:88px;object-fit:contain;display:block;margin:7px auto">`:''}
     <label class="btn outline" style="display:inline-flex;margin-top:7px;cursor:pointer">${ready?'تغيير صورة '+label:'اختار صورة '+label}<input type="file" accept="image/png,image/jpeg,image/webp" data-print-file="${esc(w)}" data-print-kind="${type}" style="position:absolute;width:1px;height:1px;opacity:0"></label>
-    ${ready?`<div style="margin-top:8px;border-top:1px solid #DDD;padding-top:8px"><label class="btn outline" style="display:inline-flex;cursor:pointer;min-height:44px;align-items:center">إرفاق رسمة شفافة للمعاينة<input type="file" accept="image/png" data-motif-file="${esc(w)}" data-print-kind="${type}" style="position:absolute;width:1px;height:1px;opacity:0"></label><button type="button" class="btn outline" data-motif-reset="${esc(w)}" data-print-kind="${type}" style="margin-top:5px;min-height:44px">استخدام معاينة الأصل</button><div style="font-size:11.5px;line-height:1.55;margin-top:6px">اختياري: رسمة PNG مُجهّزة بخلفية شفافة، وليست صورة باب كامل. تُعرض على بابنا بنفس نسبها واتجاهها، بدون مد أو قص أو عكس. الأصل يظل مرفقًا كما هو. لا يوجد فصل تلقائي للرسم من الصور، والمعاينة لا تعتمد مقاسات التنفيذ.</div></div>`:''}
+    ${ready?'<div style="font-size:12px;line-height:1.6;margin-top:8px">تظهر الصورة كاملة كمرجع منفصل بجوار الموديل والمقاسات والتجهيزات. لا تحتاج فصل الرسمة أو تجهيز ملف إضافي.</div>':''}
     <div style="font-size:11.5px;line-height:1.5;margin-top:6px">${ready?'الصورة محفوظة على الجهاز، وتترفع للمصنع مع الطلب.':'اختار صورة قبل إضافة الباب للسلة.'} الأصل كما هو، حتى ٥ ميجا. المعاينة تقريبية ولا تحدد موضع التنفيذ النهائي. تتحذف نسخة Drive نهائيًا بعد ٧٢ ساعة من «جاهز للتحميل»، والمراجعة كل ساعة.</div>
   </div>`;
 }
@@ -3170,7 +3172,7 @@ document.addEventListener('change',async ev=>{
     const data=await printDataUrl_(file),thumb=await printPreview_(data);
     const rec={ref:'pa_'+printRandom_(16),key:printRandom_(32),data,thumb,orders:[],created:Date.now()};
     await printPut_(rec); // Never replace an earlier design until the new bytes are durable.
-    await rememberPrintMotif_(rec.ref,thumb);_printThumbs.set(rec.ref,thumb);entry[input.dataset.printKind==='engrave'?'engraveArt':'printArt']=rec.ref;
+    await rememberPrintMotif_(rec.ref,thumb);_printOriginalThumbs.set(rec.ref,thumb);_printThumbs.set(rec.ref,thumb);entry[input.dataset.printKind==='engrave'?'engraveArt':'printArt']=rec.ref;
     if(!save('wpc_pick_draft_v265',state.pick))throw new Error('الصورة محفوظة، لكن تعذّر حفظ اختيارات الباب؛ لا تغلق الصفحة قبل إضافته للسلة');
     toast('اتحفظ شكل الطباعة على الجهاز؛ هيتحفظ مع الأوردر عند الإرسال');
   }catch(err){toast(err.message||'تعذّر حفظ الصورة؛ اختياراتك محفوظة',6500);}
@@ -3269,19 +3271,22 @@ async function printStatusLinked_(o){
 }
 async function preparePrintDocument_(o){
   for(const ref of orderArtRefs_(o)){
-    if(artworkExpiredForOrder_(o)){_printThumbs.delete(ref);_printExpiredRefs.add(ref);continue;}
-    if(/^data:image\//.test(ref)){_printThumbs.set(ref,ref);continue;} // Local visual fixtures, never accepted by backend.
+    if(artworkExpiredForOrder_(o)){_printThumbs.delete(ref);_printOriginalThumbs.delete(ref);_printExpiredRefs.add(ref);continue;}
+    if(/^data:image\//.test(ref)){_printOriginalThumbs.set(ref,ref);continue;} // Local visual fixtures only.
     if(!printRefOk_(ref))throw new Error('مرجع ملف التصميم غير صالح');
-    if(_printThumbs.has(ref))continue;
+    if(_printOriginalThumbs.has(ref))continue;
     const rec=await printGet_(ref);
-    if(rec&&rec.thumb){_printThumbs.set(ref,rec.thumb);continue;}
-    if(!state.admin.pw)throw new Error('التصميم غير متاح على هذا الجهاز؛ اطلب النسخة من المصنع. لن نجهّز ورقة ناقصة');
-    const d=await jsonp(APPS_SCRIPT_URL+'?action=printRead'+admParams_()+'&orderId='+encodeURIComponent(o.id)+'&ref='+encodeURIComponent(ref),30000);
-    if(d&&d.expired){_printThumbs.delete(ref);_printExpiredRefs.add(ref);continue;}
-    if(!d||!d.ok||!d.dataUrl)throw new Error(d&&d.error||'تعذّر تحميل التصميم؛ لم يتم تجهيز ورقة ناقصة');
-    _printThumbs.set(ref,d.dataUrl);
+    if(rec&&rec.data){
+      _printOriginalThumbs.set(ref,await printPreview_(rec.data));
+      if(rec.thumb)_printThumbs.set(ref,rec.thumb);
+      continue;
+    }
+    if(!state.admin.pw)throw new Error('الصورة الأصلية غير متاحة على هذا الجهاز؛ اطلب النسخة من المصنع. لن نجهّز ورقة ناقصة');
+    const d=await jsonp(APPS_SCRIPT_URL+'?action=printRead'+admParams_()+'&original=1&orderId='+encodeURIComponent(o.id)+'&ref='+encodeURIComponent(ref),60000);
+    if(d&&d.expired){_printThumbs.delete(ref);_printOriginalThumbs.delete(ref);_printExpiredRefs.add(ref);continue;}
+    if(!d||!d.ok||!d.dataUrl)throw new Error(d&&d.error||'تعذّر تحميل الصورة الأصلية؛ لم يتم تجهيز ورقة ناقصة');
+    _printOriginalThumbs.set(ref,await printPreview_(d.dataUrl));
   }
-  for(const ref of orderArtRefs_(o))if(!_printExpiredRefs.has(ref))await rememberPrintMotif_(ref,_printThumbs.get(ref));
   await prepareDocFinishes_(o);
 }
 async function downloadPrintOriginal_(orderId,ref){
@@ -3314,7 +3319,7 @@ async function restorePrintThumbnails_(){
   await sweepLocalArtwork_().catch(()=>{});
   const refs=new Set((state.cart||[]).flatMap(it=>[it.printArt,it.engraveArt]));
   Object.values(state.pick.sizes||{}).concat([state.pick.custom||{}]).forEach(e=>{refs.add(e.printArt);refs.add(e.engraveArt);});
-  for(const ref of refs){if(!printRefOk_(ref))continue;try{const rec=await printGet_(ref);if(rec&&rec.thumb){_printThumbs.set(ref,rec.thumb);await rememberPrintMotif_(ref,rec.thumb);}}catch(e){}}
+  for(const ref of refs){if(!printRefOk_(ref))continue;try{const rec=await printGet_(ref);if(rec&&rec.data)_printOriginalThumbs.set(ref,await printPreview_(rec.data));if(rec&&rec.thumb){_printThumbs.set(ref,rec.thumb);await rememberPrintMotif_(ref,rec.thumb);}}catch(e){}}
   render();
 }
 
@@ -10968,25 +10973,33 @@ function docTotalsHTML(o){
     // Isolate the model's leaf. Frame/trim bands below are conditional schematic highlights.
     const crop=[outer[0]+outer[2]*.12,outer[1]+outer[3]*.065,outer[2]*.76,outer[3]*.90];
     const imageStyle=`position:absolute;max-width:none;width:${100/crop[2]}%;height:${100/crop[3]}%;left:${-100*crop[0]/crop[2]}%;top:${-100*crop[1]/crop[3]}%;display:block`;
-    const art=_printThumbs.get(g.art)||(/^data:image\/(?:png|jpeg|webp);base64,/i.test(g.art)?g.art:'');
-    const engraving=_printThumbs.get(g.engraving)||(/^data:image\/(?:png|jpeg|webp);base64,/i.test(g.engraving)?g.engraving:'');
+    const art=_printOriginalThumbs.get(g.art)||(/^data:image\/(?:png|jpeg|webp);base64,/i.test(g.art)?g.art:'');
+    const engraving=_printOriginalThumbs.get(g.engraving)||(/^data:image\/(?:png|jpeg|webp);base64,/i.test(g.engraving)?g.engraving:'');
     const previews=g.isP&&g.isE?[{src:art,ref:g.art,label:'طباعة'},{src:engraving,ref:g.engraving,label:'حفر'}]:[{src:art||engraving,ref:art?g.art:g.engraving,label:g.isP?'طباعة':g.isE?'حفر':''}];
-    const prepared=previews.some(pr=>_printMotifRefs.has(pr.ref));
-    const pictures=previews.map(pr=>{
-      const motif=_printMotifRefs.has(pr.ref);
-      let assembly=`<div data-door-leaf="1" style="position:relative;width:${prepared?110:52}px;height:${prepared?236:108}px;background:#EFECE5;border:1px solid #777;overflow:hidden;box-sizing:border-box">${photo?`<img data-door-model="${esc(g.code)}" src="${esc(photo)}" style="${imageStyle}">`:'<span style="font-size:10px">ضلفة<br>صورة الموديل غير متاحة</span>'}${pr.src?`<img data-print-overlay="1" src="${esc(pr.src)}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:${motif?'contain':'fill'};opacity:${motif?'1':'.92'}">`:''}</div>`;
-      if(g.frame)assembly=`<div data-door-frame="${g.frame}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:5px 5px 0;border:1px solid #746B5F;border-bottom:0;${docFinishStyle_(g.code)}line-height:0">${assembly}</div>`;
-      if(g.dbror)assembly=`<div data-door-bror="${esc(g.dbror)}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:4px 4px 0;border:1px solid #746B5F;border-bottom:0;${docFinishStyle_(g.code)}line-height:0">${assembly}</div>`;
-      return `<div><div style="display:flex;align-items:center;justify-content:center;gap:3px;margin:4px 0;height:${prepared?264:135}px"><div>${assembly}</div>${g.wh?`<div style="position:relative;width:17px;height:${prepared?250:126}px"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(90deg);font-size:10.5px;font-weight:800;white-space:nowrap">الطول ${g.wh.h} سم</span></div>`:''}</div>${pr.label?`<div style="font-size:10px;font-weight:800;color:#B3261E;line-height:1.3">معاينة ${pr.label}${motif?' · رسمة مُجهّزة':''}${pr.src?'':(_printExpiredRefs.has(g.art)||_printExpiredRefs.has(g.engraving)?' · انتهت مدة حفظ التصميم':' · التصميم غير محمّل')}</div>`:''}</div>`;
-    }).join('');
-    return `<div data-door-drawing="1" class="keep-blk" style="flex:0 1 ${prepared?(previews.length>1?'330':'230'):(previews.length>1?'218':'146')}px;min-width:130px;background:${bg};border:1.5px solid ${bd};border-radius:10px;padding:7px 5px 6px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
+
+    const hasDesign=!!(g.isP||g.isE),twoDesigns=!!(g.isP&&g.isE);
+    // An attachment can be a complete door photo. Never stretch that photo onto
+    // another photographed door or add a second frame around its own frame.
+    const leafW=hasDesign?64:52,leafH=hasDesign?133:108;
+    let assembly=`<div data-door-leaf="1" style="position:relative;width:${leafW}px;height:${leafH}px;background:#EFECE5;border:1px solid #777;overflow:hidden;box-sizing:border-box">${photo?`<img data-door-model="${esc(g.code)}" src="${esc(photo)}" style="${imageStyle}">`:'<span style="font-size:10px">ضلفة<br>صورة الموديل غير متاحة</span>'}</div>`;
+    if(g.frame)assembly=`<div data-door-frame="${g.frame}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:5px 5px 0;border:1px solid #746B5F;border-bottom:0;${docFinishStyle_(g.code)}line-height:0">${assembly}</div>`;
+    if(g.dbror)assembly=`<div data-door-bror="${esc(g.dbror)}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:4px 4px 0;border:1px solid #746B5F;border-bottom:0;${docFinishStyle_(g.code)}line-height:0">${assembly}</div>`;
+    const technical=`<div style="${hasDesign?'flex:0 0 108px;width:108px;':''}">${hasDesign?'<div style="font-size:11px;font-weight:800;line-height:1.5;margin:4px 0">الموديل والتجهيز المطلوب</div>':''}<div style="display:flex;align-items:center;justify-content:center;gap:3px;margin:4px 0;height:${hasDesign?'280':'135'}px"><div>${assembly}</div>${g.wh?`<div style="position:relative;width:17px;height:${hasDesign?'158':'126'}px"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(90deg);font-size:10.5px;font-weight:800;white-space:nowrap">الطول ${g.wh.h} سم</span></div>`:''}</div></div>`;
+    const refW=twoDesigns?148:170;
+    const references=hasDesign?previews.map(pr=>{
+      const ref=pr.label==='حفر'?g.engraving:g.art;
+      const missing=_printExpiredRefs.has(ref)?'انتهت مدة حفظ التصميم':'التصميم غير محمّل';
+      return `<div data-artwork-reference="${pr.label==='حفر'?'engrave':'print'}" style="flex:0 0 ${refW}px;width:${refW}px"><div style="font-size:11px;font-weight:800;line-height:1.5;margin:4px 0">صورة ${pr.label==='حفر'?'الحفر':'الطباعة'} المرفقة</div><div style="height:280px;background:#fff;border:1px solid #CCD4DD;border-radius:5px;overflow:hidden;display:flex;align-items:center;justify-content:center;box-sizing:border-box">${pr.src?`<img data-print-reference="1" src="${esc(pr.src)}" style="display:block;width:100%;height:100%;object-fit:contain">`:`<span data-artwork-missing="1" style="padding:10px;font-size:11px;line-height:1.6;color:#B3261E">${missing}</span>`}</div></div>`;
+    }).join(''):'';
+    const pictures=technical+references;
+    return `<div data-door-drawing="1" class="keep-blk" style="flex:0 1 ${hasDesign?(twoDesigns?'440':'320'):'146'}px;min-width:${hasDesign?(twoDesigns?'430':'300'):'130'}px;background:${bg};border:1.5px solid ${bd};border-radius:10px;padding:7px 5px 6px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
       <div style="font-size:11px;font-weight:800;line-height:1.3">${g.wh?'عرض الفتحة '+g.wh.w+' سم':esc(g.base)}</div>
-      <div style="display:flex;justify-content:center;gap:4px">${pictures}</div>
+      <div style="display:flex;justify-content:center;gap:8px">${pictures}</div>
+      ${hasDesign?'<div style="font-size:10px;line-height:1.5;margin:6px 3px;color:#526171">الصورة مرجع للشكل، والمقاسات والتجهيزات المطلوبة كما هو مدوّن.</div>':''}
       <div dir="ltr" style="font-size:11px;font-weight:800;margin:2px 0">${esc(g.code||'بدون كود')}</div>
       <div data-door-components="1" style="font-size:10.5px;line-height:1.55;font-weight:800;margin:3px 0;min-height:33px">${g.frame?`<div style="color:#493E31">حلق ${g.frame} سم${g.frameHeight?' · ارتفاع '+g.frameHeight+' سم':' · ارتفاع استاندر'}</div>`:''}${g.dbror?`<div style="color:#493E31">برور <span dir="ltr" style="display:inline-block;direction:ltr">${esc(g.dbror)}</span></div>`:''}${!g.frame&&!g.dbror?'<div>ضلفة فقط</div>':''}</div>
-      ${prepared?'<div data-motif-caution="1" style="font-size:10px;line-height:1.5;color:#655134;margin:4px 0">رسمة مُجهّزة للمعاينة، بنفس نسب الملف واتجاهه، بدون مد أو قص. لا تعتمد مقاسات التنفيذ؛ يُراجع الأصل المرفق.</div>':''}
       <div data-door-quantity="1" style="display:inline-block;background:#fff;border:1.5px solid ${bd};border-radius:8px;padding:1px 10px;margin-top:2px;font-size:16px;font-weight:900;line-height:1.35">${g.qty} <span style="font-size:11px;font-weight:800">باب</span></div>
-      ${previews.length>1?'<div style="font-size:10px">نفس الأبواب، معاينتان للتصميمين</div>':''}
+      ${twoDesigns?'<div style="font-size:10px">نفس الأبواب، مرجع للطباعة ومرجع للحفر</div>':''}
     </div>`;
   }).join('');
   const frameItems=standalone.filter(it=>it.kind==='frame'),brorItems=standalone.filter(it=>it.kind==='bror');
