@@ -2531,7 +2531,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v271';
+const APP_BUILD   = 'v272';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3158,26 +3158,28 @@ const APPROVED_PRINT_SAMPLES_={"A01|EK1":"data:image/webp;base64,UklGRogqAABXRUJ
 const APPROVED_PRINT_REV_='1';
 const APPROVED_PRINT_COLORS_=['A01','A02','A03','A04','A010'];
 const APPROVED_PRINT_CODES_=Array.from({length:9},(_,i)=>'EK'+(i+1));
+function approvedPrintSampleColor_(color){return APPROVED_PRINT_COLORS_.includes(color)?color:'A02';}
 function approvedPrintMeta_(it){
   if(!it)return null;
-  const marker=/\[(EK[1-9])\/R([1-9]\d*)\]/.exec(String(it.titleEn||'')+' '+String(it.title||''));
+  const marker=/\[(EK[1-9])\/R([1-9]\d*)(?:@(A\d+))?\]/.exec(String(it.titleEn||'')+' '+String(it.title||''));
   const code=String(it.printDesign||marker&&marker[1]||''),rev=String(it.printDesignRev||marker&&marker[2]||'');
   if(!/^EK[1-9]$/.test(code)||!/^\d+$/.test(rev))return null;
-  return {code,rev,color:String(it.printDesignColor||it.code||'')};
+  const color=String(it.printDesignColor||it.code||''),sampleColor=String(it.printDesignSampleColor||marker&&marker[3]||color);
+  return {code,rev,color,sampleColor};
 }
-function approvedPrintFields_(it){const m=approvedPrintMeta_(it);return m?{printDesign:m.code,printDesignRev:m.rev,printDesignColor:m.color}:{};}
-function approvedPrintSuffix_(it){const m=it.print&&it.printMode!=='custom'&&approvedPrintMeta_(it);return m?' ['+m.code+'/R'+m.rev+']':'';}
+function approvedPrintFields_(it){const m=approvedPrintMeta_(it);return m?{printDesign:m.code,printDesignRev:m.rev,printDesignColor:m.color,printDesignSampleColor:m.sampleColor}:{};}
+function approvedPrintMarker_(m){return '['+m.code+'/R'+m.rev+(m.sampleColor&&m.sampleColor!==m.color?'@'+m.sampleColor:'')+']';}
+function approvedPrintSuffix_(it){const m=it.print&&it.printMode!=='custom'&&approvedPrintMeta_(it);return m?' '+approvedPrintMarker_(m):'';}
 function approvedPrintMode_(e){return e.printMode||(approvedPrintMeta_(e)?'approved':printRefOk_(e.printArt)?'custom':'approved');}
 function approvedPrintData_(color,code,rev=APPROVED_PRINT_REV_){return String(rev)===APPROVED_PRINT_REV_?APPROVED_PRINT_SAMPLES_[color+'|'+code]||'':'';}
 function approvedPrintEntry_(w){return w==='custom'?state.pick.custom:state.pick.sizes[Number(w)];}
 function saveApprovedPick_(){if(!save('wpc_pick_draft_v265',state.pick))throw new Error('الاختيار موجود، لكن تعذّر حفظ مسودة الباب؛ لا تغلق الصفحة');}
+function approvedPrintReferenceNote_(color,sampleColor){return sampleColor!==color?'المعاينة بلون '+sampleColor+' لعرض شكل الرسمة فقط. لون التنفيذ حسب كود الباب '+color+'.':'الصورة مرجع للشكل، ولون الباب حسب الكود '+color+'.';}
 function approvedPrintHTML_(e,w,customHTML){
-  const color=state.pick.code;
-  if(!APPROVED_PRINT_COLORS_.includes(color))return customHTML+'<div style="font-size:12px;line-height:1.6;padding:6px">الرسومات المعتمدة متاحة للألوان A01 / A02 / A03 / A04 / A010. لهذا اللون استخدم التصميم الخاص.</div>';
-  const mode=approvedPrintMode_(e),m=mode==='approved'&&approvedPrintMeta_(e),ready=m&&printRefOk_(e.printArt),thumb=ready&&(_printOriginalThumbs.get(e.printArt)||approvedPrintData_(color,m.code,m.rev));
+  const color=state.pick.code,mode=approvedPrintMode_(e),m=mode==='approved'&&approvedPrintMeta_(e),sampleColor=m?m.sampleColor:approvedPrintSampleColor_(color),ready=m&&printRefOk_(e.printArt),thumb=ready&&(_printOriginalThumbs.get(e.printArt)||approvedPrintData_(m.sampleColor,m.code,m.rev));
   const tabs=`<div class="approved-print-tabs"><button type="button" class="${mode==='approved'?'on':''}" data-approved-mode="approved" data-approved-width="${esc(w)}">رسومات معتمدة</button><button type="button" class="${mode==='custom'?'on':''}" data-approved-mode="custom" data-approved-width="${esc(w)}">رفع تصميم خاص</button></div>`;
   if(mode==='custom')return tabs+customHTML;
-  return tabs+`<div class="approved-print-summary"><b>رسمة الطباعة المعتمدة ${ready?'· '+esc(m.code):'— مطلوبة'}</b><div class="approved-print-code">لون الباب <b dir="ltr">${esc(color)}</b>${m?' · رسمة <b dir="ltr">'+esc(m.code)+'</b> · إصدار '+esc(m.rev):''}</div>${thumb?'<img class="approved-print-selected" src="'+esc(thumb)+'" alt="رسمة '+esc(m.code)+' على لون '+esc(color)+'">':''}<button type="button" class="btn outline" data-approved-open="${esc(w)}">${ready?'تغيير الرسمة المعتمدة':'اختار من الرسومات التسعة'}</button><div style="font-size:12px;line-height:1.6;margin-top:9px">اختيار جاهز من الكتالوج، من غير رفع صورة. الصورة مرجع للشكل وليست ملف تشغيل ماكينة. نسخة الطلب تُحفظ بنفس قواعد مرفقات الطباعة الحالية.</div></div>`;
+  return tabs+`<div class="approved-print-summary"><b>رسمة الطباعة المعتمدة ${ready?'· '+esc(m.code):'— مطلوبة'}</b><div class="approved-print-code">لون الباب <b dir="ltr">${esc(color)}</b>${m?' · رسمة <b dir="ltr">'+esc(m.code)+'</b> · إصدار '+esc(m.rev):''}</div><div data-approved-reference-note style="font-size:12px;line-height:1.6;margin:8px 0;color:var(--ink)">${esc(approvedPrintReferenceNote_(color,sampleColor))}</div>${thumb?'<img class="approved-print-selected" src="'+esc(thumb)+'" alt="مرجع شكل '+esc(m.code)+' بلون العينة '+esc(sampleColor)+'، لون الباب '+esc(color)+'">':''}<button type="button" class="btn outline" data-approved-open="${esc(w)}">${ready?'تغيير الرسمة المعتمدة':'اختار من الرسومات التسعة'}</button><div style="font-size:12px;line-height:1.6;margin-top:9px">اختيار جاهز من الكتالوج، من غير رفع صورة. الصورة ليست ملف تشغيل ماكينة. نسخة الطلب تُحفظ بنفس قواعد مرفقات الطباعة الحالية.</div></div>`;
 }
 function changeApprovedPrintMode_(w,mode){
   const e=approvedPrintEntry_(w);if(!e||!['approved','custom'].includes(mode))return;
@@ -3185,7 +3187,7 @@ function changeApprovedPrintMode_(w,mode){
   if(before==='custom')e._customPrintArt=e.printArt||'';
   else e._approvedPrintChoice={...approvedPrintFields_(e),ref:e.printArt||''};
   if(mode==='custom'){
-    e.printArt=e._customPrintArt||'';delete e.printDesign;delete e.printDesignRev;delete e.printDesignColor;
+    e.printArt=e._customPrintArt||'';delete e.printDesign;delete e.printDesignRev;delete e.printDesignColor;delete e.printDesignSampleColor;
   }else{
     const old=e._approvedPrintChoice||{};e.printArt=old.ref||'';Object.assign(e,approvedPrintFields_(old));
   }
@@ -3193,19 +3195,19 @@ function changeApprovedPrintMode_(w,mode){
 }
 function closeApprovedPrintPicker_(){const el=document.getElementById('approvedPrintPicker');if(el)el.remove();}
 function showApprovedPrintPicker_(w){
-  const e=approvedPrintEntry_(w),color=state.pick.code;if(!e||!e.print||!APPROVED_PRINT_COLORS_.includes(color))return;
+  const e=approvedPrintEntry_(w),color=state.pick.code,sampleColor=approvedPrintSampleColor_(color);if(!e||!e.print||!DOORS.some(d=>d.code===color))return;
   closeApprovedPrintPicker_();const m=approvedPrintMeta_(e),ov=document.createElement('div');ov.id='approvedPrintPicker';ov.className='approved-print-overlay';ov.setAttribute('role','dialog');ov.setAttribute('aria-modal','true');ov.setAttribute('aria-label','اختيار رسمة الطباعة المعتمدة');
-  ov.innerHTML=`<div class="approved-print-dialog"><div class="approved-print-heading"><div><b>اختار رسمة الطباعة</b><div>على لون الباب <span dir="ltr">${esc(color)}</span></div></div><button type="button" class="btn outline" data-approved-close="1" aria-label="إغلاق">✕</button></div><div class="approved-print-grid">${APPROVED_PRINT_CODES_.map(code=>'<button type="button" class="approved-print-option '+(m&&m.code===code?'on':'')+'" data-approved-choose="'+code+'" data-approved-width="'+esc(w)+'"><img src="'+esc(approvedPrintData_(color,code))+'" alt="'+code+' على '+color+'"><b dir="ltr">'+code+'</b></button>').join('')}</div><div class="approved-print-hint">الصور من الكتالوج المعتمد. المقاسات والتجهيزات تُحدد مع الباب، والصورة ليست ملف تشغيل ماكينة.</div></div>`;
+  ov.innerHTML=`<div class="approved-print-dialog"><div class="approved-print-heading"><div><b>اختار رسمة الطباعة</b><div>لون الباب المطلوب <span dir="ltr">${esc(color)}</span></div></div><button type="button" class="btn outline" data-approved-close="1" aria-label="إغلاق">✕</button></div><div data-approved-reference-note class="approved-print-hint" style="margin:0 0 10px">${esc(approvedPrintReferenceNote_(color,sampleColor))}</div><div class="approved-print-grid">${APPROVED_PRINT_CODES_.map(code=>'<button type="button" class="approved-print-option '+(m&&m.code===code?'on':'')+'" data-approved-choose="'+code+'" data-approved-width="'+esc(w)+'"><img src="'+esc(approvedPrintData_(sampleColor,code))+'" alt="'+code+'، عينة '+sampleColor+'"><b dir="ltr">'+code+'</b></button>').join('')}</div><div class="approved-print-hint">الصور من الكتالوج المعتمد. المقاسات والتجهيزات تُحدد مع الباب، والصورة ليست ملف تشغيل ماكينة.</div></div>`;
   ov.addEventListener('click',ev=>{if(ev.target===ov)closeApprovedPrintPicker_();});document.body.appendChild(ov);ov.querySelector('[data-approved-close]').focus();
 }
 async function selectApprovedPrint_(w,code){
-  const color=state.pick.code,e=approvedPrintEntry_(w),data=approvedPrintData_(color,code);if(!e||!e.print||!data)throw new Error('اختار لونًا ورسمة من الكتالوج المعتمد');
-  const rec={ref:'pa_'+printRandom_(16),key:printRandom_(32),data,thumb:data,orders:[],created:Date.now(),source:'approved-print-catalog',design:code,revision:APPROVED_PRINT_REV_,color};
+  const color=state.pick.code,sampleColor=approvedPrintSampleColor_(color),e=approvedPrintEntry_(w),data=approvedPrintData_(sampleColor,code);if(!e||!e.print||!data||!DOORS.some(d=>d.code===color))throw new Error('اختار الباب ورسمة من الكتالوج المعتمد');
+  const rec={ref:'pa_'+printRandom_(16),key:printRandom_(32),data,thumb:data,orders:[],created:Date.now(),source:'approved-print-catalog',design:code,revision:APPROVED_PRINT_REV_,color,sampleColor};
   await printPut_(rec);
   if(approvedPrintEntry_(w)!==e||state.pick.code!==color)throw new Error('اختيار الباب تغيّر؛ افتح الرسومات تاني');
   if(approvedPrintMode_(e)==='custom')e._customPrintArt=e.printArt||'';
-  Object.assign(e,{printArt:rec.ref,printMode:'approved',printDesign:code,printDesignRev:APPROVED_PRINT_REV_,printDesignColor:color});
-  e._approvedPrintChoice={...approvedPrintFields_(e),ref:rec.ref};_printThumbs.set(rec.ref,data);_printOriginalThumbs.set(rec.ref,data);saveApprovedPick_();closeApprovedPrintPicker_();render();toast('تم اختيار '+code+' على لون '+color);
+  Object.assign(e,{printArt:rec.ref,printMode:'approved',printDesign:code,printDesignRev:APPROVED_PRINT_REV_,printDesignColor:color,printDesignSampleColor:sampleColor});
+  e._approvedPrintChoice={...approvedPrintFields_(e),ref:rec.ref};_printThumbs.set(rec.ref,data);_printOriginalThumbs.set(rec.ref,data);saveApprovedPick_();closeApprovedPrintPicker_();render();toast('تم اختيار '+code+' للباب '+color);
 }
 document.addEventListener('click',async ev=>{
   const b=ev.target.closest&&ev.target.closest('[data-approved-open],[data-approved-close],[data-approved-choose],[data-approved-mode]');if(!b)return;ev.preventDefault();
@@ -3247,7 +3249,7 @@ document.addEventListener('change',async ev=>{
     const rec={ref:'pa_'+printRandom_(16),key:printRandom_(32),data,thumb,orders:[],created:Date.now()};
     await printPut_(rec); // Never replace an earlier design until the new bytes are durable.
     await rememberPrintMotif_(rec.ref,thumb);_printOriginalThumbs.set(rec.ref,thumb);_printThumbs.set(rec.ref,thumb);entry[input.dataset.printKind==='engrave'?'engraveArt':'printArt']=rec.ref;
-    if(input.dataset.printKind!=='engrave'){entry.printMode='custom';entry._customPrintArt=rec.ref;delete entry.printDesign;delete entry.printDesignRev;delete entry.printDesignColor;}
+    if(input.dataset.printKind!=='engrave'){entry.printMode='custom';entry._customPrintArt=rec.ref;delete entry.printDesign;delete entry.printDesignRev;delete entry.printDesignColor;delete entry.printDesignSampleColor;}
     if(!save('wpc_pick_draft_v265',state.pick))throw new Error('الصورة محفوظة، لكن تعذّر حفظ اختيارات الباب؛ لا تغلق الصفحة قبل إضافته للسلة');
     toast('اتحفظ شكل الطباعة على الجهاز؛ هيتحفظ مع الأوردر عند الإرسال');
   }catch(err){toast(err.message||'تعذّر حفظ الصورة؛ اختياراتك محفوظة',6500);}
@@ -3292,7 +3294,7 @@ async function requirePrintLocal_(items){
     if(!printRefOk_(it[field]))throw new Error('ارفع شكل '+label+' لكل باب قبل الحفظ؛ السلة محفوظة');
     const rec=await printGet_(it[field]);
     if(!rec||!rec.key||!rec.data)throw new Error('ملف '+label+' '+(it.code||'')+' مش موجود على الجهاز؛ افتح تعديل البند واختار الصورة. السلة محفوظة');
-    if(field==='printArt'){const m=approvedPrintMeta_(it),expected=m&&approvedPrintData_(m.color,m.code,m.rev);if(m&&expected&&rec.data!==expected)throw new Error('صورة الرسمة لا تطابق كود التصميم المعتمد؛ افتح تعديل البند واختار الرسمة تاني');if(m&&it.code&&m.color!==it.code)throw new Error('لون الرسمة لا يطابق لون الباب؛ اختار الرسمة على اللون الصحيح');}
+    if(field==='printArt'){const m=approvedPrintMeta_(it),expected=m&&approvedPrintData_(m.sampleColor,m.code,m.rev);if(m&&(!expected||rec.data!==expected))throw new Error('صورة الرسمة لا تطابق كود التصميم المعتمد؛ افتح تعديل البند واختار الرسمة تاني');if(m&&it.code&&m.color!==it.code)throw new Error('لون الرسمة لا يطابق لون الباب؛ اختار الرسمة على اللون الصحيح');}
   }
 }
 async function hydrateFactoryArtCart_(){
@@ -5684,7 +5686,7 @@ function arabicItemTitle_(it){
     const base = d ? ('باب '+d.code+' '+d.name) : (it.code||it.title||'');
     return base + (String(it.milling||'').trim() ? ' (حفر)' : '')
                 + (PRINT_MARK_RE_.test(String(it.title||'')) ? ' (طباعة)' : '')
-                + (approvedPrintMeta_(it)?' ['+approvedPrintMeta_(it).code+'/R'+approvedPrintMeta_(it).rev+']':'')
+                + (approvedPrintMeta_(it)?' '+approvedPrintMarker_(approvedPrintMeta_(it)):'')
                 + (it.itemNote ? ' — '+it.itemNote : '');
   }
   // المقاس محفوظ إنجليزي في الشيت ('10 cm' / '6x9')، والمستند عربي —
@@ -11068,14 +11070,14 @@ function docTotalsHTML(o){
     const references=hasDesign?previews.map(pr=>{
       const ref=pr.label==='حفر'?g.engraving:g.art;
       const missing=_printExpiredRefs.has(ref)?'انتهت مدة حفظ التصميم':'التصميم غير محمّل';
-      return `<div data-artwork-reference="${pr.label==='حفر'?'engrave':'print'}" style="flex:0 0 ${refW}px;width:${refW}px"><div style="font-size:11px;font-weight:800;line-height:1.5;margin:4px 0">${pr.label==='طباعة'&&g.approved?'الطباعة المعتمدة '+esc(g.approved.code):'صورة '+(pr.label==='حفر'?'الحفر':'الطباعة')+' المرفقة'}</div><div style="height:280px;background:#fff;border:1px solid #CCD4DD;border-radius:5px;overflow:hidden;display:flex;align-items:center;justify-content:center;box-sizing:border-box">${pr.src?`<img data-print-reference="1" src="${esc(pr.src)}" style="display:block;width:100%;height:100%;object-fit:contain">`:`<span data-artwork-missing="1" style="padding:10px;font-size:11px;line-height:1.6;color:#B3261E">${missing}</span>`}</div></div>`;
+      return `<div data-artwork-reference="${pr.label==='حفر'?'engrave':'print'}" style="flex:0 0 ${refW}px;width:${refW}px"><div style="font-size:11px;font-weight:800;line-height:1.5;margin:4px 0">${pr.label==='طباعة'&&g.approved?'الطباعة المعتمدة '+esc(g.approved.code)+(g.approved.sampleColor!==g.code?' · عينة '+esc(g.approved.sampleColor):''):'صورة '+(pr.label==='حفر'?'الحفر':'الطباعة')+' المرفقة'}</div><div style="height:280px;background:#fff;border:1px solid #CCD4DD;border-radius:5px;overflow:hidden;display:flex;align-items:center;justify-content:center;box-sizing:border-box">${pr.src?`<img data-print-reference="1" src="${esc(pr.src)}" style="display:block;width:100%;height:100%;object-fit:contain">`:`<span data-artwork-missing="1" style="padding:10px;font-size:11px;line-height:1.6;color:#B3261E">${missing}</span>`}</div></div>`;
     }).join(''):'';
     const pictures=technical+references;
     return `<div data-door-drawing="1" class="keep-blk" style="flex:0 1 ${hasDesign?(twoDesigns?'440':'320'):'146'}px;min-width:${hasDesign?(twoDesigns?'430':'300'):'130'}px;background:${bg};border:1.5px solid ${bd};border-radius:10px;padding:7px 5px 6px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
       <div style="font-size:11px;font-weight:800;line-height:1.3">${g.wh?'عرض الفتحة '+g.wh.w+' سم':esc(g.base)}</div>
       <div style="display:flex;justify-content:center;gap:8px">${pictures}</div>
       ${hasDesign?'<div style="font-size:10px;line-height:1.5;margin:6px 3px;color:#526171">الصورة مرجع للشكل، والمقاسات والتجهيزات المطلوبة كما هو مدوّن.</div>':''}
-      <div dir="ltr" style="font-size:11px;font-weight:800;margin:2px 0">${esc(g.code||'بدون كود')}${g.approved?' · '+esc(g.approved.code)+' / R'+esc(g.approved.rev):''}</div>
+      <div dir="ltr" style="font-size:11px;font-weight:800;margin:2px 0">${esc(g.code||'بدون كود')}${g.approved?' · '+esc(g.approved.code)+' / R'+esc(g.approved.rev):''}</div>${g.approved&&g.approved.sampleColor!==g.code?'<div data-approved-source-color style="font-size:11px;line-height:1.6;font-weight:800;padding:5px;margin:4px 0;border:1px solid #D9A441;background:#FFF1D6;border-radius:5px">'+esc(approvedPrintReferenceNote_(g.code,g.approved.sampleColor))+'</div>':''}
       <div data-door-components="1" style="font-size:10.5px;line-height:1.55;font-weight:800;margin:3px 0;min-height:33px">${g.frame?`<div style="color:#493E31">حلق ${g.frame} سم${g.frameHeight?' · ارتفاع '+g.frameHeight+' سم':' · ارتفاع استاندر'}</div>`:''}${g.dbror?`<div style="color:#493E31">برور <span dir="ltr" style="display:inline-block;direction:ltr">${esc(g.dbror)}</span></div>`:''}${!g.frame&&!g.dbror?'<div>ضلفة فقط</div>':''}</div>
       <div data-door-quantity="1" style="display:inline-block;background:#fff;border:1.5px solid ${bd};border-radius:8px;padding:1px 10px;margin-top:2px;font-size:16px;font-weight:900;line-height:1.35">${g.qty} <span style="font-size:11px;font-weight:800">باب</span></div>
       ${twoDesigns?'<div style="font-size:10px">نفس الأبواب، مرجع للطباعة ومرجع للحفر</div>':''}
