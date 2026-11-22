@@ -2335,7 +2335,9 @@ svg.flow-pictorial{stroke:none;fill:none;stroke-width:1}svg.flow-pictorial{overf
 
 .flow-image-preview.is-zoomed img{width:auto;max-width:none;height:auto}.flow-image-zoom{display:block;width:100%;font-size:13px;padding:7px;margin:0 0 8px}
 </style>
-</head>
+<style>
+.flow-category-nav276,.ad-grid{position:sticky;top:var(--flow-sticky-top276,125px);z-index:25;background:var(--bg);padding:7px 2px;display:flex;gap:6px;overflow-x:auto;margin:0 0 12px;scrollbar-width:thin}.flow-category-nav276{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;overflow:visible}.flow-category-nav276 button{min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;border:1px solid var(--line);border-radius:12px;background:var(--card);padding:7px 1px;color:var(--ink);font:inherit;font-size:9px;font-weight:700;min-height:60px}.flow-category-nav276 button.on{border:2px solid var(--brand);background:var(--brand-soft,#e8f3ff)}.flow-category-nav276 .i{width:29px;height:29px}.ad-grid .ad-sq{flex:1;min-width:0;min-height:78px;padding:7px 2px;border-radius:12px;gap:3px}.ad-grid .ad-sq .n{width:30px;height:30px;border-radius:9px}.ad-grid .ad-sq .n .i{width:25px;height:25px}.ad-grid .ad-sq .tt b{font-size:10px;line-height:1.4}.ad-grid .ad-sq .tt small{display:none}.flow-owner-first .flow-chips{display:flex}.flow-owner-first .chip{flex:1;min-height:55px;font-size:17px}.flow-root h2{margin-top:8px}
+</style><style>body{font-size:14px}#view h2{font-size:18px}#view h3{font-size:16px}.flow-owner-first .chip{font-size:14px;min-height:46px}.flow-owner-first h3{font-size:18px}.flow-owner-first p{font-size:13px;line-height:1.6}.flow-owner-first>.note{font-size:11px}.flow-root{font-size:13px}.flow-root .fld>span{font-size:12px}.flow-root .fld input{min-height:42px;font-size:14px}.flow-owner-first .fld input{font-size:14px;min-height:42px}.ad-top b{font-size:29px}.ad-hero{padding:16px}.flow-owner-first{padding:16px}</style></head>
 <body>
 
 
@@ -2539,7 +2541,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v275';
+const APP_BUILD   = 'v276';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -4512,7 +4514,7 @@ function viewNew(){
   // صفحة بيانات الطلب بتيجي الأول — قبل ما يختار الأبواب أو أي صنف
   if(state.newStep!=='items'){
     return `
-  ${hero}
+  
   <section class="card">
     <div class="step"><span class="n">${ico("user","lg")}</span><h2>بيانات الطلب</h2></div>
     ${infoBody_}
@@ -4522,11 +4524,7 @@ function viewNew(){
   }
 
   return `
-  ${hero}
-  <div class="note" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-    <span>صاحب الأوردر: <b>${esc(state.custMode==='other' ? (state.customer.name||'—') : (state.profile.name||'—'))}</b>${state.custMode==='other'&&String(state.customer.region||'').trim()?` · ${esc(state.customer.region.trim())}`:''}</span>
-    <button class="btn ghost sm" data-act="info-back">تعديل</button>
-  </div>
+  
   ${ordNoteBtnHTML_()}
 
   ${secAccordion_}
@@ -4710,7 +4708,7 @@ function viewCart(){
     </div>
     ${ok?'':`<button class="ct-fix" data-act="home-go" data-to="new">${ico('warn')} ${state.custMode==='other'?'كمّل الاسم ورقم الموبايل واسم العميل الأول':'كمّل الاسم ورقم الموبايل الأول'}</button>`}
     ${ordNoteBoxHTML_('margin-bottom:12px')}
-    <button class="btn brand ct-send" data-act="submit">${editing?ico("save")+' حفظ التعديل وإرسال واتساب':ico("send")+' إرسال طلب الأوردر على واتساب'}</button>
+    <button class="btn brand ct-send" data-act="submit">${editing?ico("save")+' حفظ التعديل وإرسال واتساب':ico("send")+' إرسال للمصنع ثم مشاركة الصورة'}</button>
     <div class="btnrow" style="margin-top:9px">
       <button class="btn ghost sm" data-act="quote-cart">${ico("doc")} PDF الطلب</button>
       <button class="btn ghost sm" data-act="clear">تفريغ السلة</button>
@@ -4741,8 +4739,8 @@ function viewOrders(){
   const errNote = t.err ? `<div class="note" style="color:var(--danger);margin-bottom:10px">${esc(t.err)}</div>` : '';
   const pendingNote = pendingIds.size ? `<div class="note" style="margin-bottom:10px;background:#FFF6E5;
       border:1px solid var(--warn-line);color:var(--warn-ink);border-radius:8px;padding:9px 12px;font-weight:700">
-      ${ico('warn')} فيه ${pendingIds.size} طلب لسه ما وصلش المصنع — التطبيق بيحاول يبعتهم تلقائي.
-      خلّي النت شغّال وسيب التطبيق مفتوح شوية.</div>` : '';
+      ${ico('warn')} فيه ${pendingIds.size} طلب لسه ما وصلش المصنع — محفوظين على الجهاز بدون إعادة إرسال تلقائي.
+      اضغط «تحقق من الاستلام»؛ التحقق قراءة فقط ولا يرسل الطلب.</div>` : '';
 
   const cards = state.orders.map(o=>{
     const live = liveById[String(o.id)];
@@ -4761,7 +4759,7 @@ function viewOrders(){
       (o.items||[]).filter(x=>x&&!isCutLine_(x)).map(x=>x.title).join(' ')].join(' '));
     return `
     <div class="ord" data-q="${esc(_q)}" data-st="${_grp}"${o.restored?' data-restored="1"':''}${ordMatch_(_q,_grp)?'':' hidden'}${معلّق?' style="border:1.5px solid rgba(217,164,65,.55);background:rgba(217,164,65,.09)"':''}>
-      ${معلّق?`<div style="font-size:11.5px;font-weight:700;color:var(--warn-ink);margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}لسه ما وصلش المصنع — هيتبعت تلقائي أول ما النت يرجع</div>`:''}
+      ${معلّق?`<div style="font-size:11.5px;font-weight:700;color:var(--warn-ink);margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}لسه ما وصلش المصنع — محفوظ على الجهاز؛ لم يتأكد استلام المصنع، ومش هيتبعت تلقائي</div>`:''}
       <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:var(--warn-ink);background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:var(--danger-ink);background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${live?statusPill(live.status):''}</div>
       <div class="os">${esc(dateStr(o.ts))} · ${(o.items||[]).filter(x=>!isCutLine_(x)).length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
         ${o.customer?`<br><b style="color:var(--info-ink)">صاحب الأوردر: ${esc(o.customer)}</b>`:''}${o.customerRegion?`<br><b style="color:var(--info-ink)">عنوان العميل: ${esc(o.customerRegion)}</b>`:''}<br>
@@ -4770,10 +4768,12 @@ function viewOrders(){
       ${o.note?('<div class="ordnote">'+ico("warn")+'<span><b>ملاحظات:</b> '+esc(o.note)+'</span></div>'):''}
       <div class="oa">
         ${editBtn}
+        ${معلّق?`<button class="btn ghost sm" data-act="review-pending-276" data-id="${esc(o.id)}">${ico("doc")} راجع الإرسال للمصنع</button>`:""}
+        <button class="btn ghost sm" data-act="verify-receipt-276" data-id="${esc(o.id)}">${ico("refresh")} تحقق من الاستلام</button>
         <button class="btn ghost sm" data-act="ord-again" data-id="${esc(o.id)}">${ico("refresh")} اطلب تاني</button>
         <button class="btn ghost sm" data-act="ord-pdf"   data-id="${esc(o.id)}">${ico("doc")} PDF</button>
         <button class="btn ghost sm" data-act="ord-xls"   data-id="${esc(o.id)}">${ico("sheet")} إكسيل</button>
-        <button class="btn ghost sm" data-act="resend"    data-id="${esc(o.id)}">${ico("send")} إرسال</button>
+        <button class="btn ghost sm" data-act="resend"    data-id="${esc(o.id)}">${ico("send")} مشاركة صورة</button>
         ${delBtn}
       </div>
     </div>`;
@@ -5874,7 +5874,7 @@ async function pushPricesToServer_(out, quiet){
     // العلامة دي بتمنع القراية من السيرفر إنها تمسح تعديل لسه ما اترفعش
     save(LS_PRICES_DIRTY, true);
     if(!quiet) toast('⚠️ الأسعار اتحفظت على جهازك بس ما وصلتش للموزّعين: '
-      + (err.message || err) + ' — هنحاول تاني تلقائي أول ما يرجع النت', 6000);
+      + (err.message || err) + ' — محفوظ للمراجعة؛ تحقق من الاستلام قبل أي محاولة جديدة', 6000);
   }
   if(!quiet) busy(false);
   return ok;
@@ -8484,7 +8484,7 @@ function viewAdmin(){
   const secsOpen_ = () => secDefs_().filter(d=>uiOpen_(d[0],false)).map(d=>`<section class="card ad-card ad-dd open">
       <button class="adH" data-act="ui-toggle" data-k="${d[0]}" aria-expanded="true">
         <span class="n">${ico(d[1],"lg")}</span>
-        <span class="tt"><b>${d[2]}</b><small>اضغط للرجوع للأقسام</small></span>
+        <span class="tt"><b>${d[2]}</b><small>اضغط لطي المحتوى، أو اختار قسمًا من الشريط</small></span>
         ${ico("chev")}
       </button>
       <div class="adB">${d[4]()}</div>
@@ -8780,7 +8780,7 @@ function viewAdmin(){
     ${viewingArchive?'':dueStripHTML_(lst)}`;
   _adminShell = `
     ${staleBar}
-    ${secDefs_().some(d=>uiOpen_(d[0],false))?'':secsGrid_()}
+    ${secsGrid_()}
     ${secsOpen_()}
     ${verBar()}`;
   return _adminShell.replace(ADMIN_CARDS_MARK, rows);
@@ -8808,7 +8808,7 @@ document.addEventListener('click',e=>{
       if(state.tab==='orders') maybeLoadTrack_();
       if(state.tab==='new') loadStock();
       break;
-    case 'home-sec': doorFlow_.stage=el.dataset.to==='doors'?(doorFlow_.ownerChosen||state.cart.length||state.editingId?'doors':'owner'):'categories';doorFlow_.legacyChoice=false;state.tab='new'; state.newSection = el.dataset.to; save(LS_SECTION, state.newSection); render(); window.scrollTo({top:0,behavior:'smooth'}); loadStock(); break;
+    case 'home-sec': state.tab='new';flowSelectCategory276_(el.dataset.to);loadStock();break;
     case 'home-repeat': repeatLastOrder_(); break;
     case 'home-bank': showBankOverlay_(); break;
     case 'home-call': if(FACTORY_PHONE) location.href = 'tel:'+FACTORY_PHONE; break;
@@ -8906,7 +8906,7 @@ document.addEventListener('click',e=>{
     case 'edit-line': editCartLine(Number(el.dataset.i)); break;
     case 'clear': if(confirm('تفريغ السلة بالكامل؟')){state.cart=[];saveCart_();render();} break;
     case 'submit': submitOrderGuarded_(); break;
-    case 'quote-cart': makeDoc(draftOrder(), 'order'); break;
+    case 'quote-cart': makeDoc(draftOrder(), 'order'); toast('دي معاينة من السلة، استخراج PDF لا يرسل الطلب للمصنع',6500); break;
     case 'ord-pdf':   withOrder(el,o=>makeDoc(mergeProducedFromTrack_(o),'order')); break;
     case 'ord-xls':   withOrder(el,o=>exportExcel([mergeProducedFromTrack_(o)],'طلب_'+orderNoText_(o).replace('/','-'))); break;
     case 'all-xls':   exportExcel(state.orders.map(mergeProducedFromTrack_),'كل_الطلبات'); break;
@@ -10414,9 +10414,9 @@ async function syncOrder_(o){
             ' — عدّل الطلب وابعته تاني', 7000);
     } else if(رفض && رفض.msg){
       toast('⚠️ الطلب '+orderNoText_(o)+' لسه ما وصلش المصنع: '+رفض.msg+
-            ' — هنحاول تاني تلقائي', 5200);
+            ' — محفوظ للمراجعة، ومش هيتبعت تلقائي', 5200);
     } else {
-      toast('⚠️ الطلب '+orderNoText_(o)+' اتسجّل على جهازك بس لسه ما وصلش المصنع — هنحاول تاني تلقائي أول ما يرجع النت', 4200);
+      toast('⚠️ الطلب '+orderNoText_(o)+' اتسجّل على جهازك بس لسه ما وصلش المصنع — محفوظ للمراجعة؛ تحقق من الاستلام قبل أي محاولة جديدة', 4200);
     }
   } else {
     markSent_(o.id);   // اتأكد وصوله — الدمج مايرجّعهوش لقايمة المعلّق
@@ -10585,6 +10585,7 @@ async function findSameDayOrders_(){
            locked: hit.filter(r=>SAME_DAY_LOCKED_.includes(r.status)) };
 }
 async function submitOrderGuarded_(){
+  if(!doorFlow_.ownerConfirmedV276&&!state.editingId&&!state.editingMeta)return submitOrder();
   // التعديل، وتعديل المصنع، والسلة الفاضية، والبيانات الناقصة: نفس المسار القديم بالظبط
   if(!state.cart.length || state.editingId || state.editingMeta || !profileOk() || !APPS_SCRIPT_URL){
     return submitOrder();
@@ -10638,6 +10639,7 @@ let _printSubmitBusy=false;
 async function submitOrder(){
   if(_printSubmitBusy)return;
   if(!state.cart.length){toast('السلة فاضية');return;}
+  if(!doorFlow_.ownerConfirmedV276&&!state.editingId&&!state.editingMeta){doorFlow_.ownerReturnCart276=true;state.tab='new';render();window.scrollTo({top:0});toast('اختار صاحب الطلب أولًا، السلة محفوظة ولم يُرسل شيء',6000);return;}
   if(!state.editingMeta){
     // طلب جديد أو تعديل عادي من الموزع — لازم اسم الحساب وبيانات صحيحة وصاحب الأوردر
     if(!profileOk()){
@@ -10722,8 +10724,8 @@ async function submitOrder(){
     if(!wasAdminEdit){
       (async ()=>{
         busy(true, 'جارٍ تأكيد رقم الطلب مع المصنع…');
-        try{ await syncing; } finally { busy(false); }
-        shareOrderImage(o);
+        let received=false;try{ received=await syncing; } finally { busy(false); }
+        render();if(received===true)shareOrderImage(o);else toast('الطلب محفوظ على جهازك، لكن استلام المصنع لم يتأكد. راجع تابع طلبك؛ لم نفتح المشاركة تلقائيًا',8000);
       })();
     }
     // ⚠️ باج كان هنا: الكتلة دي بتشتغل في الخلفية، وتحتها على طول كان بيتعمل
@@ -10769,7 +10771,7 @@ async function submitOrder(){
         toast('✅ اتلغى الطلب القديم '+prevOrderNoText_(o)+' واتعمل طلب جديد '+orderNoText_(o));
       else
         toast('⚠️ الطلب الجديد '+orderNoText_(o)+' اتسجّل، بس القديم '+prevOrderNoText_(o)+
-              ' لسه موجود — هنحاول نلغيه تاني تلقائي، ولو فضل شيله بنفسك من زرار «حذف»', 7000);
+              ' لسه موجود — نية الإلغاء محفوظة للمراجعة، ومش هتتنفذ تلقائي، ولو فضل شيله بنفسك من زرار «حذف»', 7000);
       adminLoad();
     })();
     return;
@@ -11157,7 +11159,7 @@ function withoutCutLines_(o){
   return Object.assign({}, o, { items:(o.items||[]).filter(it=>!quoteOnlyLine_(it)) });
 }
 
-function docNumberForPresentation_(o,quote){return o.displayNo?orderNoText_(o):(quote?orderNoText_(o):shortIdText_(o.id));}
+function docNumberForPresentation_(o,quote){return o.displayNo?orderNoText_(o):(quote?'مسودة عرض سعر':'لم يتأكد بعد');}
 function docPageIdentityHTML_(o,mode){
   const quote=mode==='quote',edited=!quote&&o.displayNo&&Number(o.editCount)>0;
   const no=docNumberForPresentation_(o,quote);
@@ -11192,33 +11194,33 @@ function docHTML(o,mode,priced){
         // الطلب المعدّل بياخد رقم مركّب: رقم الطلب / رقم التعديل (52 ثم 52/1 ثم 52/2)
         const num = esc(docNumberForPresentation_(o,isQuote));
         const label = isQuote ? 'رقم عرض السعر' : (edited ? 'رقم طلب الأوردر — معدّل' : 'رقم طلب الأوردر');
-        const title = isQuote ? 'عرض سعر' : (o.replacesId ? 'تعديل على أوردر تصنيع أبواب' : 'أوردر تصنيع أبواب');
+        const title = isQuote ? 'عرض سعر' : (o.replacesId ? 'تعديل على طلب تصنيع أبواب' : 'طلب تصنيع أبواب');
         const editDate = edited ? (o.editedAt ? dateStrDMY_(new Date(o.editedAt+'T12:00:00').getTime())
                                               : dateStrDMY_(o.ts)) : '';
         const topDate = edited ? editDate : dateStrDMY_(o.ts);
         const pill = edited ? `التعديل رقم ${esc(o.editCount)} — بتاريخ ${esc(editDate)}`
                    : (isQuote && o.priceTierLabel ? esc(o.priceTierLabel) : '');
         const cell = (lbl, valHTML, full) => `<div style="width:${full?'100':'50'}%;display:flex;align-items:baseline;gap:12px;box-sizing:border-box;padding-inline-end:10px">
-            <span style="color:#6B7A8C;font-size:14px;min-width:86px">${lbl}</span><b style="font-size:15.5px;color:#14243A">${valHTML}</b></div>`;
+            <span style="color:#6B7A8C;font-size:14px;min-width:86px">${lbl}</span><b style="font-size:13px;color:#14243A">${valHTML}</b></div>`;
         const dash = v => (v && String(v).trim()) ? esc(v) : '-';
         return `
-      <div style="padding-bottom:12px;border-bottom:3px solid #1F78D1">
-        <div style="text-align:center;font-size:28px;font-weight:900;color:#0A1F44;line-height:1.3;margin-bottom:10px">${title}</div>
+      <div style="padding-bottom:5px;border-bottom:2px solid #1F78D1">
+        <div style="text-align:center;font-size:18px;font-weight:900;color:#0A1F44;line-height:1.15;margin-bottom:4px">${title}</div>
         <div style="display:flex;align-items:center;gap:12px">
         <div style="text-align:center;flex:0 0 auto">
-          <div style="border:1px solid #14243A;background:#fff;line-height:0"><img src="${ASSETS.logo}" style="height:56px;width:auto;display:block"></div>
-          <div style="font-size:11px;color:#444;margin-top:4px;font-weight:700;white-space:nowrap">${esc(COMPANY_AR)} · ${esc(WAREHOUSE)}</div>
+          <div style="border:1px solid #14243A;background:#fff;line-height:0"><img src="${ASSETS.logo}" style="height:42px;width:auto;display:block"></div>
+          <div style="font-size:11px;color:#444;margin-top:2px;font-weight:700;white-space:nowrap">${esc(COMPANY_AR)} · ${esc(WAREHOUSE)}</div>
         </div>
-        <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center">
-          <div style="box-sizing:border-box;min-width:230px;max-width:100%;padding:9px 24px 10px;background:#EAF2FA;border:1.5px solid #B9D4EA;border-radius:14px">
-            ${o.customer?`<div style="font-size:28px;font-weight:900;color:#0A1F44;line-height:1.3">${esc(o.customer)}</div>`:''}
-            ${o.customerRegion?`<div style="font-size:13px;font-weight:800;color:#0A1F44;line-height:1.35">عنوان العميل: ${esc(o.customerRegion)}</div>`:''}
-            <div style="font-size:12.5px;font-weight:800;color:#6B7A8C;margin:3px 0 1px">${label}</div>
-            <div dir="ltr" title="${esc(o.id||'')}" style="font-size:28px;font-weight:900;color:#0A1F44;line-height:1.2;letter-spacing:1px">${num}</div>${!isQuote&&!o.displayNo?'<div style="font-size:11px;color:#6B7A8C;margin-top:3px">مرجع محلي مؤقت، رقم المصنع لم يتأكد بعد</div>':''}
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center">
+          <div style="box-sizing:border-box;min-width:205px;max-width:100%;padding:4px 16px 5px;background:#EAF2FA;border:1.5px solid #B9D4EA;border-radius:9px">
+            ${o.customer?`<div style="font-size:18px;font-weight:900;color:#0A1F44;line-height:1.15">${esc(o.customer)}</div>`:''}
+            ${o.customerRegion?`<div style="font-size:13px;font-weight:800;color:#0A1F44;line-height:1.155">عنوان العميل: ${esc(o.customerRegion)}</div>`:''}
+            <div style="font-size:11px;font-weight:800;color:#6B7A8C;margin:1px 0">${label}</div>
+            <div dir="ltr" title="${esc(o.id||'')}" style="font-size:18px;font-weight:900;color:#0A1F44;line-height:1.2;letter-spacing:1px">${num}</div>${!isQuote&&!o.displayNo?'<div style="font-size:11px;color:#6B7A8C;margin-top:3px">رقم المصنع يظهر بعد تأكيد الاستلام؛ المعاينة ليست تأكيد إرسال</div>':''}
           </div>
-          ${pill?`<div style="padding:3px 20px;border:1.5px solid #E2B962;border-radius:30px;background:#FFF8EC;color:#8A5A00;font-weight:800;font-size:12.5px;line-height:1.5">${pill}</div>`:''}
+          ${pill?`<div style="padding:3px 20px;border:1.5px solid #E2B962;border-radius:30px;background:#FFF8EC;color:#8A5A00;font-weight:800;font-size:11px;line-height:1.5">${pill}</div>`:''}
         </div>
-        <div style="flex:0 0 auto;min-width:150px;max-width:200px;text-align:right;display:flex;flex-direction:column;gap:7px;font-size:13px;line-height:1.4">
+        <div style="flex:0 0 auto;min-width:120px;max-width:200px;text-align:right;display:flex;flex-direction:column;gap:3px;font-size:13px;line-height:1.4">
           <div style="color:#555">بتاريخ ${esc(topDate)}</div>
           ${o.replacesId?`<div style="color:#B3261E;font-weight:800">بدل الطلب رقم ${esc(prevOrderNoText_(o))}</div>`:''}
           <div style="color:#14243A;font-weight:800;font-size:14px">${dash(o.name)}</div>
@@ -11227,10 +11229,6 @@ function docHTML(o,mode,priced){
       </div>
 `;
       })()}
-
-      ${o.note&&!(o.items||[]).some(it=>flowMeta_(it))?`<div style="margin-top:12px;padding:11px 14px;background:#FFF3D6;border:2px solid #E8B94A;border-inline-start:7px solid #D99A0B;border-radius:9px;font-size:13.5px;font-weight:800;color:#000">
-        <span style="display:block;font-size:11.5px;font-weight:700;color:#444;margin-bottom:2px">ملاحظات عامة على الأوردر</span>
-        ${esc(o.note)}</div>`:''}
 
       <div style="margin-top:12px;overflow:hidden">
       <table data-order-lines="1" style="width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px">
@@ -11251,8 +11249,9 @@ function docHTML(o,mode,priced){
       </table>
       </div>
 
-      ${docTotalsHTML(o)}
+      ${docTotalsHTML(o)}${!(o.items||[]).some(it=>["door","frame","bror"].includes(it.kind))?docDrawingNotes_(o):""}
 
+      ${!isQuote?`<div data-request-terms="1" class="keep-blk" style="margin-top:10px;padding:8px 12px;background:#EAF2FA;border:1px solid #B9D4EA;border-radius:8px;font-size:12px;line-height:1.65;color:#14243A"><b>ملاحظات عامة:</b><div style="font-weight:800">1. مدة الطلب 48 ساعة، إذا لم يُفعّل يُعتبر لاغيًا.</div><div style="font-weight:800">2. لا يبدأ التنفيذ إلا بعد سداد الرسوم وإرسال إيصال التحويل.</div></div>`:''}
       ${priced?`<div style="display:flex;justify-content:flex-start;margin-top:16px">
         <table style="border-collapse:collapse;font-size:13.5px;min-width:250px">
           <tr style="background:#F3F6FA">
@@ -11526,12 +11525,13 @@ function flowActions_(next,back){return `<div class="btnrow">${back?flowButton_(
 function flowThumb_(){const f=doorFlow_;return f.source==='catalog'&&f.pattern?FLOW_CATALOG_[f.code+'|'+f.pattern]:FLOW_PLAIN_[f.code];}
 function flowPhoto_(){const f=doorFlow_,v=f.variants[0],src=flowThumb_();return src?`<div class="flow-photo"><b>${esc(v.w)} سم</b><div class="flow-photo-row"><img src="${src}" alt="الباب ${esc(f.code)}"><span>${esc(v.h)}</span></div><small>معاينة المقاس الأول، كل المقاسات في الملخص</small></div>`:'';}
 function flowSummary_(){const f=doorFlow_;return f.variants.map((v,i)=>`<div class="flow-summary"><b>المقاس ${i+1} · ${esc(v.w)} × ${esc(v.h)} سم · ${esc(v.qty)} باب</b><div>حلق ${v.frame?esc(v.frame)+' سم'+(v.frameHeight?' · ارتفاع '+esc(v.frameHeight)+' سم':' · استاندر'):'بدون'} · برور <bdi>${esc(v.dbror||'بدون')}</bdi></div></div>`).join('');}
-function flowOwnerHTML_(){return `<div class="note">الحساب: ${esc(state.profile.name)} · <bdi>${esc(state.profile.phone)}</bdi></div><h3>الأوردر لحساب مين؟</h3>${flowChoices_('owner',[['self','لحسابي'],['other','عميل آخر']],state.custMode)}${state.custMode==='other'?`<label class="fld"><span>اسم العميل *</span><input type="text" data-act="cust-name" value="${esc(state.customer.name)}"></label><label class="fld"><span>رقم العميل · اختياري</span><input type="tel" data-act="cust-phone" value="${esc(state.customer.phone)}"></label><label class="fld"><span>عنوان العميل · اختياري</span><input type="text" data-act="cust-region" value="${esc(state.customer.region||'')}"></label>`:'<p>بنفس بيانات حسابك، من غير كتابتها تاني.</p>'}${flowActions_('owner-next','categories')}`;}
+function flowOwnerHTML_(){return `<div class="note">الحساب: ${esc(state.profile.name)} · <bdi>${esc(state.profile.phone)}</bdi></div><h3>الأوردر لحساب مين؟</h3>${flowChoices_('owner',[['self','لحسابي'],['other','عميل آخر']],state.custMode)}${state.custMode==='other'?`<label class="fld"><span>اسم العميل *</span><input type="text" data-act="cust-name" value="${esc(state.customer.name)}"></label><label class="fld"><span>رقم العميل · اختياري</span><input type="tel" data-act="cust-phone" value="${esc(state.customer.phone)}"></label><label class="fld"><span>عنوان العميل · اختياري</span><input type="text" data-act="cust-region" value="${esc(state.customer.region||'')}"></label>`:'<p>بنفس بيانات حسابك، من غير كتابتها تاني.</p>'}${state.cart.length?'<p>السلة الحالية محفوظة. الاختيار ينطبق على الطلب الحالي بدون تغيير أي بند.</p>':''}${flowButton_('owner-next','التالي — اختيار الأصناف')}`;}
 function flowRegistrationHTML_(){return `<h2>بيانات الحساب</h2><label class="fld"><span>الاسم *</span><input type="text" data-act="prof" data-k="name" value="${esc(state.profile.name)}"></label><label class="fld"><span>رقم الموبايل *</span><input type="tel" data-act="prof" data-k="phone" value="${esc(state.profile.phone)}"></label><label class="fld"><span>المنطقة · اختياري</span><input type="text" data-act="prof" data-k="region" value="${esc(state.profile.region)}"></label><p>بتتحفظ على الجهاز، مش هنطلبها مع كل أوردر.</p>${flowButton_('register','احفظ الحساب واختار الأصناف')}`;}
 function flowValidate_(f=doorFlow_){return f.variants.length&&f.variants.every(v=>Number(v.w)>0&&Number(v.h)>0&&Number.isInteger(Number(v.qty))&&Number(v.qty)>0&&[0,10,15,20].includes(Number(v.frame))&&['','6×9','4×8'].includes(v.dbror)&&(!v.frameHeight||Number(v.frameHeight)>0));}
 function flowAccountOk_(){return !!state.profile.name.trim()&&phoneOk(state.profile.phone);}
 function flowView_(){
  const f=doorFlow_;if(!flowAccountOk_())return `<section class="card">${flowRegistrationHTML_()}</section>`;
+ if(!f.ownerConfirmedV276&&!state.editingId&&!state.editingMeta&&!_pulledLine)return `<section class="card flow-owner-first">${flowOwnerHTML_()}</section>`;
  if(_pulledLine||f.stage==='legacy'||(flowHasLegacy_()&&f.legacyChoice!==false&&state.newSection==='doors')){state.newStep='items';return `<div class="note">مسودة سابقة محفوظة، كمّلها بنفس اختياراتها أو ارجع للأصناف. البيانات القديمة لا تتحول تلقائيًا للطريقة الجديدة.</div>${flowButton_('categories','عرض الأصناف',true)}${flowLegacyView_()}`;}
  if(state.newSection&&state.newSection!=='doors'&&f.stage==='categories'){state.newStep='items';return `${flowButton_('categories-clear','رجوع للأصناف',true)}${flowLegacyView_()}`;}
  let body='';
@@ -11563,13 +11563,13 @@ async function flowAddCart_(){
  const before=state.cart.slice();
  if(f.edit){const current=state.cart[f.edit.index];if(!current||JSON.stringify(current)!==f.edit.fingerprint)throw new Error('السلة اتغيرت أثناء التعديل، البند القديم محفوظ. افتح التعديل من جديد');state.cart.splice(f.edit.index,1,...items);}else state.cart.push(...items);
  if(!saveCart_()){state.cart=before;throw new Error('تعذّر حفظ السلة، البنود القديمة والمسودة لسه موجودين');}
- doorFlow_=Object.assign(flowBlank_(),{ownerChosen:true});flowPersist_();state.newSection='';save(LS_SECTION,'');state.tab='cart';render();toast('اتحفظ في السلة');
+ doorFlow_=Object.assign(flowBlank_(),{ownerChosen:true,ownerConfirmedV276:true});flowPersist_();state.newSection='';save(LS_SECTION,'');state.tab='cart';render();toast('اتحفظ في السلة');
 }
 function flowEditCart_(i){const it=state.cart[i],m=flowMeta_(it);if(!m)return false;const wh=doorWH_(it.sizeEn,it.doorHeight);if(!wh.w||!wh.h)return false;doorFlow_={...flowBlank_(),stage:'review',ownerChosen:true,code:it.code,source:m.source,pattern:m.pattern||'',method:it.hafr?'engrave':'print',wood:!!it.wood,note:it.note||'',art:it.printArt||it.engraveArt||'',variants:[{widthPreset:/\(custom\)/i.test(String(it.sizeEn||''))?'custom':String(wh.w),w:String(wh.w),h:String(wh.h),qty:String(it.qty),frame:Number(it.frame)||0,frameHeight:it.frameHeight?String(it.frameHeight):'',dbror:it.dbror||''}],edit:{index:i,fingerprint:JSON.stringify(it)}};flowPersist_();state.tab='new';state.newSection='doors';render();return true;}
 async function flowAction_(a){const f=doorFlow_;
  if(a==='expand'){const v=document.getElementById('view');v.classList.toggle('flow-expanded');document.body.classList.toggle('flow-work-expanded',v.classList.contains('flow-expanded'));return;}
- if(a==='register'){if(!flowAccountOk_())throw new Error('اكتب الاسم ورقم من ١١ رقم يبدأ بـ01');if(!save(LS_PROFILE,state.profile))throw new Error('تعذّر حفظ الحساب على الجهاز');flowGo_('categories');return;}
- if(a==='owner-next'){if(!ownerOk_())throw new Error('اكتب اسم العميل');f.ownerChosen=true;flowGo_('doors');return;}
+ if(a==='register'){if(!flowAccountOk_())throw new Error('اكتب الاسم ورقم من ١١ رقم يبدأ بـ01');if(!save(LS_PROFILE,state.profile))throw new Error('تعذّر حفظ الحساب على الجهاز');flowGo_('owner');return;}
+ if(a==='owner-next'){if(!ownerOk_())throw new Error('اكتب اسم العميل');f.ownerChosen=true;f.ownerConfirmedV276=true;state.newSection='';save(LS_SECTION,'');if(f.ownerReturnCart276){f.ownerReturnCart276=false;f.stage='categories';flowPersist_();state.tab='cart';render();}else flowGo_('categories');return;}
  if(a==='with-design'){f.source=f.source==='custom'?'custom':'catalog';flowGo_('designs');return;}
  if(a==='plain'){f.source='plain';f.pattern='';flowGo_('dimensions');return;}
  if(a==='design-next'){if(f.source==='catalog'&&!f.pattern||f.source==='custom'&&!f.art)throw new Error('اختار رسمة أولًا');flowGo_('dimensions');return;}
@@ -11585,7 +11585,7 @@ document.addEventListener('click',async ev=>{
  const b=ev.target.closest&&ev.target.closest('[data-flow-action],[data-flow-choice],[data-flow-category],[data-flow-code],[data-flow-pattern],[data-flow-remove]');if(!b)return;ev.preventDefault();if(_flowBusy_)return;
  try{
  const f=doorFlow_;
- if(b.dataset.flowCategory){state.newSection=b.dataset.flowCategory;save(LS_SECTION,state.newSection);if(state.newSection==='doors')flowGo_(f.ownerChosen||state.cart.length||state.editingId?'doors':'owner');else{f.stage='categories';render();}return;}
+ if(b.dataset.flowCategory){flowSelectCategory276_(b.dataset.flowCategory);return;}
  if(b.dataset.flowCode){if(f.code!==b.dataset.flowCode){f.code=b.dataset.flowCode;f.pattern='';if(f.source==='catalog')f.art='';}flowGo_('source');return;}
  if(b.dataset.flowPattern){f.pattern=b.dataset.flowPattern;flowGo_('dimensions');return;}
  if(b.dataset.flowRemove!=null){if(f.variants.length>1)f.variants.splice(Number(b.dataset.flowRemove),1);flowPersist_();render();return;}
@@ -11747,11 +11747,11 @@ async function retryPendingCancels_(){
   }
 }
 
-retryPendingOrders_();   // لو فيه طلبات اتسجلت على الجهاز بس ما وصلتش المصنع، نحاول تاني
-retryPendingCancels_();  // لو فيه طلبات قديمة اتعدّلت وفشل مسحها من عند المصنع، نحاول تاني
+// v276: pending orders wait for a person to review. No startup send.
+// v276: pending cancellation intentions stay saved, with no startup cancel.
 syncPricesFromServer_(); // أحدث أسعار من المصنع — بتشتغل في الخلفية ومابتوقفش حاجة
-window.addEventListener('online', retryPendingOrders_);
-window.addEventListener('online', retryPendingCancels_);
+// v276: reconnect never sends saved orders.
+// v276: reconnect never cancels saved orders.
 window.addEventListener('online', ()=>{ if(load(LS_PRICES_DIRTY,false)) syncPricesFromServer_(); });
 // التطبيق اتقفل أو راح للخلفية وفيه صنف مسحوب للتعديل؟ نرجّعه للسلة قبل ما يضيع
 window.addEventListener('pagehide', ()=>flowPauseNativeEdit_());
@@ -11883,5 +11883,37 @@ function mergeRestored_(rows){
 
 restorePrintThumbnails_();
 </script>
-</body>
+<script>
+
+const FLOW_CATEGORIES276_=[['doors','door','الأبواب'],['frame','frame','حلق فقط'],['bror','bror','برور فقط'],['acc','parts','إكسسوارات'],['mabra','mabra','معبرة'],['prodium','panel','بروديوم'],['strip','strip','شريط'],['veneer','veneer','قشرة']];
+function flowCategoryNav276_(){return `<nav class="flow-category-nav276" aria-label="أصناف الطلب">${FLOW_CATEGORIES276_.map(([k,ic,label])=>`<button type="button" class="${state.newSection===k?'on':''}" data-flow-category="${k}">${ico(ic)}<span>${label}</span></button>`).join('')}</nav>`;}
+function flowSelectCategory276_(k){if(_pulledLine){restorePulledLine_(true);if(_pulledLine){toast("تعذّر استرجاع البند؛ كمل التعديل قبل تغيير الصنف",6500);return;}}const f=doorFlow_;if(state.newSection==='doors'&&!['categories','owner'].includes(f.stage))f.doorResume276=f.stage;state.newSection=k;save(LS_SECTION,k);if(k==='doors'){f.legacyChoice=false;f.stage=f.doorResume276||'doors';}else f.stage='categories';flowPersist_();render();window.scrollTo({top:0});}
+const flowViewBefore276_=viewNew;
+viewNew=function(){let html=flowViewBefore276_();const f=doorFlow_;if(!flowAccountOk_()||(!f.ownerConfirmedV276&&!state.editingId&&!state.editingMeta&&!_pulledLine))return html;
+ const t=document.createElement('template');t.innerHTML=html;t.content.querySelectorAll('.secTiles,.flow-categories').forEach(x=>x.remove());
+ return flowCategoryNav276_()+t.innerHTML;};
+// Read-only acknowledgement. Never submit, upload artwork, retry or cancel here.
+async function verifyReceipt276_(o){if(!APPS_SCRIPT_URL||!o.phone){toast('رقم الحساب المحفوظ مع الطلب غير متاح؛ لا يمكن التحقق بدقة. الطلب لم يُرسل من التحقق',7000);return;}
+ busy(true,'جارٍ التحقق من استلام المصنع، بدون إرسال…');
+ try{const d=await jsonp(APPS_SCRIPT_URL+'?action=list&dev='+encodeURIComponent(deviceId_())+'&phone='+encodeURIComponent(o.phone));if(!d||!d.ok)throw new Error(d&&d.error||'تعذّر قراءة حالة المصنع');const hit=(d.orders||[]).find(x=>String(x.id)===String(o.id));
+ if(hit&&hit.displayNo){o.displayNo=hit.displayNo;o.editCount=Number(hit.editCount)||0;saveOrders_(state.orders);}const box=document.createElement('div');box.className='dueov';const found=!!hit;box.innerHTML=`<div class="box"><h3>${found?'المصنع مسجّل الطلب':'لم نجد تأكيد استلام لهذا الطلب'}</h3><p><bdi>${esc(o.id)}</bdi></p><p>${found?'رقم المصنع: '+esc(hit.displayNo||'غير متاح')+' · الحالة: '+esc(hit.status||'غير محددة'):'القراءة نجحت، لكن المرجع غير موجود تحت رقم الحساب المحفوظ مع هذا الطلب. لا تعيد الإرسال قبل التأكد من رقم الحساب والطلب الصحيح.'}</p><p>التحقق قراءة فقط، لم يرسل أو يلغِ أي طلب. وجود سجل لا يؤكد تفاصيل كل تصميم.</p><button class="btn brand" data-receipt-close276>تمام</button></div>`;box.querySelector('[data-receipt-close276]').onclick=()=>box.remove();document.body.appendChild(box);
+ }catch(e){toast('تعذّر التحقق: '+e.message+'؛ ده مش دليل إن الطلب ما وصلش. لم يُرسل أي شيء',8000);}finally{busy(false);}}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act="verify-receipt-276"]');if(b){const o=state.orders.find(x=>String(x.id)===String(b.dataset.id));if(o)verifyReceipt276_(o);}});
+function stickyOffset276_(){const bar=document.getElementById('appbar');document.documentElement.style.setProperty('--flow-sticky-top276',(bar?bar.getBoundingClientRect().height:0)+'px');}
+new ResizeObserver(stickyOffset276_).observe(document.getElementById('appbar'));stickyOffset276_();
+
+</script>
+<script>
+let pendingReviewBusy276_=false;
+async function readPendingReceipt276_(o){if(!APPS_SCRIPT_URL||!o.phone)throw new Error('رقم الحساب الأصلي أو اتصال المصنع غير متاح');const d=await jsonp(APPS_SCRIPT_URL+'?action=list&dev='+encodeURIComponent(deviceId_())+'&phone='+encodeURIComponent(o.phone));if(!d||!d.ok)throw new Error(d&&d.error||'تعذّر التحقق من المصنع');return(d.orders||[]).find(x=>String(x.id)===String(o.id));}
+async function reviewPending276_(o){if(pendingReviewBusy276_)return;pendingReviewBusy276_=true;busy(true,'جارٍ التحقق قبل عرض مراجعة الإرسال…');try{
+ const hit=await readPendingReceipt276_(o);if(hit){toast('الطلب موجود في المصنع بالفعل برقم '+(hit.displayNo||o.id)+'؛ لن نعيد إرساله. استخدم تحقق من الاستلام',8000);return;}
+ if(!loadPendingSync_().map(String).includes(String(o.id)))throw new Error('الطلب ليس ضمن قائمة الإرسال المعلّق');
+ const fingerprint=JSON.stringify(o),box=document.createElement('div');box.className='dueov';box.innerHTML=`<div class="box"><h3>راجع الطلب المحفوظ قبل الإرسال</h3><p>مرجع الطلب: <bdi>${esc(o.id)}</bdi></p><p>الحساب: ${esc(o.name||'')} · <bdi>${esc(o.phone)}</bdi><br>صاحب الطلب: ${esc(o.customer||o.name||'')}<br>عنوان العميل: ${esc(o.customerRegion||'بدون')}</p><div style="max-height:28vh;overflow:auto">${(o.items||[]).map(it=>`<p>${esc(it.title||it.code||it.kind)} · الكمية ${esc(it.qty)}${it.sizeTxt?' · '+esc(it.sizeTxt):''}</p>`).join('')}</div><p>${esc(o.note||'بدون ملاحظات')}</p><p>لم نجد المرجع تحت رقم الحساب الأصلي. الضغط يرسل نفس الطلب بنفس المرجع، لا ينشئ طلبًا جديدًا ولا يلغي طلبًا قديمًا. تأكد أنك تريد إرسال الأصناف المحفوظة كما هي.</p><button class="btn brand" data-send-pending276>أوافق، أرسل الطلب المحفوظ للمصنع</button><button class="btn ghost" data-close-pending276>رجوع بدون إرسال</button></div>`;
+ box.querySelector('[data-close-pending276]').onclick=()=>box.remove();box.querySelector('[data-send-pending276]').onclick=async()=>{const send=box.querySelector('[data-send-pending276]');if(send.disabled)return;send.disabled=true;busy(true,'جارٍ التحقق الأخير ثم إرسال نفس المرجع…');try{
+ if(JSON.stringify(o)!==fingerprint)throw new Error('الطلب اتغيّر؛ اقفل المراجعة وافتحها من جديد');const exists=await readPendingReceipt276_(o);if(exists){toast('وصل للمصنع بالفعل؛ لم يُرسل مرة ثانية',7000);box.remove();return;}const received=await syncOrder_(o);box.remove();render();toast(received===true?'تأكد استلام المصنع. لم نلغِ أي طلب قديم تلقائيًا؛ أي إلغاء سابق محفوظ للمراجعة.':'لم يتأكد استلام المصنع. الطلب محفوظ ولن نعيد إرساله تلقائيًا.',8000);
+ }catch(e){toast(e.message+'؛ تعذّر إكمال العملية. تحقق من الاستلام قبل أي محاولة أخرى',8000);}finally{busy(false);send.disabled=false;}};document.body.appendChild(box);
+ }catch(e){toast('تعذّر فتح الإرسال الآمن: '+e.message+'؛ لم يُرسل شيء',8000);}finally{busy(false);pendingReviewBusy276_=false;}}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act="review-pending-276"]');if(b){const o=state.orders.find(x=>String(x.id)===String(b.dataset.id));if(o)reviewPending276_(o);}});
+</script></body>
 </html>
