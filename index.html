@@ -2526,7 +2526,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v264';
+const APP_BUILD   = 'v265';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2534,7 +2534,7 @@ const WAREHOUSE   = 'مصنع إنشاص';
 // إن حد نسخ apps_script.gs مرة وماعملش Deploy ▸ New version بعد كده — التطبيق
 // شغّال والسيرفر ناقص حاجة، وده بيطلع على شكل باجات غريبة (رصيد باب مش لاقيه،
 // تعديل صنف بيترفض). بنسأل السيرفر عن نسخته ونقول للمصنع بدل ما يخمّن.
-const SRV_BUILD_WANT = 'v205';
+const SRV_BUILD_WANT = 'v206';
 
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2aVRVaUVubR3w4a3weiQTHGp03SvMozh83NY3OtBD14n1YugCjbcWdYEJUPJb-s3E/exec';
 
@@ -2922,6 +2922,7 @@ async function syncPricesFromServer_(){
   }catch(e){}
 })();
 
+const _orderDraftV265=load('wpc_order_draft_meta_v265',{});
 const state = {
   tab: 'home',   // أول شاشة بتفتح دايمًا هي الرئيسية
   track:{loading:false, rows:null, err:'', at:0},
@@ -2942,7 +2943,7 @@ const state = {
   profile: load(LS_PROFILE, {name:'', phone:'', region:''}),
   cart:    load(LS_CART, []),
   orders:  load(LS_ORDERS, []),
-  pick:{code:'', sizes:{}, customOn:false, note:'', custom:{w:'',h:'',qty:'',frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,frameKind:null,frameRodQty:'',frameForDoors:''}},
+  pick:load('wpc_pick_draft_v265',{code:'',sizes:{},customOn:false,note:'',custom:{w:'',h:'',qty:'',frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,frameKind:null,frameRodQty:'',frameForDoors:''}}),
   showBank: load(LS_SHOWBANK, true),   // إظهار ملحوظة العربون + بيانات التحويل في مستند الأوردر (اختياري)
   newSection: load(LS_SECTION, ''),   // '' (لسه محددش) | doors | acc | frame | strip | veneer | mabra | bror | prodium
   // ⚠️ الأطوال (jambCm/headerCm/extra[].cm/rodsCm) بتتخزّن **بالوحدة المكتوبة**
@@ -2959,12 +2960,16 @@ const state = {
   pd:{code:'', qty:1}, // ألواح بروديوم — code = كود/لون الباب (إجباري زي البرور)، qty = عدد الألواح
   acc:{},
   touched:false,             // اتضغط إرسال؟ عشان نوضّح الحقول الناقصة
-  customer:{name:'', phone:''},   // صاحب الأوردر — إجباري من v84، لازم يتكتب حتى لو نفس صاحب الحساب
+  customer:{name:'', phone:'', region:''},   // صاحب الأوردر لما يكون «عميل آخر» — الاسم إجباري، الرقم والعنوان اختياريين
+  custMode:'self',               // صاحب الأوردر: 'self' = نفس الحساب (من غير خانات زيادة) أو 'other' = عميل آخر باسمه ورقمه وعنوانه
+  newStep:'info',                // خطوة «طلب جديد»: 'info' = صفحة بيانات الطلب الأول (قبل الأصناف)، 'items' = اختيار الأصناف
   orderNote:'',                    // ملاحظات الطلب (اختياري)
   editingId:null,            // لو مش null، معناها بيتعدّل طلب موجود بدل ما يتبعت طلب جديد
   editingMeta:null,          // بيانات صاحب الطلب الأصلي لما المصنع هو اللي بيعدّل
   editingDate:null           // تاريخ الطلب وقت التعديل — افتراضيًا نفس تاريخ الطلب الأصلي، وقابل للتغيير يدويًا
 };
+
+for(const k of ['customer','custMode','orderNote','editingId','editingMeta','editingDate','editingDisplayNo','editingEditCount','editingDue'])if(_orderDraftV265[k]!==undefined)state[k]=_orderDraftV265[k];
 
 /* ---------- قراية التخزين ----------
    ⚠️ دي كانت بترجّع القيمة الافتراضية في صمت لو الـJSON اتخرب. والمشكلة إن أول
@@ -3027,6 +3032,239 @@ function save(k,v){
       return true;
     }catch(e2){ return false; }
   }
+}
+
+/* v265: Private order artwork. Bytes and signing credentials live in IndexedDB,
+   not order JSON, restoration lists, filenames, links, exports or console logs. */
+const _printThumbs = new Map();
+const _printExpiredRefs = new Set();
+const _printLifetimes = load('wpc_art_lifetimes_v265',{});
+function artworkExpiredForOrder_(o){
+  const known=_printLifetimes[String(o&&o.id||'')]||{};
+  const completed=Number(o&&o.artCompletedAt)||Number(known.completed)||0;
+  return !!(o&&o.artPurgedAt)||!!known.purged||completed>0&&Date.now()>=completed+72*3600000;
+}
+function rememberArtworkLifetimes_(d){
+  if(!d||!d.ok||!Array.isArray(d.orders))return;
+  let changed=false;
+  for(const o of d.orders){
+    if(!o||!o.id||!Object.prototype.hasOwnProperty.call(o,'artCompletedAt'))continue;
+    _printLifetimes[String(o.id)]={completed:Number(o.artCompletedAt)||0,purged:Number(o.artPurgedAt)||0};changed=true;
+  }
+  if(changed){save('wpc_art_lifetimes_v265',_printLifetimes);sweepLocalArtwork_().catch(()=>{});}
+}
+let _printSweepRunning=false;
+async function sweepLocalArtwork_(){
+  if(_printSweepRunning)return;_printSweepRunning=true;
+  try{
+    const protectedRefs=new Set((state.cart||[]).flatMap(it=>[it.printArt,it.engraveArt]));
+    Object.values(state.pick.sizes||{}).concat([state.pick.custom||{}]).forEach(it=>{protectedRefs.add(it.printArt);protectedRefs.add(it.engraveArt);});
+    const records=await printDbOp_('readonly',s=>s.getAll());
+    for(const rec of records){
+      if(protectedRefs.has(rec.ref)||!Array.isArray(rec.orders)||!rec.orders.length)continue;
+      if(rec.orders.every(id=>artworkExpiredForOrder_({id}))){
+        /* Keep device originals: another offline draft/tab may still need them. Drive expiry is server-controlled. */
+        _printThumbs.delete(rec.ref);_printExpiredRefs.add(rec.ref);
+      }
+    }
+  }finally{_printSweepRunning=false;}
+}
+
+let _printDbPromise;
+function printDb_(){
+  if(!_printDbPromise) _printDbPromise=new Promise((resolve,reject)=>{
+    const req=indexedDB.open('wpc_private_artwork',1);
+    req.onupgradeneeded=()=>req.result.createObjectStore('art',{keyPath:'ref'});
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>{_printDbPromise=null;reject(new Error('تعذّر حفظ صورة الطباعة على الجهاز؛ السلة لم تتغيّر'));};
+  });
+  return _printDbPromise;
+}
+async function printDbOp_(mode,fn){
+  const db=await printDb_();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction('art',mode), req=fn(tx.objectStore('art'));
+    tx.oncomplete=()=>resolve(req.result);
+    tx.onerror=tx.onabort=()=>reject(new Error('مساحة حفظ صورة الطباعة غير متاحة؛ اختياراتك لم تتغيّر'));
+  });
+}
+const printGet_=ref=>printDbOp_('readonly',s=>s.get(ref));
+const printPut_=rec=>printDbOp_('readwrite',s=>s.put(rec));
+function printRandom_(n){ return Array.from(crypto.getRandomValues(new Uint8Array(n)),b=>b.toString(16).padStart(2,'0')).join(''); }
+function printRefOk_(ref){return /^pa_[a-f0-9]{32}$/.test(String(ref||''));}
+async function printMac_(key,text){
+  const enc=new TextEncoder();
+  const k=await crypto.subtle.importKey('raw',enc.encode(key),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  return Array.from(new Uint8Array(await crypto.subtle.sign('HMAC',k,enc.encode(text))),b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function printSignedQuery_(action,orderId,ref,key){
+  const ts=String(Date.now()),nonce=printRandom_(16);
+  const proof=await printMac_(key,[action,orderId,ref,ts,nonce].join('|'));
+  return '&orderId='+encodeURIComponent(orderId)+'&ref='+encodeURIComponent(ref)+'&ts='+ts+'&nonce='+nonce+'&proof='+proof;
+}
+function printDataUrl_(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result));r.onerror=()=>reject(new Error('تعذّر قراءة الصورة؛ اختارها تاني'));r.readAsDataURL(file);});}
+async function printPreview_(data){
+  const img=new Image();img.src=data;await img.decode();
+  if(!img.width||!img.height||img.width*img.height>50000000) throw new Error('أبعاد الصورة كبيرة؛ اختار صورة أصغر');
+  const scale=Math.min(1,1200/Math.max(img.width,img.height)),c=document.createElement('canvas');
+  c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));
+  const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(img,0,0,c.width,c.height);
+  let thumb;for(const q of [.86,.72,.6]){thumb=c.toDataURL('image/jpeg',q);if(thumb.length<1300000)return thumb;}
+  while(thumb.length>=1300000){const small=document.createElement('canvas');small.width=Math.max(1,Math.floor(c.width*.7));small.height=Math.max(1,Math.floor(c.height*.7));small.getContext('2d').drawImage(c,0,0,small.width,small.height);c.width=small.width;c.height=small.height;c.getContext('2d').drawImage(small,0,0);thumb=c.toDataURL('image/jpeg',.72);}
+  return thumb;
+}
+function printUploadHTML_(e,w,type='print'){
+  const field=type==='engrave'?'engraveArt':'printArt',selected=type==='engrave'?e.hafr:e.print,label=type==='engrave'?'الحفر':'الطباعة';
+  if(!selected) return '';
+  const ready=printRefOk_(e[field]),thumb=_printThumbs.get(e[field])||'';
+  return `<div style="padding:10px;margin-top:8px;border:1.5px solid ${ready?'#7DBE93':'#E5A449'};border-radius:10px;background:#FAFCFF">
+    <b style="display:block;font-size:13px">شكل ${label} — إجباري</b>
+    ${thumb?`<img src="${esc(thumb)}" alt="معاينة شكل الطباعة" style="width:52px;height:88px;object-fit:contain;display:block;margin:7px auto">`:''}
+    <label class="btn outline" style="display:inline-flex;margin-top:7px;cursor:pointer">${ready?'تغيير صورة '+label:'اختار صورة '+label}<input type="file" accept="image/png,image/jpeg,image/webp" data-print-file="${esc(w)}" data-print-kind="${type}" style="position:absolute;width:1px;height:1px;opacity:0"></label>
+    <div style="font-size:11.5px;line-height:1.5;margin-top:6px">${ready?'الصورة محفوظة على الجهاز، وتترفع للمصنع مع الطلب.':'اختار صورة قبل إضافة الباب للسلة.'} الأصل كما هو، حتى ٥ ميجا. المعاينة تقريبية ولا تحدد موضع التنفيذ النهائي. تتحذف نسخة Drive نهائيًا بعد ٧٢ ساعة من «جاهز للتحميل»، والمراجعة كل ساعة.</div>
+  </div>`;
+}
+document.addEventListener('input',()=>queueMicrotask(()=>{const meta={};for(const k of ['customer','custMode','orderNote','editingId','editingMeta','editingDate','editingDisplayNo','editingEditCount','editingDue'])meta[k]=state[k];save('wpc_order_draft_meta_v265',meta);save('wpc_pick_draft_v265',state.pick);}));
+document.addEventListener('change',async ev=>{
+  const input=ev.target.closest&&ev.target.closest('input[data-print-file]');if(!input||!input.files[0])return;
+  const entry=input.dataset.printFile==='custom'?state.pick.custom:state.pick.sizes[Number(input.dataset.printFile)];
+  if(!entry)return;
+  const file=input.files[0];
+  try{
+    if(!/^image\/(png|jpeg|webp)$/.test(file.type)||!file.size||file.size>5*1024*1024)throw new Error('اختار صورة JPG أو PNG أو WEBP حتى ٥ ميجا');
+    busy(true,'جارٍ حفظ شكل الطباعة على الجهاز…');
+    const data=await printDataUrl_(file),thumb=await printPreview_(data);
+    const rec={ref:'pa_'+printRandom_(16),key:printRandom_(32),data,thumb,orders:[],created:Date.now()};
+    await printPut_(rec); // Never replace an earlier design until the new bytes are durable.
+    _printThumbs.set(rec.ref,thumb);entry[input.dataset.printKind==='engrave'?'engraveArt':'printArt']=rec.ref;
+    if(!save('wpc_pick_draft_v265',state.pick))throw new Error('الصورة محفوظة، لكن تعذّر حفظ اختيارات الباب؛ لا تغلق الصفحة قبل إضافته للسلة');
+    toast('اتحفظ شكل الطباعة على الجهاز؛ هيتحفظ مع الأوردر عند الإرسال');
+  }catch(err){toast(err.message||'تعذّر حفظ الصورة؛ اختياراتك محفوظة',6500);}
+  finally{busy(false);render();}
+});
+let _printCapsCache;
+async function requireOrderCaps_(o){
+  const needsAddress=!!o.forceAddress||!!String(o.customerRegion||'').trim();
+  const refs=(o.items||[]).filter(it=>artTypes_(it).length);
+  const needsEngraving=refs.some(it=>artTypes_(it).includes('engraveArt'));
+  if(!needsAddress&&!refs.length)return;
+  if(!APPS_SCRIPT_URL)throw new Error('عنوان العميل وتصميمات الطباعة والحفر يحتاجوا اتصال بسيرفر المصنع؛ السلة محفوظة ولم يُرسل الطلب');
+  let d;
+  try{d=await jsonp(APPS_SCRIPT_URL+'?action=ping',12000);}
+  catch(e){throw new Error('تعذّر التحقق من سيرفر المصنع؛ السلة محفوظة. رجّع النت وجرّب تاني');}
+  if(!d||!d.ok||(needsAddress&&!(d.capabilities||{}).customerRegionV1)||(refs.length&&(!(d.capabilities||{}).privateArtworkV1||!(d.capabilities||{}).artworkRetentionV1))||(needsEngraving&&!(d.capabilities||{}).engravingArtworkV1)){
+    throw new Error('سيرفر المصنع محتاج تحديث لحفظ عنوان العميل وتصميمات الطباعة والحفر؛ السلة محفوظة ولم يُرسل الطلب');
+  }
+  _printCapsCache={at:Date.now(),data:d};
+}
+function artTypes_(it){
+  if(it.kind!=='door')return [];
+  const title=(it.title||'')+(it.titleEn||'');
+  return [it.print||PRINT_MARK_RE_.test(title)?'printArt':'',it.hafr||/\(حفر\)|\(Carved\)/i.test(title)?'engraveArt':''].filter(Boolean);
+}
+function orderArtRefs_(o){return [...new Set((o.items||[]).flatMap(it=>artTypes_(it).map(f=>it[f])).filter(Boolean))];}
+async function requirePrintLocal_(items){
+  for(const it of (items||[]))for(const field of artTypes_(it)){
+    const label=field==='engraveArt'?'الحفر':'الطباعة';
+    if(!printRefOk_(it[field]))throw new Error('ارفع شكل '+label+' لكل باب قبل الحفظ؛ السلة محفوظة');
+    const rec=await printGet_(it[field]);
+    if(!rec||!rec.key||!rec.data)throw new Error('ملف '+label+' '+(it.code||'')+' مش موجود على الجهاز؛ افتح تعديل البند واختار الصورة. السلة محفوظة');
+  }
+}
+async function hydrateFactoryArtCart_(){
+  if(!state.editingMeta||!state.editingId||!state.admin.pw)return;
+  const replacements=[];
+  for(const it of state.cart)for(const field of artTypes_(it)){
+    const ref=it[field];if(!printRefOk_(ref))continue;
+    if(await printGet_(ref))continue;
+    const d=await jsonp(APPS_SCRIPT_URL+'?action=printRead'+admParams_()+'&original=1&orderId='+encodeURIComponent(state.editingId)+'&ref='+encodeURIComponent(ref),60000);
+    if(!d||!d.ok||!d.dataUrl)throw new Error('تعذّر تحميل أصل التصميم للتعديل؛ السلة والطلب القديم محفوظين');
+    const rec={ref:'pa_'+printRandom_(16),key:printRandom_(32),data:d.dataUrl,thumb:await printPreview_(d.dataUrl),orders:[],created:Date.now()};
+    await printPut_(rec);_printThumbs.set(rec.ref,rec.thumb);replacements.push({it,field,ref:rec.ref});
+  }
+  replacements.forEach(r=>r.it[r.field]=r.ref);
+  if(replacements.length&&!saveCart_())throw new Error('تعذّر حفظ مرفقات التعديل محليًا؛ لا تغلق الصفحة');
+}
+async function uploadOrderPrints_(o){
+  const refs=orderArtRefs_(o);
+  const proofs={};
+  for(const ref of refs){
+    const rec=await printGet_(ref);if(!rec||!rec.key||!rec.data)throw new Error('ملف الطباعة غير متاح على الجهاز؛ الطلب محفوظ ولم يصل للمصنع');
+    let ready=false;
+    for(let attempt=0;attempt<3;attempt++){
+      try{
+        const q=await printSignedQuery_('printStatus',o.id,ref,rec.key);
+        const status=await jsonp(APPS_SCRIPT_URL+'?action=printStatus'+q+'&dev='+encodeURIComponent(deviceId_()),20000);
+        if(status&&status.ok&&status.ready){ready=true;break;}
+      }catch(e){}
+      if(attempt===0){
+        await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'uploadPrint',dev:deviceId_(),orderId:o.id,ref,key:rec.key,data:rec.data,thumb:rec.thumb})});
+      }
+      await new Promise(r=>setTimeout(r,1500*(attempt+1)));
+    }
+    if(!ready)throw new Error('رفع صورة الطباعة لم يتأكد؛ الطلب والصورة محفوظين. هنحاول تاني من غير حذف القديم');
+    proofs[ref]=await printMac_(rec.key,['attach',o.id,ref].join('|'));
+    if(!rec.orders.includes(o.id)){rec.orders.push(o.id);await printPut_(rec);}
+  }
+  return proofs;
+}
+async function printStatusLinked_(o){
+  const refs=orderArtRefs_(o);
+  for(const ref of refs){
+    const rec=await printGet_(ref);if(!rec)return false;
+    const q=await printSignedQuery_('printStatus',o.id,ref,rec.key);
+    const d=await jsonp(APPS_SCRIPT_URL+'?action=printStatus'+q+'&dev='+encodeURIComponent(deviceId_()),20000);
+    if(!d||!d.ok||!d.linked)return false;
+  }
+  return true;
+}
+async function preparePrintDocument_(o){
+  for(const ref of orderArtRefs_(o)){
+    if(artworkExpiredForOrder_(o)){_printThumbs.delete(ref);_printExpiredRefs.add(ref);continue;}
+    if(/^data:image\//.test(ref)){_printThumbs.set(ref,ref);continue;} // Local visual fixtures, never accepted by backend.
+    if(!printRefOk_(ref))throw new Error('مرجع ملف التصميم غير صالح');
+    if(_printThumbs.has(ref))continue;
+    const rec=await printGet_(ref);
+    if(rec&&rec.thumb){_printThumbs.set(ref,rec.thumb);continue;}
+    if(!state.admin.pw)throw new Error('التصميم غير متاح على هذا الجهاز؛ اطلب النسخة من المصنع. لن نجهّز ورقة ناقصة');
+    const d=await jsonp(APPS_SCRIPT_URL+'?action=printRead'+admParams_()+'&orderId='+encodeURIComponent(o.id)+'&ref='+encodeURIComponent(ref),30000);
+    if(d&&d.expired){_printThumbs.delete(ref);_printExpiredRefs.add(ref);continue;}
+    if(!d||!d.ok||!d.dataUrl)throw new Error(d&&d.error||'تعذّر تحميل التصميم؛ لم يتم تجهيز ورقة ناقصة');
+    _printThumbs.set(ref,d.dataUrl);
+  }
+}
+async function downloadPrintOriginal_(orderId,ref){
+  try{
+    if(_printExpiredRefs.has(ref)||artworkExpiredForOrder_({id:orderId}))throw new Error('انتهت مدة حفظ التصميم بعد ٧٢ ساعة من جاهز للتحميل');
+    let data;
+    const rec=await printGet_(ref);
+    if(rec&&rec.data)data=rec.data;
+    else{
+      if(!state.admin.pw)throw new Error('الملف الأصلي متاح من الجهاز اللي رفعه أو من شاشة المصنع');
+      busy(true,'جارٍ تنزيل أصل ملف الطباعة…');
+      const d=await jsonp(APPS_SCRIPT_URL+'?action=printRead'+admParams_()+'&original=1&orderId='+encodeURIComponent(orderId)+'&ref='+encodeURIComponent(ref),60000);
+      if(!d||!d.ok||!d.dataUrl)throw new Error(d&&d.error||'تعذّر تنزيل الملف');data=d.dataUrl;
+    }
+    const response=await fetch(data),blob=await response.blob();
+    const ext=blob.type==='image/png'?'png':blob.type==='image/webp'?'webp':'jpg';
+    downloadBlob(blob,'شكل_الطباعة_'+orderId+'_'+ref.slice(-6)+'.'+ext);
+  }catch(e){toast(e.message||'تعذّر تنزيل الملف',6000);}finally{busy(false);}
+}
+document.addEventListener('click',ev=>{const b=ev.target.closest&&ev.target.closest('[data-print-download]');if(b){ev.preventDefault();downloadPrintOriginal_(b.dataset.order,b.dataset.printDownload);}});
+function addArtworkDownloadButtons_(id,doc){
+  const overlay=document.getElementById('reportPreviewOverlay')||document.querySelector('.rpv-ov');
+  if(!overlay)return;
+  const refs=orderArtRefs_(doc);if(!refs.length)return;
+  const bar=document.createElement('div');bar.style.cssText='padding:10px;display:flex;gap:8px;flex-wrap:wrap;background:#fff';
+  refs.forEach((ref,i)=>{if(_printExpiredRefs.has(ref)||artworkExpiredForOrder_({id}))return;const b=document.createElement('button');b.className='btn outline';const item=(doc.items||[]).find(it=>it.printArt===ref||it.engraveArt===ref);b.textContent='تنزيل أصل '+(item&&item.engraveArt===ref?'الحفر':'الطباعة')+' '+(item&&item.code||'');b.dataset.printDownload=ref;b.dataset.order=id;bar.appendChild(b);});
+  overlay.appendChild(bar);
+}
+async function restorePrintThumbnails_(){
+  await sweepLocalArtwork_().catch(()=>{});
+  const refs=new Set((state.cart||[]).flatMap(it=>[it.printArt,it.engraveArt]));
+  Object.values(state.pick.sizes||{}).concat([state.pick.custom||{}]).forEach(e=>{refs.add(e.printArt);refs.add(e.engraveArt);});
+  for(const ref of refs){if(!printRefOk_(ref))continue;try{const rec=await printGet_(ref);if(rec&&rec.thumb)_printThumbs.set(ref,rec.thumb);}catch(e){}}
+  render();
 }
 
 /* ============================================================
@@ -3366,7 +3604,8 @@ async function saveStockDrafts(){
     : ('اتحفظت '+done+' أرصدة'), failedNames.length ? 5200 : undefined);
 }
 
-function profileOk(){return !!state.profile.name.trim() && phoneOk(state.profile.phone) && !!state.customer.name.trim();}
+function ownerOk_(){ return state.custMode!=='other' || !!state.customer.name.trim(); }
+function profileOk(){return !!state.profile.name.trim() && phoneOk(state.profile.phone) && ownerOk_();}
 
 function toast(m,ms){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms||2600);}
 let _busyOn = false, _busyTxt = '';
@@ -3489,6 +3728,9 @@ function cssEscape_(v){
 }
 // النداء العادي: بيتجمّع مع أي نداءات تانية في نفس اللحظة ويتنفّذ مرة واحدة
 function render(){
+  save('wpc_pick_draft_v265',state.pick);
+  const meta={};for(const k of ['customer','custMode','orderNote','editingId','editingMeta','editingDate','editingDisplayNo','editingEditCount','editingDue'])meta[k]=state[k];
+  save('wpc_order_draft_meta_v265',meta);
   if(_renderQueued) return;
   _renderQueued = true;
   requestAnimationFrame(()=>{ _renderQueued = false; renderNow(); });
@@ -3714,7 +3956,7 @@ function viewNew(){
       : `${e.frame?`<label class="fld sm"><span>ارتفاع الحلق (سم) — اختياري</span>
           <input type="text" inputmode="decimal" class="hgtIn" value="${esc(e.frameHeight||'')}" placeholder="سيبها فاضية لو عادي" data-act="${A('frame-height')}"${wA}></label>`:''}
         <div class="miniLbl">٢) البرور</div><div class="miniChips">${dbrorMiniChips(e.dbror,w)}</div>`;
-    return frameStep + afterFrame + extras;
+    return frameStep + afterFrame + extras + printUploadHTML_(e,w,'print') + printUploadHTML_(e,w,'engrave');
   };
 
   const sizeCards = selWidths.map(w=>{
@@ -4103,33 +4345,51 @@ function viewNew(){
     <div class="hero-s"><button class="hero-chip" data-act="go-cart">${ico("cart")}<span>${cartCount()}</span><em>في السلة</em></button></div>
   </section>`;
 
-  return `
-  ${hero}
-  <section class="card accCard">
-    <button class="accH" data-act="ui-toggle" data-k="prof">
-      <span class="ti" data-s="user">${ico("user")}</span>
-      <span class="tx">بياناتك</span>
-      <span class="sb">${profileOk() ? esc((state.profile.name||'').trim()+' · '+(state.profile.phone||'')) : 'إجباري — اضغط واكتب بياناتك'}</span>
-      ${profileOk()?'':'<span class="reqb">مطلوب</span>'}${ico("chev")}
-    </button>
-    ${uiOpen_('prof', !profileOk() || bad) ? `<div class="accBody">
+  const infoBody_ = `
     <div class="row2">
       <label class="fld"><span>الاسم <b class="req">*</b></span>
         <input type="text" class="${bad && !state.profile.name.trim()?'bad':''}" value="${esc(state.profile.name)}" placeholder="الاسم كما هو مسجّل" data-act="prof" data-k="name"></label>
-      <label class="fld"><span>صاحب الأوردر <b class="req">*</b></span>
-        <input type="text" class="${bad && !state.customer.name.trim()?'bad':''}" value="${esc(state.customer.name)}" placeholder="اسم صاحب الأوردر" data-act="cust-name"></label>
-    </div>
-    <div class="row2">
       <label class="fld"><span>رقم الموبايل <b class="req">*</b></span>
         <input type="tel" inputmode="tel" class="${bad && !phoneOk(state.profile.phone)?'bad':''}" value="${esc(state.profile.phone)}" placeholder="01xxxxxxxxx" data-act="prof" data-k="phone"></label>
-      <label class="fld"><span>تليفون الأوردر</span>
-        <input type="tel" inputmode="tel" value="${esc(state.customer.phone)}" placeholder="لو مختلف (اختياري)" data-act="cust-phone"></label>
     </div>
     <label class="fld"><span>المنطقة</span>
       <input type="text" value="${esc(state.profile.region)}" placeholder="طنطا مثلاً" data-act="prof" data-k="region"></label>
-    ${bad && !profileOk() ? `<div class="note" style="color:var(--danger)">الاسم ورقم الموبايل وصاحب الأوردر إجباريين — الرقم لازم يكون ١١ رقم يبدأ بـ 01.</div>` : ''}
-    </div>` : ''}
+    <div style="margin-top:2px">
+      <span style="font-size:12.5px;font-weight:700;color:var(--muted)">صاحب الأوردر</span>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button type="button" class="chip ${state.custMode!=='other'?'on':''}" style="flex:1" data-act="cust-mode" data-v="self">لحسابي</button>
+        <button type="button" class="chip ${state.custMode==='other'?'on':''}" style="flex:1" data-act="cust-mode" data-v="other">عميل آخر</button>
+      </div>
+    </div>
+    ${state.custMode==='other' ? `
+    <div class="row2" style="margin-top:10px">
+      <label class="fld"><span>اسم العميل <b class="req">*</b></span>
+        <input type="text" class="${bad && !state.customer.name.trim()?'bad':''}" value="${esc(state.customer.name)}" placeholder="اسم صاحب الأوردر" data-act="cust-name"></label>
+      <label class="fld"><span>رقم العميل</span>
+        <input type="tel" inputmode="tel" value="${esc(state.customer.phone)}" placeholder="لو مختلف (اختياري)" data-act="cust-phone"></label>
+    </div>
+    <label class="fld"><span>عنوان العميل</span>
+      <input type="text" value="${esc(state.customer.region||'')}" placeholder="منطقة/عنوان العميل (اختياري)" data-act="cust-region"></label>` : ''}
+    ${bad && !(profileOk()&&ownerOk_()) ? `<div class="note" style="color:var(--danger)">${state.custMode==='other'?'الاسم ورقم الموبايل واسم العميل إجباريين':'الاسم ورقم الموبايل إجباريين'} — الرقم لازم يكون ١١ رقم يبدأ بـ 01.</div>` : ''}`;
+
+  // صفحة بيانات الطلب بتيجي الأول — قبل ما يختار الأبواب أو أي صنف
+  if(state.newStep!=='items'){
+    return `
+  ${hero}
+  <section class="card">
+    <div class="step"><span class="n">${ico("user","lg")}</span><h2>بيانات الطلب</h2></div>
+    ${infoBody_}
+    <button class="btn brand" style="width:100%;margin-top:12px" data-act="info-next">التالي — اختيار الأصناف</button>
   </section>
+  ${verBar()}`;
+  }
+
+  return `
+  ${hero}
+  <div class="note" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+    <span>صاحب الأوردر: <b>${esc(state.custMode==='other' ? (state.customer.name||'—') : (state.profile.name||'—'))}</b>${state.custMode==='other'&&String(state.customer.region||'').trim()?` · ${esc(state.customer.region.trim())}`:''}</span>
+    <button class="btn ghost sm" data-act="info-back">تعديل</button>
+  </div>
   ${ordNoteBtnHTML_()}
 
   ${secAccordion_}
@@ -4306,11 +4566,12 @@ function viewCart(){
     <div class="step"><span class="n">↗</span><h2>${editing?'حفظ التعديل':'إرسال طلب أوردر'}</h2></div>
     <div class="ct-info">
       <div><span>الاسم</span><b>${esc(state.profile.name||'—')}</b></div>
-      <div><span>صاحب الأوردر</span><b>${esc(state.customer.name||'—')}</b></div>
+      <div><span>صاحب الأوردر</span><b>${esc(state.custMode==='other' ? (state.customer.name||'—') : (state.profile.name||'—'))}</b></div>
       <div><span>المنطقة</span><b>${esc(state.profile.region||'غير محددة')}</b></div>
+      ${state.custMode==='other' && String(state.customer.region||'').trim() ? `<div><span>عنوان العميل</span><b>${esc(state.customer.region.trim())}</b></div>` : ''}
       <div><span>المخزن</span><b>${esc(WAREHOUSE)}</b></div>
     </div>
-    ${ok?'':`<button class="ct-fix" data-act="home-go" data-to="new">${ico('warn')} كمّل الاسم ورقم الموبايل وصاحب الأوردر الأول</button>`}
+    ${ok?'':`<button class="ct-fix" data-act="home-go" data-to="new">${ico('warn')} ${state.custMode==='other'?'كمّل الاسم ورقم الموبايل واسم العميل الأول':'كمّل الاسم ورقم الموبايل الأول'}</button>`}
     ${ordNoteBoxHTML_('margin-bottom:12px')}
     <button class="btn brand ct-send" data-act="submit">${editing?ico("save")+' حفظ التعديل وإرسال واتساب':ico("send")+' إرسال طلب الأوردر على واتساب'}</button>
     <div class="btnrow" style="margin-top:9px">
@@ -4366,7 +4627,7 @@ function viewOrders(){
       ${معلّق?`<div style="font-size:11.5px;font-weight:700;color:var(--warn-ink);margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}لسه ما وصلش المصنع — هيتبعت تلقائي أول ما النت يرجع</div>`:''}
       <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:var(--warn-ink);background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:var(--danger-ink);background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${live?statusPill(live.status):''}</div>
       <div class="os">${esc(dateStr(o.ts))} · ${(o.items||[]).filter(x=>!isCutLine_(x)).length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
-        ${o.customer?`<br><b style="color:var(--info-ink)">صاحب الأوردر: ${esc(o.customer)}</b>`:''}<br>
+        ${o.customer?`<br><b style="color:var(--info-ink)">صاحب الأوردر: ${esc(o.customer)}</b>`:''}${o.customerRegion?`<br><b style="color:var(--info-ink)">عنوان العميل: ${esc(o.customerRegion)}</b>`:''}<br>
         ${esc((o.items||[]).filter(x=>x&&!isCutLine_(x)).map(x=>x.title).filter(Boolean).slice(0,3).join('، '))}${(o.items||[]).filter(x=>x&&!isCutLine_(x)).length>3?'…':''}
         ${live && live.note?('<br><b style="color:var(--brand)">'+esc(live.note)+'</b>'):''}</div>
       ${o.note?('<div class="ordnote">'+ico("warn")+'<span><b>ملاحظات:</b> '+esc(o.note)+'</span></div>'):''}
@@ -4419,7 +4680,8 @@ function yield_(ms){
 async function renderPaper_(html, opts){
   const paper = document.getElementById('paper');
   paper.innerHTML = html;
-  await yield_(60);                       // تفتح مجال للصور/الخطوط تتحمّل
+  await yield_(60);
+  await Promise.all([...paper.querySelectorAll('img')].map(im=>im.decode().catch(()=>{throw new Error('تعذّر تحميل صورة في الورقة؛ جرّب تاني قبل المشاركة');})));                       // تفتح مجال للصور/الخطوط تتحمّل
   const el = paper.firstElementChild;
   const w = el.offsetWidth || 794;
   const h = el.offsetHeight || 1123;
@@ -4739,7 +5001,7 @@ function jsonp(url, timeout){
     const sc = document.createElement('script');
     const t = setTimeout(() => { cleanup(); rej(new Error('انتهت المهلة')); }, timeout || JSONP_TIMEOUT_MS);
     function cleanup(){ clearTimeout(t); delete window[cb]; sc.remove(); }
-    window[cb] = d => { cleanup(); res(d); };
+    window[cb] = d => { cleanup(); rememberArtworkLifetimes_(d); res(d); };
     sc.onerror = () => { cleanup(); rej(new Error('تعذّر الاتصال')); };
     sc.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cb;
     document.body.appendChild(sc);
@@ -5066,15 +5328,18 @@ async function setItemAvail(id, idx, avail){
 }
 
 // بيحدّث اسم صاحب الأوردر و/أو تاريخ الطلب يدويًا من شاشة المصنع
-async function saveOrderMeta_(id, customer, date){
+async function saveOrderMeta_(id, customer, date, region){
+  if(region!==undefined){try{await requireOrderCaps_({forceAddress:true,items:[]});}catch(e){toast(e.message,6500);return;}}
   return adminAction_({
     busyField:'metaBusy', busyKey:id, action:'setOrderMeta',
     params:'&id=' + encodeURIComponent(id)
          + '&customer=' + encodeURIComponent(customer||'')
-         + (date ? '&date=' + encodeURIComponent(date) : ''),
+         + (date ? '&date=' + encodeURIComponent(date) : '')
+         + '&customerRegion=' + encodeURIComponent(region||''),
     onOk(d){
       const o = adminOrderById_(id);
-      if(o){ o.customer = d.customer||''; if(d.date) o.date = d.date; }
+      if(region!==undefined&&String(d.customerRegion||'')!==String(region||''))throw new Error('السيرفر لم يؤكد حفظ عنوان العميل؛ بيانات التعديل لم تُمسح');
+      if(o){ o.customer = d.customer||''; if(d.date) o.date = d.date; o.customerRegion = d.customerRegion||''; }
       delete state.admin.metaEdit[id];
     },
     okMsg:'اتحدّثت بيانات الطلب'
@@ -5246,12 +5511,12 @@ function buildAdminDocOrder_(o, its, tierKey){
   return {
     id:o.id, fromAdmin:true, ts:o.date?new Date(o.date).getTime():Date.now(),
     name:o.dist, phone:o.phone, region:o.region, warehouse:'', total,
-    customer:o.customer||'', note:o.ordNote||'',
+    customer:o.customer||'', customerRegion:o.customerRegion||'', note:o.ordNote||'',
     // ⚠️ الحقول دي مكانتش بتتنقل خالص، فمستند المصنع كان بيطبع رقم الطلب الداخلي
     // الطويل (#2026-xxxx) بدل الرقم التسلسلي اللي العميل شايفه في تطبيقه.
     // يعني الورقة اللي في المصنع والورقة اللي مع العميل رقمين مختلفين لنفس الطلب.
     displayNo: o.displayNo || '', editCount: Number(o.editCount)||0, replacesId: o.replacesId || '',
-    editedAt: o.editedAt || '',
+    editedAt: o.editedAt || '', artCompletedAt:o.artCompletedAt||0, artPurgedAt:o.artPurgedAt||0,
     priceTierLabel: tierKey ? (PRICE_TIERS[tierKey]||PRICE_TIERS.dist).label : '',
     priceTier: tierKey || '',
     items
@@ -5283,6 +5548,7 @@ function adminDocItem_(it, tierKey){
     rodCm: (String(it.unit||'').match(/^rod\s+(\d+(?:\.\d+)?)/)||[])[1] || '',
     unitPrice: price, price: price,
     frame: it.frame||'', dbror: it.dbror||'', frameHeight: it.frameHeight||'', doorHeight: it.doorHeight||'',
+    printArt: it.printArt||'', engraveArt:it.engraveArt||'',   // صورة الطباعة — بتوصل لرسمة الباب في ملخص الورقة
     produced: it.produced
   };
 }
@@ -5473,6 +5739,7 @@ async function shareAdminOrderImageWith_(o, its){
   }
   busy(true,'جارٍ تجهيز صورة الطلب…');
   try{
+    await preparePrintDocument_(doc);
     const {canvas} = await renderPaper_(docHTML(doc,'order'));
     const blob=await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
     const file=new File([blob],'طلب_'+orderNoText_(o).replace('/','-')+'.png',{type:'image/png'});
@@ -6693,6 +6960,7 @@ function allocCustByCodeHTML_(d){
   const blocks = d.codes.map(c=>{
     const custs = custsOfCode(c);
     if(!custs.length) return '';
+    const dsw = DOOR_COLOR_SWATCH[doorName(c)] || null;   // نفس لون الكود في شاشة المتبقي
     const rows = custs.map((n,ri)=>{
       const cs = d.sizes.map(g=>{
         const x = d.cell(g,c,n);
@@ -6703,8 +6971,8 @@ function allocCustByCodeHTML_(d){
         <td style="${td};text-align:right;font-weight:700;color:#233246">${esc(n)}</td>${cs}</tr>`;
     }).join('');
     return `<div class="rpt-cbc-block keep-blk" style="margin-top:9px;border:1px solid #E3E7EC;border-radius:12px;overflow:hidden;break-inside:avoid;box-shadow:0 1px 4px rgba(20,36,58,.06)">
-      <div style="background:#12314F;color:#fff;font-weight:700;font-size:13px;padding:6px 10px">
-        <span>${esc(c)} <span style="font-weight:400;color:#B9CCE3;font-size:11px">${esc(doorName(c))}</span></span>
+      <div style="background:${dsw?dsw.bg:'#12314F'};color:${dsw?'#3D2E17':'#fff'};font-weight:700;font-size:13px;padding:6px 10px;${dsw?`border-bottom:2px solid ${dsw.border};`:''}">
+        <span>${esc(c)} <span style="font-weight:400;color:${dsw?'rgba(61,46,23,.72)':'#B9CCE3'};font-size:11px">${esc(doorName(c))}</span></span>
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:12.5px">
         <thead><tr style="background:#1B4A78">
@@ -6892,12 +7160,13 @@ async function previewCustomerOrder_(name){
     // أصناف كل الطلبات في نداء واحد بدل نداء لكل طلب
     await loadOrderItemsMany_(mine.map(o => o.id));
 
+    await Promise.all(mine.map(o=>preparePrintDocument_(buildAdminDocOrder_(o,a.items[o.id]||[]))));
     const html = mine.map(o => {
       const its = a.items[o.id] || [];
       return docHTML(buildAdminDocOrder_(o, its), 'order');
     }).join('<div style="height:18px"></div>');
 
-    showReportPreview_(html, name);
+    showReportPreview_(html,name);
   }catch(err){
     toast('تعذّر فتح المعاينة: ' + (err.message || err));
   }
@@ -6914,7 +7183,7 @@ async function previewOneOrder_(id){
   try{
     const its = await loadOrderItems_(o.id);
     if(!its.length){ toast('مفيش أصناف في الطلب ده'); }
-    else showReportPreview_(docHTML(buildAdminDocOrder_(o, its), 'order'), orderNoText_(o), o.id);
+    else {const doc=buildAdminDocOrder_(o,its);await preparePrintDocument_(doc);showReportPreview_(docHTML(doc,'order'),orderNoText_(o),o.id);setTimeout(()=>addArtworkDownloadButtons_(o.id,doc),0);}
   }catch(err){
     toast('تعذّر فتح المعاينة: ' + (err.message || err));
   }
@@ -6980,7 +7249,7 @@ function showReportPreview_(html, title, orderId, pdfKind){
   ov.innerHTML = `
     <div class="rpv-bar">
       <b>معاينة — ${esc(title||'')}</b>
-      <button class="rpv-bank ${state.showBank===false?'':'on'}" data-act="rpv-bank" title="إظهار/إخفاء بيانات التحويل البنكي">${ico('money')}<span>الحساب</span></button>
+      ${html.includes('bankblk')?`<button class="rpv-bank ${state.showBank===false?'':'on'}" data-act="rpv-bank" title="إظهار/إخفاء بيانات التحويل البنكي">${ico('money')}<span>الحساب</span></button>`:''}
       <button class="rpv-pdf" data-act="rpv-pdf" data-name="${esc(title||'')}"${orderId?` data-id="${esc(orderId)}"`:''}${pdfKind?` data-kind="${esc(pdfKind)}"`:''}>${ico('doc')}تصدير PDF</button>
       <button class="rpv-x" data-act="rpv-close" aria-label="إغلاق المعاينة">${ico('x')}</button>
     </div>
@@ -7160,14 +7429,14 @@ async function buildAdminOrdersExcel_(orders){
   const wsSum = wb.addWorksheet('ملخص الطلبات', { views:[{ rightToLeft:true }] });
   wsSum.columns = [
     {width:4},{key:'id',width:14},{key:'date',width:12},{key:'dist',width:22},
-    {key:'customer',width:22},
+    {key:'customer',width:22},{key:'custRegion',width:18},
     {key:'phone',width:14},{key:'region',width:13},{key:'wh',width:12},
     {key:'status',width:15},{key:'qty',width:10},{key:'produced',width:9},{key:'pending',width:9}
   ];
-  const sumLastCol = 12;
+  const sumLastCol = 13;
   addHeaderBand_(wsSum, sumLastCol, 'تقرير الأبواب', COMPANY_AR+' — '+new Date().toLocaleDateString('ar-EG')+' — إجمالي الطلبات: '+orders.length);
   wsSum.addRow([]);
-  const hdrSum = wsSum.addRow(['','رقم الطلب','التاريخ','صاحب الحساب','صاحب الأوردر','الهاتف','المنطقة','المخزن','الحالة','إجمالي الكمية','جاهز','متبقي']);
+  const hdrSum = wsSum.addRow(['','رقم الطلب','التاريخ','صاحب الحساب','صاحب الأوردر','عنوان العميل','الهاتف','المنطقة','المخزن','الحالة','إجمالي الكمية','جاهز','متبقي']);
   hdrSum.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVY}}; c.font={bold:true,color:{argb:WHITE},name:FONT,size:10.5}; c.alignment={horizontal:'center',vertical:'middle'}; c.border=border; });
   hdrSum.height = 22;
   wsSum.views = [{ rightToLeft:true, state:'frozen', ySplit:hdrSum.number }];
@@ -7179,12 +7448,12 @@ async function buildAdminOrdersExcel_(orders){
     grandQty += qty; grandProducedSum += produced;
     const pending = qty-produced;
     const st = STATUS[o.status] || {ar:o.status||'—'};
-    const r = wsSum.addRow(['', o.id, xlDate_(o.date), o.dist||'', o.customer||'—', String(o.phone||''), o.region||'', o.warehouse||'', st.ar, qty, produced, pending]);
+    const r = wsSum.addRow(['', o.id, xlDate_(o.date), o.dist||'', o.customer||'—', o.customerRegion||'', String(o.phone||''), o.region||'', o.warehouse||'', st.ar, qty, produced, pending]);
     xlDateCell_(r, 3);
-    r.eachCell((c,i)=>{ if(i===1) return; c.border=border; c.font={name:FONT,size:10.5, color: i===11?{argb:'FF1E8E52'}:(i===12&&pending>0?{argb:'FFB3261E'}:undefined)}; c.alignment={horizontal:'center',vertical:'middle'};
+    r.eachCell((c,i)=>{ if(i===1) return; c.border=border; c.font={name:FONT,size:10.5, color: i===12?{argb:'FF1E8E52'}:(i===13&&pending>0?{argb:'FFB3261E'}:undefined)}; c.alignment={horizontal:'center',vertical:'middle'};
       if(idx%2===1) c.fill={type:'pattern',pattern:'solid',fgColor:{argb:ZEBRA}}; });
   });
-  const totRowSum = wsSum.addRow(['','','','','','','','','الإجمالي الكلي', grandQty, grandProducedSum, grandQty-grandProducedSum]);
+  const totRowSum = wsSum.addRow(['','','','','','','','','','الإجمالي الكلي', grandQty, grandProducedSum, grandQty-grandProducedSum]);
   totRowSum.eachCell((c,i)=>{ if(i===1) return; c.font={bold:true,name:FONT,size:11,color:{argb:NAVY}}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}}; c.border=border; c.alignment={horizontal:'center'}; });
   wsSum.autoFilter = { from:{row:hdrSum.number,column:2}, to:{row:hdrSum.number,column:sumLastCol} };
 
@@ -8042,6 +8311,7 @@ function viewAdmin(){
         d.sizes.forEach(g=>(d.custBy[g]||[]).forEach(n=>{ const x=d.cell(g,c,n); if(!custs.includes(n) && x && x.rem>0) custs.push(n); }));
         if(!custs.length) return '';
         const dn = (DOORS.find(x=>x.code===c)||{}).name || '';
+        const dsw = DOOR_COLOR_SWATCH[dn] || null;   // لون الكود الحقيقي — نفس سواتش شيبس الأكواد في التطبيق
         const rows = custs.map(n=>{
           const cs = d.sizes.map(g=>{
             const x = d.cell(g,c,n);
@@ -8052,7 +8322,7 @@ function viewAdmin(){
             <td style="padding:7px 8px;font-weight:700">${esc(n)}</td>${cs}</tr>`;
         }).join('');
         return `<div style="margin-top:12px;border:1px solid var(--line);border-radius:12px;overflow:hidden">
-          <div style="padding:9px 12px;font-weight:800;font-size:14px;background:var(--surface-2)"><b>${esc(c)}</b> <span style="color:var(--muted);font-size:12px;font-weight:400">${esc(dn)}</span></div>
+          <div style="padding:9px 12px;font-weight:800;font-size:14px;background:${dsw?dsw.bg:'var(--surface-2)'};${dsw?`border-bottom:2px solid ${dsw.border};`:''}color:${dsw?'#3D2E17':'var(--ink)'}"><b>${esc(c)}</b> <span style="color:${dsw?'rgba(61,46,23,.72)':'var(--muted)'};font-size:12px;font-weight:400">${esc(dn)}</span></div>
           <table style="width:100%;border-collapse:collapse;font-size:13px">
             <thead><tr style="color:var(--muted);font-size:11.5px">
               <th style="text-align:right;padding:6px 8px;font-weight:600">المتبقي للعملا</th>
@@ -8151,7 +8421,7 @@ function viewAdmin(){
     let itemsHtml = '';
     if(itemsOpen){
       if(qtyMode){
-        const meta = a.metaEdit[o.id] || {customer:o.customer||'', date:o.date||''};
+        const meta = a.metaEdit[o.id] || {customer:o.customer||'', date:o.date||'', region:o.customerRegion||''};
         const metaBusy = a.metaBusy === o.id;
         itemsHtml += `<div style="margin-top:8px;padding:9px 10px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px">
           <div style="font-size:12.5px;color:var(--muted);font-weight:700;margin-bottom:6px">بيانات الطلب:</div>
@@ -8165,6 +8435,11 @@ function viewAdmin(){
               <span style="font-size:12px;color:var(--muted)">تاريخ الطلب</span>
               <input type="date" value="${esc(meta.date)}" data-act="meta-date" data-id="${esc(o.id)}"
                 style="border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13px">
+            </label>
+            <label style="flex:1;min-width:140px;display:flex;flex-direction:column;gap:3px">
+              <span style="font-size:12px;color:var(--muted)">عنوان العميل</span>
+              <input type="text" value="${esc(meta.region)}" data-act="meta-region" data-id="${esc(o.id)}"
+                style="border:1px solid var(--line);border-radius:8px;padding:7px 8px;font-size:13px">
             </label>
           </div>
           <button class="btn sm" data-act="adm-meta-save" data-id="${esc(o.id)}" ${metaBusy?'disabled':''} style="margin-top:7px;font-size:12.5px;padding:6px 12px">${metaBusy?'…':ico('save')+' حفظ بيانات الطلب'}</button>
@@ -8196,6 +8471,7 @@ function viewAdmin(){
       <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:11.5px;font-weight:700;color:var(--warn-ink);background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:12px;font-weight:700;color:var(--danger-ink);background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${statusPill(o.status)}</div>
       <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}
         ${o.customer?`<br><b style="color:var(--info-ink)">صاحب الأوردر: ${esc(o.customer)}</b>`:''}
+        ${o.customerRegion?`<br><span style="color:var(--info-ink)">عنوان العميل: ${esc(o.customerRegion)}</span>`:''}
         <br>${viewingArchive ? 'أُرشف '+esc(dateStr2_(o.updated||o.date))+(o.date&&o.updated&&o.date!==o.updated?' · الطلب '+esc(dateStr2_(o.date)):'') : esc(dateStr2_(o.date))} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''} · ${money(o.total||0)} ج</div>
       ${o.ordNote?`<div class="ordnote">${ico("warn")}<span><b>ملاحظات:</b> ${esc(o.ordNote)}</span></div>`:''}
       ${o.superseded?`<div style="margin-top:8px;padding:9px 12px;background:rgba(240,115,106,.13);border:1.5px solid rgba(240,115,106,.42);border-radius:9px;
@@ -8302,7 +8578,7 @@ document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el) return;
   const a=el.dataset.act, p=state.pick;
   switch(a){
-    case 'home-go': state.tab = el.dataset.to; render(); window.scrollTo({top:0,behavior:'smooth'});
+    case 'home-go': state.tab = el.dataset.to; if(state.tab==='new' && !(profileOk()&&ownerOk_())) state.newStep='info'; render(); window.scrollTo({top:0,behavior:'smooth'});
       if(state.tab==='orders') maybeLoadTrack_();
       if(state.tab==='new') loadStock();
       break;
@@ -8314,6 +8590,9 @@ document.addEventListener('click',e=>{
     case 'pick-door': selectDoor(el.dataset.code); loadStock(); break;
     case 'sec': state.newSection = (state.newSection===el.dataset.s) ? '' : el.dataset.s; save(LS_SECTION,state.newSection); render(); break;
     case 'ord-note-open': showOrdNote_(); break;
+    case 'cust-mode': state.custMode = (el.dataset.v==='other') ? 'other' : 'self'; render(); break;
+    case 'info-next': if(profileOk() && ownerOk_()){ state.touched=false; state.newStep='items'; render(); window.scrollTo({top:0,behavior:'smooth'}); loadStock(); } else { state.touched=true; render(); } break;
+    case 'info-back': state.newStep='info'; render(); window.scrollTo({top:0,behavior:'smooth'}); break;
     case 'ui-toggle': { const k=el.dataset.k; const cur = (k==='prof') ? uiOpen_('prof', !profileOk() || state.touched) : uiOpen_(k,false); _ui[k] = !cur; render(); break; }   // من غير تمرير لفوق — الصفحة تفضل مكانها
     case 'door-preview': showDoorPreview(el.dataset.code); break;
     case 'preview-select':
@@ -8601,8 +8880,8 @@ document.addEventListener('click',e=>{
     case 'adm-meta-save': {
       const id = el.dataset.id;
       const o=adminOrderById_(id);
-      const meta = state.admin.metaEdit[id] || {customer:(o&&o.customer)||'', date:(o&&o.date)||''};
-      saveOrderMeta_(id, meta.customer, meta.date);
+      const meta = state.admin.metaEdit[id] || {customer:(o&&o.customer)||'', date:(o&&o.date)||'', region:(o&&o.customerRegion)||''};
+      saveOrderMeta_(id, meta.customer, meta.date, meta.region);
       break;
     }
     case 'adm-due-open': {
@@ -8712,6 +8991,7 @@ document.addEventListener('input',e=>{
   if(a==='pick-note'){ state.pick.note=el.value; return; }
   if(a==='cust-name'){ state.customer.name=el.value; return; }
   if(a==='cust-phone'){ state.customer.phone=toLatinDigits_(el.value); return; }
+  if(a==='cust-region'){ state.customer.region=el.value; return; }
   if(a==='edit-date'){ state.editingDate=el.value; return; }
   if(a==='edit-meta-customer'){ if(state.editingMeta) state.editingMeta.customer=el.value; return; }
   if(a==='edit-meta-phone'){ if(state.editingMeta) state.editingMeta.customerPhone=toLatinDigits_(el.value); return; }
@@ -8780,7 +9060,7 @@ document.addEventListener('input',e=>{
     const id = el.dataset.id;
     if(!state.admin.metaEdit[id]){
       const o=adminOrderById_(id);
-      state.admin.metaEdit[id] = {customer:(o&&o.customer)||'', date:(o&&o.date)||''};
+      state.admin.metaEdit[id] = {customer:(o&&o.customer)||'', date:(o&&o.date)||'', region:(o&&o.customerRegion)||''};
     }
     state.admin.metaEdit[id].customer = el.value;
     return;
@@ -8789,9 +9069,18 @@ document.addEventListener('input',e=>{
     const id = el.dataset.id;
     if(!state.admin.metaEdit[id]){
       const o=adminOrderById_(id);
-      state.admin.metaEdit[id] = {customer:(o&&o.customer)||'', date:(o&&o.date)||''};
+      state.admin.metaEdit[id] = {customer:(o&&o.customer)||'', date:(o&&o.date)||'', region:(o&&o.customerRegion)||''};
     }
     state.admin.metaEdit[id].date = el.value;
+    return;
+  }
+  if(a==='meta-region'){
+    const id = el.dataset.id;
+    if(!state.admin.metaEdit[id]){
+      const o=adminOrderById_(id);
+      state.admin.metaEdit[id] = {customer:(o&&o.customer)||'', date:(o&&o.date)||'', region:(o&&o.customerRegion)||''};
+    }
+    state.admin.metaEdit[id].region = el.value;
     return;
   }
 });
@@ -8844,7 +9133,7 @@ function refreshRodBtn(act){
 /* ============================================================
    السلة
    ============================================================ */
-function addDoor(){
+async function addDoor(){
   const p=state.pick;
   const widths = Object.keys(p.sizes).map(Number).filter(w=>(Number((p.sizes[w]||{}).qty)||0)>0);
   const customReady = customReady_(p);
@@ -8855,6 +9144,9 @@ function addDoor(){
   if(widths.some(w=>{ const e=p.sizes[w]; return e.frame==null || e.dbror==null; }) || (customReady && (p.custom.frame==null||p.custom.dbror==null))){
     toast('حدد الحلق والبرور لكل مقاس مختار'); return;
   }
+  const chosen=widths.map(w=>p.sizes[w]).concat(customReady?[p.custom]:[]);
+  try{await requirePrintLocal_(chosen.map(e=>({...e,kind:'door'})));}catch(err){toast(err.message,6500);return;}
+  const oldCart=state.cart.slice();
   const d=doorByCode(p.code);
   const addedTxts=[];
 
@@ -8874,7 +9166,7 @@ function addDoor(){
       frame:e.frame||0, dbror:e.dbror||'', frameHeight:e.frameHeight?Number(e.frameHeight):0,
       frameKind, frameRodQty:frameKind==='rods'?(e.frameRodQty||''):'', frameForDoors:frameKind==='rods'?(e.frameForDoors||''):'',
       note: [frameKind==='rods' ? frameKindNote_('rods', e.frameRodQty, e.frameForDoors) : '', (p.note||'').trim()].filter(Boolean).join(' — '),
-      doorHeight, hafr:!!e.hafr, wood:!!e.wood, print:!!e.print, millEn:e.hafr?'Carved':''
+      doorHeight, printArt:e.print?e.printArt||'':'', engraveArt:e.hafr?e.engraveArt||'':'', hafr:!!e.hafr, wood:!!e.wood, print:!!e.print, millEn:e.hafr?'Carved':''
     });
     addedTxts.push(doorSizeText_(sizeTxt,doorHeight)+' × '+qty);
   });
@@ -8897,12 +9189,12 @@ function addDoor(){
       // «خدمة قص» مابقتش ملحوظة — بقت بند مستقل بسعره تحت الباب (syncCutServiceLines_)
       note: [customFrameKind==='rods' ? frameKindNote_('rods', p.custom.frameRodQty, p.custom.frameForDoors) : '',
              (p.note||'').trim()].filter(Boolean).join(' — '),
-      doorHeight:0, hafr:!!p.custom.hafr, wood:!!p.custom.wood, print:!!p.custom.print, millEn:p.custom.hafr?'Carved':''
+      doorHeight:0, printArt:p.custom.print?p.custom.printArt||'':'', engraveArt:p.custom.hafr?p.custom.engraveArt||'':'', hafr:!!p.custom.hafr, wood:!!p.custom.wood, print:!!p.custom.print, millEn:p.custom.hafr?'Carved':''
     });
     addedTxts.push(sizeTxt+' × '+qty);
   }
 
-  saveCart_();
+  if(!saveCart_()){state.cart=oldCart;toast('تعذّر حفظ السلة؛ الصورة والاختيارات محفوظين. فضّي مساحة وجرّب تاني',6500);return;}
   clearPulledLine_();
   toast('اتضاف للسلة: '+d.code+' — '+addedTxts.join('، '));
   // نلمّ الاختيارات ونقفل اللوحة عشان يختار باب تاني بارتياح
@@ -9291,7 +9583,7 @@ function editCartLine(i){
     if(m){
       sizes[Number(m[1])] = {
         qty:it.qty||1, height: it.doorHeight?String(it.doorHeight):'',
-        frame: it.frame||0, frameHeight: it.frameHeight?String(it.frameHeight):'', dbror: it.dbror||'', hafr:isHafr, wood:isWood, print:isPrint,
+        frame: it.frame||0, frameHeight: it.frameHeight?String(it.frameHeight):'', dbror: it.dbror||'', hafr:isHafr, wood:isWood, print:isPrint, printArt:it.printArt||'', engraveArt:it.engraveArt||'',
         frameKind: it.frameKind||null, frameRodQty: it.frameRodQty||'', frameForDoors: it.frameForDoors||''
       };
     } else {
@@ -9303,7 +9595,7 @@ function editCartLine(i){
       }
     }
     state.pick = {code:it.code||'', sizes, customOn, note:it.note||'',
-      custom:{w:customW,h:customH,qty:customQty,frame:customFrame,frameHeight:customFrameHeight,dbror:customDbror,hafr:isHafr,wood:isWood,print:isPrint,
+      custom:{w:customW,h:customH,qty:customQty,frame:customFrame,frameHeight:customFrameHeight,dbror:customDbror,hafr:isHafr,wood:isWood,print:isPrint,printArt:it.printArt||'',engraveArt:it.engraveArt||'',
         frameKind:customFrameKind,frameRodQty:customFrameRodQty,frameForDoors:customFrameForDoors}};
     state.newSection='doors'; save(LS_SECTION,state.newSection);
   } else if(it.kind==='frame' || it.kind==='bror'){
@@ -9430,6 +9722,7 @@ function adminEditOrderWith_(o, its){
                doorHeight, hafr:حفر,
                wood:woodLabels.has(label),
                print:printLabels.has(label) || PRINT_MARK_RE_.test(String(it.title||'')),
+               printArt:it.printArt||'',engraveArt:it.engraveArt||'',
                // ⚠️ عمود «الحفر» (Milling) كان بيضيع مع كل تعديل: السلة بترجع
                // من غير millEn، فالحفظ بيكتب الخانة فاضية. وarabicItemTitle_
                // بتقرا الحفر من الخانة دي — فالباب بيطلع في شاشة المصنع
@@ -9491,7 +9784,7 @@ function adminEditOrderWith_(o, its){
 
   enterEditMode_(o, {
     date: o.date || isoLocal_(),
-    meta: { name:o.dist||'', phone:o.phone||'', region:o.region||'', customer:o.customer||'', customerPhone:o.customerPhone||'' }
+    meta: { name:o.dist||'', phone:o.phone||'', region:o.region||'', customer:o.customer||'', customerPhone:o.customerPhone||'', customerRegion:o.customerRegion||'' }
   });
 }
 
@@ -9526,6 +9819,17 @@ function enterEditMode_(o, opts){
   state.orderNote = String(o.note || o.ordNote || '');
   state.editingId = o.id;
   state.editingMeta = opts.meta || null;
+  // نرجّع بيانات صاحب الأوردر للفورم في التعديل العادي — من غير كده طلب «عميل آخر»
+  // كان هيتسجّل بعد التعديل باسم الحساب بالغلط (لأن الفورم بيتصفّر بعد كل إرسال)
+  if(!opts.meta && o.customer){
+    const ownName = String(o.customer||'').trim(), profName = String(state.profile.name||'').trim();
+    if(ownName && ownName !== profName){
+      state.custMode='other';
+      state.customer={ name:ownName, phone:String(o.customerPhone||''), region:String(o.customerRegion||'') };
+    } else {
+      state.custMode='self'; state.customer={name:'',phone:'',region:''};
+    }
+  }
   state.editingDate = opts.date || isoLocal_(o.ts);
   state.editingDisplayNo = o.displayNo || '';
   state.editingEditCount = Number(o.editCount) || 0;
@@ -9555,8 +9859,10 @@ function importOrderText_(){
     ['name','phone','region'].forEach(k=>{ if(data.profile[k]) state.profile[k] = data.profile[k]; });
     save(LS_PROFILE, state.profile);
   }
-  if(data && data.customer && data.customer.name) state.customer = {
-    name: data.customer.name, phone: data.customer.phone || '' };
+  if(data && data.customer && data.customer.name){
+    state.customer = { name: data.customer.name, phone: data.customer.phone || '', region: data.customer.region || '' };
+    state.custMode = 'other';   // الطلب المسترجع ليه صاحب أوردر متسجّل — نفتح خانات «عميل آخر» عليه
+  }
   const عدد = سليم.reduce((n,it)=>n+(Number(it.qty)||0), 0);
   toast('اترجّع '+سليم.length+' صنف ('+عدد+' قطعة) — راجعهم كويس واضغط «حفظ وإرسال»', 6000);
   state.tab='cart'; render(); window.scrollTo({top:0,behavior:'smooth'});
@@ -9573,11 +9879,13 @@ function draftOrder(){
     id:newOrderId(), ts,
     name: m ? m.name : state.profile.name,
     phone: m ? m.phone : state.profile.phone,
-    region: m ? m.region : state.profile.region,
+    region: m ? m.region : state.profile.region,   // منطقة الحساب زي ما هي دايمًا — عنوان العميل له حقله الخاص customerRegion
     warehouse:WAREHOUSE, items:JSON.parse(JSON.stringify(state.cart)), total:cartTotal(),
-    // صاحب الأوردر: إجباري من v84 — بيتسجّل زي ما اتكتب
-    customer: m ? (m.customer||'') : state.customer.name.trim(),
-    customerPhone: m ? (m.customerPhone||'') : state.customer.phone.trim(),
+    // صاحب الأوردر: «لحسابي» بيتسجّل باسم صاحب الحساب من غير ما يتكتب تاني — «عميل آخر» بيتسجّل زي ما اتكتب
+    customer: m ? (m.customer||'') : (state.custMode==='other' ? state.customer.name.trim() : state.profile.name.trim()),
+    customerPhone: m ? (m.customerPhone||'') : (state.custMode==='other' ? state.customer.phone.trim() : ''),
+    // عنوان العميل (اختياري، «عميل آخر» بس) — حقل مستقل زي customerPhone؛ بيظهر في رسالة الواتساب وكارت الطلب على الجهاز
+    customerRegion: m ? (m.customerRegion||'') : (state.custMode==='other' ? String(state.customer.region||'').trim() : ''),
     note: state.orderNote.trim(),
     replacesId: state.editingId || '',   // لو ده تعديل لطلب قديم، بنحتفظ برقمه هنا عشان يبان في الطباعة/الرسالة
     // رقم الطلب "العادي" بيتورّث من الطلب الأصلي وقت التعديل (فاضي = السيرفر هيدّي رقم جديد تسلسلي)
@@ -9605,6 +9913,7 @@ function buildMessage(o){
   m+='الموبايل: '+(o.phone||'-')+'\n';
   if(o.customer) m+='صاحب الأوردر: '+o.customer+'\n';
   if(o.customerPhone) m+='تليفون صاحب الأوردر: '+o.customerPhone+'\n';
+  if(o.customerRegion) m+='عنوان العميل: '+o.customerRegion+'\n';
   m+='المخزن: '+WAREHOUSE+'\n';
   if(o.note) m+='ملاحظات: '+o.note+'\n';
   m+='——————\n';
@@ -9654,6 +9963,7 @@ async function shareOrderImage(o){
 
   busy(true,'جارٍ تجهيز صورة الطلب…');
   try{
+    await preparePrintDocument_(o);
     const {canvas} = await renderPaper_(docHTML(o,'order'));
     const blob=await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
     const file=new File([blob],'طلب_'+orderNoText_(o).replace('/','-')+'.png',{type:'image/png'});
@@ -9682,7 +9992,11 @@ async function shareOrderImage(o){
 let _lastSendError = null;
 async function sendOrderToServer_(o){
   _lastSendError = null;
-  const payload = JSON.stringify(o);
+  let proofs={};
+  try{await requireOrderCaps_(o);await requirePrintLocal_(o.items);proofs=await uploadOrderPrints_(o);}
+  catch(err){_lastSendError={msg:err.message||'تعذّر حفظ التصميمات',permanent:false};return false;}
+  const wire=Object.assign({},o,{artProofs:proofs});
+  const payload = JSON.stringify(wire);
   // ⚠️ الشرط القديم كان `payload.length < 6000` — بيقيس النص الخام. لكن الحروف العربية
   // بتتحوّل لـ %XX%XX في الرابط، يعني بتتضخّم 3 أضعاف تقريبًا. فطلب طوله 5999 حرف
   // كان بيوصل لرابط ~18000 حرف — أطول من اللي المتصفح وApps Script بيقبلوه، فبيفشل.
@@ -9691,7 +10005,7 @@ async function sendOrderToServer_(o){
   // جهاز لوحده — من غيره كل الأجهزة بتتحاسب على دلو واحد مشترك.
   const jsonpUrl = APPS_SCRIPT_URL + '?action=newOrder&dev=' + encodeURIComponent(deviceId_())
                  + '&payload=' + encodeURIComponent(payload);
-  if(jsonpUrl.length < 7500){
+  if(!orderArtRefs_(o).length && jsonpUrl.length < 7500){
     try{
       const d = await jsonp(jsonpUrl);
       _lastSendError = (d && !d.ok) ? { msg: d.error || '', permanent: !!d.permanent } : null;
@@ -9701,6 +10015,7 @@ async function sendOrderToServer_(o){
         const idx = state.orders.findIndex(x=>String(x.id)===String(o.id));
         if(idx>-1){ state.orders[idx].displayNo=d.displayNo; state.orders[idx].editCount=d.editCount||0; saveOrders_(state.orders); }
       }
+      if(d&&d.ok&&String(o.customerRegion||'').trim())return await verifyOrderArrived_(o,2);
       return !!(d && d.ok);
     }catch(err){ return false; }
   }
@@ -9716,7 +10031,7 @@ async function sendOrderToServer_(o){
   try{
     await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({action:'newOrder', dev:deviceId_(), order:o})});
+      body:JSON.stringify({action:'newOrder', dev:deviceId_(), order:wire})});
   }catch(err){ return false; }
   return await verifyOrderArrived_(o);
 }
@@ -9739,7 +10054,8 @@ async function verifyOrderArrived_(o, tries){
         + '&phone=' + encodeURIComponent(o.phone||''));
       if(d && d.ok){
         const hit = (d.orders||[]).find(r=>String(r.id)===String(o.id));
-        if(hit){
+        if(hit&&String(hit.customerRegion||'')!==String(o.customerRegion||''))_lastSendError={msg:'لم يتأكد حفظ عنوان العميل عند المصنع؛ الطلب ما زال محفوظًا للمحاولة من جديد',permanent:false};
+        if(hit && String(hit.customerRegion||'')===String(o.customerRegion||'') && await printStatusLinked_(o)){
           if(hit.displayNo){
             o.displayNo = hit.displayNo; o.editCount = Number(hit.editCount)||0;
             const idx = state.orders.findIndex(x=>String(x.id)===String(o.id));
@@ -10089,14 +10405,16 @@ function showSameDayDialog_(hit){
   };
 }
 
-function submitOrder(){
+let _printSubmitBusy=false;
+async function submitOrder(){
+  if(_printSubmitBusy)return;
   if(!state.cart.length){toast('السلة فاضية');return;}
   if(!state.editingMeta){
     // طلب جديد أو تعديل عادي من الموزع — لازم اسم الحساب وبيانات صحيحة وصاحب الأوردر
     if(!profileOk()){
       state.touched=true; state.tab='new'; render();
       window.scrollTo({top:0,behavior:'smooth'});
-      toast('اكتب الاسم ورقم موبايل صحيح واسم صاحب الأوردر — إجباري');
+      toast(state.custMode==='other' ? 'اكتب الاسم ورقم موبايل صحيح واسم العميل — إجباري' : 'اكتب الاسم ورقم موبايل صحيح — إجباري');
       return;
     }
   } else {
@@ -10112,11 +10430,22 @@ function submitOrder(){
       state.editingMeta.customer = v2;
     }
   }
+  _printSubmitBusy=true;
+  try{
+    const meta=state.editingMeta;
+    const address=meta?meta.customerRegion:(state.custMode==='other'?state.customer.region:'');
+    busy(true,'جارٍ التحقق من حفظ العنوان والتصميمات…');
+    await requireOrderCaps_({customerRegion:address||'',items:state.cart});
+    await hydrateFactoryArtCart_();
+    await requirePrintLocal_(state.cart);
+  }catch(err){toast(err.message||'تعذّر التحقق؛ السلة محفوظة ولم يتم الإرسال',7000);return;}
+  finally{_printSubmitBusy=false;busy(false);}
   const wasEditing = !!state.editingId;
   const prevId = state.editingId;
   const o=draftOrder();
   o.msg=buildMessage(o);
 
+  const localBefore={orders:state.orders.slice(),deleted:loadDeleted_().slice(),cancels:loadPendingCancels_().slice(),track:state.track.rows?state.track.rows.slice():null};
   if(wasEditing){
     // ⚠️ لو الطلب اللي بنعدّله هو نفسه لسه ما وصلش المصنع، يبقى فيه نية إلغاء
     // مستنياه — ونيته دي هتفضل مستنية طلب مش هييجي أبدًا (لأنه بيتشال دلوقتي).
@@ -10134,11 +10463,16 @@ function submitOrder(){
   // كانت الذاكرة بتحتفظ بكل الطلبات والمحفوظ 80 بس — فبعد أي إعادة فتح الأرقام
   // بتختلف عن اللي كان ظاهر. بنقصّ الاتنين على نفس الحد.
   const savedLocally = saveOrders_(state.orders);
+  if(!savedLocally){
+    state.orders=localBefore.orders;state.track.rows=localBefore.track;
+    save(LS_DELETED,localBefore.deleted);save(LS_PENDING_CANCEL,localBefore.cancels);
+    toast('تعذّر حفظ الطلب على الجهاز؛ السلة والتصميمات لسه موجودين ولم يُرسل أو يُلغَ أي طلب. فضّي مساحة وجرّب تاني',8000);return;
+  }
   const wasAdminEdit = !!state.editingMeta;
   state.cart=[]; saveCart_(); state.touched=false;
   state.editingId=null; state.editingMeta=null; state.editingDate=null;
   state.editingDisplayNo=null; state.editingEditCount=null;
-  state.customer={name:'',phone:''}; state.orderNote='';   // تصفير بيانات صاحب الأوردر للطلب الجاي
+  state.customer={name:'',phone:'',region:''}; state.custMode='self'; state.orderNote=''; state.newStep='info';   // تصفير بيانات صاحب الأوردر للطلب الجاي — الاختيار يرجع «لحسابي» والطلب الجديد يبدأ من صفحة البيانات
 
   if(APPS_SCRIPT_URL){
     // الطلب القديم لازم يتمسح من عند المصنع — لو المصنع هو اللي بيعدّل بنبعت كلمة سره
@@ -10306,7 +10640,7 @@ function docRowHTML_(it, idx, priced, showFrameHCol, oddFrameW, titleTxt){
     : val(frameW);
   return `<tr${isCut?' style="background:#FFF8E8"':''}>
     <td style="${T};font-size:12px;color:#444">${idx}</td>
-    <td style="${T};text-align:right;padding-inline:8px"><b style="font-size:14px">${esc(shownTitle)}</b>${restNote?`<br><span style="font-size:12.5px;font-weight:700;color:#B3261E">${esc(restNote)}</span>`:''}</td>
+    <td style="${T};text-align:right;padding-inline:8px;overflow-wrap:anywhere"><b style="font-size:14px">${esc(shownTitle).replace(/(طباعة|حفر)/g,'<span style="color:#B3261E">$1</span>')}</b>${restNote?`<br><span style="font-size:12.5px;font-weight:700;color:#B3261E">${esc(restNote)}</span>`:''}</td>
     <td style="${T};white-space:nowrap"><b style="font-size:16px;color:#000">${qty}</b> <span style="font-size:11px;color:#333">${esc(unit)}</span></td>
     <td style="${T};${SEP}">${val(widthTxt)}</td>
     <td style="${T}">${val(heightTxt)}</td>
@@ -10385,21 +10719,57 @@ function docTotalsHTML(o){
   const items=o.items||[];
   const doorItems=items.filter(it=>it.kind==='door');
   if(!doorItems.length) return '';
-  const perSize={};
-  doorItems.forEach(it=>{ const k=doorSizeText_(it.sizeTxt,it.doorHeight)||''; perSize[k]=(perSize[k]||0)+(Number(it.qty)||0); });
-  // ⚠️ ترتيب الكروت: الفلكس RTL بيرسم آخر عنصر على الشمال — .reverse() بيخلّي أول مجموعة في الجدول أول كارت من اليمين
-  const keys=sortSizeKeys_(Object.keys(perSize)).reverse();
-  const doorsTotal=keys.reduce((s,k)=>s+perSize[k],0);
+  // Each model and print design keeps its own quantity and catalog photograph.
+  const groups={};
+  doorItems.forEach(it=>{
+    const base=doorSizeText_(it.sizeTxt,it.doorHeight)||'';
+    const isP=!!(it.print || PRINT_MARK_RE_.test((it.title||'')+(it.titleEn||'')));
+    const code=doorCode_(it.code||'');
+    const art=isP ? String(it.printArt||'') : '';
+    const isE=!!(it.hafr||/\(حفر\)|\(Carved\)/i.test((it.title||'')+(it.titleEn||'')));
+    const engraving=isE?String(it.engraveArt||''):'';
+    const k=JSON.stringify([base,code,isP,art,isE,engraving]);
+    if(!groups[k]) groups[k]={base,isP,isE,code,qty:0,wh:null,art,engraving};
+    groups[k].qty+=(Number(it.qty)||0);
+    if(!groups[k].wh){ const wh=doorWH_(it.sizeEn||it.size||'',it.doorHeight); if(wh.w&&wh.h) groups[k].wh=wh; }
+  });
+  const baseKeys=sortSizeKeys_([...new Set(Object.values(groups).map(g=>g.base))]);
+  const keys=[]; baseKeys.forEach(b=>Object.keys(groups).filter(k=>groups[k].base===b).forEach(k=>keys.push(k)));
+  const doorsTotal=keys.reduce((s,k)=>s+groups[k].qty,0);
   // ⚠️ «الإجمالي الكلي» بيعدّ طقم الحلق كقطعة واحدة — وهو فعليًا ٣ عيدان. مابنغيّرش الحساب، بنوضّح الطقم كام عود.
   const setsQty = items.reduce((s,it)=>s+(it.isSet?(Number(it.qty)||0):0),0);
   const setsNote = setsQty
     ? `<div style="display:flex;justify-content:space-between;font-size:11.5px;padding:2px 0;color:#000"><span>منهم ${setsQty} طقم حلق</span><b>= ${setsQty*RODS_PER_SET} عود</b></div>`
     : '';
     const PAL = [['#E3F0FF','#9CC3EE'],['#FFF1D6','#EBC46E'],['#E2F6E9','#8ED1A5'],['#F1E6FF','#C4A4EE'],['#FFE5E3','#EE9F98'],['#DFF6F8','#8ACFD8'],['#FDE6F1','#E79DC2'],['#EEF2D4','#C3CF7E']];
-  const cards = keys.map((k,i)=>{ const [bg,bd]=PAL[i%PAL.length];
-    return `<div style="flex:1;min-width:84px;background:${bg};border:1.5px solid ${bd};border-radius:10px;padding:5px 4px;text-align:center;color:#000">
-    <div style="font-size:11px;font-weight:800;line-height:1.3">${esc(k)}</div>
-    <div style="font-size:19px;font-weight:900;line-height:1.2">${perSize[k]}</div></div>`; }).join('');
+  const cards = keys.map((k,i)=>{
+    const [bg,bd]=PAL[i%PAL.length],g=groups[k];
+    const model=DOORS.find(d=>d.code===g.code);
+    const photo=model&&model.img||'';
+    // Catalog-photo crops retain the actual frame and leaf while removing room margins.
+    const crop=({A01:[.14,.135,.56,.77],A02:[.18,.08,.60,.82],A03:[.25,.10,.55,.78],A04:[.21,.08,.56,.80],A05:[.13,.16,.57,.78],A06:[.29,0,.58,.85],A07:[.17,.08,.59,.75],A08:[.23,.07,.58,.82],A09:[.15,.12,.48,.68],A010:[.22,.04,.64,.85],A013:[.23,0,.64,.88]})[g.code]||[0,0,1,1];
+    const imageStyle=`position:absolute;max-width:none;width:${100/crop[2]}%;height:${100/crop[3]}%;left:${-100*crop[0]/crop[2]}%;top:${-100*crop[1]/crop[3]}%;display:block`;
+    const art=_printThumbs.get(g.art)||(/^data:image\/(?:png|jpeg|webp);base64,/i.test(g.art)?g.art:'');
+    const engraving=_printThumbs.get(g.engraving)||(/^data:image\/(?:png|jpeg|webp);base64,/i.test(g.engraving)?g.engraving:'');
+    const previews=g.isP&&g.isE?[{src:art,label:'طباعة'},{src:engraving,label:'حفر'}]:[{src:art||engraving,label:g.isP?'طباعة':g.isE?'حفر':''}];
+    const pictures=previews.map(pr=>`<div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:3px;margin:4px 0">
+        <div style="position:relative;width:52px;height:108px;background:#fff;border:1px solid #CCC;border-radius:3px;overflow:hidden">
+          ${photo?`<img data-door-model="${esc(g.code)}" src="${esc(photo)}" style="${imageStyle}">`:`<span style="font-size:11px">صورة الموديل غير متاحة</span>`}
+          ${pr.src?`<img data-print-overlay="1" src="${esc(pr.src)}" style="position:absolute;top:8%;left:12%;width:76%;height:89%;object-fit:fill;opacity:.92">`:''}
+        </div>
+        ${g.wh?`<div style="position:relative;width:17px;height:108px"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(90deg);font-size:10.5px;font-weight:800;white-space:nowrap">الطول ${g.wh.h} سم</span></div>`:''}
+      </div>
+      ${pr.label?`<div style="font-size:10px;font-weight:800;color:#B3261E;line-height:1.3">معاينة ${pr.label}${pr.src?'':(_printExpiredRefs.has(g.art)||_printExpiredRefs.has(g.engraving)?' · انتهت مدة حفظ التصميم':' · التصميم غير محمّل')}</div>`:''}
+    </div>`).join('');
+    return `<div style="flex:0 1 ${previews.length>1?'205':'125'}px;min-width:98px;background:${bg};border:1.5px solid ${bd};border-radius:10px;padding:6px 4px 5px;text-align:center;color:#000;box-sizing:border-box">
+      <div style="font-size:11px;font-weight:800;line-height:1.3">${g.wh?'العرض '+g.wh.w+' سم':esc(g.base)}</div>
+      <div style="display:flex;justify-content:center;gap:4px">${pictures}</div>
+      <div dir="ltr" style="font-size:11px;font-weight:800;margin:2px 0">${esc(g.code||'بدون كود')}</div>
+      <div style="display:inline-block;background:#fff;border:1.5px solid ${bd};border-radius:8px;padding:1px 10px;margin-top:2px;font-size:16px;font-weight:900;line-height:1.35">${g.qty} <span style="font-size:11px;font-weight:800">باب</span></div>
+      ${previews.length>1?'<div style="font-size:10px">نفس الأبواب، معاينتان للتصميمين</div>':''}
+    </div>`;
+  }).join('');
   const sumRow = (lbl,val,unit)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:2px 0;font-size:14px;font-weight:800;color:#0A1F44"><span>${lbl}</span><span>${val} <span style="font-size:13px">${unit}</span></span></div>`;
   return `<div class="keep-blk" style="margin-top:10px"><div style="display:flex;gap:6px;flex-wrap:wrap">${cards}</div>
     <div style="margin-top:8px;background:#F3F6FA;border-radius:10px;padding:6px 16px">
@@ -10505,6 +10875,7 @@ function docHTML(o,mode,priced){
         <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center">
           <div style="box-sizing:border-box;min-width:230px;max-width:100%;padding:9px 24px 10px;background:#EAF2FA;border:1.5px solid #B9D4EA;border-radius:14px">
             ${o.customer?`<div style="font-size:28px;font-weight:900;color:#0A1F44;line-height:1.3">${esc(o.customer)}</div>`:''}
+            ${o.customerRegion?`<div style="font-size:13px;font-weight:800;color:#0A1F44;line-height:1.35">عنوان العميل: ${esc(o.customerRegion)}</div>`:''}
             <div style="font-size:12.5px;font-weight:800;color:#6B7A8C;margin:3px 0 1px">${label}</div>
             <div dir="ltr" style="font-size:28px;font-weight:900;color:#0A1F44;line-height:1.2;letter-spacing:1px">${num}</div>
           </div>
@@ -10525,17 +10896,17 @@ function docHTML(o,mode,priced){
         ${esc(o.note)}</div>`:''}
 
       <div style="margin-top:12px;overflow:hidden">
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <table data-order-lines="1" style="width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px">
         <thead>
           <tr style="background:#002050;color:#fff;font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px">
             <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:26px">م</th>
-            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;text-align:right;padding-inline:8px">كود</th>
-            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:72px">الكمية</th>
-            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:52px">عرض<br>الفتحة</th>
-            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:52px">ارتفاع<br>الفتحة</th>
-            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:50px">عرض<br>الحلق</th>
-            ${showFrameHCol?`<th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:50px">ارتفاع<br>الحلق</th>`:''}
-            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:48px">البرور</th>
+            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;text-align:right;padding-inline:8px;width:160px">كود</th>
+            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:64px">الكمية</th>
+            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:auto">عرض<br>الفتحة</th>
+            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:auto">ارتفاع<br>الفتحة</th>
+            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:auto">عرض<br>الحلق</th>
+            ${showFrameHCol?`<th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:auto">ارتفاع<br>الحلق</th>`:''}
+            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:auto">البرور</th>
             ${priced?`<th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:64px">السعر</th><th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:74px">الإجمالي</th>`:''}
           </tr>
         </thead>
@@ -10558,16 +10929,7 @@ function docHTML(o,mode,priced){
         <b style="font-family:Arial,'Helvetica Neue',sans-serif">شروط التسعير:</b> ${esc(PRICE_NOTE)}
         <br>تقدر تتابع حالة طلبك في أي وقت من تبويب «تابع طلبك».
       </div>`:''}
-      ${isQuote ? '' : `
-      <div class="keep-blk bankblk" ${o.replacesId?'data-force="1"':''} style="${(state.showBank===false && !o.replacesId)?'display:none':''}">
-      <div style="margin-top:10px;padding:6px 12px;background:#FFF7F6;border:1.5px solid #D92D20;border-radius:12px;text-align:center">
-        <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px;font-weight:900;color:#B3261E;border:1.5px solid #D92D20;border-radius:20px;display:inline-block;padding:2px 16px">ملحوظة هامة</div>
-        <div style="font-family:Arial,'Helvetica Neue',sans-serif;font-size:15px;font-weight:900;color:#000;line-height:1.4;margin-top:4px">
-          لا يُبدأ التنفيذ إلا بعد سداد عربون على رقم الحساب وإرسال إيصال التحويل
-        </div>
-      </div>
-      ${bankCardHTML_(true)}
-      </div>`}
+
     </div>
   </div>`;
 }
@@ -10577,6 +10939,7 @@ async function makeDoc(o,mode,priced){
   if(!await needLibs_('html2canvas','jspdf')) return;
   busy(true,'جارٍ تجهيز المستند…');
   try{
+    await preparePrintDocument_(o);
     const {canvas} = await renderPaper_(docHTML(o,mode,priced));
     await canvasToPdf_(canvas, (mode==='quote'?'عرض_سعر_':'طلب_')+orderNoText_(o).replace('/','-')+(priced?'_بالسعر':'')+'.pdf');
   }catch(err){ toast('تعذّر تجهيز الـ PDF: '+(err&&err.message?err.message:err)); }
@@ -10957,13 +11320,15 @@ function mergeRestored_(rows){
       const qty = Number(r.qty)||0;
       state.orders.push({ id:String(r.id), displayNo:r.displayNo, editCount:r.editCount||0,
         ts: Number(r.ts) || (r.date ? Date.parse(r.date) : 0) || Date.now(), date:r.date||'',
-        customer:r.customer||'', note:r.note||'', total:Number(r.total)||0, qty,
+        customer:r.customer||'', customerRegion:r.customerRegion||'', note:r.note||'', total:Number(r.total)||0, qty,
         items:[{title:'أوردر مسترجع من جهاز تاني — '+qty+' قطعة', qty, restored:true}], restored:true });
       added++;
     });
     if(added){ state.orders.sort((a,b)=>(b.ts||0)-(a.ts||0)); saveOrders_(state.orders); toast('رجّعنا '+added+' طلب من جهاز تاني برقم موبايلك'); }
   }catch(e){}
 }
+
+restorePrintThumbnails_();
 </script>
 </body>
 </html>
