@@ -2348,6 +2348,8 @@ svg.flow-pictorial{stroke:none;fill:none;stroke-width:1}svg.flow-pictorial{overf
 .flow-root{padding:14px}.flow-doors,.flow-designs{gap:7px}.flow-doors .card,.flow-designs .card{padding:8px 4px;border-radius:14px;gap:4px}.flow-doors img{height:120px}.flow-designs img{height:140px}.flow-photo{width:200px;margin:10px auto}.flow-photo-row img{height:240px}.flow-summary{padding:9px 0;line-height:1.65}.flow-root h2{margin:0 0 12px}.ct-compact278{padding:14px;margin-bottom:12px}.ct-compact278 .step{margin-bottom:12px}.ct-compact278 .line{padding:9px;gap:9px;margin-bottom:8px;border-radius:12px}.ct-compact278 .line>img,.ct-compact278 .line>.ic{width:48px;height:62px;min-width:48px;border-radius:9px}.ct-compact278 .info2>b{font-size:14px;line-height:1.5}.ct-compact278 .spec{font-size:12px;line-height:1.6}.ct-compact278 .note{font-size:12px;margin:9px 0;line-height:1.6}.ct-hero{padding:15px;margin-bottom:12px}.ct-top b{font-size:27px}.ct-steps{margin-top:12px}.ct-steps span{padding:6px 9px;font-size:11px}.ct-compact278 .lineacts button{min-width:36px;min-height:36px}
 @media(min-width:800px){.flow-doors img{height:155px}.flow-designs img{height:200px}}
 </style>
+<style>.flow-next279{display:flex;flex-direction:column;gap:9px;padding:12px}.flow-next279 .btn{width:100%;min-height:44px}#cartFloat{display:none!important}</style>
+<style>.cust-tile277 .cust-order279{display:flex;flex-direction:column;gap:1px}.cust-tile277 .cust-order279 small{font-size:10px;font-weight:500;line-height:1.5;color:var(--muted);direction:ltr}.cust-tile277>span{display:flex;flex-direction:column;gap:5px;width:100%}</style>
 </head>
 <body>
 
@@ -2552,7 +2554,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v278';
+const APP_BUILD   = 'v279';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3956,7 +3958,7 @@ function renderNow(){
   cb.classList.toggle('zero', cn===0);   // «0» أحمر على طول فوق السلة كان مشوّش
   updateAdmBadge();
 
-  const show = state.tab==='new' && state.cart.length>0;
+  const show = false; // v279: no duplicate fixed basket review bar
   bar.hidden=!show;
   if(show){
     document.getElementById('barTotal').textContent=(pricesVisible()?money(cartTotal())+' ج':'—');
@@ -8772,7 +8774,7 @@ function viewAdmin(){
   }).join('');
   rows='<div class="cust-tiles277">'+Array.from({length:Math.ceil(order.length/3)},(_,rowIndex)=>{
     const names=order.slice(rowIndex*3,rowIndex*3+3);
-    const tiles=names.map(name=>{const os=groups[name],on=!!a.groupOpen[name];return `<button type="button" class="cust-tile277${on?' on':''}" data-act="adm-toggle-group" data-name="${esc(name)}" aria-expanded="${on}"><b>${esc(name)}</b><span>${os.map(o=>`<bdi>${esc(orderNoText_(o))}</bdi>`).join(' · ')}</span><small>${os.length>1?os.length+' طلب':''} ${on?'⌃':'⌄'}</small></button>`;}).join('');
+    const tiles=names.map(name=>{const os=groups[name],on=!!a.groupOpen[name];return `<button type="button" class="cust-tile277${on?' on':''}" data-act="adm-toggle-group" data-name="${esc(name)}" aria-expanded="${on}"><b>${esc(name)}</b><span>${os.map(o=>`<span class="cust-order279"><bdi>${esc(orderNoText_(o))}</bdi><small>${esc(o.date?dateStr2_(o.date):'تاريخ غير متاح')}</small></span>`).join('')}</span><small>${os.length>1?os.length+' طلب':''} ${on?'⌃':'⌄'}</small></button>`;}).join('');
     const selected=names.find(name=>a.groupOpen[name]);
     const detail=selected?`<section class="cust-detail277" data-customer-detail277="${esc(selected)}"><h3>${esc(selected)}</h3>${groups[selected].map(o=>groupOrderRowHTML_(o,a)+orderCardHTML_(o)).join('')}${groups[selected].length>1?`<div class="btnrow"><button class="btn ghost sm" data-act="adm-group-preview" data-name="${esc(selected)}">معاينة كل الطلبات</button><button class="btn ghost sm" data-act="adm-group-pdf" data-name="${esc(selected)}">PDF كل الطلبات</button></div>`:''}</section>`:'';
     return tiles+detail;
@@ -11583,6 +11585,7 @@ async function flowAddCart_(){
 }
 function flowEditCart_(i){const it=state.cart[i],m=flowMeta_(it);if(!m)return false;const wh=doorWH_(it.sizeEn,it.doorHeight);if(!wh.w||!wh.h)return false;doorFlow_={...flowBlank_(),stage:'review',ownerChosen:true,ownerConfirmedV276:doorFlow_.ownerConfirmedV276,ownerChoice278:doorFlow_.ownerChoice278,code:it.code,source:m.source,pattern:m.pattern||'',method:it.hafr?'engrave':'print',wood:!!it.wood,note:it.note||'',art:it.printArt||it.engraveArt||'',variants:[{widthPreset:/\(custom\)/i.test(String(it.sizeEn||''))?'custom':String(wh.w),w:String(wh.w),h:String(wh.h),qty:String(it.qty),frame:Number(it.frame)||0,frameHeight:it.frameHeight?String(it.frameHeight):'',dbror:it.dbror||''}],edit:{index:i,fingerprint:JSON.stringify(it)}};flowPersist_();state.tab='new';state.newSection='doors';render();return true;}
 async function flowAction_(a){const f=doorFlow_;
+ if(a==='another-item279'){if(state.newSection==='doors'&&!['categories','owner'].includes(f.stage))f.doorResume276=f.stage;state.newSection='';f.choosingAnother279=true;save(LS_SECTION,'');flowGo_('categories');return;}
  if(a==='register'){if(!flowAccountOk_())throw new Error('اكتب الاسم ورقم من ١١ رقم يبدأ بـ01');if(!save(LS_PROFILE,state.profile))throw new Error('تعذّر حفظ الحساب على الجهاز');flowGo_('owner');return;}
  if(a==='owner-next'){if(!fOwnerChoice278_())throw new Error('اختار صاحب الطلب');if(!ownerOk_())throw new Error('اكتب اسم العميل');f.ownerChosen=true;f.ownerConfirmedV276=true;state.newSection='';save(LS_SECTION,'');if(f.ownerReturnCart276){f.ownerReturnCart276=false;f.stage='categories';flowPersist_();state.tab='cart';render();}else flowGo_('categories');return;}
  if(a==='with-design'){f.source=f.source==='custom'?'custom':'catalog';flowGo_('designs');return;}
@@ -11848,16 +11851,8 @@ document.addEventListener('input',e=>{ if(e.target && e.target.id==='ordQ'){ _or
 document.addEventListener('click',e=>{ const b=e.target.closest && e.target.closest('[data-ofst]'); if(b){ _ordF.st=b.dataset.ofst; applyOrdFilter_(); } });
 
 /* ===== شريط السلة العائم على شاشة «طلب جديد» (v234) ===== */
-function updateCartFloat_(){
-  let el=document.getElementById('cartFloat');
-  const show = state.tab==='new' && cartCount()>0;
-  if(!el){ if(!show) return; el=document.createElement('button'); el.id='cartFloat'; el.type='button';
-    el.onclick=()=>{ state.tab='cart'; render(); window.scrollTo({top:0}); }; document.body.appendChild(el); }
-  el.hidden=!show; document.body.classList.toggle('hasFloat',show); if(!show) return;
-  let tot=''; try{ if(pricesVisible()) tot='<b>'+money(cartTotal())+' ج</b>'; }catch(_){}
-  el.innerHTML = ico('cart')+'<span>السلة · '+cartCount()+' صنف</span>'+tot+'<em>مراجعة الطلب ‹</em>';
-  const t=document.getElementById('tabs'); el.style.bottom=((t&&!t.hidden?t.offsetHeight:0)+10)+'px';
-}
+function updateCartFloat_(){document.getElementById('cartFloat')?.remove();document.body.classList.remove('hasFloat');}
+
 (function(){ const _rn=renderNow; renderNow=function(){ const r=_rn.apply(this,arguments); try{ updateCartFloat_(); applyOrdFilter_(); applyAdmFilter_(); }catch(_){} return r; }; })();
 
 document.addEventListener('click',e=>{ const b=e.target.closest && e.target.closest('[data-hmk]');
@@ -11902,11 +11897,11 @@ restorePrintThumbnails_();
 
 const FLOW_CATEGORIES276_=[['doors','door','الأبواب'],['frame','frame','حلق فقط'],['bror','bror','برور فقط'],['acc','parts','إكسسوارات'],['mabra','mabra','معبرة'],['prodium','panel','بروديوم'],['strip','strip','شريط'],['veneer','veneer','قشرة']];
 function flowCategoryNav276_(){return `<nav class="flow-category-nav276" aria-label="أصناف الطلب">${FLOW_CATEGORIES276_.map(([k,ic,label])=>`<button type="button" class="${state.newSection===k?'on':''}" data-flow-category="${k}">${ico(ic)}<span>${label}</span></button>`).join('')}</nav>`;}
-function flowSelectCategory276_(k){if(_pulledLine){restorePulledLine_(true);if(_pulledLine){toast("تعذّر استرجاع البند؛ كمل التعديل قبل تغيير الصنف",6500);return;}}const f=doorFlow_;if(state.newSection==='doors'&&!['categories','owner'].includes(f.stage))f.doorResume276=f.stage;state.newSection=k;save(LS_SECTION,k);if(k==='doors'){f.legacyChoice=false;f.stage=f.doorResume276||'doors';}else f.stage='categories';flowPersist_();render();window.scrollTo({top:0});}
+function flowSelectCategory276_(k){if(_pulledLine){restorePulledLine_(true);if(_pulledLine){toast("تعذّر استرجاع البند؛ كمل التعديل قبل تغيير الصنف",6500);return;}}const f=doorFlow_;f.choosingAnother279=false;if(state.newSection==='doors'&&!['categories','owner'].includes(f.stage))f.doorResume276=f.stage;state.newSection=k;save(LS_SECTION,k);if(k==='doors'){f.legacyChoice=false;f.stage=f.doorResume276||'doors';}else f.stage='categories';flowPersist_();render();window.scrollTo({top:0});}
 const flowViewBefore276_=viewNew;
 viewNew=function(){let html=flowViewBefore276_();const f=doorFlow_;if(!flowAccountOk_()||(!f.ownerConfirmedV276&&!state.editingId&&!state.editingMeta&&!_pulledLine))return html;
- const t=document.createElement('template');t.innerHTML=html;t.content.querySelectorAll('.secTiles,.flow-categories').forEach(x=>x.remove());
- return flowCategoryNav276_()+t.innerHTML;};
+ const t=document.createElement('template');t.innerHTML=html;t.content.querySelectorAll(f.choosingAnother279?'.secTiles':'.secTiles,.flow-categories').forEach(x=>x.remove());
+ return flowCategoryNav276_()+t.innerHTML+(state.cart.length?`<section class="card flow-next279"><button type="button" class="btn brand" data-flow-action="another-item279">أضف صنف آخر</button><button type="button" class="btn ghost" data-act="go-cart">مراجعة الطلب</button></section>`:'');};
 // Read-only acknowledgement. Never submit, upload artwork, retry or cancel here.
 async function verifyReceipt276_(o){if(!APPS_SCRIPT_URL||!o.phone){toast('رقم الحساب المحفوظ مع الطلب غير متاح؛ لا يمكن التحقق بدقة. الطلب لم يُرسل من التحقق',7000);return;}
  busy(true,'جارٍ التحقق من استلام المصنع، بدون إرسال…');
