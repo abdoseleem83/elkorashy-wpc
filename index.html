@@ -2620,7 +2620,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v295';
+const APP_BUILD = 'v296';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -11830,7 +11830,7 @@ function flowEditCart_(i){const it=state.cart[i],m=flowMeta_(it);if(!m)return fa
 const flowBackMap_={doors:'categories',source:'doors',designs:'source',dimensions:'__src__',components:'dimensions',extras:'components',review:'extras',categories:'owner'};
 async function flowAction_(a){const f=doorFlow_;
  if(a==='back-one'){const t=flowBackMap_[f.stage];if(!t)return;if(t==='owner'){f.ownerConfirmedV276=false;flowPersist_();render();window.scrollTo({top:0});return;}flowGo_(t==='__src__'?(f.source==='plain'?'source':'designs'):t);return;}
- if(a==='another-item279'){if(state.newSection==='doors'&&!['categories','owner'].includes(f.stage))f.doorResume276=f.stage;state.newSection='';f.choosingAnother279=true;save(LS_SECTION,'');flowGo_('categories');return;}
+ if(a==='another-item279'){const held=_flowBusy_;_flowBusy_=false;const ok=freshItem296_();_flowBusy_=held;if(!ok)return;doorFlow_.choosingAnother279=true;flowGo_('categories');return;}
  if(a==='register'){if(!flowAccountOk_())throw new Error('اكتب الاسم ورقم من ١١ رقم يبدأ بـ01');if(!save(LS_PROFILE,state.profile))throw new Error('تعذّر حفظ الحساب على الجهاز');flowGo_('owner');return;}
  if(a==='owner-next'){if(!fOwnerChoice278_())throw new Error('اختار صاحب الطلب');if(!ownerOk_())throw new Error('اكتب اسم العميل');f.ownerChosen=true;f.ownerConfirmedV276=true;const dest281=f.afterOwner281||'';f.afterOwner281='';if(f.ownerReturnCart276){f.ownerReturnCart276=false;state.newSection='';save(LS_SECTION,'');f.stage='categories';flowPersist_();state.tab='cart';render();}else if(dest281==='doors'){state.newSection='doors';save(LS_SECTION,'doors');flowGo_('doors');}else if(dest281){state.newSection=dest281;save(LS_SECTION,dest281);flowGo_('categories');}else{state.newSection='';save(LS_SECTION,'');flowGo_('categories');}return;}
  if(a==='with-design'){if(f.source!=='catalog'&&f.source!=='custom')f.source='';flowGo_('designs');return;}
@@ -11851,7 +11851,7 @@ document.addEventListener('click',async ev=>{
  try{
  const f=doorFlow_;
  if(b.dataset.flowCategory){flowSelectCategory276_(b.dataset.flowCategory);return;}
- if(b.dataset.flowCode){if(f.code!==b.dataset.flowCode){f.code=b.dataset.flowCode;f.pattern='';if(f.source==='catalog')f.art='';}flowGo_('source');return;}
+ if(b.dataset.flowCode){if(!freshItem296_())return;doorFlow_.code=b.dataset.flowCode;state.newSection='doors';save(LS_SECTION,'doors');flowGo_('source');return;}
  if(b.dataset.flowPattern){f.pattern=b.dataset.flowPattern;flowGo_('dimensions');return;}
  if(b.dataset.flowRemove!=null){if(f.variants.length>1)f.variants.splice(Number(b.dataset.flowRemove),1);flowPersist_();render();return;}
  if(b.dataset.flowChoice){const key=b.dataset.flowChoice,value=b.dataset.value;if(key==='widthPreset'){const v=f.variants[Number(b.dataset.flowIndex)];if(value==='custom'){v.widthPreset='custom';}else{v.w=String(value);v.widthPreset=String(value);if(!String(v.h||'').trim())v.h=String(DOOR_STD_HEIGHT);}flowPersist_();render();if(value==='custom')requestAnimationFrame(()=>document.querySelector('[data-flow-input="w"][data-flow-index="'+b.dataset.flowIndex+'"]')?.focus());return;}if(key==='owner'){state.custMode=value;f.ownerChoice278=value;if(value==='self'){await flowAction_('owner-next');return;}}else if(key==='source'&&f.source!==value){f.source=value;f.pattern='';f.art='';}else if(b.dataset.flowIndex!=null)f.variants[Number(b.dataset.flowIndex)][key]=key==='frame'?Number(value):value;else f[key]=key==='wood'?value==='1':value;flowPersist_();render();return;}
@@ -12245,7 +12245,7 @@ restorePrintThumbnails_();
 
 const FLOW_CATEGORIES276_=[['doors','door','الأبواب'],['frame','frame','حلق فقط'],['bror','bror','برور فقط'],['acc','parts','إكسسوارات'],['mabra','mabra','معبرة'],['prodium','panel','بروديوم'],['strip','strip','شريط'],['veneer','veneer','قشرة']];
 function flowCategoryNav276_(){return `<nav class="flow-category-nav276" aria-label="أصناف الطلب">${FLOW_CATEGORIES276_.map(([k,ic,label])=>`<button type="button" class="${state.newSection===k?'on':''}" data-flow-category="${k}">${ico(ic)}<span>${label}</span></button>`).join('')}</nav>`;}
-function flowSelectCategory276_(k){if(_pulledLine){restorePulledLine_(true);if(_pulledLine){toast("تعذّر استرجاع البند؛ كمل التعديل قبل تغيير الصنف",6500);return;}}const f=doorFlow_;f.choosingAnother279=false;if(!f.ownerConfirmedV276)f.afterOwner281=k;if(state.newSection==='doors'&&!['categories','owner'].includes(f.stage))f.doorResume276=f.stage;state.newSection=k;save(LS_SECTION,k);if(k==='doors'){f.legacyChoice=false;f.stage='doors';}else f.stage='categories';flowPersist_();render();window.scrollTo({top:0});}
+function flowSelectCategory276_(k){if(!freshItem296_())return;if(_pulledLine){restorePulledLine_(true);if(_pulledLine){toast("تعذّر استرجاع البند؛ كمل التعديل قبل تغيير الصنف",6500);return;}}const f=doorFlow_;f.choosingAnother279=false;if(!f.ownerConfirmedV276)f.afterOwner281=k;if(state.newSection==='doors'&&!['categories','owner'].includes(f.stage))f.doorResume276=f.stage;state.newSection=k;save(LS_SECTION,k);if(k==='doors'){f.legacyChoice=false;f.stage='doors';}else f.stage='categories';flowPersist_();render();window.scrollTo({top:0});}
 const flowViewBefore276_=viewNew;
 viewNew=function(){let html=flowViewBefore276_();const f=doorFlow_;if(!flowAccountOk_()||(!f.ownerConfirmedV276&&!state.editingId&&!state.editingMeta&&!_pulledLine))return html;
  const t=document.createElement('template');t.innerHTML=html;t.content.querySelectorAll(f.choosingAnother279?'.secTiles':'.secTiles,.flow-categories').forEach(x=>x.remove());
@@ -12455,6 +12455,36 @@ function cutHistoryChoice294_(ov){return new Promise(resolve=>{
  for(const [value,label]of [['included','القص داخل حساب الباب بالفعل، لا إضافة ثانية'],['separate','القص غير داخل الحساب، اعرض الخدمة منفصلة'],['','إلغاء ومراجعة الحساب']]){const b=document.createElement('button');b.type='button';b.className='btn ghost';b.textContent=label;b.onclick=()=>{box.remove();resolve(value);};box.append(b);}
  ov.querySelector('[data-result294]').before(box);box.scrollIntoView({block:'nearest'});
 });}
+</script>
+<script>
+/* v296: fresh item boundaries do not reuse prior selections. Cart and order identity stay intact. */
+const FRESH_PICKERS296_={fr:{cm:10, code:'', doorW:'', kind:'full', qty:'', brSize:'', brQty:'', brLen:'', nonStd:false, jamb:2, header:1, jambCm:220, headerCm:110, extra:[], rods:'', rodsCm:'', note:'', unit:'cm'},br:{size:'6×9', code:'', rods:'', len:BROR_ROD_M_DEFAULT, unit:'m'},sp:{code:'', qty:''},vn:{code:'', qty:''},mb:{wall:10, wallCustom:false, wallTxt:'', code:'', doorW:'', custom:false, w:'', h:'', qty:''},pd:{code:'', qty:''},acc:{}};
+const FRESH_BACKUP296_='wpc_picker_recovery_v296';
+function freshItem296_(){
+ if(flowNativeBusy_||_flowBusy_){toast('استنى حفظ التعديل الحالي');return false;}
+ const copy=x=>JSON.parse(JSON.stringify(x));
+ const archive=load(FRESH_BACKUP296_,[]);
+ const snapshot={flow:copy(doorFlow_),pick:copy(state.pick),products:Object.fromEntries(Object.keys(FRESH_PICKERS296_).map(k=>[k,copy(state[k])]))};
+ const last=archive[archive.length-1];
+ if(!last||JSON.stringify({flow:last.flow,pick:last.pick,products:last.products})!==JSON.stringify(snapshot))archive.push({at:Date.now(),...snapshot});
+ // Never replace selections when their recovery copy cannot be persisted.
+ if(!save(FRESH_BACKUP296_,archive)){toast('تعذّر حفظ نسخة الاختيارات السابقة؛ لم نبدأ بندًا جديدًا',6500);return false;}
+ if(_pulledLine){restorePulledLine_(true);if(_pulledLine)return false;}
+ const prior=doorFlow_,oldPick=state.pick,oldSection=state.newSection,oldProducts=Object.fromEntries(Object.keys(FRESH_PICKERS296_).map(k=>[k,state[k]]));
+ const keys=[FLOW_KEY_,'wpc_pick_draft_v265',FLOW_PRODUCTS_KEY_,LS_SECTION],oldRaw=keys.map(k=>[k,localStorage.getItem(k)]);
+ doorFlow_=Object.assign(flowBlank_(),{ownerChosen:!!prior.ownerChosen,ownerConfirmedV276:!!prior.ownerConfirmedV276,ownerChoice278:prior.ownerChoice278||'',legacyChoice:false,choosingAnother279:true});
+ resetPickerFor_('door');for(const [k,v]of Object.entries(FRESH_PICKERS296_))state[k]=copy(v);
+ state.newSection='';
+ const ok=flowPersist_()&&save('wpc_pick_draft_v265',state.pick)&&flowProductPersist_()&&save(LS_SECTION,'');
+ if(!ok){doorFlow_=prior;state.pick=oldPick;state.newSection=oldSection;for(const [k,v]of Object.entries(oldProducts))state[k]=v;for(const [k,v]of oldRaw){try{if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v);}catch(e){}}toast('تعذّر بدء بند جديد؛ الاختيارات القديمة ونسخة الاسترجاع محفوظة',7000);return false;}
+ return true;
+}
+// Capture before the existing tab handlers. Exiting an item editor starts fresh on re-entry.
+document.addEventListener('click',e=>{
+ const el=e.target.closest('[data-tab],[data-act],[data-flow-action]');if(!el||state.tab!=='new')return;
+ const exit=el.dataset.tab&&el.dataset.tab!=='new'||el.dataset.act==='go-cart'||el.dataset.act==='home-go'&&el.dataset.to!=='new';
+ if(exit&&!freshItem296_()){e.preventDefault();e.stopImmediatePropagation();}
+},true);
 </script>
 </body>
 </html>
