@@ -1,6 +1,6 @@
 /* App assets only. Orders, accounts, artwork and server requests never enter this cache. */
-const SHELL_CACHE='wpc-shell-v280';
-const RES_CACHE='wpc-resources-v280';
+const SHELL_CACHE='wpc-shell-v281';
+const RES_CACHE='wpc-resources-v281';
 const CORE=['./index.html','./offline.html','./manifest.json','./img/logo.png','./img/mark.png','./html2canvas.js','./jspdf.js','./exceljs.js',...['A01','A02','A03','A04','A05','A06','A07','A08','A09','A010','A013'].map(c=>'./img/doors/'+c+'.jpg')];
 self.addEventListener('install',event=>{event.waitUntil((async()=>{const c=await caches.open(SHELL_CACHE);await c.addAll(CORE);})());});
 self.addEventListener('message',e=>{if(e.data&&e.data.type==='SKIP_WAITING')self.skipWaiting();});
