@@ -2620,7 +2620,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v296';
+const APP_BUILD = 'v297';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -5025,8 +5025,8 @@ async function renderPaper_(html, opts){
   // التقارير الطويلة (أكتر من ~4 صفحات A4) مش محتاجة دقة x2 — الفرق مش بيبان في PDF
   // بس الوقت والذاكرة بيتضاعفوا. بنقلّل الدقة تدريجيًا مع الطول فالتقرير بيطلع أسرع بكتير.
   const a4h = w * 1.414;
-  if(h > a4h * 4)      scale = Math.min(scale, 1.5);
-  else if(h > a4h * 2) scale = Math.min(scale, 1.75);
+  if(!(opts&&opts.imageQuality)&&h > a4h * 4)      scale = Math.min(scale, 1.5);
+  else if(!(opts&&opts.imageQuality)&&h > a4h * 2) scale = Math.min(scale, 1.75);
   const maxScale = Math.sqrt(MAX_CANVAS_PIXELS / Math.max(w*h, 1));
   if(scale > maxScale) scale = Math.max(1, maxScale);
 
@@ -11945,7 +11945,7 @@ shareOrderImage=async function(o){
  if(!await needLibs_('html2canvas'))return;
  if(!o.displayNo&&APPS_SCRIPT_URL){busy(true,'جارٍ تأكيد رقم الطلب…');try{await Promise.race([verifyOrderArrived_(o,3),new Promise(r=>setTimeout(r,15000))]);}catch(e){}finally{busy(false);}}
  busy(true,'جارٍ تجهيز صورة الطلب…');
- try{await preparePrintDocument_(o);const {canvas}=await renderPaper_(docHTML(o,'order'),{scale:3});const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png',0.95));const number=String(orderNoText_(o)).replace(/[\\/:*?"<>|]/g,'-');flowShowImageShare_(blob,'طلب_'+number+'.png','طلب أوردر '+orderNoText_(o));}
+ try{await preparePrintDocument_(o);const {canvas}=await renderPaper_(docHTML(o,'order'),{scale:3,imageQuality:true});const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png',0.95));const number=String(orderNoText_(o)).replace(/[\\/:*?"<>|]/g,'-');flowShowImageShare_(blob,'طلب_'+number+'.png','طلب أوردر '+orderNoText_(o));}
  catch(err){toast('تعذّر تجهيز صورة الطلب: '+(err&&err.message||''),7000);}finally{busy(false);}
 };
 shareAdminOrderImageWith_=async function(o,items){return shareOrderImage(buildAdminDocOrder_(o,items));};
