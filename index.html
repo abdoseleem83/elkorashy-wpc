@@ -2293,6 +2293,9 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px color-mix(in srgb,v
 .tool285{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:74px;padding:10px 8px;border:1.5px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);font-weight:700;font-size:11.5px;cursor:pointer;font-family:inherit}
 .tool285 svg.i{width:22px;height:22px;color:var(--brand)}
 .tool285:active{transform:scale(.97)}
+.order-exports295{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;width:100%;margin:12px 0}
+.order-exports295 .btn{min-width:0;min-height:66px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:8px 3px;font-size:11px;white-space:normal;text-align:center;line-height:1.5}
+.order-exports295 .i{width:21px;height:21px;flex-shrink:0}
 </style>
 <style>
 /* v4 home — هادئة ونظيفة */
@@ -2617,7 +2620,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v294';
+const APP_BUILD = 'v295';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -4801,8 +4804,22 @@ function currentSummary(){
   return t;
 }
 
+function confirmedOrder295_(o){return !!(o&&!o.restored&&loadSent_().map(String).includes(String(o.id))&&!loadPendingSync_().map(String).includes(String(o.id)));}
+function orderExports295_(o){
+  if(!confirmedOrder295_(o))return '';
+  return `<div class="order-exports295" aria-label="مشاركة وملفات الطلب المؤكد ${esc(orderNoText_(o))}">
+    <button type="button" class="btn ghost sm" data-act="resend" data-id="${esc(o.id)}" title="مشاركة صورة الطلب" aria-label="مشاركة صورة الطلب ${esc(orderNoText_(o))}">${ico('send')}<span>مشاركة الصورة</span></button>
+    <button type="button" class="btn ghost sm" data-act="ord-pdf" data-id="${esc(o.id)}" title="PDF بالصور للطلب المؤكد">${ico('doc')}<span>PDF بالصور</span></button>
+    <button type="button" class="btn ghost sm" data-act="ord-pdf-eco" data-id="${esc(o.id)}" title="PDF بدون صور للطلب المؤكد">${ico('doc')}<span>PDF بدون صور</span></button>
+  </div>`;
+}
+function cartSubmission295_(){
+ const id=load('wpc_last_submission295',''),o=state.orders.find(x=>String(x.id)===String(id));if(!o)return '';
+ const confirmed=confirmedOrder295_(o);
+ return `<section class="card ct-compact278" data-submission295="${esc(o.id)}"><h2>${confirmed?'تم تأكيد استلام الطلب '+esc(orderNoText_(o)):'الطلب محفوظ، استلام المصنع لم يتأكد بعد'}</h2><div class="note">${confirmed?'اختار مشاركة الصورة أو تنزيل ملف الطلب. المشاركة لا تُرسل أوردر جديد.':'لا تضغط إرسال مرة ثانية. تحقق من الاستلام قراءة فقط، ولا يعيد إرسال الطلب.'}</div>${orderExports295_(o)}${confirmed?'':`<button type="button" class="btn ghost" data-act="verify-receipt-276" data-id="${esc(o.id)}">${ico('refresh')} تحقق من الاستلام</button>`}<button type="button" class="btn ghost sm" data-act="home-go" data-to="orders">تابع طلبك</button></section>`;
+}
 function viewCart(){
-  if(!state.cart.length) return `<div class="empty"><span class="em">${ico("cart","xl")}</span>
+  if(!state.cart.length) return cartSubmission295_() || `<div class="empty"><span class="em">${ico("cart","xl")}</span>
     <p>السلة فاضية — ارجع لتبويب «طلب جديد».</p>
     <button class="btn ghost sm" data-act="order-import" style="margin-top:14px">${ico("undo")} استرجاع طلب من نسخة محفوظة</button>
     </div>${verBar()}`;
@@ -4881,10 +4898,8 @@ function viewCart(){
     <div class="step"><span class="n">↗</span><h2>${editing?'حفظ التعديل':'إرسال طلب أوردر'}</h2></div>
     ${ok?'':`<button class="ct-fix" data-act="home-go" data-to="new">${ico('warn')} ${state.custMode==='other'?'كمّل الاسم ورقم الموبايل واسم العميل الأول':'كمّل الاسم ورقم الموبايل الأول'}</button>`}
     ${ordNoteBoxHTML_('margin-bottom:12px')}
-    <button class="btn brand ct-send" data-act="submit">${editing?ico("save")+' حفظ التعديل وإرسال واتساب':ico("send")+' إرسال للمصنع ثم مشاركة الصورة'}</button>
+    <button class="btn brand ct-send" data-act="submit">${editing?ico("save")+' حفظ التعديل وإرسال واتساب':ico("send")+' إرسال الأوردر للمصنع'}</button>
     <div class="btnrow" style="margin-top:9px">
-      <button class="btn ghost sm" data-act="quote-cart" title="مستند الطلب كامل بالصور — استخراج PDF فقط، لا يرسل الطلب للمصنع">${ico("doc")} PDF بالصور</button>
-      <button class="btn ghost sm" data-act="quote-cart-eco" title="نسخة اقتصادية: الجدول كامل + ملخص نصي لكل مقاس، بلا صور — استخراج PDF فقط، لا يرسل الطلب للمصنع">${ico("doc")} PDF بدون صور</button>
       <button class="btn ghost sm" data-act="clear">تفريغ السلة</button>
     </div>
   </section>
@@ -7562,49 +7577,48 @@ function applyReceived_(orders){
 // دلوقتي: بيانات الطلب بتتاخد من الشاشة على طول، والأصناف من الكاش لو محمّلة قبل كده
 // (لو المصنع فتح «الأصناف» للطلب)، وإلا بنجيب أصناف الطلبات دي بس — نداء صغير لكل
 // طلب بدل نداء واحد ضخم بكل طلبات المصنع.
+function previewWait295_(work, ms=65000){
+  let timer;
+  return Promise.race([work, new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('المعاينة اتأخرت. البيانات محفوظة، جرّب العدسة تاني لما الاتصال يستقر')),ms);})]).finally(()=>clearTimeout(timer));
+}
 async function previewCustomerOrder_(name){
   if(!name) return;
-  const a = state.admin;
-  if(a.groupPreviewBusy) return;
-
-  // الطلبات موجودة في الشاشة خلاص — مفيش داعي نسأل السيرفر عنها تاني
-  const list = (a.viewArchive ? a.archRows : a.rows) || [];
-  const mine = list.filter(o => (String(o.customer||'').trim() || 'بدون اسم') === name);
-  if(!mine.length){ toast('مفيش طلبات للعميل ده في الشاشة'); return; }
-
-  a.groupPreviewBusy = name; render();
+  const a=state.admin;
+  if(a.groupPreviewBusy || a.orderPreviewBusy){toast('جارٍ تجهيز المعاينة، استنى النتيجة');return;}
+  const list=(a.viewArchive?a.archRows:a.rows)||[];
+  const mine=list.filter(o=>(String(o.customer||'').trim()||'بدون اسم')===name);
+  if(!mine.length){toast('مفيش طلبات للعميل ده في الشاشة');return;}
+  a.groupPreviewBusy=name; render(); busy(true,'جارٍ تجهيز معاينة '+name+'…');
   try{
-    // أصناف كل الطلبات في نداء واحد بدل نداء لكل طلب
-    await loadOrderItemsMany_(mine.map(o => o.id));
-
-    await Promise.all(mine.map(o=>preparePrintDocument_(buildAdminDocOrder_(o,a.items[o.id]||[]))));
-    const html = mine.map(o => {
-      const its = a.items[o.id] || [];
-      return docHTML(buildAdminDocOrder_(o, its), 'order');
-    }).join('<div style="height:18px"></div>');
-
+    const html=await previewWait295_((async()=>{
+      await loadOrderItemsMany_(mine.map(o=>o.id));
+      const docs=mine.map(o=>{
+        const its=a.items[o.id];
+        if(!Array.isArray(its)||!its.length)throw new Error('تعذّر تحميل أصناف الطلب '+orderNoText_(o)+'، لم تُفتح معاينة ناقصة. جرّب تاني');
+        return buildAdminDocOrder_(o,its);
+      });
+      await Promise.all(docs.map(doc=>preparePrintDocument_(doc)));
+      return docs.map(doc=>docHTML(doc,'order')).join('<div style="height:18px"></div>');
+    })());
     showReportPreview_(html,name);
-  }catch(err){
-    toast('تعذّر فتح المعاينة: ' + (err.message || err));
-  }
-  a.groupPreviewBusy = null; render();
+  }catch(err){toast('تعذّر فتح المعاينة: '+(err.message||err),8000);}
+  finally{a.groupPreviewBusy=null;render();busy(false);}
 }
-
-// معاينة طلب واحد. المصنع كان يقدر يعاين كل طلبات العميل مع بعض بس — ولو العميل
-// عنده عشر طلبات، اللي عايز يشوف طلب واحد بيستنى تحميلهم كلهم ويدوّر في الورق.
 async function previewOneOrder_(id){
-  const o = adminOrderById_(id); if(!o) return;
-  const a = state.admin;
-  if(a.orderPreviewBusy) return;
-  a.orderPreviewBusy = o.id; render();
+  const o=adminOrderById_(id);if(!o)return;
+  const a=state.admin;
+  if(a.orderPreviewBusy || a.groupPreviewBusy){toast('جارٍ تجهيز المعاينة، استنى النتيجة');return;}
+  a.orderPreviewBusy=o.id;render();busy(true,'جارٍ تجهيز معاينة الطلب '+orderNoText_(o)+'…');
   try{
-    const its = await loadOrderItems_(o.id);
-    if(!its.length){ toast('مفيش أصناف في الطلب ده'); }
-    else {const doc=buildAdminDocOrder_(o,its);await preparePrintDocument_(doc);showReportPreview_(docHTML(doc,'order'),orderNoText_(o),o.id);setTimeout(()=>addArtworkDownloadButtons_(o.id,doc),0);}
-  }catch(err){
-    toast('تعذّر فتح المعاينة: ' + (err.message || err));
-  }
-  a.orderPreviewBusy = null; render();
+    const doc=await previewWait295_((async()=>{
+      const its=await loadOrderItems_(o.id);
+      if(!its.length)throw new Error('مفيش أصناف متاحة في الطلب ده. جرّب تاني لما الاتصال يستقر');
+      const doc=buildAdminDocOrder_(o,its);await preparePrintDocument_(doc);return doc;
+    })());
+    showReportPreview_(docHTML(doc,'order'),orderNoText_(o),o.id);
+    setTimeout(()=>addArtworkDownloadButtons_(o.id,doc),0);
+  }catch(err){toast('تعذّر فتح المعاينة: '+(err.message||err),8000);}
+  finally{a.orderPreviewBusy=null;render();busy(false);}
 }
 
 /* ⚠️ الأصناف الراجعة من الشيت لسه فيها الأكواد القديمة (A015) — والكود ده
@@ -10903,6 +10917,7 @@ async function submitOrder(){
     save(LS_DELETED,localBefore.deleted);save(LS_PENDING_CANCEL,localBefore.cancels);
     toast('تعذّر حفظ الطلب على الجهاز؛ السلة والتصميمات لسه موجودين ولم يُرسل أو يُلغَ أي طلب. فضّي مساحة وجرّب تاني',8000);return;
   }
+  save('wpc_last_submission295',String(o.id));
   const wasAdminEdit = !!state.editingMeta;
   state.cart=[]; saveCart_(); state.touched=false;
   state.editingId=null; state.editingMeta=null; state.editingDate=null;
@@ -10932,7 +10947,7 @@ async function submitOrder(){
         let waiting=true;
         const uiTimer=setTimeout(()=>{waiting=false;busy(false);if(loadSent_().map(String).includes(String(o.id)))return;toast('التأكيد أخد وقت أطول. الطلب والصورة محفوظين، والمتابعة شغالة بدون إعادة إرسال. ما تضغطش إرسال تاني؛ راجع تحقق من الاستلام.',10000,o.id);},15000);
         let received=false;try{received=await syncing;}catch(e){}finally{clearTimeout(uiTimer);busy(false);}
-        render();if(received===true||loadSent_().map(String).includes(String(o.id))){clearOrderToast280_(o.id);if(waiting)shareOrderImage(o);else toast('تأكد استلام المصنع برقم '+orderNoText_(o)+'. الصورة جاهزة من زر مشاركة صورة، لم نفتحها متأخرًا تلقائيًا.',10000);}else toast(o.displayNo?'المصنع سجّل الطلب برقم '+orderNoText_(o)+'، لكن تأكيد تفاصيل التصميم لم يكتمل. لا تعيد الإرسال؛ راجع الاستلام.':'الطلب محفوظ على جهازك، لكن استلام المصنع لم يتأكد. راجع تابع طلبك؛ لم نفتح المشاركة تلقائيًا',10000);
+        render();if(received===true||loadSent_().map(String).includes(String(o.id))){clearOrderToast280_(o.id);toast('تأكد استلام المصنع برقم '+orderNoText_(o)+'. مشاركة الصورة وملفات PDF جاهزة باختيارك، لم نفتح مشاركة تلقائيًا.',10000);}else toast(o.displayNo?'المصنع سجّل الطلب برقم '+orderNoText_(o)+'، لكن تأكيد تفاصيل التصميم لم يكتمل. لا تعيد الإرسال؛ راجع الاستلام.':'الطلب محفوظ على جهازك، لكن استلام المصنع لم يتأكد. راجع تابع طلبك؛ لم نفتح المشاركة تلقائيًا',10000);
       })();
     }
     // ⚠️ باج كان هنا: الكتلة دي بتشتغل في الخلفية، وتحتها على طول كان بيتعمل
@@ -10960,7 +10975,7 @@ async function submitOrder(){
       return cancelled ? 'اتلغى' : 'مؤجّل';
     })();
   } else if(!wasAdminEdit){
-    shareOrderImage(o);
+    toast('لم يتأكد استلام المصنع، الطلب محفوظ فقط.',7000);
   }
   if(wasAdminEdit){
     // المصنع رجع لشاشته، والقايمة بتتحدّث من السيرفر عشان تبان بالأصناف الجديدة
@@ -10983,7 +10998,7 @@ async function submitOrder(){
     })();
     return;
   }
-  state.tab='orders'; render();
+  state.tab=wasEditing?'orders':'cart'; render();
   if(savedLocally){
     // ⚠️ نفس باج v137: الرسالة كانت بتكتب الكود الداخلي بينما المستند والواتساب
     // وكل الشاشات بيكتبوا الرقم التسلسلي. الرقم لسه ممكن مايكونش وصل من السيرفر
@@ -11221,28 +11236,28 @@ function docDrawingParts_(it){
   }
   return parts;
 }
-function docStandaloneDrawingCards_(items, palette){
+function docStandaloneDrawingCards_(items, palette,eco){
   return items.filter(it=>it.kind==='frame'||it.kind==='bror'||it.kind==='mabra'||it.kind==='panel').map((it,i)=>{
     // المعبرة والبروديوم المطلوبان مستقلًا كانا بيختفوا من رسم الملخص خالص —
     // بقت ليهم كروت بنفس لغة الرسم التخطيطي ولون الكود الفعلي، والمقاسات
     // تُقرأ من الجدول زي باقي الرسم.
     if(it.kind==='mabra'||it.kind==='panel'){
       const isMabra=it.kind==='mabra';
-      const [bgS,bdS]=palette[(i+2)%palette.length];
+      const [bgS,bdS]=eco?['#FFFFFF','#C9D2DC']:palette[(i+2)%palette.length];
       const shape=isMabra
         ? docWoodU_(it.code,44,70,6)
         : `<div data-part-shape="panel" data-finish-code="${esc(doorCode_(it.code||''))}" style="width:52px;height:70px;${docFinishStyle_(it.code)}border:1px solid #746B5F;box-sizing:border-box"></div>`;
       return `<div data-standalone-part="${it.kind}" class="keep-blk" style="flex:0 1 164px;min-width:140px;max-width:220px;background:${bgS};border:1.5px solid ${bdS};border-radius:10px;padding:5px 9px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
         <div style="font-size:12px;font-weight:900">${isMabra?'معبرة':'لوح بروديوم'} <span dir="ltr" style="display:inline-block;font-size:10.5px">${esc(doorCode_(it.code||''))||''}</span></div>
         <div style="font-size:11px;font-weight:800;margin:2px 0">${docInlineDims_(it.spec||'')}</div>
-        <div style="display:flex;align-items:center;justify-content:center;height:76px">${shape}</div>
+        ${eco?'':`<div style="display:flex;align-items:center;justify-content:center;height:76px">${shape}</div>`}
         <div data-part-quantity="1" style="display:inline-block;background:#fff;border:1.5px solid ${bdS};border-radius:8px;padding:1px 9px;margin-top:3px;font-size:16px;font-weight:900;line-height:1.35">${Number(it.qty)||0} <span style="font-size:11px">${isMabra?'معبرة':'لوح'}</span></div>
       </div>`;
     }
     const isFrame=it.kind==='frame', isSet=isFrame&&(!!it.isSet||String(it.unit||'')==='set');
     const parts=isFrame&&!isSet?docDrawingParts_(it):[];
     const composed=isFrame&&(isSet||(parts.some(p=>p.label==='قائم')&&parts.some(p=>p.label.indexOf('عارضة')===0)));
-    const [bg,bd]=palette[(i+2)%palette.length];
+    const [bg,bd]=eco?['#FFFFFF','#C9D2DC']:palette[(i+2)%palette.length];
     const paint=docFinishStyle_(it.code);
     const qty=Number(it.qty)||0, partsTotal=parts.reduce((s,p)=>s+p.qty,0);
     const mismatch=parts.length>0&&Math.abs(partsTotal-qty)>.0001;
@@ -11259,7 +11274,7 @@ function docStandaloneDrawingCards_(items, palette){
     return `<div data-standalone-part="${isFrame?'frame':'bror'}" class="keep-blk" style="flex:0 1 164px;min-width:140px;max-width:220px;background:${bg};border:1.5px solid ${bd};border-radius:10px;padding:5px 9px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
       <div style="font-size:12px;font-weight:900">${label} <span dir="ltr" style="display:inline-block;font-size:10.5px">${esc(doorCode_(it.code||''))||'بدون كود'}</span></div>
       <div style="font-size:11px;font-weight:800;margin:2px 0">${isFrame?'مقاس الحلق: ':'مقاس البرور: '}${measure?'<span dir="ltr" style="display:inline-block;direction:ltr">'+esc(measure)+'</span>'+(isFrame?' سم':''):'غير مسجّل'}</div>
-      <div style="display:flex;align-items:center;justify-content:center;height:76px">${drawing}</div>
+      ${eco?'':`<div style="display:flex;align-items:center;justify-content:center;height:76px">${drawing}</div>`}
       <div data-part-dimensions="1" style="font-size:10.5px;line-height:1.4;font-weight:700">${detail}${it.doorW?`<div>لباب مقاس ${esc(it.doorW)} سم</div>`:''}</div>
       ${mismatch?'<div data-part-warning="1" style="font-size:10px;font-weight:800;color:#A32119;margin-top:3px">تفصيل العدد لا يطابق إجمالي الأعواد المسجّل، يُراجع قبل التنفيذ.</div>':''}
       <div data-part-quantity="1" style="display:inline-block;background:#fff;border:1.5px solid ${bd};border-radius:8px;padding:1px 9px;margin-top:3px;font-size:16px;font-weight:900;line-height:1.35">${qty} <span style="font-size:11px">${isSet?'طقم':'عود'}</span></div>
@@ -11336,7 +11351,7 @@ function docTotalsHTML(o,eco){
   const brorRods=brorItems.reduce((s,it)=>s+(Number(it.qty)||0),0);
   const sumRow=(label,val,unit)=>`<div style="display:flex;flex:1 1 285px;justify-content:space-between;align-items:baseline;gap:12px;padding:2px 0;font-size:13px;font-weight:800;color:#0A1F44"><span>${label}</span><span>${Math.round(val*10000)/10000} <span style="font-size:12px">${unit}</span></span></div>`;
   return `<div data-order-drawings="1" style="margin-top:10px"><div class="keep-blk" style="break-inside:avoid"><div style="font-size:10px;color:#526171;margin-bottom:6px">${eco?'ملخص نصي':'رسم توضيحي'}؛ المقاسات والأعداد بالجدول هي المعتمدة.</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:stretch">${cards}${docStandaloneDrawingCards_(items,PAL)}</div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:stretch">${cards}${docStandaloneDrawingCards_(items,PAL,eco)}</div></div>
     ${docDrawingNotes_(o,eco)}
     <div class="keep-blk" style="display:flex;flex-wrap:wrap;column-gap:22px;margin-top:8px;background:${eco?'#fff':'#F3F6FA'};${eco?'border:1px solid #D5DDE6;':''}border-radius:10px;padding:6px 16px;break-inside:avoid">${doorItems.length?sumRow('إجمالي الأبواب',doorsTotal,'باب'):''}${frameItems.length?sumRow('أعواد الحلق المنفصل',frameRods,'عود'):''}${brorItems.length?sumRow('أعواد البرور المنفصل',brorRods,'عود'):''}</div>
     </div>`;
@@ -11717,7 +11732,7 @@ async function doInstall(){
    التشغيل
    ============================================================ */
 const savedPw = sessionStorage.getItem('wpc_adm');
-if(savedPw){ state.admin.pw = savedPw; adminLoad(); startAdminPolling(); }
+if(savedPw){ state.admin.pw = savedPw; queueMicrotask(()=>{ adminLoad(); startAdminPolling(); }); }
 document.getElementById('hdrLogo').src = ASSETS.logo;
 document.documentElement.style.setProperty('--mark', 'url('+ASSETS.mark+')');
 document.getElementById('vsVer').textContent = APP_BUILD;
