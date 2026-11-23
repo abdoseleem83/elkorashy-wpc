@@ -1,10 +1,10 @@
 /* App assets only. Orders, accounts, artwork and server requests never enter this cache. */
-const SHELL_CACHE='wpc-shell-v283';
-const RES_CACHE='wpc-resources-v283';
+const SHELL_CACHE='wpc-shell-v285';
+const RES_CACHE='wpc-resources-v285';
 const CORE=['./index.html','./offline.html','./manifest.json','./img/logo.png','./img/mark.png','./html2canvas.js','./jspdf.js','./exceljs.js',...['A01','A02','A03','A04','A05','A06','A07','A08','A09','A010','A013'].map(c=>'./img/doors/'+c+'.jpg')];
 self.addEventListener('install',event=>{event.waitUntil((async()=>{const c=await caches.open(SHELL_CACHE);await c.addAll(CORE);})());});
 self.addEventListener('message',e=>{if(e.data&&e.data.type==='SKIP_WAITING')self.skipWaiting();});
-self.addEventListener('activate',event=>{event.waitUntil((async()=>{await self.clients.claim();})());});
+self.addEventListener('activate',event=>{event.waitUntil((async()=>{const keep=new Set([SHELL_CACHE,RES_CACHE]);const keys=await caches.keys();await Promise.all(keys.filter(k=>(k.startsWith('wpc-shell-')||k.startsWith('wpc-resources-'))&&!keep.has(k)).map(k=>caches.delete(k)));await self.clients.claim();})());});
 self.addEventListener('fetch',event=>{const r=event.request,u=new URL(r.url);if(r.method!=='GET'||u.origin!==self.location.origin)return;
 if(r.mode==='navigate'){event.respondWith((async()=>{const c=await caches.open(SHELL_CACHE);
   // النسخة المحفوظة بتتعرض فورًا — الفتح مبقاش مستني النت ولا باقة المستخدم،
