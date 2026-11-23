@@ -2273,6 +2273,10 @@ html[data-theme="dark"] .chip.on,html[data-theme="dark"] .miniChip.on{color:#061
 .secTile.on{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand),0 12px 24px -12px var(--brand)}
 input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 28%,transparent)}
 .tabs button.on,.tabs button.on .i{color:var(--brand)!important}
+
+:root:root .fld > .flow-qty282{display:grid!important;grid-template-columns:52px minmax(0,1fr) 52px;align-items:stretch;gap:8px;padding:8px;border:1.5px solid var(--fx-qty-bd);border-radius:16px;background:var(--fx-qty-bg)}
+.flow-qty282 button{border:1px solid var(--fx-qty-bd);border-radius:12px;background:var(--card);color:var(--ink);font-size:28px;font-weight:800;min-height:52px;touch-action:manipulation}
+:root:root .flow-qty282 input{min-width:0;text-align:center;--fxb:var(--fx-qty-bg);--fxd:var(--fx-qty-bd);--fxf:var(--fx-qty-fc);font-size:22px;font-weight:800}
 </style>
 <style>
 /* v4 home — هادئة ونظيفة */
@@ -2346,7 +2350,7 @@ svg.flow-pictorial{stroke:none;fill:none;stroke-width:1}svg.flow-pictorial{overf
 .flow-image-preview.is-zoomed img{width:auto;max-width:none;height:auto}.flow-image-zoom{display:block;width:100%;font-size:13px;padding:7px;margin:0 0 8px}
 </style>
 <style>
-.flow-category-nav276,.ad-grid{position:sticky;top:var(--flow-sticky-top276,125px);z-index:25;background:var(--bg);padding:7px 2px;display:flex;gap:6px;overflow-x:auto;margin:0 0 12px;scrollbar-width:thin}.flow-category-nav276{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;overflow:visible}.flow-category-nav276 button{min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;border:1px solid var(--line);border-radius:12px;background:var(--card);padding:7px 1px;color:var(--ink);font:inherit;font-size:9px;font-weight:700;min-height:60px}.flow-category-nav276 button.on{border:2px solid var(--brand);background:var(--brand-soft,#e8f3ff)}.flow-category-nav276 .i{width:29px;height:29px}.ad-grid .ad-sq{flex:1;min-width:0;min-height:78px;padding:7px 2px;border-radius:12px;gap:3px}.ad-grid .ad-sq .n{width:30px;height:30px;border-radius:9px}.ad-grid .ad-sq .n .i{width:25px;height:25px}.ad-grid .ad-sq .tt b{font-size:10px;line-height:1.4}.ad-grid .ad-sq .tt small{display:none}.flow-owner-first .flow-chips{display:flex}.flow-owner-first .chip{flex:1;min-height:55px;font-size:17px}.flow-root h2{margin-top:8px}
+.flow-category-nav276,.ad-grid{position:sticky;top:var(--flow-sticky-top276,125px);z-index:25;background:var(--bg);padding:7px 2px;display:flex;gap:6px;overflow-x:auto;margin:0 0 12px;scrollbar-width:thin}.flow-category-nav276{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;overflow:visible}.flow-category-nav276 button{min-width:0;display:flex;flex-direction:column;align-items:center;gap:5px;border:1px solid var(--line);border-radius:12px;background:var(--card);padding:8px 1px;color:var(--ink);font:inherit;font-size:10px;font-weight:700;min-height:68px}.flow-category-nav276 button.on{border:2px solid var(--brand);background:var(--brand-soft,#e8f3ff)}.flow-category-nav276 .i{width:34px;height:34px}.ad-grid .ad-sq{flex:1;min-width:0;min-height:78px;padding:7px 2px;border-radius:12px;gap:3px}.ad-grid .ad-sq .n{width:30px;height:30px;border-radius:9px}.ad-grid .ad-sq .n .i{width:25px;height:25px}.ad-grid .ad-sq .tt b{font-size:10px;line-height:1.4}.ad-grid .ad-sq .tt small{display:none}.flow-owner-first .flow-chips{display:flex}.flow-owner-first .chip{flex:1;min-height:55px;font-size:17px}.flow-root h2{margin-top:8px}
 </style><style>body{font-size:14px}#view h2{font-size:18px}#view h3{font-size:16px}.flow-owner-first .chip{font-size:14px;min-height:46px}.flow-owner-first h3{font-size:18px}.flow-owner-first p{font-size:13px;line-height:1.6}.flow-owner-first>.note{font-size:11px}.flow-root{font-size:13px}.flow-root .fld>span{font-size:12px}.flow-root .fld input{min-height:42px;font-size:14px}.flow-owner-first .fld input{font-size:14px;min-height:42px}.ad-top b{font-size:29px}.ad-hero{padding:16px}.flow-owner-first{padding:16px}</style><style>
 /* v277: constrain Track action columns rather than hiding clipped content. */
 .ord{min-width:0;max-width:100%;box-sizing:border-box}.ord .oh{min-width:0;flex-wrap:wrap}.ord .oid{overflow-wrap:anywhere;max-width:100%}.ord .oa{grid-template-columns:repeat(3,minmax(0,1fr))}.ord .oa .btn{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.5}.ord .os{overflow-wrap:anywhere}#busy .b{box-sizing:border-box;max-width:calc(100vw - 32px)}
@@ -2561,7 +2565,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v281';
+const APP_BUILD   = 'v282';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -11562,7 +11566,7 @@ function flowHasLegacy_(){return !!(state.pick.code&&(Object.keys(state.pick.siz
 function flowPersist_(){const ok=save(FLOW_KEY_,doorFlow_);if(!ok)toast('تعذّر حفظ آخر التغييرات. البيانات القديمة محفوظة؛ ما تقفلش الصفحة وفضّي مساحة',7000);return ok;}
 function flowProductPersist_(){const p={};for(const k of ['fr','br','sp','vn','mb','pd','acc'])p[k]=state[k];const ok=save(FLOW_PRODUCTS_KEY_,p);if(!ok)toast('تعذّر حفظ آخر التغييرات. البيانات القديمة محفوظة؛ ما تقفلش الصفحة وفضّي مساحة',7000);return ok;}
 function flowGo_(stage){doorFlow_.stage=stage;flowPersist_();render();window.scrollTo({top:0});}
-function flowNum_(label,key,value,i){return `<label class="fld"><span>${label}</span><input type="number" step="any" min="0" inputmode="decimal" data-flow-input="${key}" ${i==null?'':`data-flow-index="${i}"`} value="${esc(value)}"></label>`;}
+function flowNum_(label,key,value,i){const input=`<input type="number" step="any" min="0" inputmode="decimal" data-flow-input="${key}" ${i==null?'':`data-flow-index="${i}"`} value="${esc(value)}">`;return `<label class="fld"><span>${label}</span>${key==='qty'?`<span class="flow-qty282" dir="ltr"><button type="button" data-flow-step282="-1" data-flow-index="${i}" aria-label="تقليل الكمية">−</button>${input}<button type="button" data-flow-step282="1" data-flow-index="${i}" aria-label="زيادة الكمية">+</button></span>`:input}</label>`;}
 function flowChoices_(key,values,selected,i){return `<div class="flow-chips">${values.map(([value,label])=>`<button type="button" class="chip ${String(value)===String(selected)?'on':''}" data-flow-choice="${key}" data-value="${esc(value)}" ${i==null?'':`data-flow-index="${i}"`}>${label}</button>`).join('')}</div>`;}
 function flowButton_(action,label,ghost=false){return `<button type="button" class="btn ${ghost?'ghost':'brand'}" data-flow-action="${action}">${label}</button>`;}
 function flowActions_(next,back){return `<div class="btnrow">${back?flowButton_(back,'رجوع',true):''}${next?flowButton_(next,'التالي'):''}</div>`;}
@@ -11588,7 +11592,7 @@ function flowView_(){
  else if(f.stage==='dimensions')body=`<h2>المقاسات والكميات</h2>${f.variants.map((v,i)=>`<div class="flow-summary"><h3>المقاس ${i+1}</h3>${flowChoices_('widthPreset',SIZES.map(s=>[s.w,s.w+' سم']).concat([['custom','مقاس خاص']]),v.w===''?'':v.widthPreset==='custom'||!SIZES.some(s=>String(s.w)===String(v.w))?'custom':v.w,i)}<div class="row2">${flowNum_('العرض بالسم','w',v.w,i)}${flowNum_('الارتفاع بالسم','h',v.h,i)}</div>${flowNum_('الكمية','qty',v.qty,i)}${f.variants.length>1?`<button type="button" class="btn ghost" data-flow-remove="${i}">حذف المقاس</button>`:''}</div>`).join('')}${flowButton_('add-size','أضف مقاسًا آخر',true)}${flowActions_('dimensions-next',f.source==='plain'?'source':'designs')}`;
  else if(f.stage==='components')body=`<h2>الحلق والبرور</h2>${f.variants.map((v,i)=>`<div class="flow-summary"><b>${esc(v.w)} × ${esc(v.h)} سم · ${esc(v.qty)} باب</b><h3>الحلق</h3>${flowChoices_('frame',[[10,'10 سم'],[15,'15 سم'],[20,'20 سم'],[0,'بدون']],v.frame,i)}${v.frame?flowNum_('ارتفاع الحلق بالسم · اختياري','frameHeight',v.frameHeight,i):''}<h3>البرور</h3>${flowChoices_('dbror',[['6×9','6×9'],['4×8','4×8'],['','بدون']],v.dbror,i)}</div>`).join('')}${flowActions_('components-next','dimensions')}`;
  else if(f.stage==='extras')body=`<h2>طريقة التنفيذ والتدعيم</h2>${f.source!=='plain'?`<div class="flow-src281"><button type="button" class="flow-src281-b prt${f.method==='print'?' on':''}" data-flow-choice="method" data-value="print"><b>طباعة</b><span>الرسمة مطبوعة على الباب</span></button><button type="button" class="flow-src281-b eng${f.method==='engrave'?' on':''}" data-flow-choice="method" data-value="engrave"><b>حفر</b><span>الرسمة محفورة في الباب</span></button></div><p>نفس الرسمة المختارة، مفيش صورة ثانية.</p>`:'<p>بدون رسمة، لا طباعة ولا حفر.</p>'}<h3>التدعيم</h3>${flowChoices_('wood',[[0,'بدون'],[1,'تدعيم خشب']],f.wood?1:0)}${flowActions_('review','components')}`;
- else if(f.stage==='review')body=`<h2>راجع الباب</h2>${flowPhoto_()}<h3 style="text-align:center">${esc(f.code)} · ${esc(f.pattern||'')} · ${f.source==='plain'?'بدون رسمة':f.method==='engrave'?'حفر':'طباعة'}</h3>${f.source==='custom'&&_printOriginalThumbs.get(f.art)?`<img class="flow-custom" src="${_printOriginalThumbs.get(f.art)}" alt="مرجع الرسمة الخاصة">`:''}${flowSummary_()}<p>${f.wood?'تدعيم خشب':'بدون تدعيم'}</p><label class="fld"><span>ملاحظات على الباب · اختياري</span><textarea data-flow-input="note">${esc(f.note)}</textarea></label>${flowButton_('add-cart',f.edit?'احفظ تعديل البند':'أضف للسلة')}${flowButton_('extras','رجوع',true)}`;
+ else if(f.stage==='review')body=`<h2>راجع الباب</h2>${flowPhoto_()}<h3 style="text-align:center">${[esc(f.code),esc(f.pattern||''),f.source==='plain'?'بدون رسمة':f.method==='engrave'?'حفر':'طباعة'].filter(x=>x).join(' · ')}</h3>${f.source==='custom'&&_printOriginalThumbs.get(f.art)?`<img class="flow-custom" src="${_printOriginalThumbs.get(f.art)}" alt="مرجع الرسمة الخاصة">`:''}${flowSummary_()}<p>${f.wood?'تدعيم خشب':'بدون تدعيم'}</p><label class="fld"><span>ملاحظات على الباب · اختياري</span><textarea data-flow-input="note">${esc(f.note)}</textarea></label>${flowButton_('add-cart',f.edit?'احفظ تعديل البند':'أضف للسلة')}${flowButton_('extras','رجوع',true)}`;
  else body=flowButton_('categories','عرض الأصناف');
  return `<section class="card flow-root">${body}</section>`;
 }
@@ -11617,7 +11621,7 @@ function flowEditCart_(i){const it=state.cart[i],m=flowMeta_(it);if(!m)return fa
 async function flowAction_(a){const f=doorFlow_;
  if(a==='another-item279'){if(state.newSection==='doors'&&!['categories','owner'].includes(f.stage))f.doorResume276=f.stage;state.newSection='';f.choosingAnother279=true;save(LS_SECTION,'');flowGo_('categories');return;}
  if(a==='register'){if(!flowAccountOk_())throw new Error('اكتب الاسم ورقم من ١١ رقم يبدأ بـ01');if(!save(LS_PROFILE,state.profile))throw new Error('تعذّر حفظ الحساب على الجهاز');flowGo_('owner');return;}
- if(a==='owner-next'){if(!fOwnerChoice278_())throw new Error('اختار صاحب الطلب');if(!ownerOk_())throw new Error('اكتب اسم العميل');f.ownerChosen=true;f.ownerConfirmedV276=true;const dest281=f.afterOwner281||'';f.afterOwner281='';if(f.ownerReturnCart276){f.ownerReturnCart276=false;state.newSection='';save(LS_SECTION,'');f.stage='categories';flowPersist_();state.tab='cart';render();}else if(dest281==='doors'){state.newSection='doors';save(LS_SECTION,'doors');flowGo_(f.doorResume276||'doors');}else if(dest281){state.newSection=dest281;save(LS_SECTION,dest281);flowGo_('categories');}else{state.newSection='';save(LS_SECTION,'');flowGo_('categories');}return;}
+ if(a==='owner-next'){if(!fOwnerChoice278_())throw new Error('اختار صاحب الطلب');if(!ownerOk_())throw new Error('اكتب اسم العميل');f.ownerChosen=true;f.ownerConfirmedV276=true;const dest281=f.afterOwner281||'';f.afterOwner281='';if(f.ownerReturnCart276){f.ownerReturnCart276=false;state.newSection='';save(LS_SECTION,'');f.stage='categories';flowPersist_();state.tab='cart';render();}else if(dest281==='doors'){state.newSection='doors';save(LS_SECTION,'doors');flowGo_('doors');}else if(dest281){state.newSection=dest281;save(LS_SECTION,dest281);flowGo_('categories');}else{state.newSection='';save(LS_SECTION,'');flowGo_('categories');}return;}
  if(a==='with-design'){if(f.source!=='catalog'&&f.source!=='custom')f.source='';flowGo_('designs');return;}
  if(a==='plain'){f.source='plain';f.pattern='';flowGo_('dimensions');return;}
  if(a==='design-next'){if(f.source==='catalog'&&!f.pattern||f.source==='custom'&&!f.art)throw new Error('اختار رسمة أولًا');flowGo_('dimensions');return;}
@@ -11754,9 +11758,9 @@ canvasToDocPdf_=async function(canvas,filename,opts){
 };
 
 renderNow();
-loadStock();   // أرصدة المخزن بتتحمّل في الخلفية من غير ما تعطّل فتح التطبيق
-if(state.orders.length || phoneKey_()) setTimeout(maybeLoadTrack_, 700);   // حالة الأوردرات للصفحة الرئيسية
-preloadDoorImages_();   // نبدأ تحميل صور الأبواب بدري عشان تبقى جاهزة وقت التصدير
+setTimeout(loadStock,3000);   // أرصدة المخزن بتتحمّل في الخلفية من غير ما تعطّل فتح التطبيق
+if(state.orders.length || phoneKey_()) setTimeout(maybeLoadTrack_, 4500);   // حالة الأوردرات للصفحة الرئيسية
+setTimeout(preloadDoorImages_, 5000);   // نبدأ تحميل صور الأبواب بدري عشان تبقى جاهزة وقت التصدير
 // لو التخزين كان مخرب وقت الفتح، نقول للمستخدم بدل ما نسكت. الأصل المخرب
 // محفوظ في مفتاح جانبي (wpc_orders_corrupt) فلسه ينفع يترجع يدويًا.
 if(_storeProblems_.length){
@@ -11798,7 +11802,7 @@ async function retryPendingCancels_(){
 
 // v276: pending orders wait for a person to review. No startup send.
 // v276: pending cancellation intentions stay saved, with no startup cancel.
-syncPricesFromServer_(); // أحدث أسعار من المصنع — بتشتغل في الخلفية ومابتوقفش حاجة
+setTimeout(syncPricesFromServer_,3500); // أحدث أسعار من المصنع — بتشتغل في الخلفية ومابتوقفش حاجة
 // v276: reconnect never sends saved orders.
 // v276: reconnect never cancels saved orders.
 window.addEventListener('online', ()=>{ if(load(LS_PRICES_DIRTY,false)) syncPricesFromServer_(); });
@@ -11904,7 +11908,7 @@ async function checkServerVersion(){
     }
   }catch(e){}
 }
-setTimeout(checkServerVersion, 2500);
+setTimeout(checkServerVersion, 9000);
 
 // اهتزاز خفيف عند لمس الأزرار والشرايح (بيشتغل على أندرويد، وبيتجاهله آيفون)
 try{ if(navigator.vibrate && !matchMedia('(prefers-reduced-motion: reduce)').matches){
@@ -11979,7 +11983,7 @@ restorePrintThumbnails_();
 
 const FLOW_CATEGORIES276_=[['doors','door','الأبواب'],['frame','frame','حلق فقط'],['bror','bror','برور فقط'],['acc','parts','إكسسوارات'],['mabra','mabra','معبرة'],['prodium','panel','بروديوم'],['strip','strip','شريط'],['veneer','veneer','قشرة']];
 function flowCategoryNav276_(){return `<nav class="flow-category-nav276" aria-label="أصناف الطلب">${FLOW_CATEGORIES276_.map(([k,ic,label])=>`<button type="button" class="${state.newSection===k?'on':''}" data-flow-category="${k}">${ico(ic)}<span>${label}</span></button>`).join('')}</nav>`;}
-function flowSelectCategory276_(k){if(_pulledLine){restorePulledLine_(true);if(_pulledLine){toast("تعذّر استرجاع البند؛ كمل التعديل قبل تغيير الصنف",6500);return;}}const f=doorFlow_;f.choosingAnother279=false;if(!f.ownerConfirmedV276)f.afterOwner281=k;if(state.newSection==='doors'&&!['categories','owner'].includes(f.stage))f.doorResume276=f.stage;state.newSection=k;save(LS_SECTION,k);if(k==='doors'){f.legacyChoice=false;f.stage=f.doorResume276||'doors';}else f.stage='categories';flowPersist_();render();window.scrollTo({top:0});}
+function flowSelectCategory276_(k){if(_pulledLine){restorePulledLine_(true);if(_pulledLine){toast("تعذّر استرجاع البند؛ كمل التعديل قبل تغيير الصنف",6500);return;}}const f=doorFlow_;f.choosingAnother279=false;if(!f.ownerConfirmedV276)f.afterOwner281=k;if(state.newSection==='doors'&&!['categories','owner'].includes(f.stage))f.doorResume276=f.stage;state.newSection=k;save(LS_SECTION,k);if(k==='doors'){f.legacyChoice=false;f.stage='doors';}else f.stage='categories';flowPersist_();render();window.scrollTo({top:0});}
 const flowViewBefore276_=viewNew;
 viewNew=function(){let html=flowViewBefore276_();const f=doorFlow_;if(!flowAccountOk_()||(!f.ownerConfirmedV276&&!state.editingId&&!state.editingMeta&&!_pulledLine))return html;
  const t=document.createElement('template');t.innerHTML=html;t.content.querySelectorAll(f.choosingAnother279?'.secTiles':'.secTiles,.flow-categories').forEach(x=>x.remove());
@@ -12022,5 +12026,8 @@ document.addEventListener('gesturestart',e=>{if(!zoomMedia277_(e.target)&&e.canc
 document.addEventListener('gesturechange',e=>{if(!zoomMedia277_(e.target)&&e.cancelable)e.preventDefault();},{passive:false});
 document.addEventListener('touchend',e=>{if(!e.touches||!e.touches.length)zoomMediaGesture277_=false;const now=Date.now();if(!zoomMedia277_(e.target)&&!e.target.closest('input,textarea,select')&&lastTouchTarget277_===e.target&&now-lastTouch277_<300&&e.cancelable)e.preventDefault();lastTouch277_=now;lastTouchTarget277_=e.target;},{passive:false});
 document.addEventListener('dblclick',e=>{if(!zoomMedia277_(e.target)&&!e.target.closest('input,textarea,select')&&e.cancelable)e.preventDefault();},{passive:false});
-</script></body>
+</script><script>
+document.addEventListener('click',ev=>{const b=ev.target.closest&&ev.target.closest('[data-flow-step282]');if(!b)return;ev.preventDefault();const i=Number(b.dataset.flowIndex),v=doorFlow_.variants[i];if(!v)return;const raw=String(v.qty??'').trim(),n=Number(raw),delta=Number(b.dataset.flowStep282);if(raw&&!Number.isFinite(n)){toast('اكتب كمية صحيحة');return;}if(!raw&&delta<0)return;const next=Math.max(0,Math.round(((raw?n:0)+delta)*1000000)/1000000);v.qty=next>0?String(next):'';flowPersist_();render();});
+</script>
+</body>
 </html>
