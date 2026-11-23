@@ -2183,6 +2183,13 @@ html[data-theme="dark"]{--sh-1:0 1px 2px rgba(0,0,0,.35),0 8px 22px rgba(0,0,0,.
 .chip{border-radius:12px;transition:transform .12s var(--ease),box-shadow .15s,border-color .15s}
 .chip:active{transform:scale(.97)}
 .chip.on{box-shadow:0 6px 16px rgba(31,92,184,.28)}
+/* v284: شرائح الاختيار تبان بارزة حتى قبل الاختيار، والمختار متميّز */
+.chip{background:#DCE6F1;border-color:rgba(70,95,125,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 2px 4px rgba(14,27,46,.14);font-weight:600;color:var(--ink)}
+.chip.on{background:linear-gradient(135deg,var(--brand-lt),#1050C8);border-color:transparent;color:#fff;box-shadow:0 4px 12px rgba(31,111,235,.35),inset 0 1px 0 rgba(255,255,255,.3)}
+.chip.on .sub{color:#DCEBF8}
+html[data-theme="dark"] .chip{background:#22344D;border-color:rgba(120,165,235,.35);box-shadow:inset 0 1px 2px rgba(0,0,0,.3),0 2px 4px rgba(0,0,0,.35);color:var(--ink)}
+html[data-theme="dark"] .chip.on{background:linear-gradient(135deg,#4FB4F8,#1F6FEB);border-color:transparent;color:#fff;box-shadow:0 3px 14px rgba(63,169,245,.34),inset 0 1px 0 rgba(255,255,255,.28)}
+html[data-theme="dark"] .chip.on .sub{color:rgba(255,255,255,.85)}
 input,select,textarea{border-radius:12px}
 input:focus,select:focus,textarea:focus{outline:none;box-shadow:0 0 0 3px rgba(63,169,245,.28)}
 header.top{background-image:linear-gradient(135deg,#16409A 0%,#1B5FD0 60%,#2E7FF0 100%);box-shadow:0 8px 28px rgba(22,64,154,.28);border-radius:0 0 26px 26px}
@@ -2333,14 +2340,15 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px color-mix(in srgb,v
 </style>
 <style>.flow-categories,.flow-doors{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.flow-categories .card,.flow-doors .card,.flow-designs .card{margin:0;padding:12px 5px;display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0;font:inherit;color:var(--ink)}.flow-categories .i{width:44px;height:44px}.flow-doors img{width:100%;height:155px;object-fit:contain}.flow-designs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:12px 0}.flow-designs img{width:100%;height:175px;object-fit:contain}.flow-chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.flow-root>.btn{margin-bottom:10px}.flow-summary{padding:14px 0;border-bottom:1px solid var(--line);line-height:1.8}.flow-photo{width:240px;max-width:100%;margin:15px auto;text-align:center}.flow-photo-row{position:relative;padding:10px 28px 4px 0}.flow-photo-row img{height:330px;max-width:100%;object-fit:contain}.flow-photo-row>span{position:absolute;right:0;top:50%;white-space:nowrap;transform:translate(42%,-50%) rotate(-90deg);font-weight:700;font-size:13px}.flow-photo small{font-size:11px;color:var(--muted)}
 .flow-src281{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.flow-backbar284{display:flex;justify-content:flex-start;margin:0 0 4px}.flow-back284{border:1.5px solid rgba(84,110,138,.5);border-radius:10px;background:#E9EFF6;box-shadow:0 1.5px 3px rgba(20,40,70,.14),inset 0 1px 0 #fff;color:var(--ink);font:inherit;font-size:14px;font-weight:700;padding:8px 16px;cursor:pointer;min-height:42px}
 .flow-src281-b{border:1.5px solid transparent;border-radius:16px;padding:14px 6px 12px;text-align:center;font-family:inherit;cursor:pointer;color:var(--ink)}
 .flow-src281-b b{display:block;font-size:16px;font-weight:800;margin-bottom:3px;color:var(--ink)}
 .flow-src281-b span{font-size:12px;color:var(--muted);font-weight:700}
-.flow-src281-b.dsn{background:rgba(63,169,245,.16);border-color:rgba(63,169,245,.45)}
-.flow-src281-b.pln{background:rgba(217,164,65,.18);border-color:rgba(217,164,65,.5)}
-.flow-src281-b.prt{background:rgba(63,169,245,.16);border-color:rgba(63,169,245,.45)}
-.flow-src281-b.eng{background:rgba(154,140,240,.16);border-color:rgba(154,140,240,.45)}
-.flow-src281-b.on{outline:2.5px solid rgba(32,122,199,.75);outline-offset:-2.5px}.flow-custom{display:block;max-height:300px;max-width:100%;margin:12px auto;object-fit:contain}@media(min-width:800px){.flow-doors{grid-template-columns:repeat(6,minmax(0,1fr))}.flow-designs{grid-template-columns:repeat(3,minmax(0,1fr));max-width:700px;margin:12px auto}.flow-designs img{height:230px}}
+.flow-src281-b.dsn{background:rgba(63,169,245,.42);border-color:rgba(32,122,199,.85)}
+.flow-src281-b.pln{background:rgba(217,164,65,.45);border-color:rgba(176,122,20,.85)}
+.flow-src281-b.prt{background:rgba(63,169,245,.34);border-color:rgba(32,122,199,.7)}
+.flow-src281-b.eng{background:rgba(154,140,240,.34);border-color:rgba(110,94,210,.7)}
+.flow-src281-b.on{outline:3px solid rgba(32,122,199,.9);outline-offset:-3px;box-shadow:0 2px 7px rgba(20,40,70,.3)}.flow-custom{display:block;max-height:300px;max-width:100%;margin:12px auto;object-fit:contain}@media(min-width:800px){.flow-doors{grid-template-columns:repeat(6,minmax(0,1fr))}.flow-designs{grid-template-columns:repeat(3,minmax(0,1fr));max-width:700px;margin:12px auto}.flow-designs img{height:230px}}
 .flow-photo-row{padding:10px 0 4px 28px}.flow-photo-row>span{right:auto;left:0;transform:translate(-42%,-50%) rotate(-90deg)}
 
 svg.flow-pictorial{stroke:none;fill:none;stroke-width:1}svg.flow-pictorial{overflow:visible;flex-shrink:0}.flow-categories .flow-pictorial{width:64px;height:64px}#tabs .flow-pictorial{width:30px;height:30px}
@@ -2565,7 +2573,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD   = 'v282';
+const APP_BUILD   = 'v284';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -11551,7 +11559,7 @@ for(const [tab,kind] of Object.entries({home:"home",new:"door",cart:"cart",order
 /* Additive door workflow. Existing orders, legacy picker and server API stay intact. */
 const FLOW_KEY_='wpc_door_flow_v1';
 const FLOW_PRODUCTS_KEY_='wpc_product_drafts_v1';
-const flowBlankVariant_=()=>({w:'',h:'215',qty:'',frame:15,frameHeight:'',dbror:'6×9'});
+const flowBlankVariant_=()=>({w:'',h:'',qty:'',frame:'',frameHeight:'',dbror:null});
 const flowBlank_=()=>({stage:'categories',ownerChosen:false,ownerChoice278:'',code:'',source:'',pattern:'',method:'',wood:false,note:'',art:'',variants:[flowBlankVariant_()],edit:null});
 let doorFlow_=Object.assign(flowBlank_(),load(FLOW_KEY_,{}));
 let _flowBusy_=false;
@@ -11576,7 +11584,8 @@ function flowSummary_(){const f=doorFlow_;return f.variants.map((v,i)=>`<div cla
 function fOwnerChoice278_(){return doorFlow_.ownerChoice278||(doorFlow_.ownerConfirmedV276?state.custMode:'');}
 function flowOwnerHTML_(){return `<div class="note">الحساب: ${esc(state.profile.name)} · <bdi>${esc(state.profile.phone)}</bdi></div><h3>الأوردر لحساب مين؟</h3>${flowChoices_('owner',[['self','لحسابي'],['other','عميل آخر']],fOwnerChoice278_())}${fOwnerChoice278_()==='other'?`<label class="fld"><span>اسم العميل *</span><input type="text" data-act="cust-name" value="${esc(state.customer.name)}"></label><label class="fld"><span>رقم العميل · اختياري</span><input type="tel" data-act="cust-phone" value="${esc(state.customer.phone)}"></label><label class="fld"><span>عنوان العميل · اختياري</span><input type="text" data-act="cust-region" value="${esc(state.customer.region||'')}"></label>` :fOwnerChoice278_()==='self'?'<p>بنفس بيانات حسابك، من غير كتابتها تاني.</p>':'<p>اختار صاحب الطلب عشان تبدأ.</p>'}${state.cart.length?'<p>السلة الحالية محفوظة. الاختيار ينطبق على الطلب الحالي بدون تغيير أي بند.</p>':''}${fOwnerChoice278_()==='other'?flowButton_('owner-next','التالي — اختيار الأصناف'):''}`;}
 function flowRegistrationHTML_(){return `<h2>بيانات الحساب</h2><label class="fld"><span>الاسم *</span><input type="text" data-act="prof" data-k="name" value="${esc(state.profile.name)}"></label><label class="fld"><span>رقم الموبايل *</span><input type="tel" data-act="prof" data-k="phone" value="${esc(state.profile.phone)}"></label><label class="fld"><span>المنطقة · اختياري</span><input type="text" data-act="prof" data-k="region" value="${esc(state.profile.region)}"></label><p>بتتحفظ على الجهاز، مش هنطلبها مع كل أوردر.</p>${flowButton_('register','احفظ الحساب واختار الأصناف')}`;}
-function flowValidate_(f=doorFlow_){return f.variants.length&&f.variants.every(v=>Number(v.w)>0&&Number(v.h)>0&&Number.isInteger(Number(v.qty))&&Number(v.qty)>0&&[0,10,15,20].includes(Number(v.frame))&&['','6×9','4×8'].includes(v.dbror)&&(!v.frameHeight||Number(v.frameHeight)>0));}
+function flowValidateDims_(f=doorFlow_){return f.variants.length&&f.variants.every(v=>Number(v.w)>0&&Number(v.h)>0&&Number.isInteger(Number(v.qty))&&Number(v.qty)>0);}
+function flowValidate_(f=doorFlow_){return flowValidateDims_(f)&&f.variants.every(v=>v.frame!==''&&v.frame!=null&&[0,10,15,20].includes(Number(v.frame))&&v.dbror!==null&&v.dbror!==undefined&&['','6×9','4×8'].includes(v.dbror)&&(!v.frameHeight||Number(v.frameHeight)>0));}
 function flowAccountOk_(){return !!state.profile.name.trim()&&phoneOk(state.profile.phone);}
 function flowView_(){
  const f=doorFlow_;if(!flowAccountOk_())return `<section class="card">${flowRegistrationHTML_()}</section>`;
@@ -11594,7 +11603,8 @@ function flowView_(){
  else if(f.stage==='extras')body=`<h2>طريقة التنفيذ والتدعيم</h2>${f.source!=='plain'?`<div class="flow-src281"><button type="button" class="flow-src281-b prt${f.method==='print'?' on':''}" data-flow-choice="method" data-value="print"><b>طباعة</b><span>الرسمة مطبوعة على الباب</span></button><button type="button" class="flow-src281-b eng${f.method==='engrave'?' on':''}" data-flow-choice="method" data-value="engrave"><b>حفر</b><span>الرسمة محفورة في الباب</span></button></div><p>نفس الرسمة المختارة، مفيش صورة ثانية.</p>`:'<p>بدون رسمة، لا طباعة ولا حفر.</p>'}<h3>التدعيم</h3>${flowChoices_('wood',[[0,'بدون'],[1,'تدعيم خشب']],f.wood?1:0)}${flowActions_('review','components')}`;
  else if(f.stage==='review')body=`<h2>راجع الباب</h2>${flowPhoto_()}<h3 style="text-align:center">${[esc(f.code),esc(f.pattern||''),f.source==='plain'?'بدون رسمة':f.method==='engrave'?'حفر':'طباعة'].filter(x=>x).join(' · ')}</h3>${f.source==='custom'&&_printOriginalThumbs.get(f.art)?`<img class="flow-custom" src="${_printOriginalThumbs.get(f.art)}" alt="مرجع الرسمة الخاصة">`:''}${flowSummary_()}<p>${f.wood?'تدعيم خشب':'بدون تدعيم'}</p><label class="fld"><span>ملاحظات على الباب · اختياري</span><textarea data-flow-input="note">${esc(f.note)}</textarea></label>${flowButton_('add-cart',f.edit?'احفظ تعديل البند':'أضف للسلة')}${flowButton_('extras','رجوع',true)}`;
  else body=flowButton_('categories','عرض الأصناف');
- return `<section class="card flow-root">${body}</section>`;
+ const backT284=flowBackMap_[f.stage];const backBar284=backT284?`<div class="flow-backbar284"><button type="button" class="flow-back284" data-flow-action="back-one" aria-label="رجوع للخطوة السابقة">→ رجوع</button></div>`:'';
+ return `<section class="card flow-root">${backBar284}${body}</section>`;
 }
 function flowBuildItems_(f){
  if(!flowValidate_(f))throw new Error('راجع المقاسات والكميات والحلق والبرور');
@@ -11618,7 +11628,9 @@ async function flowAddCart_(){
  flowPersist_();render();toast(edited281?'اتحفظ التعديل في السلة':'اتحفظ في السلة، كمّل الأصناف ولما تخلص اضغط مراجعة الطلب');
 }
 function flowEditCart_(i){const it=state.cart[i],m=flowMeta_(it);if(!m)return false;const wh=doorWH_(it.sizeEn,it.doorHeight);if(!wh.w||!wh.h)return false;doorFlow_={...flowBlank_(),stage:'review',ownerChosen:true,ownerConfirmedV276:doorFlow_.ownerConfirmedV276,ownerChoice278:doorFlow_.ownerChoice278,code:it.code,source:m.source,pattern:m.pattern||'',method:it.hafr?'engrave':'print',wood:!!it.wood,note:it.note||'',art:it.printArt||it.engraveArt||'',variants:[{widthPreset:/\(custom\)/i.test(String(it.sizeEn||''))?'custom':String(wh.w),w:String(wh.w),h:String(wh.h),qty:String(it.qty),frame:Number(it.frame)||0,frameHeight:it.frameHeight?String(it.frameHeight):'',dbror:it.dbror||''}],edit:{index:i,fingerprint:JSON.stringify(it)}};flowPersist_();state.tab='new';state.newSection='doors';render();return true;}
+const flowBackMap_={doors:'categories',source:'doors',designs:'source',dimensions:'__src__',components:'dimensions',extras:'components',review:'extras',categories:'owner'};
 async function flowAction_(a){const f=doorFlow_;
+ if(a==='back-one'){const t=flowBackMap_[f.stage];if(!t)return;if(t==='owner'){f.ownerConfirmedV276=false;flowPersist_();render();window.scrollTo({top:0});return;}flowGo_(t==='__src__'?(f.source==='plain'?'source':'designs'):t);return;}
  if(a==='another-item279'){if(state.newSection==='doors'&&!['categories','owner'].includes(f.stage))f.doorResume276=f.stage;state.newSection='';f.choosingAnother279=true;save(LS_SECTION,'');flowGo_('categories');return;}
  if(a==='register'){if(!flowAccountOk_())throw new Error('اكتب الاسم ورقم من ١١ رقم يبدأ بـ01');if(!save(LS_PROFILE,state.profile))throw new Error('تعذّر حفظ الحساب على الجهاز');flowGo_('owner');return;}
  if(a==='owner-next'){if(!fOwnerChoice278_())throw new Error('اختار صاحب الطلب');if(!ownerOk_())throw new Error('اكتب اسم العميل');f.ownerChosen=true;f.ownerConfirmedV276=true;const dest281=f.afterOwner281||'';f.afterOwner281='';if(f.ownerReturnCart276){f.ownerReturnCart276=false;state.newSection='';save(LS_SECTION,'');f.stage='categories';flowPersist_();state.tab='cart';render();}else if(dest281==='doors'){state.newSection='doors';save(LS_SECTION,'doors');flowGo_('doors');}else if(dest281){state.newSection=dest281;save(LS_SECTION,dest281);flowGo_('categories');}else{state.newSection='';save(LS_SECTION,'');flowGo_('categories');}return;}
@@ -11626,7 +11638,8 @@ async function flowAction_(a){const f=doorFlow_;
  if(a==='plain'){f.source='plain';f.pattern='';flowGo_('dimensions');return;}
  if(a==='design-next'){if(f.source==='catalog'&&!f.pattern||f.source==='custom'&&!f.art)throw new Error('اختار رسمة أولًا');flowGo_('dimensions');return;}
  if(a==='add-size'){f.variants.push(flowBlankVariant_());flowPersist_();render();return;}
- if(a==='dimensions-next'||a==='components-next'){if(!flowValidate_())throw new Error('راجع المقاسات والكميات، الكمية عدد صحيح أكبر من صفر');flowGo_(a==='dimensions-next'?'components':'extras');return;}
+ if(a==='dimensions-next'){if(!flowValidateDims_())throw new Error('راجع المقاسات والكميات، الكمية عدد صحيح أكبر من صفر');flowGo_('components');return;}
+ if(a==='components-next'){if(!flowValidate_())throw new Error('اختار الحلق والبرور لكل مقاس — حتى لو «بدون»');flowGo_('extras');return;}
  if(a==='add-cart'){await flowAddCart_();return;}
  if(a==='categories-clear')state.newSection='';
  if(a==='review'){if(f.source!=='plain'&&!f.method)throw new Error('اختار طباعة أو حفر');flowGo_('review');return;}
@@ -11859,7 +11872,7 @@ document.addEventListener('visibilitychange',()=>{if(_autoUpd281.pending)safeRel
 
 async function checkOfflineReady280_(){
  const el=document.getElementById('offlineReady280');if(!el)return;
- try{const cache=await caches.open('wpc-shell-v281');const files=['index.html','img/logo.png','img/mark.png','html2canvas.js','jspdf.js','exceljs.js',...['A01','A02','A03','A04','A05','A06','A07','A08','A09','A010','A013'].map(c=>'img/doors/'+c+'.jpg')];
+ try{const cache=await caches.open('wpc-shell-'+APP_BUILD);const files=['index.html','img/logo.png','img/mark.png','html2canvas.js','jspdf.js','exceljs.js',...['A01','A02','A03','A04','A05','A06','A07','A08','A09','A010','A013'].map(c=>'img/doors/'+c+'.jpg')];
  const ready=(await Promise.all(files.map(f=>cache.match(new URL(f,location.href).href)))).every(Boolean);
  el.textContent=ready?'ملفات الأوفلاين جاهزة على الجهاز · الطلب ورسوماته لازم يكونوا محفوظين عليه':'ملفات الأوفلاين لسه بتتجهز؛ افتح التطبيق بالنت لحد ما تجهز';
  }catch(e){el.textContent='تجهيز الأوفلاين لم يتأكد على الجهاز؛ افتحه بالنت أول مرة';}
