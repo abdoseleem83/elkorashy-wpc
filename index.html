@@ -2620,7 +2620,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v297';
+const APP_BUILD = 'v298';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2628,7 +2628,7 @@ const WAREHOUSE   = 'مصنع إنشاص';
 // إن حد نسخ apps_script.gs مرة وماعملش Deploy ▸ New version بعد كده — التطبيق
 // شغّال والسيرفر ناقص حاجة، وده بيطلع على شكل باجات غريبة (رصيد باب مش لاقيه،
 // تعديل صنف بيترفض). بنسأل السيرفر عن نسخته ونقول للمصنع بدل ما يخمّن.
-const SRV_BUILD_WANT = 'v206';
+const SRV_BUILD_WANT = 'v294r3';
 
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2aVRVaUVubR3w4a3weiQTHGp03SvMozh83NY3OtBD14n1YugCjbcWdYEJUPJb-s3E/exec';
 
@@ -4816,6 +4816,8 @@ function orderExports295_(o){
 function cartSubmission295_(){
  const id=load('wpc_last_submission295',''),o=state.orders.find(x=>String(x.id)===String(id));if(!o)return '';
  const confirmed=confirmedOrder295_(o);
+ const rej=rejectedInfo_(o.id);
+ if(rej) return `<section class="card ct-compact278" data-submission295="${esc(o.id)}" style="border:1.5px solid rgba(240,115,106,.5)"><h2>⛔ المصنع رفض الطلب ${esc(orderNoText_(o))}</h2><div class="note">${rej.msg?esc(rej.msg)+' — ':''}الطلب محفوظ على جهازك بكل بياناته ولم يُرسل. راجعه من «تابع طلبك»، عدّله، وابعته تاني بقرار منك — مش هيتبعت لوحده.</div><button type="button" class="btn ghost sm" data-act="home-go" data-to="orders">تابع طلبك</button></section>`;
  return `<section class="card ct-compact278" data-submission295="${esc(o.id)}"><h2>${confirmed?'تم تأكيد استلام الطلب '+esc(orderNoText_(o)):'الطلب محفوظ، استلام المصنع لم يتأكد بعد'}</h2><div class="note">${confirmed?'اختار مشاركة الصورة أو تنزيل ملف الطلب. المشاركة لا تُرسل أوردر جديد.':'لا تضغط إرسال مرة ثانية. تحقق من الاستلام قراءة فقط، ولا يعيد إرسال الطلب.'}</div>${orderExports295_(o)}${confirmed?'':`<button type="button" class="btn ghost" data-act="verify-receipt-276" data-id="${esc(o.id)}">${ico('refresh')} تحقق من الاستلام</button>`}<button type="button" class="btn ghost sm" data-act="home-go" data-to="orders">تابع طلبك</button></section>`;
 }
 function viewCart(){
@@ -4922,6 +4924,7 @@ function viewOrders(){
   (t.rows||[]).forEach(r=>{ liveById[String(r.id)] = r; });
   // الطلبات اللي لسه على الجهاز وما وصلتش المصنع
   const pendingIds = new Set(loadPendingSync_().map(String));
+  const rejectedIds = new Set(loadRejected_().map(String));
 
   const refreshBtn = `<button class="btn ghost sm" style="margin-bottom:12px" data-act="track-load" ${t.loading?'disabled':''}>
     ${t.loading?ico('clock')+' جارٍ تحديث الحالة…':ico('refresh')+' تحديث حالة الطلبات من المصنع'}</button>`;
@@ -4943,11 +4946,13 @@ function viewOrders(){
     // ⚠️ الطلب اللي لسه ما وصلش المصنع لازم يبان مختلف. من غير كده الموزّع
     // شايفه في قايمته وفاكر إنه عند المصنع — والمصنع مايعرفش عنه حاجة خالص.
     const معلّق = pendingIds.has(String(o.id));
+    const مرفوض = rejectedIds.has(String(o.id)) ? rejectedInfo_(o.id) : null;
     const _grp = ordGroup_(homeStatus_(o));
     const _q = ordNorm_([orderNoText_(o), o.customer, o.note, live&&live.note, dateStr(o.ts),
       (o.items||[]).filter(x=>x&&!isCutLine_(x)).map(x=>x.title).join(' ')].join(' '));
     return `
-    <div class="ord" data-q="${esc(_q)}" data-st="${_grp}"${o.restored?' data-restored="1"':''}${ordMatch_(_q,_grp)?'':' hidden'}${معلّق?' style="border:1.5px solid rgba(217,164,65,.55);background:rgba(217,164,65,.09)"':''}>
+    <div class="ord" data-q="${esc(_q)}" data-st="${_grp}"${o.restored?' data-restored="1"':''}${ordMatch_(_q,_grp)?'':' hidden'}${معلّق?' style="border:1.5px solid rgba(217,164,65,.55);background:rgba(217,164,65,.09)"':''}${مرفوض?' style="border:1.5px solid rgba(240,115,106,.6);background:rgba(240,115,106,.08)"':''}>
+      ${مرفوض?`<div style="font-size:11.5px;font-weight:700;color:var(--danger-ink);margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}⛔ المصنع رفض الطلب${مرفوض.msg?': '+esc(مرفوض.msg):''} — عدّله وابعته تاني؛ مش هيتبعت لوحده</div>`:''}
       ${معلّق?`<div style="font-size:11.5px;font-weight:700;color:var(--warn-ink);margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}${o.displayNo?'المصنع سجّله برقم '+esc(o.displayNo)+'، وتأكيد التصميم لسه مش مكتمل. لا تعيد الإرسال':'استلام المصنع لم يتأكد بعد، الطلب محفوظ على الجهاز ومش هيتبعت تلقائي'}</div>`:''}
       <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:var(--warn-ink);background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:var(--danger-ink);background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${live?statusPill(live.status):''}</div>
       <div class="os">${esc(dateStr(o.ts))} · ${(o.items||[]).filter(x=>!isCutLine_(x)).length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
@@ -10481,7 +10486,8 @@ async function wireDigest294_(o){return Array.from(new Uint8Array(await crypto.s
 async function createReceiptRead294_(id,entry){
  if(!entry||!entry.token||!entry.digest)return null;
  const d=await jsonp(APPS_SCRIPT_URL+'?action=createReceipt294&id='+encodeURIComponent(id)+'&token='+encodeURIComponent(entry.token)+'&digest='+encodeURIComponent(entry.digest));
- if(!d||!d.ok||!d.receipt||d.receipt.state!=='COMPLETE'||String(d.receipt.id)!==String(id))return null;
+ if(!d||!d.ok||!d.receipt||String(d.receipt.id)!==String(id))return null;
+ if(d.receipt.state!=='COMPLETE'&&String(d.receipt.state||'').indexOf('FAILED')!==0)return null;
  return d.receipt;
 }
 function applyCreateReceipt294_(o,r){
@@ -10505,11 +10511,14 @@ async function transportOrder294_(o){
   if(!entry)throw Error('تعذّر حفظ مرجع الاستلام قبل الإرسال؛ الطلب لم يُرسل');
   const payload=JSON.stringify(wire),url=APPS_SCRIPT_URL+'?action=createOrder294&dev='+encodeURIComponent(deviceId_())+'&id='+encodeURIComponent(id)+'&token='+encodeURIComponent(entry.token)+'&order='+encodeURIComponent(payload);
   if(!orderArtRefs_(o).length&&url.length<7500){
-   const d=await jsonp(url);if(d?.ok&&applyCreateReceipt294_(o,d.receipt))return true;
-   if(d&&!d.ok)_lastSendError={msg:d.error||'لم يتأكد الاستلام',permanent:false};return false;
+   const d=await jsonp(url);if(d?.ok&&String(d.receipt&&d.receipt.state||'').indexOf('FAILED')===0){_lastSendError={msg:String(d.receipt.state).replace(/^FAILED:\s*/,'')||'المصنع رفض الطلب',permanent:true};return false;}
+   if(d?.ok&&applyCreateReceipt294_(o,d.receipt))return true;
+   if(d&&!d.ok)_lastSendError={msg:d.error||'لم يتأكد الاستلام',permanent:d.permanent===true};return false;
   }
   await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'createOrder294',dev:deviceId_(),id,token:entry.token,order:wire})});
-  const receipt=await createReceiptRead294_(id,entry);return receipt?applyCreateReceipt294_(o,receipt):false;
+  const receipt=await createReceiptRead294_(id,entry);
+  if(receipt&&String(receipt.state||'').indexOf('FAILED')===0){_lastSendError={msg:String(receipt.state).replace(/^FAILED:\s*/,'')||'المصنع رفض الطلب',permanent:true};return false;}
+  return receipt?applyCreateReceipt294_(o,receipt):false;
  }catch(e){_lastSendError={msg:e.message||'لم يتأكد استلام الطلب',permanent:false};return false;}
 }
 async function reviewAtomicCreate294_(o){
@@ -10606,12 +10615,39 @@ function loadSent_(){ const v = load(LS_SENT, []); return Array.isArray(v) ? v :
    ⚠️ مش كفاية نشيلها من قايمة المعلّق: القايمة دي بتدمج بدل ما تكتب فوق —
    دي حماية مقصودة عشان طلب ما يضيعش لو نسخة تانية من التطبيق حفظت في نفس
    الوقت. فمن غير القايمة دي، الطلب المرفوض بيرجع للطابور ويتحاول للأبد. */
-function loadRejected_(){ const v = load(LS_REJECTED, []); return Array.isArray(v) ? v : []; }
-function markRejected_(id){
-  if(!id) return;
-  const l = loadRejected_().filter(x=>String(x)!==String(id));
-  l.unshift(String(id));
-  save(LS_REJECTED, l);
+// رفض اتسجّل في الجلسة دي حتى لو التخزين رفض يحفظه (مساحة/مفتاح متضرر) —
+// من غيره الدمج في savePendingSync_ كان بيرجّع الطلب المرفوض لطابور الإرسال.
+const _rejectedRuntime_ = new Set();
+function loadRejected_(){
+  const v = load(LS_REJECTED, []), arr = Array.isArray(v) ? v : [];
+  if(!_rejectedRuntime_.size) return arr;
+  const s = new Set(arr.map(String));
+  _rejectedRuntime_.forEach(id=>s.add(id));
+  return [...s];
+}
+// ⚠️ لازم مايرميش أبدًا: بنتنده جوا مسار معالجة نتيجة الإرسال، وأي رمية هنا
+// كانت هتوصلنا لتوست «لم يتأكد الاستلام» المضلّل. بيرجع false لو التخزين رفض
+// (مساحة ممتلئة أو مفتاح متسجّل كمتضرر) — عندها بنشيل الطلب من المعلّق برضه
+// (ممنوع يتبعت لوحده) وبنحذّر الموزّع إن الرفض مش متسجّل.
+function markRejected_(id, msg){
+  if(!id) return true;
+  try{
+    _rejectedRuntime_.add(String(id));   // الجلسة تعرف إنه مرفوض حتى لو الحفظ فشل
+    const l = loadRejected_().filter(x=>String(x)!==String(id));
+    l.unshift(String(id));
+    if(!save(LS_REJECTED, l)) return false;
+    try{
+      const raw = load('wpc_rejected_info', {});
+      const info = (raw && typeof raw==='object' && !Array.isArray(raw)) ? raw : {};
+      info[String(id)] = { msg: String(msg||'').slice(0,300), at: Date.now() };
+      save('wpc_rejected_info', info);   // معلومة مساعدة — فشلها مش حرج
+    }catch(e2){}
+    return true;
+  }catch(e){ return false; }
+}
+function rejectedInfo_(id){
+  const info = load('wpc_rejected_info', {});
+  return info[String(id)] || null;
 }
 function markSent_(id){
   if(!id) return;
@@ -10664,10 +10700,13 @@ async function syncOrder_(o){
     const رفض = _lastSendError;
     if(رفض && رفض.permanent){
       // السيرفر رافض الطلب نفسه — إعادة المحاولة مالهاش لازمة، والموزّع لازم يعرف
-      markRejected_(o.id);
+      const سجل_الرفض = markRejected_(o.id, رفض.msg||'');
+      // بنشيله من المعلّق في كل الأحوال — طلب مرفوض أبدًا مايتبعت لوحده، حتى لو
+      // تسجيل الرفض نفسه فشل (وعندها التحذير بيقول للموزّع يراجع يدوي).
       savePendingSync_(loadPendingSync_().filter(id=>String(id)!==String(o.id)));
       toast('⛔ المصنع رفض الطلب '+orderNoText_(o)+': '+(رفض.msg||'شكل الطلب مش مقبول')+
-            ' — عدّل الطلب وابعته تاني', 7000);
+            (سجل_الرفض ? ' — عدّل الطلب وابعته تاني'
+                       : ' — عدّل الطلب وابعته تاني. تنبيه: الرفض مش متسجّل، راجع الطلب يدوي قبل أي إرسال'), 7000);
     } else if(رفض && رفض.msg){
       toast('⚠️ الطلب '+orderNoText_(o)+' لسه ما وصلش المصنع: '+رفض.msg+
             ' — محفوظ للمراجعة، ومش هيتبعت تلقائي', 5200);
@@ -10945,9 +10984,11 @@ async function submitOrder(){
       (async ()=>{
         busy(true, 'جارٍ تأكيد رقم الطلب مع المصنع…');
         let waiting=true;
-        const uiTimer=setTimeout(()=>{waiting=false;busy(false);if(loadSent_().map(String).includes(String(o.id)))return;toast('التأكيد أخد وقت أطول. الطلب والصورة محفوظين، والمتابعة شغالة بدون إعادة إرسال. ما تضغطش إرسال تاني؛ راجع تحقق من الاستلام.',10000,o.id);},15000);
+        const uiTimer=setTimeout(()=>{waiting=false;busy(false);if(loadSent_().map(String).includes(String(o.id))||loadRejected_().map(String).includes(String(o.id)))return;toast('التأكيد أخد وقت أطول. الطلب والصورة محفوظين، والمتابعة شغالة بدون إعادة إرسال. ما تضغطش إرسال تاني؛ راجع تحقق من الاستلام.',10000,o.id);},15000);
         let received=false;try{received=await syncing;}catch(e){}finally{clearTimeout(uiTimer);busy(false);}
-        render();if(received===true||loadSent_().map(String).includes(String(o.id))){clearOrderToast280_(o.id);toast('تأكد استلام المصنع برقم '+orderNoText_(o)+'. مشاركة الصورة وملفات PDF جاهزة باختيارك، لم نفتح مشاركة تلقائيًا.',10000);}else toast(o.displayNo?'المصنع سجّل الطلب برقم '+orderNoText_(o)+'، لكن تأكيد تفاصيل التصميم لم يكتمل. لا تعيد الإرسال؛ راجع الاستلام.':'الطلب محفوظ على جهازك، لكن استلام المصنع لم يتأكد. راجع تابع طلبك؛ لم نفتح المشاركة تلقائيًا',10000);
+      render();
+      if(loadRejected_().map(String).includes(String(o.id)))return;   // الرفض اتعرض برسالته وكارته — ميتركبش فوقها «لم يتأكد»
+        if(received===true||loadSent_().map(String).includes(String(o.id))){clearOrderToast280_(o.id);toast('تأكد استلام المصنع برقم '+orderNoText_(o)+'. مشاركة الصورة وملفات PDF جاهزة باختيارك، لم نفتح مشاركة تلقائيًا.',10000);}else toast(o.displayNo?'المصنع سجّل الطلب برقم '+orderNoText_(o)+'، لكن تأكيد تفاصيل التصميم لم يكتمل. لا تعيد الإرسال؛ راجع الاستلام.':'الطلب محفوظ على جهازك، لكن استلام المصنع لم يتأكد. راجع تابع طلبك؛ لم نفتح المشاركة تلقائيًا',10000);
       })();
     }
     // ⚠️ باج كان هنا: الكتلة دي بتشتغل في الخلفية، وتحتها على طول كان بيتعمل
