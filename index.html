@@ -2582,7 +2582,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v291';
+const APP_BUILD = 'v292';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2726,7 +2726,46 @@ function syncCutServiceLines_(){
   state.cart = kept;
 }
 // أي حفظ للسلة بيمرّ من هنا عشان بنود القص تفضل مظبوطة مع محتوى السلة
-function saveCart_(){ syncCutServiceLines_(); return save(LS_CART, state.cart); }
+function saveCart_(){
+  syncCutServiceLines_();
+  cartAssignLids_(state.cart);
+  const env=cartReadEnv_();
+  if(env===null)return false;                 // التخزين غير قابل للقراءة — لا ندّعي الحفظ
+  if(env.rev>_cartRev){
+    // نافذة تانية كتبت بعد نسختنا — دمج ثلاثي بدل المسح الأعمى
+    const beforeJson=JSON.stringify(state.cart.filter(it=>!isServiceLine_(it)));
+    const merged=cartMerge3_(_cartBase,env.items,state.cart);
+    state.cart=merged.items;
+    syncCutServiceLines_();                   // بنود الخدمة تتولّد من جديد على نتيجة الدمج
+    cartAssignLids_(state.cart);
+    if(JSON.stringify(state.cart.filter(it=>!isServiceLine_(it)))!==beforeJson)
+      toast(merged.conflicts>0?'السلة اتعدلت من نافذة تانية وتعارض سطر — راجع البنود قبل الإرسال':'السلة اتدمجت مع تعديلات من نافذة تانية مفتوحة — راجعها قبل الإرسال',6000);
+  }
+  const itemsJson=JSON.stringify(state.cart);
+  // لا كتابة بلا تغيير فعلي — يحافظ على مقارنات المسودات النصية ويقلل زحام التخزين
+  if(env.raw!=null&&itemsJson===JSON.stringify(env.items)){_cartRev=env.rev;_cartBase=JSON.parse(itemsJson);_cartWrittenRaw=env.raw;return true;}
+  const next={__cartEnv:CART_ENV_V_,rev:env.rev+1,writer:_cartTabId_,items:state.cart};
+  if(!save(LS_CART,next))return false;        // فشل التخزين = فشل الحفظ صراحة — لا إجراء «ناجح» غير محفوظ
+  _cartRev=next.rev;_cartBase=JSON.parse(itemsJson);_cartWrittenRaw=JSON.stringify(next);
+  return true;
+}
+// تبويب تاني كتب السلة — تبنّي التغيير فورًا بدل ما نفضل قديمين ونمسحه عند أول حفظ
+window.addEventListener('storage',ev=>{
+  if(ev.key!==LS_CART||!ev.newValue||ev.newValue===_cartWrittenRaw)return;
+  if(_pulledLine)return;                      // تعديل مفتوح — الدمج يحصل عند الحفظ
+  const env=cartReadEnv_();
+  if(!env||env.rev<=_cartRev)return;
+  const beforeJson=JSON.stringify(state.cart.filter(it=>!isServiceLine_(it)));
+  const merged=cartMerge3_(_cartBase,env.items,state.cart);
+  state.cart=merged.items;
+  syncCutServiceLines_();
+  cartAssignLids_(state.cart);
+  _cartRev=env.rev;_cartBase=JSON.parse(JSON.stringify(state.cart));_cartWrittenRaw=env.raw||'';
+  if(JSON.stringify(state.cart.filter(it=>!isServiceLine_(it)))!==beforeJson){
+    try{renderNow();}catch(e){try{render();}catch(e2){}}
+    toast('السلة اتحدثت من نافذة تانية مفتوحة — راجعها قبل الإرسال',5000);
+  }
+});
 // نوع الحلق: "كامل" (طقم كامل شامل مع الباب زي المعتاد — من غير تفاصيل زيادة) أو "أعواد" (عدد أعواد إضافي منفصل، بيتكتب كملحوظة على الصنف)
 function frameKindNote_(kind, rodQty, forDoors){
   if(kind!=='rods') return '';
@@ -2826,6 +2865,53 @@ const ACCESSORIES = [
 // بيقع بشاشة بيضا: "Cannot access '_storeProblems_' before initialization".
 const _storeProblems_ = [];
 const LS_SHOWBANK = 'wpc_showbank2';   // مفتاح جديد: يرجّع كارت التحويل ظاهر عند الكل بعد ما كان متخبّي بالغلط
+/* v292: حماية السلة بين النوافذ المفتوحة على نفس الجهاز — نافذة قديمة ما تمسحش شغل نافذة أحدث.
+   كل سطر ليه lid ثابت، والمخزّن بيتلفّ بغلاف فيه رقم مراجعة وكاتب. عند الحفظ، لو المراجعة
+   المخزّنة أحدث من نسختنا بنعمل دمج ثلاثي ضد نسخة الأساس: إضافات كل نافذة محفوظة، الحذف
+   المتعمد محترم، تعديلي على سطر يكسب لو الطرف التاني مغيّرهوش، والتعارض لصاحب المراجعة
+   الأحدث مع تنبيه. بنود الخدمة (قص/تدعيم/طباعة) لا تندمج — تتولّد من جديد من الأبواب بعد
+   الدمج عبر syncCutServiceLines_. النسق القديم (مصفوفة بلا غلاف) يُقرأ كمراجعة صفر. */
+const CART_ENV_V_=2;
+let _cartRev=0,_cartBase=[],_cartWrittenRaw='';
+const _cartTabId_=Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+function cartLid_(){return 'l'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function cartAssignLids_(items){for(const it of items)if(it&&typeof it==='object'&&!it.lid)it.lid=cartLid_();}
+function cartReadEnv_(){
+  let raw=null; try{raw=localStorage.getItem(LS_CART);}catch(e){return null;}
+  if(raw==null)return{rev:0,items:[],raw:null};
+  try{
+    const p=JSON.parse(raw);
+    if(Array.isArray(p))return{rev:0,items:p,raw};
+    if(p&&p.__cartEnv===CART_ENV_V_&&Array.isArray(p.items))return{rev:Number(p.rev)||0,items:p.items,raw};
+  }catch(e){}
+  return{rev:0,items:[],raw};
+}
+function cartLoadItems_(){
+  const env=cartReadEnv_();
+  const items=(env&&env.items)||[];
+  cartAssignLids_(items);
+  _cartRev=env?env.rev:0;
+  _cartBase=JSON.parse(JSON.stringify(items));
+  _cartWrittenRaw=(env&&env.raw)||'';
+  return items;
+}
+function cartMerge3_(base,theirs,mine){
+  const noSvc=a=>(a||[]).filter(it=>!isServiceLine_(it));
+  const b=noSvc(base),t=noSvc(theirs),m=noSvc(mine);
+  const bMap=new Map(b.map(i=>[i.lid,i])),tMap=new Map(t.map(i=>[i.lid,i])),mMap=new Map(m.map(i=>[i.lid,i]));
+  const myDel=new Set([...bMap.keys()].filter(l=>!mMap.has(l)));
+  const out=[],seen=new Set();let conflicts=0;
+  const push=it=>{if(it&&!seen.has(it.lid)){seen.add(it.lid);out.push(it);}};
+  for(const ti of t){
+    if(myDel.has(ti.lid))continue;
+    const bi=bMap.get(ti.lid),mi=mMap.get(ti.lid);
+    if(mi&&bi&&JSON.stringify(mi)!==JSON.stringify(bi)&&JSON.stringify(ti)===JSON.stringify(bi)){push(mi);continue;}
+    if(mi&&bi&&JSON.stringify(mi)!==JSON.stringify(bi)&&JSON.stringify(ti)!==JSON.stringify(bi))conflicts++;
+    push(ti);
+  }
+  for(const mi of m)if(!tMap.has(mi.lid)&&!bMap.has(mi.lid))push(mi);
+  return{items:out,conflicts};
+}
 const LS_PROFILE = 'wpc_profile', LS_CART = 'wpc_cart', LS_ORDERS = 'wpc_orders', LS_TAB = 'wpc_tab', LS_SECTION = 'wpc_section', LS_PRICES = 'wpc_prices', LS_PENDING = 'wpc_pending_sync', LS_PENDING_CANCEL = 'wpc_pending_cancel', LS_PRICES_DIRTY = 'wpc_prices_dirty', LS_DELETED = 'wpc_deleted_ids', LS_SENT = 'wpc_sent_ids', LS_REJECTED = 'wpc_rejected_ids';
 
 // مستويات السعر: السعر الأساسي المتخزّن في الكتالوج هو "سعر موزع"، ومنه بتتحسب المستويات التانية بزيادة ثابتة.
@@ -3002,7 +3088,7 @@ const state = {
     metaEdit:{}, metaBusy:null,
     prodEdit:{}, prodBusy:null},
   profile: load(LS_PROFILE, {name:'', phone:'', region:''}),
-  cart:    load(LS_CART, []),
+  cart:    cartLoadItems_(),
   orders:  load(LS_ORDERS, []),
   pick:load('wpc_pick_draft_v265',{code:'',sizes:{},customOn:false,note:'',custom:{w:'',h:'',qty:'',frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,frameKind:null,frameRodQty:'',frameForDoors:''}}),
   showBank: load(LS_SHOWBANK, true),   // إظهار ملحوظة العربون + بيانات التحويل في مستند الأوردر (اختياري)
