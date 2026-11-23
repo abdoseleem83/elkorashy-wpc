@@ -2381,6 +2381,41 @@ svg.flow-pictorial{stroke:none;fill:none;stroke-width:1}svg.flow-pictorial{overf
 <style>.flow-next279{display:flex;flex-direction:column;gap:9px;padding:12px}.flow-next279 .btn{width:100%;min-height:44px}#cartFloat{display:none!important}</style>
 <style>.cust-tile277 .cust-order279{display:flex;flex-direction:column;gap:1px}.cust-tile277 .cust-order279 small{font-size:10px;font-weight:500;line-height:1.5;color:var(--muted);direction:ltr}.cust-tile277>span{display:flex;flex-direction:column;gap:5px;width:100%}input::-webkit-inner-spin-button,input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}input[type=number]{-moz-appearance:textfield}
 </style>
+<style>/* v293: وضوح شاشة العملاء — Arial Bold أوضح، مقاسات أكبر، تباين مريح، نفس التخطيط */
+.cust-tile277>b{font-size:15px}
+.cust-tile277>span.cust-no-row293{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:6px;width:auto}
+.cust-tile277 .cust-order279 bdi{font-size:13px;font-weight:700}
+.cust-tile277 .cust-order279 small{font-size:12px;font-weight:700}
+.cust-tile277>small{font-size:12px;font-weight:700}
+html:not([data-theme="dark"]) .cust-tile277 .cust-order279 bdi{color:#1F3A5C}
+html:not([data-theme="dark"]) .cust-tile277 .cust-order279 small{color:#42566E}
+html[data-theme="dark"] .cust-tile277 .cust-order279 bdi{color:#E4EFFA}
+html[data-theme="dark"] .cust-tile277 .cust-order279 small{color:#AEC3D8}
+/* Compact three-across customer tiles, two explicit alternating tones. */
+.cust-tiles277{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.cust-tile277{min-height:66px;padding:5px 3px;gap:2px;border-radius:9px}
+.cust-tile277[data-tone294="0"]{background:#eef5ff;border-color:#b9cfe9}
+.cust-tile277[data-tone294="1"]{background:#f1f7ec;border-color:#c9dabd}
+.cust-tile277>span.cust-no-row293{flex-direction:column;gap:2px;width:100%}
+.cust-tile277 .cust-no-row293>b{font-size:12px;line-height:1.3;text-align:center;max-width:100%;overflow-wrap:anywhere}
+.cust-tile277 .cust-lens293{width:26px;height:26px;border-radius:7px}
+.cust-tile277>small.cust-count294{font-size:11px;line-height:1.3;color:#42566e}
+html[data-theme="dark"] .cust-tile277[data-tone294="0"]{background:#213952;border-color:#466b91}
+html[data-theme="dark"] .cust-tile277[data-tone294="1"]{background:#2b402f;border-color:#526e4e}
+html[data-theme="dark"] .cust-tile277>small.cust-count294{color:#d0dfed}
+.grp-order294{display:flex;flex-direction:column;align-items:center;gap:2px;flex:none}.cust-lens293{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:rgba(31,58,92,.16);color:#1F3A5C;cursor:pointer;flex:none}
+html[data-theme="dark"] .cust-lens293{background:rgba(255,255,255,.16);color:#E4EFFA}
+.cust-lens293 svg{width:15px;height:15px}
+.cust-lens293:active{transform:scale(.92)}
+.grp-no{font-size:15px;padding:3px 14px}
+.grp-no.nn{font-size:13px}
+.grp-dt,.grp-dy{font-size:13px;font-weight:700}
+html:not([data-theme="dark"]) .grp-dt{color:#3D5A77}
+html:not([data-theme="dark"]) .grp-dy{color:#7A5A10}
+html[data-theme="dark"] .grp-dt{color:#B9D4EA}
+html[data-theme="dark"] .grp-dy{color:#E3BE79}
+.cust-detail277 h3{font-size:16.5px}
+</style>
 </head>
 <body>
 
@@ -2582,7 +2617,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v292';
+const APP_BUILD = 'v294';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -4848,7 +4883,8 @@ function viewCart(){
     ${ordNoteBoxHTML_('margin-bottom:12px')}
     <button class="btn brand ct-send" data-act="submit">${editing?ico("save")+' حفظ التعديل وإرسال واتساب':ico("send")+' إرسال للمصنع ثم مشاركة الصورة'}</button>
     <div class="btnrow" style="margin-top:9px">
-      <button class="btn ghost sm" data-act="quote-cart">${ico("doc")} PDF الطلب</button>
+      <button class="btn ghost sm" data-act="quote-cart" title="مستند الطلب كامل بالصور — استخراج PDF فقط، لا يرسل الطلب للمصنع">${ico("doc")} PDF بالصور</button>
+      <button class="btn ghost sm" data-act="quote-cart-eco" title="نسخة اقتصادية: الجدول كامل + ملخص نصي لكل مقاس، بلا صور — استخراج PDF فقط، لا يرسل الطلب للمصنع">${ico("doc")} PDF بدون صور</button>
       <button class="btn ghost sm" data-act="clear">تفريغ السلة</button>
     </div>
   </section>
@@ -6060,6 +6096,10 @@ async function withOrderItems_(o, work){
 
 async function exportAdminOrderPdf(o){
   await withOrderItems_(o, its => makeDoc(buildAdminDocOrder_(o, its),'order'));
+}
+// توأم اقتصادي بلا صور لطلب من شاشة المصنع — نفس بيانات الطلب بالجدول الكامل + ملخص نصي لكل مقاس، بلا أي مسار إرسال
+async function exportAdminOrderPdfEco(o){
+  await withOrderItems_(o, its => makeDoc(buildAdminDocOrder_(o, its),'order',undefined,true));
 }
 
 // عرض سعر بالمبالغ — نفس مستند الطلب بالظبط بس بالأسعار ظاهرة على مستوى السعر المختار،
@@ -8274,7 +8314,7 @@ function prodTableHTML_(oid, its, a, qtyMode){
       const rBusy = a.recvBusy === qKey;
       const rDraft = a.recvEdit.hasOwnProperty(qKey) ? a.recvEdit[qKey] : received;
       return `<tr>
-        <td style="padding:6px 7px;text-align:right;font-size:12.5px">${title}</td>
+        <td style="padding:6px 7px;text-align:right;font-size:12.5px">${title}${it.type==='Door'?`<button class="btn sm" data-act="factory-item-edit294" data-id="${esc(oid)}" data-idx="${idx}">تعديل بيانات الباب</button>`:''}</td>
         <td style="padding:6px 5px;text-align:center;font-size:12.5px;color:#A9BCD4;white-space:nowrap">${esc(sizeText_(it))}</td>
         <td style="padding:6px 3px;text-align:center">
           <div style="display:flex;align-items:center;justify-content:center;gap:3px">
@@ -8561,14 +8601,14 @@ function groupOrderRowHTML_(o, a){
   // الملاحظة العامة بتبان على سطر الطلب نفسه — من غير كده المصنع لازم يفتح
   // العميل ويفتح كارت الطلب عشان يشوفها، والملاحظة المفروض تبان للجميع.
   return `<div class="grp-ord${o.ordNote?' hasnote':''}">
-    <span class="grp-no${hasNo?'':' nn'}" title="الكود الداخلي: ${esc(o.id)}">${esc(hasNo ? noTxt : shortIdText_(o.id))}</span>
-    ${o.date?`<span class="grp-dt">${esc(dateStr2_(o.date))}</span>
-    <span class="grp-dy">${esc(dayNameAr_(o.date))}</span>`:''}
+    <span class="cust-order279 grp-order294"><span style="display:flex;align-items:center;gap:6px"><span class="grp-no${hasNo?'':' nn'}" title="الكود الداخلي: ${esc(o.id)}">${esc(hasNo ? noTxt : shortIdText_(o.id))}</span><button type="button" class="cust-lens293" data-act="adm-preview" data-id="${esc(o.id)}" title="معاينة الطلب ${esc(noTxt)}" aria-label="معاينة الطلب ${esc(noTxt)}">${ico("search")}</button></span>${o.date?`<small class="grp-dt">${esc(dateStr2_(o.date))}</small><small class="grp-dy">${esc(dayNameAr_(o.date))}</small>`:''}</span>
     <span style="flex:1"></span>
     <button class="btn act-tool sm grp-b" data-act="adm-preview" data-id="${esc(o.id)}" ${busy?'disabled':''}
       title="معاينة الطلب ${esc(noTxt)}" aria-label="معاينة الطلب ${esc(noTxt)}">${ico("search")}${busy?'…':'معاينة'}</button>
     <button class="btn act-report sm grp-b" data-act="adm-pdf" data-id="${esc(o.id)}"
-      title="طباعة الطلب ${esc(noTxt)}" aria-label="طباعة الطلب ${esc(noTxt)}">${ico("doc")}PDF</button>
+      title="PDF كامل بالصور للطلب ${esc(noTxt)}" aria-label="PDF بالصور للطلب ${esc(noTxt)}">${ico("doc")}PDF بالصور</button>
+    <button class="btn act-report sm grp-b" data-act="adm-pdf-eco" data-id="${esc(o.id)}"
+      title="PDF اقتصادي بلا صور للطلب ${esc(noTxt)}" aria-label="PDF بدون صور للطلب ${esc(noTxt)}">${ico("doc")}PDF بدون صور</button>
     ${dueChipHTML_(o, !a.viewArchive)}
   </div>
   ${o.ordNote?`<div class="grp-note">${ico("warn")}<span><b>ملاحظات:</b> ${esc(o.ordNote)}</span></div>`:''}`;
@@ -8873,7 +8913,8 @@ function viewAdmin(){
     // يصدّر PDF لكل طلبات العميل مع بعض بس، مش طلب واحد.
     const actionBtns = `<button class="btn ${itemsOpen?'brand':'act-edit'} sm" data-act="adm-toggle-items" data-id="${esc(o.id)}">${ico("box")}${itemsOpen?'إخفاء':'الأصناف'}</button>
          <button class="btn act-tool sm" data-act="adm-preview" data-id="${esc(o.id)}" ${prevBusy?'disabled':''}>${ico("search")}${prevBusy?'…':'معاينة'}</button>
-         <button class="btn act-report sm" data-act="adm-pdf" data-id="${esc(o.id)}">${ico("doc")}PDF</button>
+         <button class="btn act-report sm" data-act="adm-pdf" data-id="${esc(o.id)}" title="PDF كامل بالصور">${ico("doc")}PDF بالصور</button>
+         <button class="btn act-report sm" data-act="adm-pdf-eco" data-id="${esc(o.id)}" title="نسخة اقتصادية بلا صور — الجدول كامل + ملخص نصي لكل مقاس">${ico("doc")}PDF بدون صور</button>
          <button class="btn ${qtyMode?'brand':'act-edit'} sm" data-act="adm-toggle-qtymode" data-id="${esc(o.id)}">${ico("edit")}تعديل</button>
          <button class="btn act-edit sm" data-act="adm-add-items" data-id="${esc(o.id)}">${ico("plus")}إضافة</button>
          <button class="btn act-send sm" data-act="adm-share" data-id="${esc(o.id)}">${ico("send")}إرسال</button>
@@ -8954,9 +8995,9 @@ function viewAdmin(){
     return كارت;
   }).join('');
   const _anyOpen277 = order.some(name=>a.groupOpen[name]);
-  rows=(_anyOpen277?`<div class="btnrow" style="margin:0 0 8px"><button class="btn ghost sm" data-act="adm-close-groups">→ رجوع لكل العملاء</button></div>`:'')+'<div class="cust-tiles277'+(_anyOpen277?' has-open':'')+'">'+Array.from({length:Math.ceil(order.length/2)},(_,rowIndex)=>{
-    const names=order.slice(rowIndex*2,rowIndex*2+2);
-    const tiles=names.map(name=>{const os=groups[name],on=!!a.groupOpen[name];return `<button type="button" class="cust-tile277${on?' on':''}" data-act="adm-toggle-group" data-name="${esc(name)}" aria-expanded="${on}"><b>${esc(name)}</b><span>${os.map(o=>`<span class="cust-order279"><bdi>${esc(orderNoText_(o))}</bdi><small>${esc(o.date?dateStr2_(o.date):'تاريخ غير متاح')}</small></span>`).join('')}</span><small>${os.length>1?os.length+' طلب':''} ${on?'⌃':'⌄'}</small></button>`;}).join('');
+  rows=(_anyOpen277?`<div class="btnrow" style="margin:0 0 8px"><button class="btn ghost sm" data-act="adm-close-groups">→ رجوع لكل العملاء</button></div>`:'')+'<div class="cust-tiles277'+(_anyOpen277?' has-open':'')+'">'+Array.from({length:Math.ceil(order.length/3)},(_,rowIndex)=>{
+    const names=order.slice(rowIndex*3,rowIndex*3+3);
+    const tiles=names.map(name=>{const os=groups[name],on=!!a.groupOpen[name];return `<button type="button" class="cust-tile277${on?' on':''}" data-act="adm-toggle-group" data-name="${esc(name)}" data-tone294="${order.indexOf(name)%2}" aria-expanded="${on}"><span class="cust-no-row293"><b>${esc(name)}</b><span class="cust-lens293" role="button" tabindex="-1" data-act="adm-group-preview" data-name="${esc(name)}" title="معاينة كل طلبات ${esc(name)}" aria-label="معاينة كل طلبات ${esc(name)}">${ico("search")}</span></span><small class="cust-count294">${os.length} ${os.length===1?'طلب':'طلبات'}</small></button>`;}).join('');
     const selected=names.find(name=>a.groupOpen[name]);
     const detail=selected?`<section class="cust-detail277" data-customer-detail277="${esc(selected)}"><h3>${esc(selected)}</h3>${groups[selected].map(o=>groupOrderRowHTML_(o,a)+orderCardHTML_(o)).join('')}${groups[selected].length>1?`<div class="btnrow"><button class="btn ghost sm" data-act="adm-group-preview" data-name="${esc(selected)}">معاينة كل الطلبات</button><button class="btn ghost sm" data-act="adm-group-pdf" data-name="${esc(selected)}">PDF كل الطلبات</button></div>`:''}</section>`:'';
     return tiles+detail;
@@ -9103,6 +9144,7 @@ document.addEventListener('click',e=>{
     case 'clear': if(confirm('تفريغ السلة بالكامل؟')){state.cart=[];saveCart_();render();} break;
     case 'submit': submitOrderGuarded_(); break;
     case 'quote-cart': makeDoc(draftOrder(), 'order'); toast('دي معاينة من السلة، استخراج PDF لا يرسل الطلب للمصنع',6500); break;
+    case 'quote-cart-eco': makeDoc(draftOrder(), 'order', undefined, true); toast('نسخة اقتصادية بلا صور من السلة — استخراج PDF لا يرسل الطلب للمصنع',6500); break;
     case 'ord-pdf':   withOrder(el,o=>makeDoc(mergeProducedFromTrack_(o),'order')); break;
     case 'ord-pdf-eco':withOrder(el,o=>makeDoc(mergeProducedFromTrack_(o),'order',undefined,true)); break;
     case 'ord-xls':   withOrder(el,o=>exportExcel([mergeProducedFromTrack_(o)],'طلب_'+orderNoText_(o).replace('/','-'))); break;
@@ -9195,6 +9237,7 @@ document.addEventListener('click',e=>{
       break; }
     case 'adm-preview': previewOneOrder_(el.dataset.id); break;
     case 'adm-pdf':     { const o=adminOrderById_(el.dataset.id); if(o) exportAdminOrderPdf(o); } break;
+    case 'adm-pdf-eco': { const o=adminOrderById_(el.dataset.id); if(o) exportAdminOrderPdfEco(o); } break;
     case 'adm-quote':   { const o=adminOrderById_(el.dataset.id); if(o) showQuoteTierPicker(o); } break;
     case 'adm-share':    { const o=adminOrderById_(el.dataset.id); if(o) shareAdminOrderImage(o); } break;
     case 'adm-prices-open':   openAdminPrices(); break;
@@ -10418,50 +10461,48 @@ async function shareOrderImage(o){
    من غير التفرقة دي التطبيق كان هيقول «لسه ما وصلش، هنحاول تاني» ويفضل
    يحاول للأبد على طلب السيرفر رافضه — والموزّع مستني على الفاضي. */
 let _lastSendError = null;
-async function sendOrderToServer_(o){
-  _lastSendError = null;
-  let proofs={};
-  try{await requireOrderCaps_(o);await requirePrintLocal_(o.items);proofs=await uploadOrderPrints_(o);}
-  catch(err){_lastSendError={msg:err.message||'تعذّر حفظ التصميمات',permanent:false};return false;}
-  const wire=Object.assign({},o,{artProofs:proofs});
-  const payload = JSON.stringify(wire);
-  // ⚠️ الشرط القديم كان `payload.length < 6000` — بيقيس النص الخام. لكن الحروف العربية
-  // بتتحوّل لـ %XX%XX في الرابط، يعني بتتضخّم 3 أضعاف تقريبًا. فطلب طوله 5999 حرف
-  // كان بيوصل لرابط ~18000 حرف — أطول من اللي المتصفح وApps Script بيقبلوه، فبيفشل.
-  // بنقيس الرابط النهائي نفسه دلوقتي، وبنسيب هامش أمان تحت الحد المتعارف عليه (8000).
-  // معرّف الجهاز بيتبعت مع الطلب عشان حدود الاستخدام على السيرفر تبقى لكل
-  // جهاز لوحده — من غيره كل الأجهزة بتتحاسب على دلو واحد مشترك.
-  const jsonpUrl = APPS_SCRIPT_URL + '?action=newOrder&dev=' + encodeURIComponent(deviceId_())
-                 + '&payload=' + encodeURIComponent(payload);
-  if(!orderArtRefs_(o).length && jsonpUrl.length < 7500){
-    try{
-      const d = await jsonp(jsonpUrl);
-      _lastSendError = (d && !d.ok) ? { msg: d.error || '', permanent: !!d.permanent } : null;
-      if(d && d.ok && d.displayNo){
-        // بنسجّل رقم الطلب "العادي" اللي السيرفر رجّعه على النسخة المحلية عشان يبان صح في أي طباعة/مشاركة لاحقة
-        o.displayNo = d.displayNo; o.editCount = d.editCount||0;
-        const idx = state.orders.findIndex(x=>String(x.id)===String(o.id));
-        if(idx>-1){ state.orders[idx].displayNo=d.displayNo; state.orders[idx].editCount=d.editCount||0; saveOrders_(state.orders); }
-      }
-      if(d&&d.ok&&String(o.customerRegion||'').trim())return await verifyOrderArrived_(o,2);
-      return !!(d && d.ok);
-    }catch(err){ return false; }
+async function sendOrderToServer_(o){return guardedDispatch294_(o,()=>transportOrder294_(o));}
+// Private atomic-create transport. Automatic resume remains disabled pending rollout.
+async function wireDigest294_(o){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(o)))),v=>v.toString(16).padStart(2,'0')).join('');}
+async function createReceiptRead294_(id,entry){
+ if(!entry||!entry.token||!entry.digest)return null;
+ const d=await jsonp(APPS_SCRIPT_URL+'?action=createReceipt294&id='+encodeURIComponent(id)+'&token='+encodeURIComponent(entry.token)+'&digest='+encodeURIComponent(entry.digest));
+ if(!d||!d.ok||!d.receipt||d.receipt.state!=='COMPLETE'||String(d.receipt.id)!==String(id))return null;
+ return d.receipt;
+}
+function applyCreateReceipt294_(o,r){
+ if(!r||r.state!=='COMPLETE'||String(r.id)!==String(o.id))return false;
+ o.displayNo=r.displayNo;o.editCount=r.editCount||0;
+ const stored=state.orders.find(x=>String(x.id)===String(o.id));if(stored){stored.displayNo=r.displayNo;stored.editCount=r.editCount||0;saveOrders_(state.orders);}return true;
+}
+async function transportOrder294_(o){
+ _lastSendError=null;
+ try{
+  if(o.replacesId)throw Error('تعديل الطلب له مسار منفصل؛ الطلب القديم محفوظ');
+  const cap=await jsonp(APPS_SCRIPT_URL+'?action=ping',12000);
+  if(!cap?.ok||!cap.capabilities?.atomicCreate294)throw Error('المصنع يحتاج تحديث مسار الاستلام الآمن؛ الطلب محفوظ ولم يُرسل');
+  await requireOrderCaps_(o);await requirePrintLocal_(o.items);
+  const proofs=await uploadOrderPrints_(o),wire=Object.assign({},o,{artProofs:proofs}),digest=await wireDigest294_(wire),id=String(o.id);
+  const entry=await navigator.locks.request('wpc-ledger294',()=>{
+   const all=dispatchLedger294_(),e=all[id];if(!e||e.state!=='dispatched_unconfirmed')return null;
+   e.token=e.token||'create294_'+printRandom_(16);e.digest=digest;e.wire=wire;
+   return save(LS_DISPATCH294,all)?e:null;
+  });
+  if(!entry)throw Error('تعذّر حفظ مرجع الاستلام قبل الإرسال؛ الطلب لم يُرسل');
+  const payload=JSON.stringify(wire),url=APPS_SCRIPT_URL+'?action=createOrder294&dev='+encodeURIComponent(deviceId_())+'&id='+encodeURIComponent(id)+'&token='+encodeURIComponent(entry.token)+'&order='+encodeURIComponent(payload);
+  if(!orderArtRefs_(o).length&&url.length<7500){
+   const d=await jsonp(url);if(d?.ok&&applyCreateReceipt294_(o,d.receipt))return true;
+   if(d&&!d.ok)_lastSendError={msg:d.error||'لم يتأكد الاستلام',permanent:false};return false;
   }
-  /* طلب كبير (أصناف كتير) — الرابط أطول من اللي JSONP بيستحمله، فبنبعت POST.
-     ⚠️ ودي كانت أخطر نقطة في التطبيق: mode:'no-cors' معناه إننا مش شايفين رد
-     السيرفر خالص، والدالة كانت بترجّع null = «اتبعت بس مش متأكدين».
-     والنتيجة إن null مكانش بيتعامل معاه كفشل في أي مكان:
-       • submitOrder كان بيمسح الطلب القديم على طول (الشرط sent === false بس)
-       • syncOrder_ كان بيشيله من قايمة المعلّق فمايتبعتش تاني
-     يعني لو الـPOST فشل في صمت، الطلب بيروح بالكامل: الجديد ما وصلش والقديم
-     اتمسح ومحدش هيحاول تاني. وده بيحصل بالظبط للطلبات الكبيرة (١٥ صنف =
-     رابط ١٦ ألف حرف). دلوقتي بنسأل السيرفر بنفسنا بدل ما نفترض. */
-  try{
-    await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({action:'newOrder', dev:deviceId_(), order:wire})});
-  }catch(err){ return false; }
-  return await verifyOrderArrived_(o);
+  await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'createOrder294',dev:deviceId_(),id,token:entry.token,order:wire})});
+  const receipt=await createReceiptRead294_(id,entry);return receipt?applyCreateReceipt294_(o,receipt):false;
+ }catch(e){_lastSendError={msg:e.message||'لم يتأكد استلام الطلب',permanent:false};return false;}
+}
+async function reviewAtomicCreate294_(o){
+ const id=String(o.id),entry=dispatchLedger294_()[id];if(!entry?.digest)return false;
+ const r=await createReceiptRead294_(id,entry);if(!r)return false;
+ await navigator.locks.request('wpc-ledger294',()=>{const all=dispatchLedger294_();if(all[id]){all[id].state='confirmed';save(LS_DISPATCH294,all);}});
+ applyCreateReceipt294_(o,r);markSent_(id);savePendingSync_(loadPendingSync_().filter(x=>String(x)!==id));return true;
 }
 
 // بنسأل السيرفر: الطلب وصل ولا لأ؟ بنجرّب أكتر من مرة لأن Apps Script بياخد
@@ -10700,46 +10741,7 @@ async function runPendingCancelFor_(newId){
 // مع بعض (أو النت قطع ورجع بسرعة) كان ممكن نسختين يشتغلوا في نفس الوقت، الاتنين
 // يقروا نفس القايمة ويبعتوا نفس الطلبات — يعني طلبات مكررة عند المصنع. القفل ده بيمنع ده.
 let _retryRunning = false;
-async function retryPendingOrders_(){
-  if(_retryRunning) return;
-  if(!APPS_SCRIPT_URL || !navigator.onLine) return;
-  const pending = loadPendingSync_();
-  if(!pending.length) return;
-  _retryRunning = true;
-  try{
-    const stillPending = [];
-    let مرفوض = 0;
-    for(const id of pending){
-      const o = state.orders.find(x=>String(x.id)===String(id));
-      if(!o) continue;   // اتشال من عندنا لأي سبب — متبقاش نحاول تاني
-      // بيتبعت دلوقتي من syncOrder_ — سيبه له عشان مايوصلش المصنع مرتين
-      if(_sendingNow.has(String(id))){ stillPending.push(id); continue; }
-      const ok = await sendOrderToServer_(o);
-      // رفض دائم؟ نشيله من الطابور بدل ما نفضل نحاول للأبد، ونقول للموزّع
-      if(ok !== true && _lastSendError && _lastSendError.permanent){
-        markRejected_(id);
-        مرفوض++;
-        toast('⛔ المصنع رفض الطلب '+orderNoText_(o)+': '+(_lastSendError.msg||'شكل الطلب مش مقبول'), 7000);
-        continue;
-      }
-      if(ok !== true) stillPending.push(id);   // مش متأكدين = لسه معلّق
-      else { markSent_(id); await runPendingCancelFor_(id); }   // وصل — دلوقتي بس ينفع نمسح القديم
-    }
-    // مش savePendingSync_(stillPending) على طول: لو الموزع بعت طلب جديد وهو
-    // مستني الرد هنا، syncOrder_ بتكون ضافته للقايمة — والكتابة فوقها كانت
-    // بتمسحه، فالطلب ده عمره ما يتبعت تاني. بنقرا القايمة تاني ونشيل بس اللي
-    // اتعامل معاه فعلاً.
-    const handled = new Set(pending.map(String));
-    const merged = loadPendingSync_().filter(id => !handled.has(String(id)));
-    savePendingSync_(merged.concat(stillPending));
-    // الطلب المرفوض مااتبعتش — مانقولش «اتبعتت كلها» وهو لسه برّه
-    if(pending.length && !stillPending.length && !مرفوض){
-      toast('✅ اتبعتت كل الطلبات اللي كانت معلّقة للمصنع');
-    }
-  } finally {
-    _retryRunning = false;
-  }
-}
+async function retryPendingOrders_(){ return resumeQueued294_(); }
 
 /* ============================================================
    أوردر تاني في نفس اليوم لنفس العميل
@@ -10867,7 +10869,8 @@ async function submitOrder(){
     const meta=state.editingMeta;
     const address=meta?meta.customerRegion:(state.custMode==='other'?state.customer.region:'');
     busy(true,'جارٍ التحقق من حفظ العنوان والتصميمات…');
-    await requireOrderCaps_({customerRegion:address||'',items:state.cart});
+    if(navigator.onLine)await requireOrderCaps_({customerRegion:address||'',items:state.cart});
+    else if(state.editingId)throw new Error('تعديل طلب قائم يحتاج اتصالًا ومراجعة؛ السلة محفوظة ولم يُرسل شيء');
     await hydrateFactoryArtCart_();
     await requirePrintLocal_(state.cart);
   }catch(err){toast(err.message||'تعذّر التحقق؛ السلة محفوظة ولم يتم الإرسال',7000);return;}
@@ -10877,6 +10880,7 @@ async function submitOrder(){
   const o=draftOrder();
   o.msg=buildMessage(o);
 
+  if(!await queueDispatch294_(o)){toast('تعذّر تجهيز سجل إرسال الطلب؛ السلة محفوظة ولم يُرسل شيء',8000);return;}
   const localBefore={orders:state.orders.slice(),deleted:loadDeleted_().slice(),cancels:loadPendingCancels_().slice(),track:state.track.rows?state.track.rows.slice():null};
   if(wasEditing){
     // ⚠️ لو الطلب اللي بنعدّله هو نفسه لسه ما وصلش المصنع، يبقى فيه نية إلغاء
@@ -12245,14 +12249,12 @@ new ResizeObserver(stickyOffset276_).observe(document.getElementById('appbar'));
 <script>
 let pendingReviewBusy276_=false;
 async function readPendingReceipt276_(o){if(!APPS_SCRIPT_URL||!o.phone)throw new Error('رقم الحساب الأصلي أو اتصال المصنع غير متاح');const d=await jsonp(APPS_SCRIPT_URL+'?action=list&dev='+encodeURIComponent(deviceId_())+'&phone='+encodeURIComponent(o.phone));if(!d||!d.ok)throw new Error(d&&d.error||'تعذّر التحقق من المصنع');return(d.orders||[]).find(x=>String(x.id)===String(o.id));}
-async function reviewPending276_(o){if(_sendingNow.has(String(o.id))){toast('الإرسال الحالي لسه شغال، لا تبدأ محاولة تانية. تحقق من الاستلام قراءة فقط.',8000);return;}if(pendingReviewBusy276_)return;pendingReviewBusy276_=true;busy(true,'جارٍ التحقق قبل عرض مراجعة الإرسال…');try{
- const hit=await readPendingReceipt276_(o);if(hit){toast('الطلب موجود في المصنع بالفعل برقم '+(hit.displayNo||o.id)+'؛ لن نعيد إرساله. استخدم تحقق من الاستلام',8000);return;}
- if(!loadPendingSync_().map(String).includes(String(o.id)))throw new Error('الطلب ليس ضمن قائمة الإرسال المعلّق');
- const fingerprint=JSON.stringify(o),box=document.createElement('div');box.className='dueov';box.innerHTML=`<div class="box"><h3>راجع الطلب المحفوظ قبل الإرسال</h3><p>مرجع الطلب: <bdi>${esc(o.id)}</bdi></p><p>الحساب: ${esc(o.name||'')} · <bdi>${esc(o.phone)}</bdi><br>صاحب الطلب: ${esc(o.customer||o.name||'')}<br>عنوان العميل: ${esc(o.customerRegion||'بدون')}</p><div style="max-height:28vh;overflow:auto">${(o.items||[]).map(it=>`<p>${esc(it.title||it.code||it.kind)} · الكمية ${esc(it.qty)}${it.sizeTxt?' · '+esc(it.sizeTxt):''}</p>`).join('')}</div><p>${esc(o.note||'بدون ملاحظات')}</p><p>لم نجد المرجع تحت رقم الحساب الأصلي. الضغط يرسل نفس الطلب بنفس المرجع، لا ينشئ طلبًا جديدًا ولا يلغي طلبًا قديمًا. تأكد أنك تريد إرسال الأصناف المحفوظة كما هي.</p><button class="btn brand" data-send-pending276>أوافق، أرسل الطلب المحفوظ للمصنع</button><button class="btn ghost" data-close-pending276>رجوع بدون إرسال</button></div>`;
- box.querySelector('[data-close-pending276]').onclick=()=>box.remove();box.querySelector('[data-send-pending276]').onclick=async()=>{const send=box.querySelector('[data-send-pending276]');if(send.disabled)return;send.disabled=true;busy(true,'جارٍ التحقق الأخير ثم إرسال نفس المرجع…');try{
- if(_sendingNow.has(String(o.id)))throw new Error('الإرسال الحالي لسه شغال، لم نبدأ محاولة تانية');if(JSON.stringify(o)!==fingerprint)throw new Error('الطلب اتغيّر؛ اقفل المراجعة وافتحها من جديد');const exists=await readPendingReceipt276_(o);if(exists){toast('وصل للمصنع بالفعل؛ لم يُرسل مرة ثانية',7000);box.remove();return;}const received=await syncOrder_(o);box.remove();render();toast(received===true?'تأكد استلام المصنع. لم نلغِ أي طلب قديم تلقائيًا؛ أي إلغاء سابق محفوظ للمراجعة.':'لم يتأكد استلام المصنع. الطلب محفوظ ولن نعيد إرساله تلقائيًا.',8000);
- }catch(e){toast(e.message+'؛ تعذّر إكمال العملية. تحقق من الاستلام قبل أي محاولة أخرى',8000);}finally{busy(false);send.disabled=false;}};document.body.appendChild(box);
- }catch(e){toast('تعذّر فتح الإرسال الآمن: '+e.message+'؛ لم يُرسل شيء',8000);}finally{busy(false);pendingReviewBusy276_=false;}}
+async function reviewPending276_(o){
+ const e=dispatchLedger294_()[String(o.id)];
+ if(e&&e.digest){try{const ok=await reviewAtomicCreate294_(o);toast(ok?'المصنع أكد استلام الطلب بإيصال الحفظ، بدون إعادة إرسال':'لم يظهر إيصال مؤكد بعد؛ الطلب محفوظ ولن يُرسل مرة أخرى',8000);return ok;}catch(err){toast('تعذّر التحقق من إيصال الاستلام؛ الطلب محفوظ ولم يُعد إرساله',8000);return false;}}
+ if(e&&e.state==='queued'){toast('الطلب محفوظ ولم تبدأ محاولة إرساله؛ الاستكمال التلقائي متوقف حتى تفعيل حماية المصنع',7000);return;}
+ return verifyReceipt276_(o);
+}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act="review-pending-276"]');if(b){const o=state.orders.find(x=>String(x.id)===String(b.dataset.id));if(o)reviewPending276_(o);}});
 </script><script>
 function cacheReceipt277_(o,hit){if(!o||!hit||!hit.displayNo||String(o.id)!==String(hit.id))return false;o.displayNo=hit.displayNo;o.editCount=Number(hit.editCount)||0;const local=state.orders.find(x=>String(x.id)===String(o.id));if(local){local.displayNo=o.displayNo;local.editCount=o.editCount;}return saveOrders_(state.orders);}
@@ -12283,6 +12285,161 @@ document.addEventListener('click',ev=>{const b=ev.target.closest&&ev.target.clos
 </script>
 <script>
 document.addEventListener('click',ev=>{const b=ev.target.closest&&ev.target.closest('[data-flow-step282]');if(!b)return;ev.preventDefault();const i=Number(b.dataset.flowIndex),v=doorFlow_.variants[i];if(!v)return;const raw=String(v.qty??'').trim(),n=Number(raw),delta=Number(b.dataset.flowStep282);if(raw&&!Number.isFinite(n)){toast('اكتب كمية صحيحة');return;}if(!raw&&delta<0)return;const next=Math.max(0,Math.round(((raw?n:0)+delta)*1000000)/1000000);v.qty=next>0?String(next):'';flowPersist_();render();});
+</script>
+<script>
+// PRIVATE candidate. Automatic resumption is disabled until server protection is deployed.
+const LS_DISPATCH294='wpc_dispatch_v294';
+const resumeProtection294_=false;
+function dispatchLedger294_(){const x=load(LS_DISPATCH294,{});return x&&typeof x==='object'&&!Array.isArray(x)?x:{};}
+async function queueDispatch294_(o){
+ if(!navigator.locks)return false;
+ return navigator.locks.request('wpc-ledger294',async()=>{
+  const all=dispatchLedger294_(),id=String(o.id);
+  if(all[id])return false;
+  all[id]={state:'queued',snapshot:JSON.stringify(o),created:Date.now()};
+  return save(LS_DISPATCH294,all);
+ });
+}
+async function guardedDispatch294_(o,work){
+ const id=String(o.id);
+ if(!navigator.locks){toast('الإرسال متوقف بأمان: المتصفح لا يدعم قفل الإرسال بين النوافذ. الطلب محفوظ للمراجعة.',8000);return false;}
+ return navigator.locks.request('wpc-dispatch294-'+id,{ifAvailable:true},async lock=>{
+  if(!lock)return false;
+  const claimed=await navigator.locks.request('wpc-ledger294',async()=>{
+   const all=dispatchLedger294_(),entry=all[id];
+   if(!entry||entry.state!=='queued'||entry.snapshot!==JSON.stringify(o))return false;
+   if(!navigator.onLine)return false;
+   entry.state='dispatched_unconfirmed';entry.started=Date.now();
+   return save(LS_DISPATCH294,all);
+  });
+  if(!claimed){toast('الطلب محفوظ. إن بدأت محاولة سابقة فلا تعِد الإرسال؛ استخدم تحقق من الاستلام.',8000);return false;}
+  const ok=await work();
+  if(ok===true)await navigator.locks.request('wpc-ledger294',async()=>{
+   const all=dispatchLedger294_();if(all[id]){all[id].state='confirmed';save(LS_DISPATCH294,all);}
+  });
+  return ok;
+ });
+}
+async function resumeQueued294_(){
+ // Old tabs bypass new browser locks. No automatic write until the server
+ // protects every creation path including legacy newOrder and uploadPrint.
+ if(!resumeProtection294_||!navigator.onLine)return;
+ const all=dispatchLedger294_();
+ for(const [id,e] of Object.entries(all)){
+  if(e.state!=='queued')continue;
+  const o=state.orders.find(o=>String(o.id)===id);
+  if(!o||JSON.stringify(o)!==e.snapshot||o.replacesId)continue;
+  await syncOrder_(o);
+ }
+}
+window.addEventListener('online',()=>resumeQueued294_());
+setTimeout(()=>resumeQueued294_(),1500);
+</script>
+<script>
+// Private UI for the new server transaction. Not enabled on a deployed backend.
+async function factoryItemEdit294_(id,index){
+ busy(true,'جارٍ قراءة نسخة الطلب قبل التعديل…');
+ try{
+  const journal=load('wpc_factory_ops294',{});
+  for(const [op,entry] of Object.entries(journal)){
+   if(entry.id!==id||entry.state==='confirmed')continue;
+   const check=await jsonp(APPS_SCRIPT_URL+'?action=factoryEditReceipt294'+admParams_()+'&request='+encodeURIComponent(JSON.stringify(entry.request)));
+   if(!check||!check.ok||!check.receipt)throw Error('توجد محاولة تعديل لم يتأكد إيصالها بعد. لن ننشئ محاولة أخرى لهذا الطلب حتى تُراجع.');
+   if(state.admin.items)delete state.admin.items[id];if(state.admin.itemsOpen)delete state.admin.itemsOpen[id];deleteAdmItemsEntry_(id);
+   entry.receipt=check.receipt;entry.state='confirmed';if(!save('wpc_factory_ops294',journal))throw Error('تعذّر حفظ تأكيد العملية السابقة');
+  }
+  const snap=await jsonp(APPS_SCRIPT_URL+'?action=factoryEditSnapshot294'+admParams_()+'&id='+encodeURIComponent(id));
+  if(!snap||!snap.ok)throw Error(snap&&snap.error||'مسار التعديل الآمن غير متاح في المصنع الحالي');
+  const item=snap.items[index];if(!item)throw Error('الصنف غير موجود');
+  const ov=document.createElement('div');ov.className='dueov';ov.id='factoryEdit294';
+  ov.innerHTML='<div class="box" dir="rtl"><h3>تعديل بيانات الباب</h3><p>يحافظ على رقم الطلب وتقدم المصنع والمرفقات. لو اتصنّع جزء، يبقى محفوظًا كبند مستقل ويتعدل الباقي فقط.</p><label>نوع المقاس <select data-size-mode294><option value="standard">قياسي</option><option value="custom">مقاس خاص</option></select></label><label>عرض الباب <input data-width294 type="number" min="1"></label><label>ارتفاع الباب <input data-height294 type="number" min="1"></label><label>عرض الحلق <select data-frame294><option value="0">بدون حلق</option><option value="10">10</option><option value="15">15</option><option value="20">20</option></select></label><label>ارتفاع الحلق <input data-frame-height294 type="number" min="0"></label><label>البرور <input data-bror294></label><label>وصف الحفر <input data-mill294></label><label>ملاحظة الصنف <textarea data-note294></textarea></label><button class="btn brand" data-save294>حفظ التعديل الآمن</button><button class="btn ghost" data-close294>رجوع بدون تغيير</button><p data-result294></p></div>';
+  ov.querySelector('[data-size-mode294]').value=item.sizeMode||'standard';
+  ov.querySelector('[data-width294]').title='القياسي70/80/90/100، المقاس الخاص يحتاج مراجعة القص والسعر';
+  ov.querySelector('[data-width294]').value=item.w;ov.querySelector('[data-note294]').value=item.note||'';
+  ov.querySelector('[data-height294]').value=item.doorHeight??'';
+  ov.querySelector('[data-frame294]').value=item.frame||0;
+  ov.querySelector('[data-frame-height294]').value=item.frameHeight||0;
+  ov.querySelector('[data-bror294]').value=item.dbror||'';
+  ov.querySelector('[data-mill294]').value=item.millEn||'';
+  Object.assign(ov.querySelector('.box').style,{maxHeight:'85dvh',overflowY:'auto'});
+  ov.querySelectorAll('label').forEach(x=>{x.style.display='block';x.style.marginTop='8px';});
+  ov.querySelectorAll('input,select,textarea').forEach(x=>{x.style.display='block';x.style.width='100%';x.style.boxSizing='border-box';x.style.minHeight='42px';});
+  const serviceInputs=[];
+  if(item.produced>0)for(const svc of (snap.services||[])){
+   const label=document.createElement('label');label.textContent=svc.title+'، عدد الخدمة على الباقي غير المصنوع (إجمالي الخدمة '+svc.qty+')';
+   const input=document.createElement('input');input.type='number';input.min='0';input.max=String(svc.qty);input.step='1';input.value='';input.dataset.serviceAllocation294=String(svc.index);input.style.cssText='display:block;width:100%;min-height:42px;box-sizing:border-box';label.append(input);ov.querySelector('[data-save294]').before(label);serviceInputs.push({svc,input});
+  }
+  const staged={},stageIssues=new Set(),stageBusy=new Set();
+  for(const field of ['printArt','engraveArt']){
+   if(!printRefOk_(item[field]))continue;
+   const label=document.createElement('label');label.textContent=field==='printArt'?'تبديل صورة الطباعة':'تبديل صورة الحفر';
+   const input=document.createElement('input');input.type='file';input.accept='image/png,image/jpeg,image/webp';input.dataset.artStage294=field;input.style.cssText='display:block;width:100%;box-sizing:border-box;min-height:42px';label.append(input);
+   const status=document.createElement('small');label.append(status);ov.querySelector('[data-save294]').before(label);
+   input.onchange=async()=>{
+    const file=input.files[0];if(!file)return;
+    stageIssues.add(field);stageBusy.add(field);delete staged[field];input.disabled=true;ov.querySelector('[data-save294]').disabled=true;
+    try{
+     if(!file.size||file.size>5*1024*1024||!/^image\/(png|jpeg|webp)$/.test(file.type))throw Error('اختار صورة حتى٥ ميجا');
+     const data=await printDataUrl_(file),thumb=await printPreview_(data),ref='pa_'+printRandom_(16),key=printRandom_(32),opId='art294_'+printRandom_(16);
+     await printPut_({ref,key,data,thumb,orders:[id],created:Date.now()});
+     const journal=load('wpc_factory_art_stages294',{});journal[ref]={id,index,field,opId,expectedOrderHash:snap.hash,expectedHash:item.hash,state:'unconfirmed'};
+     if(!save('wpc_factory_art_stages294',journal))throw Error('تعذّر حفظ مرجع الصورة؛ لم تُرفع');
+     status.textContent='جارٍ تجهيز الصورة الجديدة، الأصل محفوظ';
+     await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'factoryArtStage294',pw:state.admin.pw,dev:deviceId_(),orderId:id,index,field,ref,key,data,thumb,opId,expectedOrderHash:snap.hash,expectedHash:item.hash})});
+     const d=await jsonp(APPS_SCRIPT_URL+'?action=factoryArtStatus294'+admParams_()+'&id='+encodeURIComponent(id)+'&ref='+encodeURIComponent(ref));
+     if(!d?.ok||!d.ready)throw Error('لم يتأكد تجهيز الصورة؛ الأصل لم يتغير');
+     stageIssues.delete(field);staged[field]=ref;journal[ref].state='ready';save('wpc_factory_art_stages294',journal);status.textContent='الصورة جاهزة، لن تحل محل الأصل إلا عند حفظ التعديل';
+    }catch(e){status.textContent=e.message;}finally{stageBusy.delete(field);input.disabled=false;ov.querySelector('[data-save294]').disabled=stageBusy.size>0;}
+   };
+  }
+  ov.querySelector('[data-close294]').onclick=()=>ov.remove();
+  const readValues=()=>({sizeMode:ov.querySelector('[data-size-mode294]').value,w:Number(ov.querySelector('[data-width294]').value),doorHeight:Number(ov.querySelector('[data-height294]').value),frame:Number(ov.querySelector('[data-frame294]').value),frameHeight:Number(ov.querySelector('[data-frame-height294]').value),dbror:ov.querySelector('[data-bror294]').value,millEn:ov.querySelector('[data-mill294]').value,note:ov.querySelector('[data-note294]').value});
+  const initialValues=readValues();
+  let attempted=false,processing=false;
+  ov.querySelector('[data-save294]').onclick=async()=>{
+   const button=ov.querySelector('[data-save294]');if(button.disabled||attempted||processing)return;processing=true;
+   try{
+    if(stageIssues.size||stageBusy.size)throw Error('الصورة المختارة لم يتأكد تجهيزها؛ لم نحفظ تعديلًا بدونها. أعد اختيارها أو ارجع بدون تغيير.');
+    const values=readValues();
+    const fields={};for(const [k,v] of Object.entries(values))if(String(v)!==String(initialValues[k]))fields[k]=v;
+    Object.assign(fields,staged);
+    const serviceAllocation={};for(const {svc,input} of serviceInputs){if(input.value!=='')serviceAllocation[svc.index]=Number(input.value);}
+    const request={id,opId:'edit294_'+printRandom_(16),expectedOrderHash:snap.hash,changes:[{index,expectedHash:item.hash,fields,serviceAllocation}]};
+    if(!Object.keys(fields).length)throw Error('لا يوجد تغيير للحفظ');
+    if(['doorHeight','w','sizeMode'].some(k=>Object.prototype.hasOwnProperty.call(fields,k))){
+     let qr=await jsonp(APPS_SCRIPT_URL+'?action=factoryCutQuote294'+admParams_()+'&request='+encodeURIComponent(JSON.stringify(request)));
+     if(!qr?.ok)throw Error(qr?.error||'تعذّرت مراجعة خدمة القص؛ لم يُحفظ التعديل');
+     if(qr.quote?.requiresHistoryDecision){
+      const choice=await cutHistoryChoice294_(ov);if(!choice)throw Error('أُلغيت مراجعة حساب القص؛ لم يُحفظ التعديل');request.cutHistory=choice;
+      qr=await jsonp(APPS_SCRIPT_URL+'?action=factoryCutQuote294'+admParams_()+'&request='+encodeURIComponent(JSON.stringify(request)));
+      if(!qr?.ok||qr.quote?.requiresHistoryDecision)throw Error(qr?.error||'حساب القص يحتاج مراجعة');
+     }
+     if(qr.quote?.needed){
+      if(!confirm('مراجعة حساب القص\nالإجمالي السابق: '+qr.quote.oldTotal+'\nفرق الخدمة: '+qr.quote.delta+'\nالإجمالي بعد التعديل: '+qr.quote.newTotal+'\nتأكيد هذا الفرق وحفظ التعديل؟'))throw Error('لم تؤكد فرق الحساب، لم يُحفظ التعديل');
+      request.cutApproval={confirmed:true,quoteHash:qr.quoteHash};
+     }
+    }
+
+    const pending=load('wpc_factory_ops294',{});pending[request.opId]={id,request,created:Date.now()};if(!save('wpc_factory_ops294',pending))throw Error('تعذّر حفظ مرجع العملية؛ لم يُرسل أي تعديل');
+    attempted=true;button.disabled=true;
+    const d=await jsonp(APPS_SCRIPT_URL+'?action=factoryEditCommit294'+admParams_()+'&request='+encodeURIComponent(JSON.stringify(request)));
+    if(!d||!d.ok)throw Error(d&&d.error||'لم يتأكد الالتزام؛ راجع العملية ولا تعِد الحفظ');
+    const done=load('wpc_factory_ops294',{});if(done[request.opId]){done[request.opId].receipt=d.receipt;done[request.opId].state='confirmed';save('wpc_factory_ops294',done);}
+    if(state.admin.items)delete state.admin.items[id];if(state.admin.itemsOpen)delete state.admin.itemsOpen[id];deleteAdmItemsEntry_(id);
+    ov.querySelector('[data-result294]').textContent='تم حفظ التعديل مع الحفاظ على تقدم المصنع والمرفقات';
+   }catch(e){ov.querySelector('[data-result294]').textContent=e.message+(attempted?' · العملية محفوظة للتحقق من إيصالها؛ لن نكرر الحفظ تلقائيًا.':'');}finally{processing=false;}
+  };
+  document.body.appendChild(ov);
+ }catch(e){toast(e.message,8000);}finally{busy(false);}
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act="factory-item-edit294"]');if(b)factoryItemEdit294_(b.dataset.id,Number(b.dataset.idx));});
+
+function cutHistoryChoice294_(ov){return new Promise(resolve=>{
+ const box=document.createElement('div');box.style.cssText='padding:12px;background:#fff4ce;border:1px solid #93711c;border-radius:8px';
+ const text=document.createElement('p');text.textContent='سعر القص ثابت. قبل إضافة/إلغاء الخدمة، هل حساب الطلب القديم يشمل القص بالفعل؟ لا نختار بدلًا منك.';box.append(text);
+ for(const [value,label]of [['included','القص داخل حساب الباب بالفعل، لا إضافة ثانية'],['separate','القص غير داخل الحساب، اعرض الخدمة منفصلة'],['','إلغاء ومراجعة الحساب']]){const b=document.createElement('button');b.type='button';b.className='btn ghost';b.textContent=label;b.onclick=()=>{box.remove();resolve(value);};box.append(b);}
+ ov.querySelector('[data-result294]').before(box);box.scrollIntoView({block:'nearest'});
+});}
 </script>
 </body>
 </html>
