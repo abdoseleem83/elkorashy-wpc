@@ -2641,7 +2641,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v307';
+const APP_BUILD = 'v308';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3952,7 +3952,10 @@ async function reconcileReceipt280_(o,hit){
  cacheReceipt277_(o,hit);
  if(String(hit.customerRegion||'')!==String(o.customerRegion||''))return false;
  if(!await printStatusLinked_(o))return false;
- markSent_(o.id);savePendingSync_(loadPendingSync_().filter(id=>String(id)!==String(o.id)));clearOrderToast280_(o.id);return true;
+ markSent_(o.id);savePendingSync_(loadPendingSync_().filter(id=>String(id)!==String(o.id)));clearOrderToast280_(o.id);
+ // v308: edit whose confirmation arrived late: the old order is cancelled only now, after the new one is confirmed (the intent was saved at submit time).
+ try{await runPendingCancelFor_(o.id);}catch(e){}
+ return true;
 }
 
 let _busyOn = false, _busyTxt = '';
@@ -8727,7 +8730,8 @@ function groupOrderRowHTML_(o, a){
       title="معاينة الطلب ${esc(noTxt)}" aria-label="معاينة الطلب ${esc(noTxt)}">${ico("search")}${busy?'…':'معاينة'}</button>
   </div>
   ${o.ordNote?`<div class="grp-note">${ico("warn")}<span><b>ملاحظات:</b> ${esc(o.ordNote)}</span></div>`:''}
-  ${a.busy===o.id?`<div class="grp-note">${ico("clock")}<span><b>جارٍ الحفظ…</b></span></div>`:''}`;
+  ${a.busy===o.id?`<div class="grp-note">${ico("clock")}<span><b>جارٍ الحفظ…</b></span></div>`:''}
+  ${o.superseded?`<div class="grp-note" data-superseded308="1">${ico("warn")}<span>الطلب ده <b>اتعدّل وعنده نسخة جديدة</b>. كان دخل التنفيذ فما اتلغاش تلقائي. اضغط رقمه وامسحه بزرار «حذف».</span></div>`:''}`;
 }
 
 function viewAdmin(){
@@ -10736,7 +10740,7 @@ async function transportOrder294_(o){
 async function reviewAtomicCreate294_(o){
  const id=String(o.id),entry=dispatchLedger294_()[id];if(!entry?.digest)return false;
  const r=await createReceiptRead294_(id,entry);if(!r)return false;
- await navigator.locks.request('wpc-ledger294',()=>{const all=dispatchLedger294_();if(all[id]){all[id].state='confirmed';save(LS_DISPATCH294,all);}});
+ await navigator.locks.request('wpc-ledger294',()=>{const all=dispatchLedger294_();if(all[id]){all[id].state='confirmed';delete all[id].snapshot;delete all[id].wire;save(LS_DISPATCH294,all);}});
  applyCreateReceipt294_(o,r);markSent_(id);savePendingSync_(loadPendingSync_().filter(x=>String(x)!==id));return true;
 }
 
@@ -11165,6 +11169,7 @@ async function submitOrder(){
   const savedLocally = saveOrders_(state.orders);
   if(!savedLocally){
     state.orders=localBefore.orders;state.track.rows=localBefore.track;
+    try{const lg=dispatchLedger294_();if(lg[String(o.id)]&&lg[String(o.id)].state==='queued'){delete lg[String(o.id)];save(LS_DISPATCH294,lg);}}catch(e){}   // v308: no orphan ledger entry for an order that was never stored
     save(LS_DELETED,localBefore.deleted);save(LS_PENDING_CANCEL,localBefore.cancels);
     toast('تعذّر حفظ الطلب على الجهاز؛ السلة والتصميمات لسه موجودين ولم يُرسل أو يُلغَ أي طلب. فضّي مساحة وجرّب تاني',8000);return;
   }
@@ -12588,7 +12593,7 @@ async function guardedDispatch294_(o,work){
   if(!claimed){toast('الطلب محفوظ. إن بدأت محاولة سابقة فلا تعِد الإرسال؛ استخدم تحقق من الاستلام.',8000);return false;}
   const ok=await work();
   if(ok===true)await navigator.locks.request('wpc-ledger294',async()=>{
-   const all=dispatchLedger294_();if(all[id]){all[id].state='confirmed';save(LS_DISPATCH294,all);}
+   const all=dispatchLedger294_();if(all[id]){all[id].state='confirmed';delete all[id].snapshot;delete all[id].wire;save(LS_DISPATCH294,all);}
   });
   return ok;
  });
