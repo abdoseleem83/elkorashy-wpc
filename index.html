@@ -2641,7 +2641,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v308';
+const APP_BUILD = 'v310';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -4958,7 +4958,7 @@ function viewOrders(){
   const pendingNote = pendingIds.size ? `<div class="note" style="margin-bottom:10px;background:#FFF6E5;
       border:1px solid var(--warn-line);color:var(--warn-ink);border-radius:8px;padding:9px 12px;font-weight:700">
       ${ico('warn')} فيه ${pendingIds.size} طلب تأكيده لسه مش مكتمل — محفوظين على الجهاز بدون إعادة إرسال تلقائي.
-      اضغط «تحقق من الاستلام»؛ التحقق قراءة فقط ولا يرسل الطلب.</div>` : '';
+      «تحقق من الاستلام» قراءة فقط ولا يرسل شيئًا. «راجع الإرسال للمصنع» بيقرأ المصنع الأول، ولا يعرض إرسالًا يدويًا إلا لطلب ثبت إنه ما بدأ إرساله، وبعد تأكيدك الصريح.</div>` : '';
 
   const cards = state.orders.map(o=>{
     const live = liveById[String(o.id)];
@@ -4979,7 +4979,7 @@ function viewOrders(){
     return `
     <div class="ord" data-q="${esc(_q)}" data-st="${_grp}"${o.restored?' data-restored="1"':''}${ordMatch_(_q,_grp)?'':' hidden'}${معلّق?' style="border:1.5px solid rgba(217,164,65,.55);background:rgba(217,164,65,.09)"':''}${مرفوض?' style="border:1.5px solid rgba(240,115,106,.6);background:rgba(240,115,106,.08)"':''}>
       ${مرفوض?`<div style="font-size:11.5px;font-weight:700;color:var(--danger-ink);margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}⛔ المصنع رفض الطلب${مرفوض.msg?': '+esc(مرفوض.msg):''} — عدّله وابعته تاني؛ مش هيتبعت لوحده</div>`:''}
-      ${معلّق?`<div style="font-size:11.5px;font-weight:700;color:var(--warn-ink);margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}${o.displayNo?'المصنع سجّله برقم '+esc(o.displayNo)+'، وتأكيد التصميم لسه مش مكتمل. لا تعيد الإرسال':'استلام المصنع لم يتأكد بعد، الطلب محفوظ على الجهاز ومش هيتبعت تلقائي'}</div>`:''}
+      ${معلّق?`<div style="font-size:11.5px;font-weight:700;color:var(--warn-ink);margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}${o.displayNo?'المصنع سجّله برقم '+esc(o.displayNo)+'، وتأكيد التصميم لسه مش مكتمل. لا تعيد الإرسال':((dispatchLedger294_()[String(o.id)]||{}).preWire309?'الطلب لم يصل المصنع: الفشل حصل قبل بدء الإرسال. «راجع الإرسال للمصنع» بيسألك قبل أي إرسال':'استلام المصنع لم يتأكد بعد، الطلب محفوظ على الجهاز ومش هيتبعت تلقائي')}</div>`:''}
       <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:var(--warn-ink);background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:var(--danger-ink);background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${live?statusPill(live.status):''}</div>
       <div class="os">${esc(dateStr(o.ts))} · ${(o.items||[]).filter(x=>!isCutLine_(x)).length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
         ${o.customer?`<br><b style="color:var(--info-ink)">صاحب الأوردر: ${esc(o.customer)}</b>`:''}${o.customerRegion?`<br><b style="color:var(--info-ink)">عنوان العميل: ${esc(o.customerRegion)}</b>`:''}<br>
@@ -10640,7 +10640,7 @@ async function sendOrderToServer_(o){
   // ويزوّد عدّاد التعديل على السيرفر. مسار createOrder294 مابيدعمش التعديل
   // (بيحرق رقم جديد بعدّاد صفر) — ومن غير الفصل ده كان التعديل بيرفض محليًا
   // من غير ما يوصل السيرفر خالص، والمصنع مابيشوفش أي تعديل.
-  if(o.replacesId) return sendEditedOrderToServer_(o);
+  if(o.replacesId) return guardedDispatch294_(o,async()=>{const r=await sendEditedOrderToServer_(o);if(r!==true)await rollbackPreWire309_(o);return r;});
   return guardedDispatch294_(o,()=>transportOrder294_(o));
 }
 async function sendEditedOrderToServer_(o){
@@ -10674,6 +10674,7 @@ async function sendEditedOrderToServer_(o){
   try{await requireOrderCaps_(o);await requirePrintLocal_(o.items);proofs=await uploadOrderPrints_(o);}
   catch(err){_lastSendError={msg:err.message||'تعذّر حفظ التصميمات',permanent:false};return false;}
   const wire=Object.assign({},o,{artProofs:proofs});
+  if(!await markWire309_(o.id)){_lastSendError={msg:'تعذّر حفظ مرجع الإرسال؛ لم يُرسل شيء',permanent:false};return false;}   // v309: persisted BEFORE the factory write
   const payload = JSON.stringify(wire);
   const jsonpUrl = APPS_SCRIPT_URL + '?action=newOrder&dev=' + encodeURIComponent(deviceId_())
                  + '&payload=' + encodeURIComponent(payload);
@@ -10713,6 +10714,7 @@ function applyCreateReceipt294_(o,r){
 }
 async function transportOrder294_(o){
  _lastSendError=null;
+ let wireStarted309=false;
  try{
   if(o.replacesId)throw Error('تعديل الطلب له مسار منفصل؛ الطلب القديم محفوظ');
   const cap=await jsonp(APPS_SCRIPT_URL+'?action=ping',12000);
@@ -10725,6 +10727,7 @@ async function transportOrder294_(o){
    return save(LS_DISPATCH294,all)?e:null;
   });
   if(!entry)throw Error('تعذّر حفظ مرجع الاستلام قبل الإرسال؛ الطلب لم يُرسل');
+  wireStarted309=true;
   const payload=JSON.stringify(wire),url=APPS_SCRIPT_URL+'?action=createOrder294&dev='+encodeURIComponent(deviceId_())+'&id='+encodeURIComponent(id)+'&token='+encodeURIComponent(entry.token)+'&order='+encodeURIComponent(payload);
   if(!orderArtRefs_(o).length&&url.length<7500){
    const d=await jsonp(url);if(d?.ok&&String(d.receipt&&d.receipt.state||'').indexOf('FAILED')===0){_lastSendError={msg:String(d.receipt.state).replace(/^FAILED:\s*/,'')||'المصنع رفض الطلب',permanent:true};return false;}
@@ -10735,7 +10738,46 @@ async function transportOrder294_(o){
   const receipt=await createReceiptRead294_(id,entry);
   if(receipt&&String(receipt.state||'').indexOf('FAILED')===0){_lastSendError={msg:String(receipt.state).replace(/^FAILED:\s*/,'')||'المصنع رفض الطلب',permanent:true};return false;}
   return receipt?applyCreateReceipt294_(o,receipt):false;
- }catch(e){_lastSendError={msg:e.message||'لم يتأكد استلام الطلب',permanent:false};return false;}
+ }catch(e){_lastSendError={msg:e.message||'لم يتأكد استلام الطلب',permanent:false};
+  if(!wireStarted309){if(await rollbackPreWire309_(o))_lastSendError.msg+=' (لم يُرسل أي شيء للمصنع؛ تقدر تبعته يدويًا من «راجع الإرسال للمصنع»)';}
+  return false;}
+}
+
+// v309: a failed attempt that provably never wrote to the factory (no token/digest/wire marker) goes back to queued so the user can send it by explicit choice.
+async function rollbackPreWire309_(o){
+ try{return await navigator.locks.request('wpc-ledger294',()=>{const all=dispatchLedger294_(),en=all[String(o.id)];
+  if(en&&en.state==='dispatched_unconfirmed'&&en.snapshot&&!en.token&&!en.digest&&!en.wire&&!en.wireStarted309){en.state='queued';delete en.started;en.preWire309=Date.now();return save(LS_DISPATCH294,all);}
+  return false;});}catch(_){return false;}
+}
+async function markWire309_(id){
+ try{return await navigator.locks.request('wpc-ledger294',()=>{const all=dispatchLedger294_(),en=all[String(id)];if(!en)return false;en.wireStarted309=Date.now();return save(LS_DISPATCH294,all);});}catch(_){return false;}
+}
+
+function preWireEligible309_(o,e){
+ if(!e||!e.snapshot||e.snapshot!==JSON.stringify(o)||e.token||e.digest||e.wire||e.wireStarted309)return false;
+ if(e.state==='queued'&&e.preWire309)return true;
+ // Records stranded by v306-v308 for NEW orders: the token is saved (under lock) before the createOrder294 URL exists, so no token = no request left. Edits wrote no marker in those versions, so they stay uncertain.
+ if(e.state==='dispatched_unconfirmed'&&!o.replacesId&&(Date.now()-(Number(e.started)||0))>90000)return true;
+ return false;
+}
+async function manualSendPreWire309_(o){
+ const id=String(o.id);
+ if(!navigator.locks){toast('المتصفح لا يدعم قفل الإرسال؛ لم يُرسل شيء',7000);return false;}
+ const busyMsg='فيه محاولة إرسال شغالة لنفس الطلب (يمكن في نافذة تانية). استنى تخلص وبعدين راجع تاني؛ لم يُرسل شيء';
+ try{const hit=await readPendingReceipt276_(o);if(hit){toast('المصنع مسجّل الطلب فعلًا؛ بنراجع الاستلام بدون إرسال',7000);return verifyReceipt276_(o);}}catch(err){toast('تعذّر التأكد من المصنع قبل الإرسال؛ لم يُرسل شيء',7000);return false;}
+ if(!confirm('الطلب ده محفوظ على جهازك ولم يوصل المصنع (الفشل حصل قبل بدء الإرسال، والمصنع مالوش أثر له). تبعته للمصنع دلوقتي؟'))return false;
+ const res=await navigator.locks.request('wpc-dispatch294-'+id,{ifAvailable:true},async lock=>{
+  if(!lock)return 'busy';
+  return navigator.locks.request('wpc-ledger294',()=>{const all=dispatchLedger294_(),en=all[id];
+   if(!preWireEligible309_(o,en))return 'no';
+   if(en.state!=='queued'){en.state='queued';delete en.started;en.preWire309=Date.now();if(!save(LS_DISPATCH294,all))return 'no';}
+   return 'ok';});
+ });
+ if(res==='busy'){toast(busyMsg,8000);return false;}
+ if(res!=='ok'){toast('حالة الطلب اتغيّرت؛ لم يُرسل شيء. راجع تاني',7000);return false;}
+ const ok=await syncOrder_(o);
+ if(ok===true&&o.replacesId)await runPendingCancelFor_(o.id);
+ render();return ok;
 }
 async function reviewAtomicCreate294_(o){
  const id=String(o.id),entry=dispatchLedger294_()[id];if(!entry?.digest)return false;
@@ -12530,7 +12572,10 @@ async function readPendingReceipt276_(o){if(!APPS_SCRIPT_URL||!o.phone)throw new
 async function reviewPending276_(o){
  const e=dispatchLedger294_()[String(o.id)];
  if(e&&e.digest){try{const ok=await reviewAtomicCreate294_(o);toast(ok?'المصنع أكد استلام الطلب بإيصال الحفظ، بدون إعادة إرسال':'لم يظهر إيصال مؤكد بعد؛ الطلب محفوظ ولن يُرسل مرة أخرى',8000);return ok;}catch(err){toast('تعذّر التحقق من إيصال الاستلام؛ الطلب محفوظ ولم يُعد إرساله',8000);return false;}}
- if(e&&e.state==='queued'){toast('الطلب محفوظ ولم تبدأ محاولة إرساله؛ الاستكمال التلقائي متوقف حتى تفعيل حماية المصنع',7000);return;}
+ // v309: explicit, user-confirmed send for an order that provably never reached the factory.
+ const pre=preWireEligible309_(o,e);
+ if(pre){return manualSendPreWire309_(o);}
+ if(e&&e.state==='queued'){toast('مفيش دليل قاطع إن الطلب ما وصلش المصنع؛ بنقرأ حالته بدون إرسال',7000);return verifyReceipt276_(o);}
  return verifyReceipt276_(o);
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act="review-pending-276"]');if(b){const o=state.orders.find(x=>String(x.id)===String(b.dataset.id));if(o)reviewPending276_(o);}});
@@ -12574,7 +12619,7 @@ async function queueDispatch294_(o){
  return navigator.locks.request('wpc-ledger294',async()=>{
   const all=dispatchLedger294_(),id=String(o.id);
   if(all[id])return false;
-  all[id]={state:'queued',snapshot:JSON.stringify(o),created:Date.now()};
+  all[id]={state:'queued',snapshot:JSON.stringify(o),created:Date.now(),v:309};
   return save(LS_DISPATCH294,all);
  });
 }
