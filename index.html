@@ -598,11 +598,15 @@ input.bad{box-shadow:0 0 0 3px rgba(179,38,30,.1)}
 .grp-hd{display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer}
 .grp-chev{font-size:18px;color:#8A97A6;transition:transform .15s;flex:none}
 .grp-list{border-top:1px solid var(--line)}
-.grp-ord{display:flex;align-items:center;gap:7px;padding:7px 12px;border-top:1px dashed #E4EAF0;min-width:0}
+.grp-ord{display:flex;align-items:center;gap:6px;padding:7px 12px;border-top:1px dashed #E4EAF0;min-width:0;flex-wrap:nowrap}
 .grp-ord:first-child{border-top:0}
-.grp-no{background:#EAF2FA;border:1px solid #B9D4EA;border-radius:20px;padding:2px 11px;
+.grp-no{background:#EAF2FA;border:1px solid #B9D4EA;border-radius:20px;padding:2px 9px;cursor:pointer;font-family:inherit;
   font-weight:800;font-size:12.5px;color:#0B4A7A;white-space:nowrap;flex:none}
 .grp-no.nn{background:#F1F3F6;border-color:#DDE3EA;color:#6B7A8C;font-weight:700;font-size:11px}
+.grp-stw{flex:1;min-width:0;display:flex;justify-content:center;overflow:hidden}
+.grp-stw>span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10.5px!important;padding:2px 8px!important;gap:3px!important}
+.grp-stw .i{display:none!important}
+.ord[data-oid]{scroll-margin-top:150px}
 .grp-dt{color:#5B7B99;font-size:11px;white-space:nowrap;flex:none}
 .grp-dy{color:#8A6512;font-size:11px;font-weight:700;white-space:nowrap;flex:none}
 .grp-ord.hasnote{border-bottom:0}
@@ -2060,9 +2064,8 @@ body.hasFloat #view{padding-bottom:84px}
 
 /* v238 — تظبيط صفوف الطلبات وأزرار الأدوات في المصنع */
 .ad-row .btn:last-child:nth-child(odd){grid-column:1/-1}
-.grp-ord{display:flex!important;flex-wrap:wrap;align-items:center;gap:7px 8px}
-.grp-ord>span[style]{flex:1 0 100%!important;height:0;margin:0}
-.grp-ord .grp-b{flex:1 1 calc(50% - 5px);justify-content:center;white-space:nowrap}
+.grp-ord{display:flex!important;flex-wrap:nowrap;align-items:center;gap:6px}
+.grp-ord .grp-b{flex:none;width:auto!important;justify-content:center;white-space:nowrap}
 .grp-all{display:flex;flex-wrap:wrap;align-items:center;gap:7px 8px}
 .grp-all>span{flex:1 0 100%;font-size:11.5px;font-weight:700;color:var(--muted)}
 .grp-all .grp-b{flex:1 1 calc(50% - 5px);justify-content:center}
@@ -2620,7 +2623,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v302';
+const APP_BUILD = 'v304';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3120,7 +3123,7 @@ const state = {
     viewReports:false,
     reserved:null, reservedAt:0, reservedLoading:false,
     pricesOpen:false, priceEdit:null,
-    groupOpen:{}, groupPdfBusy:null,
+    groupOpen:{}, groupPdfBusy:null, focusOrder:null,
     qtyEditOpen:{}, qtyEdit:{}, qtyBusy:null, itemDelBusy:null, recvEdit:{}, recvBusy:null,
     srv:undefined, srvErr:'', srvChecking:false,   // نسخة السكربت المنشور
     metaEdit:{}, metaBusy:null,
@@ -4450,8 +4453,8 @@ function viewNew(){
   <section class="card">
     <div class="step"><span class="n">${ico("parts","lg")}</span><h2>إكسسوارات الأبواب</h2><span class="hint">اختياري</span></div>
     <div class="accgrid">${accCards}</div>
-    <button class="btn brand" style="margin-top:12px;width:100%;font-size:16px;padding:13px" data-act="add-acc" ${accTotal?'':'disabled'}>
-      ${accTotal?'أضف الإكسسوارات':'اختر الكميات أولاً'}</button>
+    <div data-sumlabel="add-acc" style="margin:9px 2px 0;font-size:13px;font-weight:700;color:#5A6B7C;text-align:center">${accTotal?'أضف الإكسسوارات':'اختر الكميات أولاً'}</div>
+<button class="btn brand" style="margin-top:12px;width:100%;font-size:16px;padding:13px" data-act="add-acc" ${accTotal?'':'disabled'}>التالي</button>
   </section>`;
 
   const frExtraRows = frExtra.map((x,idx)=>`
@@ -4533,14 +4536,15 @@ function viewNew(){
       <span>ملحوظة <span style="font-weight:400;color:var(--muted)">(اختياري)</span></span>
       <input type="text" placeholder="مثال: عارضة حلق علوية تكملة 60 سم" value="${esc(state.fr.note||'')}" data-act="fr-note">
     </label>
-    <button class="btn brand" style="margin-top:9px;width:100%;font-size:16px;padding:13px" data-act="add-fr" ${frRods>0&&state.fr.code&&(!frBrOn||frBrPerSet>0)?'':'disabled'}>
+    <div data-sumlabel="add-fr" style="margin:9px 2px 0;font-size:13px;font-weight:700;color:#5A6B7C;text-align:center">0&&state.fr.code&&(!frBrOn||frBrPerSet>0)?'':'disabled'}>
       ${!state.fr.code ? 'اختر اللون الأول (كود الباب)'
         : (frRods>0 ? (
             (frKind==='full' && !frNonStd)
               ? `أضف ${frQty} طقم — حلق كامل ${frSel.cm} سم ${esc(state.fr.code)}${state.fr.doorW?' — لباب '+state.fr.doorW+' سم':''}${frBrTxt}`
               : `أضف ${frRods} عود — حلق ${frSel.cm} سم ${esc(state.fr.code)}${state.fr.doorW?' — لباب '+state.fr.doorW+' سم':''}${frBrTxt}`
           )
-          : (frKind==='full' ? 'اكتب الكمية' : 'اكتب عدد الأعواد وطولها'))}</button>
+          : (frKind==='full' ? 'اكتب الكمية' : 'اكتب عدد الأعواد وطولها'))}</div>
+    <button class="btn brand" style="margin-top:9px;width:100%;font-size:16px;padding:13px" data-act="add-fr" ${frRods>0&&state.fr.code&&(!frBrOn||frBrPerSet>0)?'':'disabled'}>التالي</button>
   </section>`;
 
   const secBror = `
@@ -4560,8 +4564,9 @@ function viewNew(){
         <input type="text" inputmode="decimal" value="${esc(state.br.len)}" placeholder="${state.br.unit==='m'?'مثال 2.265':'مثال 226.5'}" data-act="br-len"></label>
     </div>
     <div class="note" style="margin-top:9px">الطول القياسي ${BROR_ROD_M_DEFAULT} م — غيّره لو حد طلب عيدان مقاس مختلف (مثلاً ١٠ عيدان مقاس ٣م). الطول والعدد الاتنين بيقبلوا كسور — الطول الحالي ${brRodCm} سم.${pricesVisible()?' السعر: '+money(brLinePrice)+' ج/عود':''}</div>
-    <button class="btn brand" style="margin-top:9px;width:100%;font-size:16px;padding:13px" data-act="add-br" ${brRods>0&&state.br.code?'':'disabled'}>
-      ${!state.br.code ? 'اختر اللون الأول (كود الباب)' : (brRods>0 ? `أضف ${brRods} عود برور ${brSel.size} — ${brRodCm} سم — ${esc(state.br.code)}` : 'اكتب عدد العيدان')}</button>
+    <div data-sumlabel="add-br" style="margin:9px 2px 0;font-size:13px;font-weight:700;color:#5A6B7C;text-align:center">0&&state.br.code?'':'disabled'}>
+      ${!state.br.code ? 'اختر اللون الأول (كود الباب)' : (brRods>0 ? `أضف ${brRods} عود برور ${brSel.size} — ${brRodCm} سم — ${esc(state.br.code)}` : 'اكتب عدد العيدان')}</div>
+    <button class="btn brand" style="margin-top:9px;width:100%;font-size:16px;padding:13px" data-act="add-br" ${brRods>0&&state.br.code?'':'disabled'}>التالي</button>
   </section>`;
 
   const secProdium = `
@@ -4571,8 +4576,9 @@ function viewNew(){
     <div class="chips">${pdCodeChips}</div>
     <label class="fld" style="margin-top:12px"><span>عدد الألواح</span>
       <span class="flow-qty282 qty285" dir="ltr"><button type="button" data-q285="1" aria-label="زيادة الكمية">+</button><input type="number" inputmode="numeric" min="1" step="1" value="${esc(state.pd.qty)}" placeholder="مثال 2" data-act="pd-qty"><button type="button" data-q285="-1" aria-label="تقليل الكمية">−</button></span></label>
-    <button class="btn brand" style="width:100%;font-size:16px;padding:13px" data-act="add-pd" ${pdQty>0&&state.pd.code?'':'disabled'}>
-      ${!state.pd.code ? 'اختر اللون الأول (كود الباب)' : (pdQty>0 ? `أضف ${pdQty} لوح بروديوم — ${esc(state.pd.code)}` : 'اكتب عدد الألواح')}</button>
+    <div data-sumlabel="add-pd" style="margin:9px 2px 0;font-size:13px;font-weight:700;color:#5A6B7C;text-align:center">0&&state.pd.code?'':'disabled'}>
+      ${!state.pd.code ? 'اختر اللون الأول (كود الباب)' : (pdQty>0 ? `أضف ${pdQty} لوح بروديوم — ${esc(state.pd.code)}` : 'اكتب عدد الألواح')}</div>
+    <button class="btn brand" style="width:100%;font-size:16px;padding:13px" data-act="add-pd" ${pdQty>0&&state.pd.code?'':'disabled'}>التالي</button>
   </section>`;
 
   // شريط / قشرة — نفس فكرة البروديوم (اللون = كود الباب، إجباري) بس بالمتر والكمية بتقبل كسور
@@ -4589,8 +4595,9 @@ function viewNew(){
     <label class="fld" style="margin-top:12px"><span>الكمية بالمتر</span>
       <span class="flow-qty282 qty285" dir="ltr"><button type="button" data-q285="1" aria-label="زيادة الكمية">+</button><input type="text" inputmode="decimal" value="${esc(st.qty)}" placeholder="مثال 2.5" data-act="${m.st}-qty"><button type="button" data-q285="-1" aria-label="تقليل الكمية">−</button></span></label>
     <div class="note" style="margin-top:9px">الكمية بتقبل كسور (٢.٥ متر، ٠.٧٥ متر).</div>
-    <button class="btn brand" style="margin-top:9px;width:100%;font-size:16px;padding:13px" data-act="add-${m.st}" ${q>0&&st.code?'':'disabled'}>
-      ${!st.code ? 'اختر اللون الأول (كود الباب)' : (q>0 ? `أضف ${q} متر ${m.ar} — ${esc(st.code)}` : 'اكتب الكمية بالمتر')}</button>
+    <div data-sumlabel="add-${m.st}" style="margin:9px 2px 0;font-size:13px;font-weight:700;color:#5A6B7C;text-align:center">0&&st.code?'':'disabled'}>
+      ${!st.code ? 'اختر اللون الأول (كود الباب)' : (q>0 ? `أضف ${q} متر ${m.ar} — ${esc(st.code)}` : 'اكتب الكمية بالمتر')}</div>
+    <button class="btn brand" style="margin-top:9px;width:100%;font-size:16px;padding:13px" data-act="add-${m.st}" ${q>0&&st.code?'':'disabled'}>التالي</button>
   </section>`;
   };
   const secStrip = meterSec_('strip'), secVeneer = meterSec_('veneer');
@@ -4626,7 +4633,8 @@ function viewNew(){
     </div>`:''}
     <label class="fld" style="margin-top:12px"><span>العدد</span>
       <span class="flow-qty282 qty285" dir="ltr"><button type="button" data-q285="1" aria-label="زيادة الكمية">+</button><input type="text" inputmode="numeric" value="${esc(mbSt.qty)}" placeholder="مثال 2" data-act="mb-qty"><button type="button" data-q285="-1" aria-label="تقليل الكمية">−</button></span></label>
-    <button class="btn brand" style="margin-top:9px;width:100%;font-size:16px;padding:13px" data-act="add-mb">${mbBtnLabel_()}</button>
+    <div data-sumlabel="add-mb" style="margin:9px 2px 0;font-size:13px;font-weight:700;color:#5A6B7C;text-align:center">${mbBtnLabel_()}</div>
+<button class="btn brand" style="margin-top:9px;width:100%;font-size:16px;padding:13px" data-act="add-mb">التالي</button>
   </section>`;
 
   const secEmpty = `
@@ -8064,6 +8072,11 @@ function dayNameAr_(d){
   const p = dateParts_(d); if(!p) return '';
   return DAY_AR_[new Date(p.y, p.m-1, p.d).getDay()] || '';
 }
+function dateDM_(d){
+  const p = dateParts_(d); if(!p) return String(d||'');
+  try{ return new Date(p.y, p.m-1, p.d).toLocaleDateString('ar-EG',{day:'2-digit',month:'2-digit'}); }
+  catch(e){ return p.d+'/'+p.m; }
+}
 function dateStr2_(d){
   const p = dateParts_(d); if(!p) return String(d||'');
   try{ return new Date(p.y, p.m-1, p.d).toLocaleDateString('ar-EG',{day:'2-digit',month:'2-digit',year:'numeric'}); }
@@ -8619,16 +8632,19 @@ function groupOrderRowHTML_(o, a){
   const hasNo = !!o.displayNo;
   // الملاحظة العامة بتبان على سطر الطلب نفسه — من غير كده المصنع لازم يفتح
   // العميل ويفتح كارت الطلب عشان يشوفها، والملاحظة المفروض تبان للجميع.
+  // سطر الطلب: الرقم (ضغطة عليه تفتح كارت الطلب الكامل بكل وظائفه) +
+  // التاريخ + حالة الطلب + زرار «معاينة» واحد. تصدير PDF وباقي الأكشنز
+  // متاحة من الكارت الكامل (الضغط على الرقم) ومن سطر «كل طلبات العميل».
+  // سطر واحد مدمج زي التصميم المختار: رقم | تاريخ+يوم | حالة | (ميعاد) | معاينة.
+  // الشريطة flex:1 بحد أدنى 0 واختصار بنقاط — ممنوع التداخل أو اللفّ الطويل.
   return `<div class="grp-ord${o.ordNote?' hasnote':''}">
-    <span class="cust-order279 grp-order294"><span style="display:flex;align-items:center;gap:6px"><span class="grp-no${hasNo?'':' nn'}" title="الكود الداخلي: ${esc(o.id)}">${esc(hasNo ? noTxt : shortIdText_(o.id))}</span><button type="button" class="cust-lens293" data-act="adm-preview" data-id="${esc(o.id)}" title="معاينة الطلب ${esc(noTxt)}" aria-label="معاينة الطلب ${esc(noTxt)}">${ico("search")}</button></span>${o.date?`<small class="grp-dt">${esc(dateStr2_(o.date))}</small><small class="grp-dy">${esc(dayNameAr_(o.date))}</small>`:''}</span>
-    <span style="flex:1"></span>
+    <button type="button" class="grp-no${hasNo?'':' nn'}" data-act="adm-open-order" data-id="${esc(o.id)}"
+      title="فتح كارت الطلب ${esc(noTxt)} الكامل" aria-label="فتح كارت الطلب ${esc(noTxt)} الكامل">${esc(hasNo ? noTxt : shortIdText_(o.id))}</button>
+    ${o.date?`<small class="grp-dy">${esc(dayNameAr_(o.date))}</small><small class="grp-dt">${esc(dateDM_(o.date))}</small>`:''}
+    <span class="grp-stw">${statusPill(o.status)}</span>
+    ${dueChipHTML_(o, !a.viewArchive)}
     <button class="btn act-tool sm grp-b" data-act="adm-preview" data-id="${esc(o.id)}" ${busy?'disabled':''}
       title="معاينة الطلب ${esc(noTxt)}" aria-label="معاينة الطلب ${esc(noTxt)}">${ico("search")}${busy?'…':'معاينة'}</button>
-    <button class="btn act-report sm grp-b" data-act="adm-pdf" data-id="${esc(o.id)}"
-      title="PDF كامل بالصور للطلب ${esc(noTxt)}" aria-label="PDF بالصور للطلب ${esc(noTxt)}">${ico("doc")}PDF بالصور</button>
-    <button class="btn act-report sm grp-b" data-act="adm-pdf-eco" data-id="${esc(o.id)}"
-      title="PDF اقتصادي بلا صور للطلب ${esc(noTxt)}" aria-label="PDF بدون صور للطلب ${esc(noTxt)}">${ico("doc")}PDF بدون صور</button>
-    ${dueChipHTML_(o, !a.viewArchive)}
   </div>
   ${o.ordNote?`<div class="grp-note">${ico("warn")}<span><b>ملاحظات:</b> ${esc(o.ordNote)}</span></div>`:''}`;
 }
@@ -8708,8 +8724,12 @@ function viewAdmin(){
   // بعد بناء الكروت (نفس نظام التحديث الجزئي الموجود).
   const custBody_ = () => `
       
-      <input type="search" id="admQ" class="ad-q" placeholder="اكتب اسم العميل…" value="${esc(_admQ)}" autocomplete="off">
-      <div class="note" style="margin-top:8px">${viewingArchive?'الطلبات المؤرشفة (اتسلمت أو اتأرشفت يدوي) — مش بتظهر في التقارير.':'اضغط اسم العميل عشان تشوف طلباته، وجوّه كل طلب غيّر الحالة وتابع الأصناف والإنتاج.'}</div>
+      <div style="display:flex;gap:7px;align-items:center">
+      <input type="search" id="admQ" class="ad-q" placeholder="اكتب اسم العميل…" value="${esc(_admQ)}" autocomplete="off" style="flex:1;min-width:0">
+      <button type="button" class="btn act-tool sm" data-act="adm-reload" ${(a.loading||a.archLoading)?'disabled':''} style="flex:none;width:auto"
+        title="تحديث الطلبات من السيرفر من غير ما تطلع من الشاشة" aria-label="تحديث الطلبات">${ico("refresh")}${(a.loading||a.archLoading)?'بيحدّث…':'تحديث الطلبات'}</button>
+      </div>
+      <div class="note" style="margin-top:8px">${viewingArchive?'الطلبات المؤرشفة (اتسلمت أو اتأرشفت يدوي) — مش بتظهر في التقارير.':'اضغط اسم العميل عشان تفتح طلباته أو تقفلها، واضغط رقم الطلب عشان يفتحلك كارته الكامل بكل وظائفه.'}</div>
       <div class="ad-legend"><span><i class="g"></i>جاهز</span><span><i class="a"></i>تحت التنفيذ</span><span><i class="r"></i>لسه ما بدأش</span></div>
       ${!lst.length
         ? `<div class="empty"><span class="em">${ico("clip","xl")}</span><p>${viewingArchive?'مفيش طلبات مؤرشفة.':'مفيش طلبات نشطة لسه.'}</p></div>`
@@ -8940,7 +8960,7 @@ function viewAdmin(){
          <button class="btn act-money sm" data-act="adm-quote" data-id="${esc(o.id)}">${ico("money")}سعر</button>
          <button class="btn act-del sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}>${ico("trash")}${delBusy?'…':'حذف'}</button>`;
 
-    return `<div class="ord">
+    return `<div class="ord" data-oid="${esc(o.id)}">
       <div class="oh">${Number(o.editCount)>0?`<span style="font-size:11.5px;font-weight:700;color:var(--warn-ink);background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:12px;font-weight:700;color:var(--danger-ink);background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${statusPill(o.status)}</div>
       <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}
         ${o.customer?`<br><b style="color:var(--info-ink)">صاحب الأوردر: ${esc(o.customer)}</b>`:''}
@@ -8986,8 +9006,8 @@ function viewAdmin(){
     const _ini = (String(name).trim().replace(/^[^\u0600-\u06FFA-Za-z0-9]+/,'')[0]||'؟');
     const _hue = [...String(name)].reduce((h,c)=>(h*31+c.charCodeAt(0))%360,0);
     const _rd = orders.filter(o=>o.status==='Ready').length, _ip = orders.filter(o=>o.status==='In Progress').length;
-    const كارت = `<div class="ord" data-grp="${esc(name)}" style="padding:0;overflow:hidden">
-      <div class="grp-hd" data-act="adm-toggle-group" data-name="${esc(name)}" data-ini="${esc(_ini)}" style="--av:hsl(${_hue} 55% 42%)">
+    const كارت = `<div class="ord" data-grp="${esc(name)}" style="padding:0;overflow:hidden;border-inline-start:4px solid hsl(${_hue} 55% 42%)">
+      <div class="grp-hd" data-act="adm-toggle-group" data-name="${esc(name)}" data-ini="${esc(_ini)}" style="--av:hsl(${_hue} 55% 42%);background:hsl(${_hue} 60% 45% / .09)">
         <span style="flex:1;min-width:0">
           <b style="font-size:13.5px;color:#FFFFFF">${esc(name)}</b>
           <div style="font-size:11px;color:var(--muted);margin-top:2px">${orders.length} طلب · ${totalQty} قطعة · ${money(totalMoney)} ج${grpDueBadges_(orders)}</div>
@@ -8998,16 +9018,16 @@ function viewAdmin(){
       <!-- سطر لكل طلب: رقمه وتاريخه ويومه، ومعاه معاينة وطباعة للطلب ده لوحده.
            الأزرار كانت قبل كده على مستوى العميل بس — يعني معاينة كل الطلبات مع
            بعض — والسطور كانت متداخلة مع الأزرار في نفس الصف فالشكل بيتلخبط. -->
-      ${orders.length>1?`<div class="grp-all">
+      ${open&&orders.length>1?`<div class="grp-all">
         <span>كل طلبات العميل مع بعض:</span>
         <button class="btn act-tool sm grp-b" data-act="adm-group-preview" data-name="${esc(name)}" ${prevBusy?'disabled':''}
           title="معاينة كل طلبات ${esc(name)}">${ico("search")}${prevBusy?'…':'معاينة'}</button>
         <button class="btn act-report sm grp-b" data-act="adm-group-pdf" data-name="${esc(name)}" ${pdfBusy?'disabled':''}
           title="PDF كل طلبات ${esc(name)}">${ico("doc")}${pdfBusy?'…':'PDF'}</button>
       </div>`:''}
-      <div class="grp-list">${orders.map(o=>groupOrderRowHTML_(o, a)).join('')}</div>
-      ${open?`<div style="padding:0 10px 10px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line)">
-        <div style="height:1px"></div>${orders.map(orderCardHTML_).join('')}
+      ${open?`<div class="grp-list">${orders.map(o=>groupOrderRowHTML_(o, a)).join('')}</div>`:''}
+      ${open&&a.focusOrder&&orders.some(o=>String(o.id)===String(a.focusOrder))?`<div style="padding:0 10px 10px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line)">
+        <div style="height:1px"></div>${orderCardHTML_(orders.find(o=>String(o.id)===String(a.focusOrder)))}
       </div>`:''}
     </div>`;
     بالكارت.push({ مفتاح: name, html: كارت });
@@ -9207,7 +9227,27 @@ document.addEventListener('click',e=>{
     } break;
     case 'track-load': loadTrack(); break;
     case 'adm-login':  adminLoad(); break;
-    case 'adm-reload': state.admin.viewArchive ? loadArchive(true) : adminLoad(); break;
+    case 'adm-reload': {
+      // تحديث يدوي قراءة-بس: مفيش إرسال ولا كتابة طلبات، والزرار بيتعطّل
+      // طول ما التحميل شغّال فمفيش طلبات مكررة. البحث والعميل المفتوح محفوظين
+      // في الحالة فبيستمروا بعد التحديث.
+      if(state.admin.loading || state.admin.archLoading) break;
+      (async()=>{
+        if(state.admin.viewArchive){ await loadArchive(true); toast('اتحدّثت الطلبات'); }
+        else {
+          // تحديث يدوي من زرار القسم: فشل الشبكة ميقفلش الشاشة على المصنع
+          // — البيانات المعروضة تفضل قدامه مع رسالة الخطأ (نفس فلسفة النسخة
+          // المحفوظة في adminLoad، بس للجلسة الشغّالة كمان).
+          const wasOpen = state.admin.open, hadRows = !!(state.admin.rows && state.admin.rows.length);
+          await adminLoad();
+          if(state.admin.err){
+            if(wasOpen && hadRows && !state.admin.open){ state.admin.open = true; render(); }
+            toast('التحديث ما نجحش: ' + state.admin.err);
+          }
+          else toast('اتحدّثت الطلبات');
+        }
+      })();
+    } break;
     case 'adm-set': {
       // ضغطة تانية على المرحلة المعلّمة = شيل العلامة: الطلب يرجع للمرحلة اللي قبلها
       // (استلام الطلب → طلب جديد). «تم التسليم» مستثناة لأنها بتأرشف الطلب، والإرجاع من زرار الأرشيف.
@@ -9222,7 +9262,28 @@ document.addEventListener('click',e=>{
     case 'adm-toggle-items': { const o=adminOrderById_(el.dataset.id); if(o) toggleOrderItemsPreview(o); } break;
     case 'adm-toggle-qtymode': { const o=adminOrderById_(el.dataset.id); if(o) toggleQtyEditMode_(o); } break;
     case 'adm-add-items': { const o=adminOrderById_(el.dataset.id); if(o) adminEditOrder(o); } break;
-    case 'adm-toggle-group': { const n=el.dataset.name; const open=!state.admin.groupOpen[n];state.admin.groupOpen={};if(open)state.admin.groupOpen[n]=true;render(); } break;
+    case 'adm-toggle-group': { const n=el.dataset.name; const open=!state.admin.groupOpen[n];state.admin.groupOpen={};if(open)state.admin.groupOpen[n]=true;state.admin.focusOrder=null;render(); } break;
+    case 'adm-open-order': {
+      // ضغطة على رقم الطلب في سطر العميل: تفتح جروب العميل وتنزّل على الكارت
+      // الكامل بتاع الطلب ده بالذات (فيه كل الأكشنز: حالة، أصناف، PDF، تعديل…)
+      const id = el.dataset.id;
+      const pool = (state.admin.rows||[]).concat(state.admin.archRows||[]);
+      const ord = pool.find(o=>String(o.id)===String(id));
+      if(!ord) break;
+      const n = String(ord.customer||'').trim() || 'بدون اسم';
+      state.admin.groupOpen = {}; state.admin.groupOpen[n] = true;
+      state.admin.focusOrder = ord.id;
+      render();
+      requestAnimationFrame(()=>{
+        const card = document.querySelector('.ord[data-oid="'+String(id).replace(/"/g,'')+'"]');
+        if(card){
+          card.scrollIntoView({block:'start', behavior:'smooth'});
+          card.style.outline = '2px solid var(--info-ink, #3FA9F5)';
+          card.style.outlineOffset = '2px';
+          setTimeout(()=>{ card.style.outline=''; card.style.outlineOffset=''; }, 1800);
+        }
+      });
+    } break;
     case 'adm-close-groups': { state.admin.groupOpen={}; render(); } break;
     case 'adm-group-pdf': exportCustomerPdf_(el.dataset.name); break;
     case 'adm-group-preview': previewCustomerOrder_(el.dataset.name); break;
@@ -9379,7 +9440,7 @@ document.addEventListener('click',e=>{
         viewCustRem:false, custRem:null, custRemAt:0, custRemLoading:false,
     viewReports:false,
         pricesOpen:false, priceEdit:null,
-        groupOpen:{}, groupPdfBusy:null,
+        groupOpen:{}, groupPdfBusy:null, focusOrder:null,
         qtyEditOpen:{}, qtyEdit:{}, qtyBusy:null, itemDelBusy:null, recvEdit:{}, recvBusy:null,
         prodEdit:{}, prodBusy:null};
       sessionStorage.removeItem('wpc_adm');
@@ -9858,13 +9919,12 @@ function mbBtnLabel_(){
   if(!(d.w>0)) return st.custom ? 'اكتب عرض المعبرة' : 'اختر العرض';
   if(!(d.h>0)) return 'اكتب ارتفاع المعبرة';
   if(!(q>0)) return 'اكتب عدد المعابر';
-  return `التالي: أضف ${q} معبرة — ${mbNum_(mbWall_())} سم — ${mbNum_(d.h)}×${mbNum_(d.w)} — ${st.code}`;
+  return `أضف ${q} معبرة — ${mbNum_(mbWall_())} سم — ${mbNum_(d.h)}×${mbNum_(d.w)} — ${st.code}`;
 }
 // بيتحدّث من غير render كامل عشان الكيبورد ما يقفلش وإحنا بنكتب
 function refreshMabraBtn_(){
-  const b=document.querySelector('[data-act="add-mb"]'); if(!b) return;
-  const st=state.mb, d=mbDims_();
-  b.textContent=mbBtnLabel_();
+  const s=document.querySelector('[data-sumlabel="add-mb"]'); if(!s) return;
+  s.textContent=mbBtnLabel_();
 }
 function addMabra(){
   const st = state.mb, d = mbDims_();
@@ -10148,7 +10208,7 @@ function editCartLine(i){
     const _ec=_eb&&(_eb.closest('section.card')||_eb.closest('.card'));
     if(_ec)_ec.scrollIntoView({block:'start'}); else window.scrollTo({top:0});
   });
-  toast('عدّل البيانات وادوس «أضف» تاني عشان يتحدّث في السلة');
+  toast('عدّل البيانات وادوس «التالي» تاني عشان يتحدّث في السلة');
 }
 
 /* ============================================================
@@ -10477,7 +10537,68 @@ async function shareOrderImage(o){
    من غير التفرقة دي التطبيق كان هيقول «لسه ما وصلش، هنحاول تاني» ويفضل
    يحاول للأبد على طلب السيرفر رافضه — والموزّع مستني على الفاضي. */
 let _lastSendError = null;
-async function sendOrderToServer_(o){return guardedDispatch294_(o,()=>transportOrder294_(o));}
+async function sendOrderToServer_(o){
+  // التعديل (replacesId) له مساره المنفصل: أكشن newOrder اللي بيورّث رقم الطلب
+  // ويزوّد عدّاد التعديل على السيرفر. مسار createOrder294 مابيدعمش التعديل
+  // (بيحرق رقم جديد بعدّاد صفر) — ومن غير الفصل ده كان التعديل بيرفض محليًا
+  // من غير ما يوصل السيرفر خالص، والمصنع مابيشوفش أي تعديل.
+  if(o.replacesId) return sendEditedOrderToServer_(o);
+  return guardedDispatch294_(o,()=>transportOrder294_(o));
+}
+async function sendEditedOrderToServer_(o){
+  _lastSendError = null;
+  // حارس ترقيم التعديل: قبل الإرسال بنسحب وضع الطلب الأصلي الحقيقي من المصنع.
+  // لو الرقم الأساسي مش عندنا محليًا (رد السيرفر ضاع وقت الإرسال الأصلي) ما نبعتش
+  // أبدًا من غيره — غير كده التعديل كان هيتحجز كطلب برقم أساسي جديد. ولو المصنع
+  // عنده مراجعة أحدث (تعديل اتعمل من جهاز تاني) بنبني العدّاد عليها بدل ما
+  // نتشارك نفس اللاحقة. الإرسال نفسه بعد التأكد بس؛ ومفيش إلغاء للقديم ولا
+  // إعادة تلقائية قبل ما الوصول يتأكد (موجودين في مسار الحفظ).
+  const hasBase = !!String(o.displayNo||'').trim();
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL+'?action=list&dev='+encodeURIComponent(deviceId_())+'&phone='+encodeURIComponent(o.phone||''), 20000);
+    const prev = d && d.ok ? (d.orders||[]).find(r=>String(r.id)===String(o.replacesId)) : null;
+    if(prev && prev.displayNo){
+      o.displayNo = prev.displayNo;
+      o.editCount = (Number(prev.editCount)||0) + 1;
+      const idx = state.orders.findIndex(x=>String(x.id)===String(o.id));
+      if(idx>-1){ state.orders[idx].displayNo=o.displayNo; state.orders[idx].editCount=o.editCount; saveOrders_(state.orders); }
+    } else if(!hasBase){
+      _lastSendError={msg:'لم يتأكد رقم الطلب الأصلي من المصنع؛ التعديل محفوظ على الجهاز ولم يُرسل',permanent:false};
+      return false;
+    }
+  }catch(e){
+    if(!hasBase){
+      _lastSendError={msg:'تعذّر تأكيد رقم الطلب الأصلي (تحقق من الاتصال)؛ التعديل محفوظ على الجهاز ولم يُرسل',permanent:false};
+      return false;
+    }
+  }
+  let proofs={};
+  try{await requireOrderCaps_(o);await requirePrintLocal_(o.items);proofs=await uploadOrderPrints_(o);}
+  catch(err){_lastSendError={msg:err.message||'تعذّر حفظ التصميمات',permanent:false};return false;}
+  const wire=Object.assign({},o,{artProofs:proofs});
+  const payload = JSON.stringify(wire);
+  const jsonpUrl = APPS_SCRIPT_URL + '?action=newOrder&dev=' + encodeURIComponent(deviceId_())
+                 + '&payload=' + encodeURIComponent(payload);
+  if(!orderArtRefs_(o).length && jsonpUrl.length < 7500){
+    try{
+      const d = await jsonp(jsonpUrl);
+      _lastSendError = (d && !d.ok) ? { msg: d.error || '', permanent: !!d.permanent } : null;
+      if(d && d.ok && d.displayNo){
+        o.displayNo = d.displayNo; o.editCount = d.editCount||0;
+        const idx = state.orders.findIndex(x=>String(x.id)===String(o.id));
+        if(idx>-1){ state.orders[idx].displayNo=d.displayNo; state.orders[idx].editCount=d.editCount||0; saveOrders_(state.orders); }
+      }
+      if(d&&d.ok&&String(o.customerRegion||'').trim())return await verifyOrderArrived_(o,2);
+      return !!(d && d.ok);
+    }catch(err){ return false; }
+  }
+  try{
+    await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'newOrder', dev:deviceId_(), order:wire})});
+  }catch(err){ return false; }
+  return await verifyOrderArrived_(o);
+}
 // Private atomic-create transport. Automatic resume remains disabled pending rollout.
 async function wireDigest294_(o){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(o)))),v=>v.toString(16).padStart(2,'0')).join('');}
 async function createReceiptRead294_(id,entry){
