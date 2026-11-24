@@ -608,7 +608,7 @@ input.bad{box-shadow:0 0 0 3px rgba(179,38,30,.1)}
 .grp-stw .i{display:none!important}
 .ord[data-oid]{scroll-margin-top:150px}
 .grp-dt{color:#5B7B99;font-size:11px;white-space:nowrap;flex:none}
-.grp-dy{color:#8A6512;font-size:11px;font-weight:700;white-space:nowrap;flex:none}
+.grp-dy{color:#8A97A6;font-size:11px;font-weight:700;white-space:nowrap;flex:none}
 .grp-ord.hasnote{border-bottom:0}
 .grp-note{display:flex;gap:6px;align-items:flex-start;margin:0 12px 8px;padding:6px 10px;
   background:#FFF3D6;border:1.5px solid #E8B94A;border-inline-start:5px solid #D99A0B;
@@ -2068,10 +2068,28 @@ body.hasFloat #view{padding-bottom:84px}
 .grp-ord .grp-b{flex:none;width:auto!important;justify-content:center;white-space:nowrap}
 .grp-all{display:flex;flex-wrap:wrap;align-items:center;gap:7px 8px}
 .grp-all>span{flex:1 0 100%;font-size:11.5px;font-weight:700;color:var(--muted)}
-.grp-all .grp-b{flex:1 1 calc(50% - 5px);justify-content:center}
+.grp-all .grp-b{flex:1 1 calc(33.33% - 6px);justify-content:center;padding-inline:6px}
 .grp-all{display:flex!important;flex-wrap:wrap!important}
 .grp-all>span{flex:1 0 100%!important;width:100%!important;text-align:start}
-.grp-all .grp-b{flex:1 1 calc(50% - 5px)!important;width:auto!important;margin:0!important}
+.grp-all .grp-b{flex:1 1 calc(33.33% - 6px)!important;width:auto!important;margin:0!important;padding-inline:6px!important}
+
+/* ---------- شكل قايمة العملاء المختار (تصميم A بألوان A3 الهادية) ---------- */
+.ord.grpa{background:var(--cardtint,#F5F8FC)}
+.grp-nm{color:#12233F}
+.ord.grpa .grp-list{background:#FFFFFF;margin:0 10px;border-radius:12px;overflow:hidden}
+.ord.grpa .grp-all{background:#FFFFFF;margin:10px 10px 0;border-radius:12px 12px 0 0}
+.ord.grpa .grp-list{margin-bottom:10px}
+.grp-num{background:none;border:0;padding:2px 4px;font-family:inherit;font-size:15.5px;font-weight:800;color:#1F3B66;cursor:pointer;flex:none}
+.grp-num:active{opacity:.6}
+.grp-dtw{flex:none;display:flex;align-items:baseline;gap:5px}
+.grp-dm{font-size:13px;font-weight:800;color:#12233F;white-space:nowrap}
+.grp-prev{background:#FFFFFF!important;color:#1F3B66!important;border:1px solid #C9D6E8!important;padding:6px 12px!important;font-size:12.5px!important;border-radius:10px!important}
+.grp-prev .i{color:#1F3B66}
+html[data-theme="dark"] .ord.grpa{background:var(--card)}
+html[data-theme="dark"] .grp-nm,html[data-theme="dark"] .grp-dm,html[data-theme="dark"] .grp-num{color:#E8EEF7}
+html[data-theme="dark"] .ord.grpa .grp-list,html[data-theme="dark"] .ord.grpa .grp-all{background:rgba(255,255,255,.04)}
+html[data-theme="dark"] .grp-prev{background:rgba(255,255,255,.06)!important;color:#BFD7F5!important;border-color:var(--line)!important}
+html[data-theme="dark"] .grp-prev .i{color:#BFD7F5}
 
 /* v239 — أدوات وتقارير: قايمة منسدلة */
 .ad-dd{padding:0!important;overflow:hidden}
@@ -2623,7 +2641,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v304';
+const APP_BUILD = 'v306';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -7611,7 +7629,8 @@ async function previewCustomerOrder_(name){
         return buildAdminDocOrder_(o,its);
       });
       await Promise.all(docs.map(doc=>preparePrintDocument_(doc)));
-      return docs.map(doc=>docHTML(doc,'order')).join('<div style="height:18px"></div>');
+      // المعاينة بنفس محتوى التصدير المطلوب: طلبات العميل بدون صور الأبواب (eco)
+      return docs.map(doc=>docHTML(doc,'order',undefined,true)).join('<div style="height:18px"></div>');
     })());
     showReportPreview_(html,name);
   }catch(err){toast('تعذّر فتح المعاينة: '+(err.message||err),8000);}
@@ -7769,7 +7788,71 @@ function closeReportPreview_(){
   ov.remove();
 }
 
+// بيبني مستندات طلبات عميل واحد بصيغة eco (بدون صور الأبواب) — أساس المعاينة
+// والـ PDF والصورة. بيرمي خطأ برسالة واضحة لو أصناف أي طلب مااتحمّلتش.
+async function buildCustomerDocsEco_(name){
+  const a=state.admin;
+  const list=(a.viewArchive?a.archRows:a.rows)||[];
+  const mine=list.filter(o=>(String(o.customer||'').trim()||'بدون اسم')===name);
+  if(!mine.length) return null;
+  await loadOrderItemsMany_(mine.map(o=>o.id));
+  const docs=mine.map(o=>{
+    const its=a.items[o.id];
+    if(!Array.isArray(its)||!its.length) throw new Error('تعذّر تحميل أصناف الطلب '+orderNoText_(o));
+    return buildAdminDocOrder_(o,its);
+  });
+  await Promise.all(docs.map(doc=>preparePrintDocument_(doc)));
+  // غلّاف واحد حوالين كل المستندات — renderPaper_ بيقيس firstElementChild،
+  // فمن غير الغلاف كان بيرسم أول طلب بس والباقي يتقصّ من الملف.
+  return '<div>'+docs.map(doc=>docHTML(doc,'order',undefined,true)).join('<div style="height:18px"></div>')+'</div>';
+}
+
+// PDF واحد فيه كل طلبات العميل بدون صور الأبواب — ده المقصود بـ«PDF» في صف العميل.
+// (تقرير الأبواب المعلّقة لسه موجود في قسم التقارير زي ما كان.)
 async function exportCustomerPdf_(name){
+  if(!name) return;
+  const a=state.admin;
+  if(a.groupPdfBusy||a.groupImgBusy){toast('جارٍ تجهيز ملف، استنى النتيجة');return;}
+  a.groupPdfBusy=name; render(); busy(true,'جارٍ تجهيز PDF طلبات '+name+'…');
+  try{
+    if(!await needLibs_('html2canvas','jspdf')) return;
+    const html=await buildCustomerDocsEco_(name);
+    if(html==null){ toast('مفيش طلبات للعميل ده في الشاشة'); return; }
+    const {canvas}=await renderPaper_(html);
+    await canvasToPdf_(canvas,'طلبات_'+name+'.pdf');
+  }catch(err){toast('تعذّر تجهيز الـ PDF: '+(err&&err.message?err.message:err),8000);}
+  finally{a.groupPdfBusy=null;render();busy(false);}
+}
+
+// صورة واحدة فيها كل طلبات العميل بدون صور الأبواب — بتتشارك أو بتنزّل PNG.
+async function shareCustomerOrdersImage_(name){
+  if(!name) return;
+  const a=state.admin;
+  if(a.groupPdfBusy||a.groupImgBusy){toast('جارٍ تجهيز ملف، استنى النتيجة');return;}
+  a.groupImgBusy=name; render(); busy(true,'جارٍ تجهيز صورة طلبات '+name+'…');
+  try{
+    if(!await ensureLib_('html2canvas')) throw new Error('مكتبة الصور مش متاحة');
+    const html=await buildCustomerDocsEco_(name);
+    if(html==null){ toast('مفيش طلبات للعميل ده في الشاشة'); return; }
+    const {canvas}=await renderPaper_(html);
+    const blob=await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
+    const fname='طلبات_'+name+'.png';
+    const file=new File([blob],fname,{type:'image/png'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:'طلبات '+name});
+    } else {
+      downloadBlob(blob,fname);
+    }
+  }catch(err){
+    if(err && err.name==='AbortError'){ return; }
+    toast('تعذّر تجهيز الصورة: '+(err&&err.message?err.message:err),8000);
+  }
+  finally{a.groupImgBusy=null;render();busy(false);}
+}
+
+// تقرير الأبواب المعلّقة لعميل واحد — لم يعد مربوطًا بصف العميل بعد ما زرار PDF
+// بقى لطلبات العميل؛ التقرير الشامل في قسم التقارير بيغطي نفس البيانات لكل عميل.
+async function exportCustomerPendingDoorsPdf_UNUSED(name){
   if(!name) return;
   state.admin.groupPdfBusy = name; render();
   busy(true,'جارٍ تجهيز PDF لـ '+name+'…');
@@ -8638,12 +8721,12 @@ function groupOrderRowHTML_(o, a){
   // سطر واحد مدمج زي التصميم المختار: رقم | تاريخ+يوم | حالة | (ميعاد) | معاينة.
   // الشريطة flex:1 بحد أدنى 0 واختصار بنقاط — ممنوع التداخل أو اللفّ الطويل.
   return `<div class="grp-ord${o.ordNote?' hasnote':''}">
-    <button type="button" class="grp-no${hasNo?'':' nn'}" data-act="adm-open-order" data-id="${esc(o.id)}"
+    <button type="button" class="grp-num" data-act="adm-open-order" data-id="${esc(o.id)}"
       title="فتح كارت الطلب ${esc(noTxt)} الكامل" aria-label="فتح كارت الطلب ${esc(noTxt)} الكامل">${esc(hasNo ? noTxt : shortIdText_(o.id))}</button>
-    ${o.date?`<small class="grp-dy">${esc(dayNameAr_(o.date))}</small><small class="grp-dt">${esc(dateDM_(o.date))}</small>`:''}
+    ${o.date?`<span class="grp-dtw"><b class="grp-dm">${esc(dateDM_(o.date))}</b><small class="grp-dy">${esc(dayNameAr_(o.date))}</small></span>`:''}
     <span class="grp-stw">${statusPill(o.status)}</span>
     ${dueChipHTML_(o, !a.viewArchive)}
-    <button class="btn act-tool sm grp-b" data-act="adm-preview" data-id="${esc(o.id)}" ${busy?'disabled':''}
+    <button class="btn sm grp-b grp-prev" data-act="adm-preview" data-id="${esc(o.id)}" ${busy?'disabled':''}
       title="معاينة الطلب ${esc(noTxt)}" aria-label="معاينة الطلب ${esc(noTxt)}">${ico("search")}${busy?'…':'معاينة'}</button>
   </div>
   ${o.ordNote?`<div class="grp-note">${ico("warn")}<span><b>ملاحظات:</b> ${esc(o.ordNote)}</span></div>`:''}`;
@@ -8729,7 +8812,7 @@ function viewAdmin(){
       <button type="button" class="btn act-tool sm" data-act="adm-reload" ${(a.loading||a.archLoading)?'disabled':''} style="flex:none;width:auto"
         title="تحديث الطلبات من السيرفر من غير ما تطلع من الشاشة" aria-label="تحديث الطلبات">${ico("refresh")}${(a.loading||a.archLoading)?'بيحدّث…':'تحديث الطلبات'}</button>
       </div>
-      <div class="note" style="margin-top:8px">${viewingArchive?'الطلبات المؤرشفة (اتسلمت أو اتأرشفت يدوي) — مش بتظهر في التقارير.':'اضغط اسم العميل عشان تفتح طلباته أو تقفلها، واضغط رقم الطلب عشان يفتحلك كارته الكامل بكل وظائفه.'}</div>
+      <div class="note" style="margin-top:8px">${viewingArchive?'الطلبات المؤرشفة (اتسلمت أو اتأرشفت يدوي) — مش بتظهر في التقارير.':'اضغط اسم العميل عشان تركّز عليه وتشوف طلباته بس، واضغطه تاني ترجع القايمة كلها، واضغط رقم الطلب يفتحلك كارته الكامل بكل وظائفه.'}</div>
       <div class="ad-legend"><span><i class="g"></i>جاهز</span><span><i class="a"></i>تحت التنفيذ</span><span><i class="r"></i>لسه ما بدأش</span></div>
       ${!lst.length
         ? `<div class="empty"><span class="em">${ico("clip","xl")}</span><p>${viewingArchive?'مفيش طلبات مؤرشفة.':'مفيش طلبات نشطة لسه.'}</p></div>`
@@ -8986,6 +9069,8 @@ function viewAdmin(){
   let rows = '';
   let بالكارت = [];
   if(custSecOpen && lst.length){
+  // مقاسة من صورة التصميم A3 المعتمدة نفسها (بكسلات الكروت والأفاتار)
+  const _CUST_PALETTE_ = [['#EEF4FF','#1B5CC2'],['#FFF4E8','#D9822B'],['#ECF9F1','#2E9E5B'],['#F3EEFB','#8B4FC9'],['#FDEEF0','#C94F6D'],['#EAF7FA','#1B8AA5'],['#FDF8E0','#A9861B'],['#EFF3F6','#5B7186']];
   const groups = {};
   const order = [];
   list.forEach(o=>{
@@ -8994,36 +9079,46 @@ function viewAdmin(){
     groups[key].push(o);
   });
 
+  // وضع التركيز: ضغطة اسم العميل بتخفي باقي العملاء ويفضّل هو بطلباته بس،
+  // وضغطة تانية على نفس الاسم بترجع القايمة كلها (groupOpen بتفضى فوق).
+  const _focusName = Object.keys(a.groupOpen)[0] || null;
+  const _visibleNames = _focusName ? order.filter(n=>n===_focusName) : order;
+
   // كل كارت عميل بيتبني لوحده وبيتخزّن بمفتاحه — عشان الرسمة الجاية تقدر
   // تحدّث الكارت اللي اتغيّر بس بدل ما تستبدل الشاشة كلها.
-  rows = order.map(name=>{
+  rows = _visibleNames.map(name=>{
     const orders = groups[name];
     const open = !!a.groupOpen[name];
     const totalQty = orders.reduce((s,o)=>s+(Number(o.qty)||0),0);
     const totalMoney = orders.reduce((s,o)=>s+(Number(o.total)||0),0);
     const pdfBusy = a.groupPdfBusy === name;
     const prevBusy = a.groupPreviewBusy === name;
+    const imgBusy = a.groupImgBusy === name;
     const _ini = (String(name).trim().replace(/^[^\u0600-\u06FFA-Za-z0-9]+/,'')[0]||'؟');
-    const _hue = [...String(name)].reduce((h,c)=>(h*31+c.charCodeAt(0))%360,0);
+    // باليت A3 المعتمدة: صبغات شبه بيضاء للكارت + أفاتار مشبع مطابق، ثابتة
+    // لكل عميل من هاش اسمه (بدل عجلة الألوان اللي كانت بتطلع درجات طينية).
+    const _pal = _CUST_PALETTE_[[...String(name)].reduce((h,c)=>(h*31+c.charCodeAt(0)),0) % _CUST_PALETTE_.length];
     const _rd = orders.filter(o=>o.status==='Ready').length, _ip = orders.filter(o=>o.status==='In Progress').length;
-    const كارت = `<div class="ord" data-grp="${esc(name)}" style="padding:0;overflow:hidden;border-inline-start:4px solid hsl(${_hue} 55% 42%)">
-      <div class="grp-hd" data-act="adm-toggle-group" data-name="${esc(name)}" data-ini="${esc(_ini)}" style="--av:hsl(${_hue} 55% 42%);background:hsl(${_hue} 60% 45% / .09)">
+    const كارت = `<div class="ord grpa" data-grp="${esc(name)}" style="padding:0;overflow:hidden;--av:${_pal[1]};--cardtint:${_pal[0]}">
+      <div class="grp-hd" data-act="adm-toggle-group" data-name="${esc(name)}" data-ini="${esc(_ini)}" style="--av:${_pal[1]}">
         <span style="flex:1;min-width:0">
-          <b style="font-size:13.5px;color:#FFFFFF">${esc(name)}</b>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">${orders.length} طلب · ${totalQty} قطعة · ${money(totalMoney)} ج${grpDueBadges_(orders)}</div>
+          <b class="grp-nm" style="font-size:14.5px">${esc(name)}</b>
+          <div style="font-size:11.5px;color:#5B6B80;margin-top:2px">${orders.length} طلب · ${totalQty} قطعة${grpDueBadges_(orders)}</div>
         </span>
         <span class="grp-chev" style="transform:rotate(${open?90:0}deg)">‹</span>
       </div>
-      <div class="grp-bar"><i class="g" style="width:${Math.round(_rd/orders.length*100)}%"></i><i class="a" style="width:${Math.round(_ip/orders.length*100)}%"></i></div>
+      <!-- شريط التقدم مش في التصميم المختار (A) — الحالة ظاهرة في شريطة كل طلب -->
       <!-- سطر لكل طلب: رقمه وتاريخه ويومه، ومعاه معاينة وطباعة للطلب ده لوحده.
            الأزرار كانت قبل كده على مستوى العميل بس — يعني معاينة كل الطلبات مع
            بعض — والسطور كانت متداخلة مع الأزرار في نفس الصف فالشكل بيتلخبط. -->
       ${open&&orders.length>1?`<div class="grp-all">
-        <span>كل طلبات العميل مع بعض:</span>
+        <span>كل طلبات العميل مع بعض (بدون صور الأبواب):</span>
         <button class="btn act-tool sm grp-b" data-act="adm-group-preview" data-name="${esc(name)}" ${prevBusy?'disabled':''}
-          title="معاينة كل طلبات ${esc(name)}">${ico("search")}${prevBusy?'…':'معاينة'}</button>
+          title="معاينة كل طلبات ${esc(name)} بدون صور الأبواب">${ico("search")}${prevBusy?'…':'معاينة'}</button>
+        <button class="btn act-tool sm grp-b" data-act="adm-group-img" data-name="${esc(name)}" ${imgBusy?'disabled':''}
+          title="صورة كل طلبات ${esc(name)} بدون صور الأبواب">${ico("share")}${imgBusy?'…':'صورة'}</button>
         <button class="btn act-report sm grp-b" data-act="adm-group-pdf" data-name="${esc(name)}" ${pdfBusy?'disabled':''}
-          title="PDF كل طلبات ${esc(name)}">${ico("doc")}${pdfBusy?'…':'PDF'}</button>
+          title="PDF كل طلبات ${esc(name)} بدون صور الأبواب">${ico("doc")}${pdfBusy?'…':'PDF'}</button>
       </div>`:''}
       ${open?`<div class="grp-list">${orders.map(o=>groupOrderRowHTML_(o, a)).join('')}</div>`:''}
       ${open&&a.focusOrder&&orders.some(o=>String(o.id)===String(a.focusOrder))?`<div style="padding:0 10px 10px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line)">
@@ -9286,6 +9381,7 @@ document.addEventListener('click',e=>{
     } break;
     case 'adm-close-groups': { state.admin.groupOpen={}; render(); } break;
     case 'adm-group-pdf': exportCustomerPdf_(el.dataset.name); break;
+    case 'adm-group-img': shareCustomerOrdersImage_(el.dataset.name); break;
     case 'adm-group-preview': previewCustomerOrder_(el.dataset.name); break;
     case 'rpv-close': closeReportPreview_(); break;
     case 'rpv-pdf': {
@@ -12371,7 +12467,12 @@ function applyAdmFilter_(){
   document.querySelectorAll('.cust-tile277[data-name]').forEach(c=>{ c.hidden = !!q && !ordNorm_(c.dataset.name).includes(q); });
   document.querySelectorAll('[data-customer-detail277]').forEach(c=>{ c.hidden = !!q && !ordNorm_(c.dataset.customerDetail277).includes(q); });
 }
-document.addEventListener('input',e=>{ if(e.target && e.target.id==='admQ'){ _admQ=e.target.value; applyAdmFilter_(); } });
+document.addEventListener('input',e=>{ if(e.target && e.target.id==='admQ'){ _admQ=e.target.value;
+  // البحث بيلغي وضع التركيز: لو عميل مركّز عليه والمستخدم كتب حاجة، نرجّع
+  // القايمة كلها الأول عشان الفلتر يقدر يوصّل لأي عميل (غير كده الشاشة بتفضى).
+  // renderNow متزامنة عشان الفلتر يتطبّق على الكروت الجديدة مش القديمة.
+  if(_admQ && Object.keys(state.admin.groupOpen).length){ state.admin.groupOpen={}; renderNow(); }
+  applyAdmFilter_(); } });
 
 /* ===== استرجاع الطلبات على جهاز جديد برقم الموبايل (v241) ===== */
 function phoneKey_(){ const p = toLatinDigits_(state.profile.phone||'').replace(/[\s+\-]/g,'').replace(/^(00)?20/,''); return phoneOk(p) ? p.replace(/^0/,'') : ''; }
