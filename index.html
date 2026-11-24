@@ -2440,7 +2440,7 @@ html[data-theme="dark"] .grp-dt{color:#B9D4EA}
 html[data-theme="dark"] .grp-dy{color:#E3BE79}
 .cust-detail277 h3{font-size:16.5px}
 </style>
-</head>
+<style>/* v314: order-card action buttons wrap to rows instead of squeezing 9 into one 25px-wide row (labels were clipped at 360px) */.cardacts{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));overflow-x:visible}.cardacts .btn{min-width:0;flex:none;overflow-wrap:anywhere}</style></head>
 <body>
 
 
@@ -2641,7 +2641,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v313';
+const APP_BUILD = 'v314';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
