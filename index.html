@@ -2641,7 +2641,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v312';
+const APP_BUILD = 'v313';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3538,7 +3538,7 @@ async function printStatusLinked_(o){
   }
   return true;
 }
-const _printPreviewOnly311_=new Set();let _printNetSlots311_=4;const _printNetWaiters311_=[];
+const _printPreviewOnly311_=new Set();const _printPending312_=new Set(),_printFailed312_=new Set();let _printNetSlots311_=4;const _printNetWaiters311_=[];
 async function printNetSlot311_(work){
   while(_printNetSlots311_<=0)await new Promise(r=>_printNetWaiters311_.push(r));
   _printNetSlots311_--;
@@ -3547,6 +3547,7 @@ async function printNetSlot311_(work){
 async function preparePrintDocument_(o,opts){
   // v311: artwork is fetched up to 3 per order and 4 overall at a time (was strictly one after another, up to 60s each, and group previews fired every order at once). With opts.preview (on-screen preview only) the server's <=1MB preview image is read first instead of the up-to-5MB original; PDF/image exports still read the original.
   const wantPreview=!!(opts&&opts.preview);
+  if(opts&&opts.skipArt){await prepareDocFinishes_(o);return;}   // v312+: eco (no door/art pictures) documents never draw the attachments, so they are not fetched
   const prepareOne=async ref=>{
     if(artworkExpiredForOrder_(o)){_printThumbs.delete(ref);_printOriginalThumbs.delete(ref);_printExpiredRefs.add(ref);return;}
     if(/^data:image\//.test(ref)){_printOriginalThumbs.set(ref,ref);return;} // Local visual fixtures only.
@@ -3571,7 +3572,7 @@ async function preparePrintDocument_(o,opts){
     _printOriginalThumbs.set(ref,await printPreview_(d.dataUrl));_printPreviewOnly311_.delete(ref);
   };
   const queue=orderArtRefs_(o).slice();let failure=null;
-  const worker=async()=>{while(queue.length&&!failure){const ref=queue.shift();try{await prepareOne(ref);}catch(e){failure=failure||e;}}};
+  const worker=async()=>{while(queue.length&&!failure){const ref=queue.shift();try{await prepareOne(ref);_printPending312_.delete(ref);_printFailed312_.delete(ref);if(opts&&opts.onRef)try{opts.onRef(ref,true);}catch(_){}}catch(e){failure=failure||e;_printPending312_.delete(ref);_printFailed312_.add(ref);if(opts&&opts.onRef)try{opts.onRef(ref,false);}catch(_){}}}};
   await Promise.all([worker(),worker(),worker()]);
   if(failure)throw failure;
   await prepareDocFinishes_(o);
@@ -3597,10 +3598,20 @@ document.addEventListener('click',ev=>{const b=ev.target.closest&&ev.target.clos
 function addArtworkDownloadButtons_(id,doc){
   const overlay=document.getElementById('reportPreviewOverlay')||document.querySelector('.rpv-ov');
   if(!overlay)return;
+  if(overlay.querySelector('[data-art-tray]'))return;
   const refs=orderArtRefs_(doc);if(!refs.length)return;
-  const bar=document.createElement('div');bar.style.cssText='padding:10px;display:flex;gap:8px;flex-wrap:wrap;background:#fff';
-  refs.forEach((ref,i)=>{if(_printExpiredRefs.has(ref)||artworkExpiredForOrder_({id}))return;const b=document.createElement('button');b.className='btn outline';const item=(doc.items||[]).find(it=>it.printArt===ref||it.engraveArt===ref);b.textContent='تنزيل أصل '+(item&&item.engraveArt===ref?'الحفر':'الطباعة')+' '+(item&&item.code||'');b.dataset.printDownload=ref;b.dataset.order=id;bar.appendChild(b);});
-  overlay.appendChild(bar);
+  if(artworkExpiredForOrder_({id}))return;
+  const live=refs.filter(ref=>!_printExpiredRefs.has(ref));if(!live.length)return;
+  // v312+: the tray used to be one full-width button per file appended below the page, which pushed the preview out of the screen (15 files = whole viewport).
+  // Now: a collapsed one-line tray (the preview keeps the screen); open it for compact numbered chips in a bounded scroll area. Same download action per file.
+  const tray=document.createElement('details');tray.setAttribute('data-art-tray','1');tray.style.cssText='flex:0 0 auto;background:#fff;color:#14243A;border-top:1px solid #B9D4EA;font-family:Arial,sans-serif';
+  const sum=document.createElement('summary');sum.style.cssText='padding:9px 14px;font-weight:800;font-size:13px;cursor:pointer;list-style:revert';sum.textContent='تنزيل الرسومات الأصلية ('+live.length+')';
+  const box=document.createElement('div');box.style.cssText='padding:6px 10px 10px;display:flex;gap:6px;flex-wrap:wrap;max-height:30vh;overflow:auto';
+  const seen={};
+  live.forEach(ref=>{const item=(doc.items||[]).find(it=>it.printArt===ref||it.engraveArt===ref);const kind=item&&item.engraveArt===ref?'حفر':'طباعة';const code=(item&&item.code)||'';const k=kind+code;seen[k]=(seen[k]||0)+1;
+    const b=document.createElement('button');b.className='btn outline';b.style.cssText='display:inline-block;width:auto;padding:6px 10px;font-size:12px;border-radius:9px';
+    b.textContent=kind+' '+code+' · '+seen[k];b.title='تنزيل أصل '+(kind==='حفر'?'الحفر':'الطباعة')+' '+code;b.dataset.printDownload=ref;b.dataset.order=id;box.appendChild(b);});
+  tray.appendChild(sum);tray.appendChild(box);overlay.appendChild(tray);
 }
 async function restorePrintThumbnails_(){
   await sweepLocalArtwork_().catch(()=>{});
@@ -7649,7 +7660,7 @@ async function previewCustomerOrder_(name){
         if(!Array.isArray(its)||!its.length)throw new Error('تعذّر تحميل أصناف الطلب '+orderNoText_(o)+'، لم تُفتح معاينة ناقصة. جرّب تاني');
         return buildAdminDocOrder_(o,its);
       });
-      await Promise.all(docs.map(doc=>preparePrintDocument_(doc,{preview:true})));
+      await Promise.all(docs.map(doc=>preparePrintDocument_(doc,{preview:true,skipArt:true})));
       // المعاينة بنفس محتوى التصدير المطلوب: طلبات العميل بدون صور الأبواب (eco)
       return docs.map(doc=>docHTML(doc,'order',undefined,true)).join('<div style="height:18px"></div>');
     })());
@@ -7666,10 +7677,28 @@ async function previewOneOrder_(id){
     const doc=await previewWait295_((async()=>{
       const its=await loadOrderItems_(o.id);
       if(!its.length)throw new Error('مفيش أصناف متاحة في الطلب ده. جرّب تاني لما الاتصال يستقر');
-      const doc=buildAdminDocOrder_(o,its);await preparePrintDocument_(doc,{preview:true});return doc;
+      return buildAdminDocOrder_(o,its);
     })());
+    // v312+: the sheet opens right away; attachment pictures load in the background (explicit "loading" placeholders) and are drawn as they arrive.
+    // Export from the preview stays disabled until every picture is in, so an incomplete sheet can never be exported or shared from here.
+    const refs=orderArtRefs_(doc).filter(r=>!_printOriginalThumbs.has(r));
+    refs.forEach(r=>{_printPending312_.add(r);_printFailed312_.delete(r);});
     showReportPreview_(docHTML(doc,'order'),orderNoText_(o),o.id);
-    setTimeout(()=>addArtworkDownloadButtons_(o.id,doc),0);
+    const ov=document.getElementById('reportPreviewOverlay');
+    if(refs.length&&ov){
+      const pdfBtn=ov.querySelector('[data-act="rpv-pdf"]');if(pdfBtn){pdfBtn.disabled=true;pdfBtn.style.opacity='.5';}
+      const note=document.createElement('div');note.setAttribute('data-art-note','1');note.style.cssText='flex:0 0 auto;padding:6px 12px;background:#FFF4D6;color:#5A3E00;font:700 12px Arial,sans-serif;text-align:center';note.textContent='جارٍ تحميل صور الرسومات ('+refs.length+')… التصدير يتفعّل بعد اكتمالها';
+      ov.insertBefore(note,ov.querySelector('.rpv-scroll'));
+      let timer=0;const redraw=()=>{timer=0;if(document.getElementById('reportPreviewOverlay')!==ov)return;const pg=ov.querySelector('.rpv-page');if(pg){pg.innerHTML=docHTML(doc,'order');if(ov._fit)ov._fit();}};
+      const onRef=()=>{if(document.getElementById('reportPreviewOverlay')!==ov)return;if(!timer)timer=setTimeout(redraw,1200);const left=refs.filter(r=>_printPending312_.has(r)).length;note.textContent='جارٍ تحميل صور الرسومات ('+(refs.length-left)+' / '+refs.length+')… التصدير يتفعّل بعد اكتمالها';};
+      preparePrintDocument_(doc,{preview:true,onRef}).then(()=>{
+        if(document.getElementById('reportPreviewOverlay')!==ov)return;clearTimeout(timer);redraw();note.remove();if(pdfBtn){pdfBtn.disabled=false;pdfBtn.style.opacity='';}addArtworkDownloadButtons_(o.id,doc);
+      }).catch(err=>{
+        refs.forEach(r=>{if(_printPending312_.has(r)){_printPending312_.delete(r);_printFailed312_.add(r);}});
+        if(document.getElementById('reportPreviewOverlay')!==ov)return;clearTimeout(timer);redraw();
+        note.style.background='#FDE2E2';note.style.color='#7A1212';note.textContent='تعذّر تحميل بعض صور الرسومات: '+((err&&err.message)||err)+' — التصدير من هذه المعاينة متوقف. أغلقها وافتحها تاني';
+      });
+    }else{setTimeout(()=>addArtworkDownloadButtons_(o.id,doc),0);}
   }catch(err){toast('تعذّر فتح المعاينة: '+(err.message||err),8000);}
   finally{a.orderPreviewBusy=null;render();busy(false);}
 }
@@ -7822,7 +7851,7 @@ async function buildCustomerDocsEco_(name){
     if(!Array.isArray(its)||!its.length) throw new Error('تعذّر تحميل أصناف الطلب '+orderNoText_(o));
     return buildAdminDocOrder_(o,its);
   });
-  await Promise.all(docs.map(doc=>preparePrintDocument_(doc,{preview:true})));
+  await Promise.all(docs.map(doc=>preparePrintDocument_(doc,{preview:true,skipArt:true})));
   // غلّاف واحد حوالين كل المستندات — renderPaper_ بيقيس firstElementChild،
   // فمن غير الغلاف كان بيرسم أول طلب بس والباقي يتقصّ من الملف.
   return '<div>'+docs.map(doc=>docHTML(doc,'order',undefined,true)).join('<div style="height:18px"></div>')+'</div>';
@@ -11656,7 +11685,7 @@ function docTotalsHTML(o,eco){
     const refW=eco?(twoDesigns?132:150):(twoDesigns?148:170);
     const references=hasDesign?previews.map(pr=>{
       const ref=pr.label==='حفر'?g.engraving:g.art;
-      const missing=_printExpiredRefs.has(ref)?'انتهت مدة حفظ التصميم':'التصميم غير محمّل';
+      const missing=_printExpiredRefs.has(ref)?'انتهت مدة حفظ التصميم':_printPending312_.has(ref)?'جارٍ تحميل التصميم…':_printFailed312_.has(ref)?'تعذّر تحميل التصميم':'التصميم غير محمّل';
       return `<div data-artwork-reference="${pr.label==='حفر'?'engrave':'print'}" style="flex:0 0 ${refW}px;width:${refW}px"><div style="font-size:11px;font-weight:800;line-height:1.5;margin:4px 0">${pr.label==='طباعة'&&g.approved?'الطباعة المعتمدة '+esc(g.approved.code)+(g.approved.sampleColor!==g.code?' · عينة '+esc(g.approved.sampleColor):''):'صورة '+(pr.label==='حفر'?'الحفر':'الطباعة')+' المرفقة'}</div><div style="height:${eco?200:280}px;background:#fff;border:1px solid #CCD4DD;border-radius:5px;overflow:hidden;display:flex;align-items:center;justify-content:center;box-sizing:border-box">${pr.src?`<img data-print-reference="1" src="${esc(pr.src)}" style="display:block;width:100%;height:100%;object-fit:contain">`:`<span data-artwork-missing="1" style="padding:10px;font-size:11px;line-height:1.6;color:#B3261E">${missing}</span>`}</div></div>`;
     }).join(''):'';
     const pictures=eco?'':technical+references;
