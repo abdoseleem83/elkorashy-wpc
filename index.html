@@ -2641,7 +2641,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v310';
+const APP_BUILD = 'v312';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2674,7 +2674,10 @@ function frameText_(cm, height){
 const CUT_SERVICE_NOTE_ = 'خدمة قص';
 const CUT_SERVICE_CODE_ = 'CUT';
 function doorSizeText_(sizeTxt, height){
-  return (sizeTxt||'') + (height?' (ارتفاع '+height+' سم)':'');
+  // بعض الأصناف (من السيرفر/طلبات قديمة) نص مقاسها فيه الارتفاع أصلًا — ما نكرّرهوش
+  const t=sizeTxt||'';
+  if(height && /ارتفاع\s*[0-9٠-٩]/.test(t)) return t;
+  return t + (height?' (ارتفاع '+height+' سم)':'');
 }
 // الباب اللي محتاج قص: مقاس خاص، أو ارتفاع غير الاستاندر (٢١٥).
 // بنعرفه من نص المقاس كمان عشان الطلبات القديمة تتحسب صح.
@@ -3535,24 +3538,42 @@ async function printStatusLinked_(o){
   }
   return true;
 }
-async function preparePrintDocument_(o){
-  for(const ref of orderArtRefs_(o)){
-    if(artworkExpiredForOrder_(o)){_printThumbs.delete(ref);_printOriginalThumbs.delete(ref);_printExpiredRefs.add(ref);continue;}
-    if(/^data:image\//.test(ref)){_printOriginalThumbs.set(ref,ref);continue;} // Local visual fixtures only.
+const _printPreviewOnly311_=new Set();let _printNetSlots311_=4;const _printNetWaiters311_=[];
+async function printNetSlot311_(work){
+  while(_printNetSlots311_<=0)await new Promise(r=>_printNetWaiters311_.push(r));
+  _printNetSlots311_--;
+  try{return await work();}finally{_printNetSlots311_++;const w=_printNetWaiters311_.shift();if(w)w();}
+}
+async function preparePrintDocument_(o,opts){
+  // v311: artwork is fetched up to 3 per order and 4 overall at a time (was strictly one after another, up to 60s each, and group previews fired every order at once). With opts.preview (on-screen preview only) the server's <=1MB preview image is read first instead of the up-to-5MB original; PDF/image exports still read the original.
+  const wantPreview=!!(opts&&opts.preview);
+  const prepareOne=async ref=>{
+    if(artworkExpiredForOrder_(o)){_printThumbs.delete(ref);_printOriginalThumbs.delete(ref);_printExpiredRefs.add(ref);return;}
+    if(/^data:image\//.test(ref)){_printOriginalThumbs.set(ref,ref);return;} // Local visual fixtures only.
     if(!printRefOk_(ref))throw new Error('مرجع ملف التصميم غير صالح');
-    if(_printOriginalThumbs.has(ref))continue;
+    if(_printOriginalThumbs.has(ref)&&(wantPreview||!_printPreviewOnly311_.has(ref)))return;
     const rec=await printGet_(ref);
     if(rec&&rec.data){
-      _printOriginalThumbs.set(ref,await printPreview_(rec.data));
+      _printOriginalThumbs.set(ref,await printPreview_(rec.data));_printPreviewOnly311_.delete(ref);
       if(rec.thumb)_printThumbs.set(ref,rec.thumb);
-      continue;
+      return;
     }
     if(!state.admin.pw)throw new Error('الصورة الأصلية غير متاحة على هذا الجهاز؛ اطلب النسخة من المصنع. لن نجهّز ورقة ناقصة');
-    const d=await jsonp(APPS_SCRIPT_URL+'?action=printRead'+admParams_()+'&original=1&orderId='+encodeURIComponent(o.id)+'&ref='+encodeURIComponent(ref),60000);
-    if(d&&d.expired){_printThumbs.delete(ref);_printOriginalThumbs.delete(ref);_printExpiredRefs.add(ref);continue;}
+    const read=(orig)=>printNetSlot311_(()=>jsonp(APPS_SCRIPT_URL+'?action=printRead'+admParams_()+(orig?'&original=1':'')+'&orderId='+encodeURIComponent(o.id)+'&ref='+encodeURIComponent(ref),orig?(wantPreview?35000:60000):25000));
+    if(wantPreview){
+      let pv=null;try{pv=await read(false);}catch(_){pv=null;}
+      if(pv&&pv.expired){_printThumbs.delete(ref);_printOriginalThumbs.delete(ref);_printExpiredRefs.add(ref);return;}
+      if(pv&&pv.ok&&pv.dataUrl){_printOriginalThumbs.set(ref,pv.dataUrl);_printPreviewOnly311_.add(ref);return;}
+    }
+    const d=await read(true);
+    if(d&&d.expired){_printThumbs.delete(ref);_printOriginalThumbs.delete(ref);_printExpiredRefs.add(ref);return;}
     if(!d||!d.ok||!d.dataUrl)throw new Error(d&&d.error||'تعذّر تحميل الصورة الأصلية؛ لم يتم تجهيز ورقة ناقصة');
-    _printOriginalThumbs.set(ref,await printPreview_(d.dataUrl));
-  }
+    _printOriginalThumbs.set(ref,await printPreview_(d.dataUrl));_printPreviewOnly311_.delete(ref);
+  };
+  const queue=orderArtRefs_(o).slice();let failure=null;
+  const worker=async()=>{while(queue.length&&!failure){const ref=queue.shift();try{await prepareOne(ref);}catch(e){failure=failure||e;}}};
+  await Promise.all([worker(),worker(),worker()]);
+  if(failure)throw failure;
   await prepareDocFinishes_(o);
 }
 async function downloadPrintOriginal_(orderId,ref){
@@ -6207,7 +6228,7 @@ async function shareAdminOrderImageWith_(o, its){
 
     if(navigator.canShare && navigator.canShare({files:[file]})){
       // شاشة المشاركة الأصلية بتاعة الموبايل — يختار واتساب وبعدين الشخص/المجموعة بنفسه
-      await navigator.share({files:[file], title:'طلب أوردر '+orderNoText_(o), text:caption});
+      flowShowImageShare_(blob,'طلب_'+orderNoText_(o).replace('/','-')+'.png','طلب أوردر '+orderNoText_(o));   // v311: fresh tap required after long preparation
     } else {
       downloadBlob(blob,'طلب_'+orderNoText_(o).replace('/','-')+'.png');
       openWhatsAppFree(caption);
@@ -7628,7 +7649,7 @@ async function previewCustomerOrder_(name){
         if(!Array.isArray(its)||!its.length)throw new Error('تعذّر تحميل أصناف الطلب '+orderNoText_(o)+'، لم تُفتح معاينة ناقصة. جرّب تاني');
         return buildAdminDocOrder_(o,its);
       });
-      await Promise.all(docs.map(doc=>preparePrintDocument_(doc)));
+      await Promise.all(docs.map(doc=>preparePrintDocument_(doc,{preview:true})));
       // المعاينة بنفس محتوى التصدير المطلوب: طلبات العميل بدون صور الأبواب (eco)
       return docs.map(doc=>docHTML(doc,'order',undefined,true)).join('<div style="height:18px"></div>');
     })());
@@ -7645,7 +7666,7 @@ async function previewOneOrder_(id){
     const doc=await previewWait295_((async()=>{
       const its=await loadOrderItems_(o.id);
       if(!its.length)throw new Error('مفيش أصناف متاحة في الطلب ده. جرّب تاني لما الاتصال يستقر');
-      const doc=buildAdminDocOrder_(o,its);await preparePrintDocument_(doc);return doc;
+      const doc=buildAdminDocOrder_(o,its);await preparePrintDocument_(doc,{preview:true});return doc;
     })());
     showReportPreview_(docHTML(doc,'order'),orderNoText_(o),o.id);
     setTimeout(()=>addArtworkDownloadButtons_(o.id,doc),0);
@@ -7801,7 +7822,7 @@ async function buildCustomerDocsEco_(name){
     if(!Array.isArray(its)||!its.length) throw new Error('تعذّر تحميل أصناف الطلب '+orderNoText_(o));
     return buildAdminDocOrder_(o,its);
   });
-  await Promise.all(docs.map(doc=>preparePrintDocument_(doc)));
+  await Promise.all(docs.map(doc=>preparePrintDocument_(doc,{preview:true})));
   // غلّاف واحد حوالين كل المستندات — renderPaper_ بيقيس firstElementChild،
   // فمن غير الغلاف كان بيرسم أول طلب بس والباقي يتقصّ من الملف.
   return '<div>'+docs.map(doc=>docHTML(doc,'order',undefined,true)).join('<div style="height:18px"></div>')+'</div>';
@@ -7839,7 +7860,8 @@ async function shareCustomerOrdersImage_(name){
     const fname='طلبات_'+name+'.png';
     const file=new File([blob],fname,{type:'image/png'});
     if(navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file], title:'طلبات '+name});
+      // v311: preparation can take longer than the browser's click window, so the share sheet needs a fresh tap (dialog) instead of a direct navigator.share
+      flowShowImageShare_(blob,fname,'طلبات '+name);
     } else {
       downloadBlob(blob,fname);
     }
@@ -8721,8 +8743,8 @@ function groupOrderRowHTML_(o, a){
   // سطر واحد مدمج زي التصميم المختار: رقم | تاريخ+يوم | حالة | (ميعاد) | معاينة.
   // الشريطة flex:1 بحد أدنى 0 واختصار بنقاط — ممنوع التداخل أو اللفّ الطويل.
   return `<div class="grp-ord${o.ordNote?' hasnote':''}">
-    <button type="button" class="grp-num" data-act="adm-open-order" data-id="${esc(o.id)}"
-      title="فتح كارت الطلب ${esc(noTxt)} الكامل" aria-label="فتح كارت الطلب ${esc(noTxt)} الكامل">${esc(hasNo ? noTxt : shortIdText_(o.id))}</button>
+    <button type="button" class="grp-num" data-act="adm-open-order" data-id="${esc(o.id)}" aria-expanded="${String(a.focusOrder)===String(o.id)?'true':'false'}"
+      title="فتح/إغلاق كارت الطلب ${esc(noTxt)} الكامل" aria-label="فتح/إغلاق كارت الطلب ${esc(noTxt)} الكامل">${esc(hasNo ? noTxt : shortIdText_(o.id))}</button>
     ${o.date?`<span class="grp-dtw"><b class="grp-dm">${esc(dateDM_(o.date))}</b><small class="grp-dy">${esc(dayNameAr_(o.date))}</small></span>`:''}
     <span class="grp-stw">${statusPill(o.status)}</span>
     ${dueChipHTML_(o, !a.viewArchive)}
@@ -9368,6 +9390,8 @@ document.addEventListener('click',e=>{
       const ord = pool.find(o=>String(o.id)===String(id));
       if(!ord) break;
       const n = String(ord.customer||'').trim() || 'بدون اسم';
+      // v311: the number toggles its own full card — a second tap closes it (the customer group stays open).
+      if(String(state.admin.focusOrder)===String(ord.id) && state.admin.groupOpen && state.admin.groupOpen[n] && document.querySelector('.ord[data-oid="'+String(id).replace(/"/g,'')+'"]')){ state.admin.focusOrder = null; render(); break; }
       state.admin.groupOpen = {}; state.admin.groupOpen[n] = true;
       state.admin.focusOrder = ord.id;
       render();
@@ -11788,8 +11812,8 @@ function docHTML(o,mode,priced,eco){
         <thead>
           <tr style="${eco?'background:#fff;color:#0A1F44;border-bottom:2px solid #0A1F44':'background:#002050;color:#fff'};font-family:Arial,'Helvetica Neue',sans-serif;font-size:13px">
             <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:26px">م</th>
-            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;text-align:right;padding-inline:8px;width:160px">كود</th>
-            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:64px">الكمية</th>
+            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;text-align:right;padding-inline:8px;width:${priced?236:300}px">كود</th>
+            <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:56px">الكمية</th>
             <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:auto">عرض<br>الفتحة</th>
             <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:auto">ارتفاع<br>الفتحة</th>
             <th style="padding:8px 3px;padding-block:12px;font-weight:800;line-height:1.35;width:auto">عرض<br>الحلق</th>
