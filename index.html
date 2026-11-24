@@ -2620,7 +2620,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v298';
+const APP_BUILD = 'v299';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -9013,14 +9013,7 @@ function viewAdmin(){
     بالكارت.push({ مفتاح: name, html: كارت });
     return كارت;
   }).join('');
-  const _anyOpen277 = order.some(name=>a.groupOpen[name]);
-  rows=(_anyOpen277?`<div class="btnrow" style="margin:0 0 8px"><button class="btn ghost sm" data-act="adm-close-groups">→ رجوع لكل العملاء</button></div>`:'')+'<div class="cust-tiles277'+(_anyOpen277?' has-open':'')+'">'+Array.from({length:Math.ceil(order.length/3)},(_,rowIndex)=>{
-    const names=order.slice(rowIndex*3,rowIndex*3+3);
-    const tiles=names.map(name=>{const os=groups[name],on=!!a.groupOpen[name];return `<button type="button" class="cust-tile277${on?' on':''}" data-act="adm-toggle-group" data-name="${esc(name)}" data-tone294="${order.indexOf(name)%2}" aria-expanded="${on}"><span class="cust-no-row293"><b>${esc(name)}</b><span class="cust-lens293" role="button" tabindex="-1" data-act="adm-group-preview" data-name="${esc(name)}" title="معاينة كل طلبات ${esc(name)}" aria-label="معاينة كل طلبات ${esc(name)}">${ico("search")}</span></span><small class="cust-count294">${os.length} ${os.length===1?'طلب':'طلبات'}</small></button>`;}).join('');
-    const selected=names.find(name=>a.groupOpen[name]);
-    const detail=selected?`<section class="cust-detail277" data-customer-detail277="${esc(selected)}"><h3>${esc(selected)}</h3>${groups[selected].map(o=>groupOrderRowHTML_(o,a)+orderCardHTML_(o)).join('')}${groups[selected].length>1?`<div class="btnrow"><button class="btn ghost sm" data-act="adm-group-preview" data-name="${esc(selected)}">معاينة كل الطلبات</button><button class="btn ghost sm" data-act="adm-group-pdf" data-name="${esc(selected)}">PDF كل الطلبات</button></div>`:''}</section>`:'';
-    return tiles+detail;
-  }).join('')+'</div>';
+  // قائمة كروت العملاء المباشرة (الشكل القديم المعتمد) بدل شبكة البلاطات — البلاطات كانت بتخبي الطلبات ورا ضغطتين وبتعبّي العين في البحث عن عميل.
 
   }
   _adminCards = null;
@@ -11836,7 +11829,7 @@ function flowView_(){
  if(f.stage==='categories')body=`<h2>اختار نوع الصنف</h2><div class="flow-categories">${[['doors','الأبواب'],['frame','حلق فقط'],['bror','برور فقط'],['acc','الإكسسوارات'],['mabra','معبرة'],['prodium','ألواح بروديوم'],['strip','شريط'],['veneer','قشرة']].map(([k,v])=>`<button type="button" class="card" data-flow-category="${k}">${ico(k==='doors'?'door':k==='acc'?'parts':k==='prodium'?'panel':k)}<b>${v}</b></button>`).join('')}</div>`;
  else if(f.stage==='owner')body=flowOwnerHTML_();
  else if(f.stage==='doors')body=`<h2>اختر الباب</h2><div class="flow-doors">${DOORS.map(d=>{const im=`<img src="${FLOW_PLAIN_[d.code]}" alt="الباب ${d.code}">`,inner=DOOR_REALFULL_[doorCode_(d.code)]?im:`<i class="doorcard-frame289 bror289" style="${doorRingStyle_(d.code,FLOW_PLAIN_[d.code])}"><i class="doorcard-frame289 frame289" style="${doorRingStyle_(d.code,FLOW_PLAIN_[d.code])}">${im}</i></i>`;return `<button type="button" class="card" data-flow-code="${d.code}">${inner}<bdi>${d.code}</bdi></button>`}).join('')}</div>${flowButton_('categories','رجوع للأصناف',true)}`;
- else if(f.stage==='source')body=`<h2>الباب ${esc(f.code)}</h2>${flowPhoto_()}<div class="flow-src281"><button type="button" class="flow-src281-b dsn" data-flow-action="with-design"><b>طباعة</b><span>برسمة على الباب</span></button><button type="button" class="flow-src281-b pln" data-flow-action="plain"><b>بدون</b><span>من غير رسمة أو طباعة</span></button></div>${flowActions_(null,'doors')}`;
+ else if(f.stage==='source')body=`<h2>الباب ${esc(f.code)}</h2>${flowPhoto_()}<div class="flow-src281"><button type="button" class="flow-src281-b dsn" data-flow-action="with-design"><b>برسمة</b><span>طباعة أو حفر على الباب</span></button><button type="button" class="flow-src281-b pln" data-flow-action="plain"><b>بدون</b><span>سادة من غير رسمة أو طباعة أو حفر</span></button></div>${flowActions_(null,'doors')}`;
  else if(f.stage==='designs')body=`<h2>اختر الرسمة</h2>${flowChoices_('source',[['catalog','كتالوج'],['custom','رسمة خاصة']],f.source)}<div class="note">معاينة توضيحية، مش ملف تشغيل ماكينة ولا ضمانًا لدرجة اللون.</div>${!f.source?'<p class="note">اختار كتالوج التصميمات المعتمدة أو رسمة خاصة من عندك.</p>':f.source==='catalog'?`<div class="flow-designs">${APPROVED_PRINT_CODES_.map(k=>`<button type="button" class="card" data-flow-pattern="${k}"><img src="${FLOW_CATALOG_[f.code+'|'+k]}" alt="${esc(f.code)} ${k}"><bdi>${k}</bdi></button>`).join('')}</div>`:`<label class="btn ghost">اختار صورة الرسمة · اختياري<input type="file" accept="image/png,image/jpeg,image/webp" data-flow-file="1"></label>${f.art&&_printOriginalThumbs.get(f.art)?`<img class="flow-custom" src="${_printOriginalThumbs.get(f.art)}" alt="مرجع الرسمة الخاصة">`:''}<p>مرفق مرجعي واحد للطباعة أو الحفر. الأصل محفوظ كما هو، من غير تركيب تلقائي على الباب.</p>`}${flowActions_('design-next','source')}`;
  else if(f.stage==='dimensions')body=`<h2>المقاسات والكميات</h2>${f.variants.map((v,i)=>`<div class="flow-summary"><h3>المقاس ${i+1}</h3>${flowChoices_('widthPreset',SIZES.map(s=>[s.w,s.w+' سم']).concat([['custom','مقاس خاص']]),v.w===''?'':v.widthPreset==='custom'||!SIZES.some(s=>String(s.w)===String(v.w))?'custom':v.w,i)}<div class="row2">${v.widthPreset==='custom'||!SIZES.some(s=>String(s.w)===String(v.w))?flowNum_('العرض بالسم','w',v.w,i):'<label class="fld"><span>العرض بالسم</span><span class="fld-fixed289">'+esc(v.w)+' سم · ثابت حسب المقاس</span></label>'}${flowNum_('الارتفاع بالسم','h',v.h,i)}</div>${flowNum_('الكمية','qty',v.qty,i)}${f.variants.length>1?`<button type="button" class="btn ghost" data-flow-remove="${i}">حذف المقاس</button>`:''}</div>`).join('')}${flowButton_('add-size','أضف مقاسًا آخر',true)}${flowActions_('dimensions-next',f.source==='plain'?'source':'designs')}`;
  else if(f.stage==='components')body=`<h2>الحلق والبرور</h2>${f.variants.map((v,i)=>`<div class="flow-summary"><b>${esc(v.w)} × ${esc(v.h)} سم · ${esc(v.qty)} باب</b><h3>الحلق</h3>${flowChoices_('frame',[[10,'10 سم'],[15,'15 سم'],[20,'20 سم'],[0,'بدون']],v.frame,i)}${v.frame?flowNum_('ارتفاع الحلق بالسم · اختياري','frameHeight',v.frameHeight,i):''}<h3>البرور</h3>${flowChoices_('dbror',[['6×9','6×9'],['4×8','4×8'],['','بدون']],v.dbror,i)}</div>`).join('')}${flowActions_('components-next','dimensions')}`;
