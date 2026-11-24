@@ -2641,7 +2641,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v306';
+const APP_BUILD = 'v307';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -4554,8 +4554,7 @@ function viewNew(){
       <span>ملحوظة <span style="font-weight:400;color:var(--muted)">(اختياري)</span></span>
       <input type="text" placeholder="مثال: عارضة حلق علوية تكملة 60 سم" value="${esc(state.fr.note||'')}" data-act="fr-note">
     </label>
-    <div data-sumlabel="add-fr" style="margin:9px 2px 0;font-size:13px;font-weight:700;color:#5A6B7C;text-align:center">0&&state.fr.code&&(!frBrOn||frBrPerSet>0)?'':'disabled'}>
-      ${!state.fr.code ? 'اختر اللون الأول (كود الباب)'
+    <div data-sumlabel="add-fr" style="margin:9px 2px 0;font-size:13px;font-weight:700;color:#5A6B7C;text-align:center">${!state.fr.code ? 'اختر اللون الأول (كود الباب)'
         : (frRods>0 ? (
             (frKind==='full' && !frNonStd)
               ? `أضف ${frQty} طقم — حلق كامل ${frSel.cm} سم ${esc(state.fr.code)}${state.fr.doorW?' — لباب '+state.fr.doorW+' سم':''}${frBrTxt}`
@@ -4582,8 +4581,7 @@ function viewNew(){
         <input type="text" inputmode="decimal" value="${esc(state.br.len)}" placeholder="${state.br.unit==='m'?'مثال 2.265':'مثال 226.5'}" data-act="br-len"></label>
     </div>
     <div class="note" style="margin-top:9px">الطول القياسي ${BROR_ROD_M_DEFAULT} م — غيّره لو حد طلب عيدان مقاس مختلف (مثلاً ١٠ عيدان مقاس ٣م). الطول والعدد الاتنين بيقبلوا كسور — الطول الحالي ${brRodCm} سم.${pricesVisible()?' السعر: '+money(brLinePrice)+' ج/عود':''}</div>
-    <div data-sumlabel="add-br" style="margin:9px 2px 0;font-size:13px;font-weight:700;color:#5A6B7C;text-align:center">0&&state.br.code?'':'disabled'}>
-      ${!state.br.code ? 'اختر اللون الأول (كود الباب)' : (brRods>0 ? `أضف ${brRods} عود برور ${brSel.size} — ${brRodCm} سم — ${esc(state.br.code)}` : 'اكتب عدد العيدان')}</div>
+    <div data-sumlabel="add-br" style="margin:9px 2px 0;font-size:13px;font-weight:700;color:#5A6B7C;text-align:center">${!state.br.code ? 'اختر اللون الأول (كود الباب)' : (brRods>0 ? `أضف ${brRods} عود برور ${brSel.size} — ${brRodCm} سم — ${esc(state.br.code)}` : 'اكتب عدد العيدان')}</div>
     <button class="btn brand" style="margin-top:9px;width:100%;font-size:16px;padding:13px" data-act="add-br" ${brRods>0&&state.br.code?'':'disabled'}>التالي</button>
   </section>`;
 
@@ -4594,8 +4592,7 @@ function viewNew(){
     <div class="chips">${pdCodeChips}</div>
     <label class="fld" style="margin-top:12px"><span>عدد الألواح</span>
       <span class="flow-qty282 qty285" dir="ltr"><button type="button" data-q285="1" aria-label="زيادة الكمية">+</button><input type="number" inputmode="numeric" min="1" step="1" value="${esc(state.pd.qty)}" placeholder="مثال 2" data-act="pd-qty"><button type="button" data-q285="-1" aria-label="تقليل الكمية">−</button></span></label>
-    <div data-sumlabel="add-pd" style="margin:9px 2px 0;font-size:13px;font-weight:700;color:#5A6B7C;text-align:center">0&&state.pd.code?'':'disabled'}>
-      ${!state.pd.code ? 'اختر اللون الأول (كود الباب)' : (pdQty>0 ? `أضف ${pdQty} لوح بروديوم — ${esc(state.pd.code)}` : 'اكتب عدد الألواح')}</div>
+    <div data-sumlabel="add-pd" style="margin:9px 2px 0;font-size:13px;font-weight:700;color:#5A6B7C;text-align:center">${!state.pd.code ? 'اختر اللون الأول (كود الباب)' : (pdQty>0 ? `أضف ${pdQty} لوح بروديوم — ${esc(state.pd.code)}` : 'اكتب عدد الألواح')}</div>
     <button class="btn brand" style="width:100%;font-size:16px;padding:13px" data-act="add-pd" ${pdQty>0&&state.pd.code?'':'disabled'}>التالي</button>
   </section>`;
 
@@ -8729,7 +8726,8 @@ function groupOrderRowHTML_(o, a){
     <button class="btn sm grp-b grp-prev" data-act="adm-preview" data-id="${esc(o.id)}" ${busy?'disabled':''}
       title="معاينة الطلب ${esc(noTxt)}" aria-label="معاينة الطلب ${esc(noTxt)}">${ico("search")}${busy?'…':'معاينة'}</button>
   </div>
-  ${o.ordNote?`<div class="grp-note">${ico("warn")}<span><b>ملاحظات:</b> ${esc(o.ordNote)}</span></div>`:''}`;
+  ${o.ordNote?`<div class="grp-note">${ico("warn")}<span><b>ملاحظات:</b> ${esc(o.ordNote)}</span></div>`:''}
+  ${a.busy===o.id?`<div class="grp-note">${ico("clock")}<span><b>جارٍ الحفظ…</b></span></div>`:''}`;
 }
 
 function viewAdmin(){
