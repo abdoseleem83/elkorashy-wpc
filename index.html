@@ -2620,7 +2620,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v299';
+const APP_BUILD = 'v300';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -8931,9 +8931,9 @@ function viewAdmin(){
     // موجودة وشغّالة والمعالج موجود، بس مفيش زرار بينده عليهم. فالمصنع كان يقدر
     // يصدّر PDF لكل طلبات العميل مع بعض بس، مش طلب واحد.
     const actionBtns = `<button class="btn ${itemsOpen?'brand':'act-edit'} sm" data-act="adm-toggle-items" data-id="${esc(o.id)}">${ico("box")}${itemsOpen?'إخفاء':'الأصناف'}</button>
-         <button class="btn act-tool sm" data-act="adm-preview" data-id="${esc(o.id)}" ${prevBusy?'disabled':''}>${ico("search")}${prevBusy?'…':'معاينة'}</button>
-         <button class="btn act-report sm" data-act="adm-pdf" data-id="${esc(o.id)}" title="PDF كامل بالصور">${ico("doc")}PDF بالصور</button>
-         <button class="btn act-report sm" data-act="adm-pdf-eco" data-id="${esc(o.id)}" title="نسخة اقتصادية بلا صور — الجدول كامل + ملخص نصي لكل مقاس">${ico("doc")}PDF بدون صور</button>
+         <button class="btn act-tool sm" data-act="adm-preview" data-id="${esc(o.id)}" ${prevBusy?'disabled':''} title="معاينة الطلب ${esc(orderNoText_(o))}" aria-label="معاينة الطلب ${esc(orderNoText_(o))}">${ico("search")}${prevBusy?'…':'معاينة'}</button>
+         <button class="btn act-report sm" data-act="adm-pdf" data-id="${esc(o.id)}" title="PDF كامل بالصور — الطلب ${esc(orderNoText_(o))}" aria-label="PDF بالصور للطلب ${esc(orderNoText_(o))}">${ico("doc")}PDF بالصور</button>
+         <button class="btn act-report sm" data-act="adm-pdf-eco" data-id="${esc(o.id)}" title="نسخة اقتصادية بلا صور للطلب ${esc(orderNoText_(o))} — الجدول كامل + ملخص نصي لكل مقاس" aria-label="PDF بدون صور للطلب ${esc(orderNoText_(o))}">${ico("doc")}PDF بدون صور</button>
          <button class="btn ${qtyMode?'brand':'act-edit'} sm" data-act="adm-toggle-qtymode" data-id="${esc(o.id)}">${ico("edit")}تعديل</button>
          <button class="btn act-edit sm" data-act="adm-add-items" data-id="${esc(o.id)}">${ico("plus")}إضافة</button>
          <button class="btn act-send sm" data-act="adm-share" data-id="${esc(o.id)}">${ico("send")}إرسال</button>
@@ -8941,7 +8941,7 @@ function viewAdmin(){
          <button class="btn act-del sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}>${ico("trash")}${delBusy?'…':'حذف'}</button>`;
 
     return `<div class="ord">
-      <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:11.5px;font-weight:700;color:var(--warn-ink);background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:12px;font-weight:700;color:var(--danger-ink);background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${statusPill(o.status)}</div>
+      <div class="oh">${Number(o.editCount)>0?`<span style="font-size:11.5px;font-weight:700;color:var(--warn-ink);background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:12px;font-weight:700;color:var(--danger-ink);background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${statusPill(o.status)}</div>
       <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}
         ${o.customer?`<br><b style="color:var(--info-ink)">صاحب الأوردر: ${esc(o.customer)}</b>`:''}
         ${o.customerRegion?`<br><span style="color:var(--info-ink)">عنوان العميل: ${esc(o.customerRegion)}</span>`:''}
