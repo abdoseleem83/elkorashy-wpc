@@ -2620,7 +2620,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v300';
+const APP_BUILD = 'v302';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -4450,7 +4450,7 @@ function viewNew(){
   <section class="card">
     <div class="step"><span class="n">${ico("parts","lg")}</span><h2>إكسسوارات الأبواب</h2><span class="hint">اختياري</span></div>
     <div class="accgrid">${accCards}</div>
-    <button class="btn ghost sm" style="margin-top:12px" data-act="add-acc" ${accTotal?'':'disabled'}>
+    <button class="btn brand" style="margin-top:12px;width:100%;font-size:16px;padding:13px" data-act="add-acc" ${accTotal?'':'disabled'}>
       ${accTotal?'أضف الإكسسوارات':'اختر الكميات أولاً'}</button>
   </section>`;
 
@@ -4533,7 +4533,7 @@ function viewNew(){
       <span>ملحوظة <span style="font-weight:400;color:var(--muted)">(اختياري)</span></span>
       <input type="text" placeholder="مثال: عارضة حلق علوية تكملة 60 سم" value="${esc(state.fr.note||'')}" data-act="fr-note">
     </label>
-    <button class="btn ghost sm" style="margin-top:9px" data-act="add-fr" ${frRods>0&&state.fr.code&&(!frBrOn||frBrPerSet>0)?'':'disabled'}>
+    <button class="btn brand" style="margin-top:9px;width:100%;font-size:16px;padding:13px" data-act="add-fr" ${frRods>0&&state.fr.code&&(!frBrOn||frBrPerSet>0)?'':'disabled'}>
       ${!state.fr.code ? 'اختر اللون الأول (كود الباب)'
         : (frRods>0 ? (
             (frKind==='full' && !frNonStd)
@@ -4560,7 +4560,7 @@ function viewNew(){
         <input type="text" inputmode="decimal" value="${esc(state.br.len)}" placeholder="${state.br.unit==='m'?'مثال 2.265':'مثال 226.5'}" data-act="br-len"></label>
     </div>
     <div class="note" style="margin-top:9px">الطول القياسي ${BROR_ROD_M_DEFAULT} م — غيّره لو حد طلب عيدان مقاس مختلف (مثلاً ١٠ عيدان مقاس ٣م). الطول والعدد الاتنين بيقبلوا كسور — الطول الحالي ${brRodCm} سم.${pricesVisible()?' السعر: '+money(brLinePrice)+' ج/عود':''}</div>
-    <button class="btn ghost sm" style="margin-top:9px" data-act="add-br" ${brRods>0&&state.br.code?'':'disabled'}>
+    <button class="btn brand" style="margin-top:9px;width:100%;font-size:16px;padding:13px" data-act="add-br" ${brRods>0&&state.br.code?'':'disabled'}>
       ${!state.br.code ? 'اختر اللون الأول (كود الباب)' : (brRods>0 ? `أضف ${brRods} عود برور ${brSel.size} — ${brRodCm} سم — ${esc(state.br.code)}` : 'اكتب عدد العيدان')}</button>
   </section>`;
 
@@ -4571,7 +4571,7 @@ function viewNew(){
     <div class="chips">${pdCodeChips}</div>
     <label class="fld" style="margin-top:12px"><span>عدد الألواح</span>
       <span class="flow-qty282 qty285" dir="ltr"><button type="button" data-q285="1" aria-label="زيادة الكمية">+</button><input type="number" inputmode="numeric" min="1" step="1" value="${esc(state.pd.qty)}" placeholder="مثال 2" data-act="pd-qty"><button type="button" data-q285="-1" aria-label="تقليل الكمية">−</button></span></label>
-    <button class="btn ghost sm" data-act="add-pd" ${pdQty>0&&state.pd.code?'':'disabled'}>
+    <button class="btn brand" style="width:100%;font-size:16px;padding:13px" data-act="add-pd" ${pdQty>0&&state.pd.code?'':'disabled'}>
       ${!state.pd.code ? 'اختر اللون الأول (كود الباب)' : (pdQty>0 ? `أضف ${pdQty} لوح بروديوم — ${esc(state.pd.code)}` : 'اكتب عدد الألواح')}</button>
   </section>`;
 
@@ -4589,7 +4589,7 @@ function viewNew(){
     <label class="fld" style="margin-top:12px"><span>الكمية بالمتر</span>
       <span class="flow-qty282 qty285" dir="ltr"><button type="button" data-q285="1" aria-label="زيادة الكمية">+</button><input type="text" inputmode="decimal" value="${esc(st.qty)}" placeholder="مثال 2.5" data-act="${m.st}-qty"><button type="button" data-q285="-1" aria-label="تقليل الكمية">−</button></span></label>
     <div class="note" style="margin-top:9px">الكمية بتقبل كسور (٢.٥ متر، ٠.٧٥ متر).</div>
-    <button class="btn ghost sm" style="margin-top:9px" data-act="add-${m.st}" ${q>0&&st.code?'':'disabled'}>
+    <button class="btn brand" style="margin-top:9px;width:100%;font-size:16px;padding:13px" data-act="add-${m.st}" ${q>0&&st.code?'':'disabled'}>
       ${!st.code ? 'اختر اللون الأول (كود الباب)' : (q>0 ? `أضف ${q} متر ${m.ar} — ${esc(st.code)}` : 'اكتب الكمية بالمتر')}</button>
   </section>`;
   };
@@ -4626,7 +4626,7 @@ function viewNew(){
     </div>`:''}
     <label class="fld" style="margin-top:12px"><span>العدد</span>
       <span class="flow-qty282 qty285" dir="ltr"><button type="button" data-q285="1" aria-label="زيادة الكمية">+</button><input type="text" inputmode="numeric" value="${esc(mbSt.qty)}" placeholder="مثال 2" data-act="mb-qty"><button type="button" data-q285="-1" aria-label="تقليل الكمية">−</button></span></label>
-    <button class="btn ghost sm" style="margin-top:9px" data-act="add-mb" ${(mbSt.code&&mbWall_()>0&&mbD.w>0&&mbD.h>0&&mbQty_()>0)?'':'disabled'}>${mbBtnLabel_()}</button>
+    <button class="btn brand" style="margin-top:9px;width:100%;font-size:16px;padding:13px" data-act="add-mb">${mbBtnLabel_()}</button>
   </section>`;
 
   const secEmpty = `
@@ -9858,13 +9858,12 @@ function mbBtnLabel_(){
   if(!(d.w>0)) return st.custom ? 'اكتب عرض المعبرة' : 'اختر العرض';
   if(!(d.h>0)) return 'اكتب ارتفاع المعبرة';
   if(!(q>0)) return 'اكتب عدد المعابر';
-  return `أضف ${q} معبرة — ${mbNum_(mbWall_())} سم — ${mbNum_(d.h)}×${mbNum_(d.w)} — ${st.code}`;
+  return `التالي: أضف ${q} معبرة — ${mbNum_(mbWall_())} سم — ${mbNum_(d.h)}×${mbNum_(d.w)} — ${st.code}`;
 }
 // بيتحدّث من غير render كامل عشان الكيبورد ما يقفلش وإحنا بنكتب
 function refreshMabraBtn_(){
   const b=document.querySelector('[data-act="add-mb"]'); if(!b) return;
   const st=state.mb, d=mbDims_();
-  b.disabled=!(st.code && mbWall_()>0 && d.w>0 && d.h>0 && mbQty_()>0);
   b.textContent=mbBtnLabel_();
 }
 function addMabra(){
@@ -10143,7 +10142,12 @@ function editCartLine(i){
   }
 
   state.newStep='items';
-  state.tab='new'; render(); window.scrollTo({top:0,behavior:'smooth'});
+  state.tab='new'; render();
+  requestAnimationFrame(()=>{
+    const _eb=document.querySelector('#view [data-act^="add-"]');
+    const _ec=_eb&&(_eb.closest('section.card')||_eb.closest('.card'));
+    if(_ec)_ec.scrollIntoView({block:'start'}); else window.scrollTo({top:0});
+  });
   toast('عدّل البيانات وادوس «أضف» تاني عشان يتحدّث في السلة');
 }
 
@@ -11904,7 +11908,7 @@ function flowDrawingCard_(g,eco){
  if(assembly&&g.frame&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-frame="${g.frame}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:5px 5px 0;border:1px solid #746B5F;border-bottom:0;${doorRingStyle_(g.code,src,m.source!=='custom')}line-height:0">${assembly}</div>`;
  if(assembly&&g.dbror&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-bror="${esc(g.dbror)}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:4px 4px 0;border:1px solid #746B5F;border-bottom:0;${doorRingStyle_(g.code,src,m.source!=='custom')}line-height:0">${assembly}</div>`;
  const components=(g.frame||g.dbror)?`<div data-door-components="1" style="font-size:10.5px;line-height:1.55;font-weight:800;margin-top:3px">${g.frame?`<div>حلق ${esc(g.frame)} سم${g.frameHeight?' · ارتفاع '+esc(g.frameHeight)+' سم':''}</div>`:''}${g.dbror?`<div>برور <span dir="ltr" style="display:inline-block;direction:ltr">${esc(g.dbror)}</span></div>`:''}</div>`:'';
- return `<div data-door-drawing="1" data-door-flow="1" class="keep-blk" style="flex:0 1 210px;min-width:160px;padding:8px 6px;text-align:center;background:#fff;color:#000;break-inside:avoid"><div style="font-size:12px;font-weight:800">${g.wh?esc(g.wh.w)+' سم':esc(g.base)}</div>${eco||noArt?'':`<div style="display:flex;align-items:center;justify-content:center;gap:3px;margin:6px 0"><div>${assembly}</div>${g.wh?`<div style="position:relative;width:17px;height:126px"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg);font-size:10.5px;font-weight:800;white-space:nowrap">${esc(g.wh.h)}</span></div>`:''}</div>`}<div style="font-size:12px;font-weight:800">${esc(g.code)}${m.pattern?' · '+esc(m.pattern):''}</div>${m.source==='custom'?(src?'<div style="font-size:10px">مرجع خاص، مش تركيبًا على الباب</div>':'<div style="font-size:10px;font-weight:800">رسمة خاصة بلا صورة مرفقة — الاعتماد على الكود والوصف</div>'):''}${components}<div style="display:inline-block;padding:3px 9px;margin-top:4px;${eco?'background:#fff;border:1px solid #C9D2DC':'background:#EAF2FA'};font-size:12px;font-weight:800">${method} · ${g.qty} باب</div></div>`;
+ return `<div data-door-drawing="1" data-door-flow="1" class="keep-blk" style="flex:0 1 210px;min-width:160px;padding:8px 6px;text-align:center;${eco?'background:#fff;border:1.5px solid #93A3B3':'background:#F2F7FC;border:1.5px solid #A9C3DA'};border-radius:10px;color:#000;break-inside:avoid"><div style="font-size:12px;font-weight:800">${g.wh?esc(g.wh.w)+' سم':esc(g.base)}</div>${eco||noArt?'':`<div style="display:flex;align-items:center;justify-content:center;gap:3px;margin:6px 0"><div>${assembly}</div>${g.wh?`<div style="position:relative;width:17px;height:126px"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg);font-size:10.5px;font-weight:800;white-space:nowrap">${esc(g.wh.h)}</span></div>`:''}</div>`}<div style="font-size:12px;font-weight:800">${esc(g.code)}${m.pattern?' · '+esc(m.pattern):''}</div>${m.source==='custom'?(src?'<div style="font-size:10px">مرجع خاص، مش تركيبًا على الباب</div>':'<div style="font-size:10px;font-weight:800">رسمة خاصة بلا صورة مرفقة — الاعتماد على الكود والوصف</div>'):''}${components}<div style="display:inline-block;padding:3px 9px;margin-top:4px;${eco?'background:#fff;border:1px solid #C9D2DC':'background:#EAF2FA'};font-size:12px;font-weight:800">${method} · ${g.qty} باب</div></div>`;
 }
 
 const flowNativeFocusKey_=focusKey_;
