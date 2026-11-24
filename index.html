@@ -2641,7 +2641,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v314';
+const APP_BUILD = 'v315';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -5827,6 +5827,7 @@ async function saveOrderMeta_(id, customer, date, region){
       const o = adminOrderById_(id);
       if(region!==undefined&&String(d.customerRegion||'')!==String(region||''))throw new Error('السيرفر لم يؤكد حفظ عنوان العميل؛ بيانات التعديل لم تُمسح');
       if(o){ o.customer = d.customer||''; if(d.date) o.date = d.date; o.customerRegion = d.customerRegion||''; }
+      applyEditCount_(id, d);
       delete state.admin.metaEdit[id];
     },
     okMsg:'اتحدّثت بيانات الطلب'
@@ -5851,6 +5852,12 @@ async function refreshOrderItems_(id){
   try{ await loadOrderItems_(id); }catch(e){}
   render();
 }
+// السيرفر بيزوّد عدّاد التعديل مع تعديل الكمية/حذف الصنف من شاشة المصنع — نعرضه فورًا (٣٦٤ ← ٣٦٤/١)
+function applyEditCount_(id, d){
+  if(!d || d.editCount===undefined) return;
+  const o = adminOrderById_(id);
+  if(o){ o.editCount = Number(d.editCount)||0; if(d.displayNo) o.displayNo = d.displayNo; }
+}
 async function setItemQty_(id, idx, qty){
   const key = id+':'+idx;
   return adminAction_({
@@ -5860,6 +5867,7 @@ async function setItemQty_(id, idx, qty){
       const it = (state.admin.items[id]||[])[idx];
       if(it){ it.qty = d.qty; it.produced = d.produced; if(d.received!==undefined) it.received = d.received; }
       applyOrderTotals_(id, d.totals);
+      applyEditCount_(id, d);
       delete state.admin.qtyEdit[key];
       if(d.cutChanged) refreshOrderItems_(id);
     },
@@ -5892,6 +5900,7 @@ async function deleteOrderItem_(id, idx){
     onOk(d){
       if(state.admin.items[id]) state.admin.items[id].splice(idx,1);
       applyOrderTotals_(id, d.totals);
+      applyEditCount_(id, d);
       if(d.cutChanged) refreshOrderItems_(id);
     },
     okMsg:'اتحذف الصنف'
@@ -11703,8 +11712,8 @@ function docTotalsHTML(o,eco){
   const frameRods=frameItems.reduce((s,it)=>s+(Number(it.qty)||0)*((it.isSet||String(it.unit||'')==='set')?RODS_PER_SET:1),0);
   const brorRods=brorItems.reduce((s,it)=>s+(Number(it.qty)||0),0);
   const sumRow=(label,val,unit)=>`<div style="display:flex;flex:1 1 285px;justify-content:space-between;align-items:baseline;gap:12px;padding:2px 0;font-size:13px;font-weight:800;color:#0A1F44"><span>${label}</span><span>${Math.round(val*10000)/10000} <span style="font-size:12px">${unit}</span></span></div>`;
-  return `<div data-order-drawings="1" style="margin-top:10px"><div class="keep-blk" style="break-inside:avoid"><div style="font-size:10px;color:#526171;margin-bottom:6px">${eco?'ملخص نصي':'رسم توضيحي'}؛ المقاسات والأعداد بالجدول هي المعتمدة.</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:stretch">${cards}${docStandaloneDrawingCards_(items,PAL,eco)}</div></div>
+  return `<div data-order-drawings="1" style="margin-top:10px"><div><div style="font-size:10px;color:#526171;margin-bottom:6px;break-after:avoid">${eco?'ملخص نصي':'رسم توضيحي'}؛ المقاسات والأعداد بالجدول هي المعتمدة.</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:stretch">${cards}${docStandaloneDrawingCards_(items,PAL,eco)}</div></div>
     ${docDrawingNotes_(o,eco)}
     <div class="keep-blk" style="display:flex;flex-wrap:wrap;column-gap:22px;margin-top:8px;background:${eco?'#fff':'#F3F6FA'};${eco?'border:1px solid #D5DDE6;':''}border-radius:10px;padding:6px 16px;break-inside:avoid">${doorItems.length?sumRow('إجمالي الأبواب',doorsTotal,'باب'):''}${frameItems.length?sumRow('أعواد الحلق المنفصل',frameRods,'عود'):''}${brorItems.length?sumRow('أعواد البرور المنفصل',brorRods,'عود'):''}</div>
     </div>`;
@@ -12219,11 +12228,11 @@ function flowDrawingCard_(g,eco){
  // الحلق/البرور المختاران بيتركبوا على الرسمة زي الكارت القديم — ورقة الأوردر
  // لازم تعرض اختيارات العميل الفعلية، مش الضلفة عارية والقيم في الجدول بس.
  const noArt=m.source==='custom'&&!src;
- let assembly=noArt?'':`<div data-door-leaf="1" style="position:relative;width:100px;height:208px;background:#EFECE5;border:1px solid #777;overflow:hidden;box-sizing:border-box;line-height:0">${src?`<img src="${esc(src)}" alt="${esc(g.code)}" style="display:block;width:100%;height:100%;object-fit:contain">`:'<span style="font-size:11px;color:#B3261E;line-height:1.5">المرجع غير محمّل أو انتهت مدة حفظه</span>'}</div>`;
- if(assembly&&g.frame&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-frame="${g.frame}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:5px 5px 0;border:1px solid #746B5F;border-bottom:0;${doorRingStyle_(g.code,src,m.source!=='custom')}line-height:0">${assembly}</div>`;
- if(assembly&&g.dbror&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-bror="${esc(g.dbror)}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:4px 4px 0;border:1px solid #746B5F;border-bottom:0;${doorRingStyle_(g.code,src,m.source!=='custom')}line-height:0">${assembly}</div>`;
- const components=(g.frame||g.dbror)?`<div data-door-components="1" style="font-size:10.5px;line-height:1.55;font-weight:800;margin-top:3px">${g.frame?`<div>حلق ${esc(g.frame)} سم${g.frameHeight?' · ارتفاع '+esc(g.frameHeight)+' سم':''}</div>`:''}${g.dbror?`<div>برور <span dir="ltr" style="display:inline-block;direction:ltr">${esc(g.dbror)}</span></div>`:''}</div>`:'';
- return `<div data-door-drawing="1" data-door-flow="1" class="keep-blk" style="flex:0 1 210px;min-width:160px;padding:8px 6px;text-align:center;${eco?'background:#fff;border:1.5px solid #93A3B3':'background:#F2F7FC;border:1.5px solid #A9C3DA'};border-radius:10px;color:#000;break-inside:avoid"><div style="font-size:12px;font-weight:800">${g.wh?esc(g.wh.w)+' سم':esc(g.base)}</div>${eco||noArt?'':`<div style="display:flex;align-items:center;justify-content:center;gap:3px;margin:6px 0"><div>${assembly}</div>${g.wh?`<div style="position:relative;width:17px;height:126px"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg);font-size:10.5px;font-weight:800;white-space:nowrap">${esc(g.wh.h)}</span></div>`:''}</div>`}<div style="font-size:12px;font-weight:800">${esc(g.code)}${m.pattern?' · '+esc(m.pattern):''}</div>${m.source==='custom'?(src?'<div style="font-size:10px">مرجع خاص، مش تركيبًا على الباب</div>':'<div style="font-size:10px;font-weight:800">رسمة خاصة بلا صورة مرفقة — الاعتماد على الكود والوصف</div>'):''}${components}<div style="display:inline-block;padding:3px 9px;margin-top:4px;${eco?'background:#fff;border:1px solid #C9D2DC':'background:#EAF2FA'};font-size:12px;font-weight:800">${method} · ${g.qty} باب</div></div>`;
+ let assembly=noArt?'':`<div data-door-leaf="1" style="position:relative;width:34px;height:72px;background:#EFECE5;border:1px solid #777;overflow:hidden;box-sizing:border-box;line-height:0">${src?`<img src="${esc(src)}" alt="${esc(g.code)}" style="display:block;width:100%;height:100%;object-fit:contain">`:'<span style="font-size:11px;color:#B3261E;line-height:1.5">المرجع غير محمّل أو انتهت مدة حفظه</span>'}</div>`;
+ if(assembly&&g.frame&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-frame="${g.frame}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:2px 2px 0;border:1px solid #746B5F;border-bottom:0;${doorRingStyle_(g.code,src,m.source!=='custom')}line-height:0">${assembly}</div>`;
+ if(assembly&&g.dbror&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-bror="${esc(g.dbror)}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:2px 2px 0;border:1px solid #746B5F;border-bottom:0;${doorRingStyle_(g.code,src,m.source!=='custom')}line-height:0">${assembly}</div>`;
+ const components=(g.frame||g.dbror)?`<div data-door-components="1" style="font-size:8.5px;line-height:1.4;font-weight:800;margin-top:2px">${g.frame?`<div>حلق ${esc(g.frame)} سم${g.frameHeight?' · ارتفاع '+esc(g.frameHeight)+' سم':''}</div>`:''}${g.dbror?`<div>برور <span dir="ltr" style="display:inline-block;direction:ltr">${esc(g.dbror)}</span></div>`:''}</div>`:'';
+ return `<div data-door-drawing="1" data-door-flow="1" class="keep-blk" style="flex:0 0 calc((100% - 36px)/10);width:calc((100% - 36px)/10);min-width:0;box-sizing:border-box;padding:4px 1px;text-align:center;${eco?'background:#fff;border:1.5px solid #93A3B3':'background:#F2F7FC;border:1.5px solid #A9C3DA'};border-radius:10px;color:#000;break-inside:avoid"><div style="font-size:9.5px;font-weight:800;line-height:1.3">${g.wh?esc(g.wh.w)+' سم':esc(g.base)}</div>${eco||noArt?'':`<div style="display:flex;align-items:center;justify-content:center;gap:1px;margin:3px 0"><div>${assembly}</div>${g.wh?`<div style="position:relative;width:10px;height:48px"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg);font-size:8.5px;font-weight:800;white-space:nowrap">${esc(g.wh.h)}</span></div>`:''}</div>`}<div style="font-size:9.5px;font-weight:800;line-height:1.3">${esc(g.code)}${m.pattern?' · '+esc(m.pattern):''}</div>${m.source==='custom'?(src?'<div style="font-size:10px">مرجع خاص، مش تركيبًا على الباب</div>':'<div style="font-size:10px;font-weight:800">رسمة خاصة بلا صورة مرفقة — الاعتماد على الكود والوصف</div>'):''}${components}<div style="display:inline-block;padding:2px 2px;margin-top:3px;${eco?'background:#fff;border:1px solid #C9D2DC':'background:#EAF2FA'};font-size:9px;font-weight:800;line-height:1.3">${method} · ${g.qty} باب</div></div>`;
 }
 
 const flowNativeFocusKey_=focusKey_;
