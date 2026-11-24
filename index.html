@@ -10904,6 +10904,7 @@ async function submitOrder(){
   state.editingDisplayNo=null; state.editingEditCount=null;
   state.customer={name:'',phone:'',region:''}; state.custMode='self'; state.orderNote=''; state.newStep='info'; doorFlow_=flowBlank_();flowPersist_();   // تصفير بيانات صاحب الأوردر للطلب الجاي — الاختيار يرجع «لحسابي» والطلب الجديد يبدأ من صفحة البيانات
 
+  let إلغاء_القديم = Promise.resolve('لا-داعي');   // معرّف برّا الـ if عشان نستنّاه تحت (كان جوه البلوك فبيرمي ReferenceError ويتبلع)
   if(APPS_SCRIPT_URL){
     // الطلب القديم لازم يتمسح من عند المصنع — لو المصنع هو اللي بيعدّل بنبعت كلمة سره
     // عشان يقدر يمسحه حتى لو دخل التنفيذ فعليًا.
@@ -10936,7 +10937,7 @@ async function submitOrder(){
     // الجديد يتبعت وقبل ما القديم يتمسح. فالمصنع يشوف القديم لسه موجود، وشاشته
     // عمرها ما بتصحّح نفسها بعد كده (adminPoll بيحدّث الشارة والإشعارات بس، مش
     // القايمة). بنمسك الوعد هنا وناخده تحت عشان نستنّاه قبل التحديث.
-    const إلغاء_القديم = (async ()=>{
+    إلغاء_القديم = (async ()=>{
       const sent = await syncing;
       if(!cancelInfo) return 'لا-داعي';
       // ⚠️ الشرط ده كان `sent === false` بس، و null (اتبعت من غير تأكيد) كان
