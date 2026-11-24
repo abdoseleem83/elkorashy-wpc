@@ -4794,6 +4794,7 @@ function yield_(ms){
   return new Promise(r=>requestAnimationFrame(()=>setTimeout(r, ms||0)));
 }
 
+const _paperImgPng_=new Map();
 // بترسم محتوى #paper وترجّع canvas — بتظبط الـ scale لوحدها حسب الطول
 async function renderPaper_(html, opts){
   const paper = document.getElementById('paper');
@@ -4802,8 +4803,15 @@ async function renderPaper_(html, opts){
   await waitExportResource_(Promise.all([...paper.querySelectorAll('img')].map(im=>im.decode())),20000,'انتهت مهلة تحميل صورة في الورقة؛ الطلب والصور الأصلية محفوظين');                       // تفتح مجال للصور/الخطوط تتحمّل
   for(const im of paper.querySelectorAll('img')){
     if(!/^data:|^blob:/.test(im.src)&&new URL(im.src,location.href).origin===location.origin){
-      const c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;
-      c.getContext('2d').drawImage(im,0,0);im.src=c.toDataURL('image/png');await im.decode();
+      // كاش: نفس الصورة (لوجو/باب) بتتكرر في أسطر كتير — ترميز PNG مرة واحدة بس
+      let png=_paperImgPng_.get(im.src);
+      if(!png){
+        const c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;
+        c.getContext('2d').drawImage(im,0,0);png=c.toDataURL('image/png');
+        if(_paperImgPng_.size>=40)_paperImgPng_.delete(_paperImgPng_.keys().next().value);
+        _paperImgPng_.set(im.src,png);
+      }
+      im.src=png;await im.decode();
     }
   }
   const el = paper.firstElementChild;
@@ -4847,7 +4855,7 @@ async function renderPaper_(html, opts){
     removeContainer:true,
     // أهم سطر: بنشيل صور الكتالوج من النسخة اللي html2canvas بيرسمها
     onclone: doc => {
-      doc.querySelectorAll('.rail, .secnav, .tabs, #view').forEach(n=>{
+      doc.querySelectorAll('.rail, .secnav, .tabs, #view, #reportPreviewOverlay, .rpv, dialog').forEach(n=>{
         if(!n.contains(doc.getElementById('paper'))) n.remove();
       });
     }
@@ -4899,12 +4907,19 @@ async function shareOrDownload_(blob, filename, title){
 // بدونه أي سنتيمتر زيادة عن آخر صفحة (هوامش/حشو أبيض) كان بيطلع صفحة أخيرة فاضية تمامًا.
 function contentBottomPx_(canvas, pxPerMm){
   try{
-    const w = canvas.width, h = canvas.height;
-    const data = canvas.getContext('2d').getImageData(0, 0, w, h).data;
-    for(let i = data.length - 4; i >= 0; i -= 16){
-      if(data[i] < 242 || data[i+1] < 242 || data[i+2] < 242){
-        const row = Math.floor((i >> 2) / w);
-        return Math.min(h, row + 1 + Math.round(4 * pxPerMm));   // ~٤ مم تحت آخر محتوى
+    const w = canvas.width, h = canvas.height, ctx = canvas.getContext('2d');
+    const total = w*h, BAND = 128;
+    // نفس العينة القديمة بالظبط (كل بكسل رابع من آخر بكسل رجوعًا) بس على شرايط ١٢٨ صف —
+    // بدل ما نقرا الكانفس كله (ممكن ٦٤ ميجا) وبيخرج بدري أول ما يلاقي محتوى.
+    for(let r1 = h; r1 > 0; r1 -= BAND){
+      const r0 = Math.max(0, r1 - BAND);
+      const data = ctx.getImageData(0, r0, w, r1 - r0).data, base = r0*w;
+      let p = total - 1 - 4*Math.ceil((total - r1*w)/4);
+      for(; p >= base; p -= 4){
+        const i = (p - base) << 2;
+        if(data[i] < 242 || data[i+1] < 242 || data[i+2] < 242){
+          return Math.min(h, Math.floor(p / w) + 1 + Math.round(4 * pxPerMm));   // ~٤ مم تحت آخر محتوى
+        }
       }
     }
   }catch(e){}
