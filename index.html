@@ -2376,7 +2376,15 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v336';
+const APP_BUILD = 'v337';
+// v337: the capability answer from the submit-time check is handed to THIS order's send once (same endpoint and device, same order id, under 20 s old, still online, needed capabilities present). Anything else: a normal ping.
+let _capPre337_=null;
+function takeCapPre337_(o){const c=_capPre337_;_capPre337_=null;try{
+  if(!c||!c.d||!c.d.ok||!o)return null;
+  if(c.oid!==String(o.id)||c.url!==APPS_SCRIPT_URL||c.dev!==deviceId_())return null;
+  const age=Date.now()-c.t;if(age<0||age>20000||!navigator.onLine)return null;
+  const cp=c.d.capabilities||{};if(!cp.atomicCreate294)return null;if(o.replacesId&&cp.reviseOrder294!==true)return null;
+  return c.d;}catch(_){return null;}}
 // v336: private phase timing for order send/preview. Device-local only: fixed labels + durations, no ids/tokens/urls/customer data, last 60 marks, never sent anywhere.
 const _tm335=(()=>{try{const a=JSON.parse(localStorage.getItem('wpc_timing335')||'[]');return Array.isArray(a)?a.filter(x=>Array.isArray(x)&&typeof x[0]==='number'&&typeof x[1]==='string').slice(-60):[];}catch(_){return [];}})();
 let _tmTimer335=0;
@@ -3217,6 +3225,7 @@ async function requireOrderCaps_(o,capIn){
   if(!d||!d.ok||(needsAddress&&!(d.capabilities||{}).customerRegionV1)||(refs.length&&(!(d.capabilities||{}).privateArtworkV1||!(d.capabilities||{}).artworkRetentionV1))||(needsEngraving&&!(d.capabilities||{}).engravingArtworkV1)){
     throw new Error('سيرفر المصنع محتاج تحديث لحفظ عنوان العميل وتصميمات الطباعة والحفر؛ السلة محفوظة ولم يُرسل الطلب');
   }
+  return d;
 }
 function artTypes_(it){
   if(it.kind!=='door')return [];
@@ -3253,28 +3262,46 @@ async function hydrateFactoryArtCart_(){
   replacements.forEach(r=>r.it[r.field]=r.ref);
   if(replacements.length&&!saveCart_())throw new Error('تعذّر حفظ مرفقات التعديل محليًا؛ لا تغلق الصفحة');
 }
+// v337: a never-attached image that this device has not already tried to send for this order skips the first (always-empty) status call. Marker is written BEFORE the post, so any retry/resume/second attempt checks status first as before.
+const _upMem337_=new Set();
+function upMark337_(oid,ref,set){const id=oid+'|'+ref;if(set)_upMem337_.add(id);if(!set&&_upMem337_.has(id))return true;try{const k='wpc_upm337',m=JSON.parse(localStorage.getItem(k)||'[]');if(!set)return m.includes(id);if(!m.includes(id)){m.push(id);localStorage.setItem(k,JSON.stringify(m.slice(-40)));}return true;}catch(_){return true;}}
 async function uploadOrderPrints_(o){
+  // v337: images are still POSTed strictly one after another (the server serialises writes). The read-only "is it ready" check of image N now runs while image N+1 is being posted, instead of after it. A never-attached image skips the always-empty first status call (see upMark337_). Every image still needs a server "ready" answer before a proof is made, and no proof means the order is not sent.
   const tmU=tmT_();
   const refs=orderArtRefs_(o);
   const proofs={};
-  for(const ref of refs){
-    const rec=await printGet_(ref);if(!rec||!rec.key||!rec.data)throw new Error('ملف الطباعة غير متاح على الجهاز؛ الطلب محفوظ ولم يصل للمصنع');
-    let ready=false;
-    for(let attempt=0;attempt<3;attempt++){
-      try{
-        const q=await printSignedQuery_('printStatus',o.id,ref,rec.key);
-        const tps=tmT_();const status=await jsonp(APPS_SCRIPT_URL+'?action=printStatus'+q+'&dev='+encodeURIComponent(deviceId_()),20000);tmMark_('print_status',tps,status&&status.ready?'ready':'no');
-        if(status&&status.ok&&status.ready){ready=true;break;}
-      }catch(e){}
-      if(attempt===0){
-        const tpu=tmT_();try{await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},signal:AbortSignal.timeout(30000),body:JSON.stringify({action:'uploadPrint',dev:deviceId_(),orderId:o.id,ref,key:rec.key,data:rec.data,thumb:rec.thumb})});}catch(_){}tmMark_('upload_post',tpu);
-      }
-      await new Promise(r=>setTimeout(r,1500*(attempt+1)));
-    }
-    if(!ready)throw new Error('رفع صورة الطباعة لم يتأكد؛ الطلب والصورة محفوظين. هنحاول تاني من غير حذف القديم');
+  const pending=[];
+  const finish=async(rec,ref)=>{
     proofs[ref]=await printMac_(rec.key,['attach',o.id,ref].join('|'));
     if(!rec.orders.includes(o.id)){rec.orders.push(o.id);await printPut_(rec);}
-  }
+  };
+  const statusReady=async(rec,ref)=>{
+    try{
+      const q=await printSignedQuery_('printStatus',o.id,ref,rec.key);
+      const tps=tmT_();const status=await jsonp(APPS_SCRIPT_URL+'?action=printStatus'+q+'&dev='+encodeURIComponent(deviceId_()),20000);tmMark_('print_status',tps,status&&status.ready?'ready':'no');
+      return !!(status&&status.ok&&status.ready);
+    }catch(e){return false;}
+  };
+  const verify=async(rec,ref,postFailed)=>{
+    for(let k=0;k<2;k++){
+      if(k>0||postFailed)await new Promise(r=>setTimeout(r,1500*(k+1)));
+      if(await statusReady(rec,ref)){await finish(rec,ref);return;}
+    }
+    throw new Error('رفع صورة الطباعة لم يتأكد؛ الطلب والصورة محفوظين. هنحاول تاني من غير حذف القديم');
+  };
+  try{
+    for(const ref of refs){
+      const rec=await printGet_(ref);if(!rec||!rec.key||!rec.data)throw new Error('ملف الطباعة غير متاح على الجهاز؛ الطلب محفوظ ولم يصل للمصنع');
+      const skip=(rec.orders||[]).length===0&&!upMark337_(o.id,ref,false);
+      if(!skip&&await statusReady(rec,ref)){await finish(rec,ref);continue;}
+      upMark337_(o.id,ref,true);
+      let failed=false;
+      const tpu=tmT_();try{await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},signal:AbortSignal.timeout(30000),body:JSON.stringify({action:'uploadPrint',dev:deviceId_(),orderId:o.id,ref,key:rec.key,data:rec.data,thumb:rec.thumb})});}catch(_){failed=true;}tmMark_('upload_post',tpu);
+      pending.push(verify(rec,ref,failed).then(()=>null,e=>e));
+    }
+  }catch(e){await Promise.all(pending);throw e;}
+  const res=await Promise.all(pending);
+  const bad=res.find(Boolean);if(bad)throw bad;
   tmMark_('upload_all',tmU);
   return proofs;
 }
@@ -4559,8 +4586,8 @@ function orderExports295_(o){
   if(!confirmedOrder295_(o))return '';
   return `<div class="order-exports295" aria-label="مشاركة وملفات الطلب المؤكد ${esc(orderNoText_(o))}">
     <button type="button" class="btn ghost sm" data-act="resend" data-id="${esc(o.id)}" title="مشاركة صورة الطلب" aria-label="مشاركة صورة الطلب ${esc(orderNoText_(o))}">${ico('send')}<span>مشاركة الصورة</span></button>
-    <button type="button" class="btn ghost sm" data-act="ord-pdf" data-id="${esc(o.id)}" title="PDF بالصور للطلب المؤكد">${ico('doc')}<span>PDF بالصور</span></button>
-    <button type="button" class="btn ghost sm" data-act="ord-pdf-eco" data-id="${esc(o.id)}" title="PDF بدون صور للطلب المؤكد">${ico('doc')}<span>PDF بدون صور</span></button>
+    <button type="button" class="btn ghost sm" data-act="ord-pdf-eco" data-id="${esc(o.id)}" title="PDF سريع بدون صور للطلب المؤكد">${ico('doc')}<span>PDF سريع</span></button>
+    <button type="button" class="btn ghost sm" data-act="ord-pdf" data-id="${esc(o.id)}" title="PDF بالصور للطلب المؤكد (أبطأ)">${ico('doc')}<span>PDF بالصور</span></button>
   </div>`;
 }
 function cartSubmission295_(){
@@ -10372,7 +10399,8 @@ async function transportOrder294_(o){
  _lastSendError=null;tmMark_('attempt');
  let wireStarted309=false;
  try{
-  const tp1=tmT_();const cap=await jsonp(APPS_SCRIPT_URL+'?action=ping',12000);tmMark_('ping',tp1);
+  const capPre=takeCapPre337_(o);let cap;
+  if(capPre){cap=capPre;tmMark_('caps_pre');}else{const tp1=tmT_();cap=await jsonp(APPS_SCRIPT_URL+'?action=ping',12000);tmMark_('ping',tp1);}
   if(!cap?.ok||!cap.capabilities?.atomicCreate294)throw Error('المصنع يحتاج تحديث مسار الاستلام الآمن؛ الطلب محفوظ ولم يُرسل');
   if(o.replacesId&&cap.capabilities?.reviseOrder294!==true)throw Error('تعديل الطلب يحتاج تحديث مسار المصنع؛ التعديل محفوظ ولم يُرسل');
   let base294=null;if(o.replacesId){const ls=await jsonp(APPS_SCRIPT_URL+'?action=list&dev='+encodeURIComponent(deviceId_())+'&phone='+encodeURIComponent(o.phone||''),20000);const prev=ls&&ls.ok?(ls.orders||[]).find(r=>String(r.id)===String(o.replacesId)):null;if(!prev)throw Error(ls&&ls.ok?'الطلب الأصلي مش موجود عند المصنع (ممكن اتحذف أو اتسلّم). التعديل لم يُرسل ومحفوظ على جهازك؛ اعمل طلب جديد بدل التعديل':'تعذّر قراءة الطلب الأصلي من المصنع؛ التعديل محفوظ ولم يُرسل');base294=Number(prev.editCount)||0;}
@@ -10841,7 +10869,8 @@ async function submitOrder(){
     const meta=state.editingMeta;
     const address=meta?meta.customerRegion:(state.custMode==='other'?state.customer.region:'');
     busy(true,'جارٍ التحقق من حفظ العنوان والتصميمات…');
-    if(navigator.onLine)await requireOrderCaps_({customerRegion:address||'',items:state.cart});
+    _capPre337_=null;
+    if(navigator.onLine){const pc=await requireOrderCaps_({customerRegion:address||'',items:state.cart});_capPre337_=(pc&&pc.ok)?{d:pc,t:Date.now(),url:APPS_SCRIPT_URL,dev:deviceId_(),oid:null}:null;}
     else if(state.editingId)throw new Error('تعديل طلب قائم يحتاج اتصالًا ومراجعة؛ السلة محفوظة ولم يُرسل شيء');
     await hydrateFactoryArtCart_();
     await requirePrintLocal_(state.cart);
@@ -10853,6 +10882,7 @@ async function submitOrder(){
   o.msg=buildMessage(o);
 
   if(!await queueDispatch294_(o)){toast('تعذّر تجهيز سجل إرسال الطلب؛ السلة محفوظة ولم يُرسل شيء',8000);return;}
+  if(_capPre337_)_capPre337_.oid=String(o.id);
   const localBefore={orders:state.orders.slice(),deleted:loadDeleted_().slice(),cancels:loadPendingCancels_().slice(),track:state.track.rows?state.track.rows.slice():null};
   if(wasEditing){
     // ⚠️ لو الطلب اللي بنعدّله هو نفسه لسه ما وصلش المصنع، يبقى فيه نية إلغاء
@@ -11495,7 +11525,7 @@ async function makeDoc(o,mode,priced,eco){
   try{
     if(!await needLibs_('html2canvas','jspdf'))return;
     busy(true,'٢ / ٤ · تجهيز صور ومرفقات الطلب…');
-    await waitExportResource_(preparePrintDocument_(o),90000,'انتهت مهلة تجهيز المرفقات؛ الطلب والصور الأصلية محفوظين');
+    await waitExportResource_(preparePrintDocument_(o,eco?{skipArt:true}:undefined),90000,'انتهت مهلة تجهيز المرفقات؛ الطلب والصور الأصلية محفوظين');
     busy(true,'٣ / ٤ · رسم صفحات الطلب…');await yield_(0);
     const {canvas}=await renderPaper_(docHTML(o,mode,priced,eco));
     busy(true,'٤ / ٤ · تجهيز ملف PDF…');await yield_(0);
