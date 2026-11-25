@@ -37,7 +37,7 @@ function بيئة(أوامر, أصناف){
     action:'deleteOrder', cb:'',
     e:{ parameter:{ id:'', pw:'x' } },
     String, Number, Object,
-    COL_STATUS: 11, SHEET_ORDERS:'O', HEAD_ORDERS:[], SHEET_ITEMS:'I', HEAD_ITEMS:[],
+    COL_STATUS: 11, COL_PHONE: 5, SHEET_ORDERS:'O', HEAD_ORDERS:[], SHEET_ITEMS:'I', HEAD_ITEMS:[],
     checkAdminPw_: () => true, adminPwError_: () => 'pw',
     LockService: { getScriptLock: () => ({ waitLock(){}, releaseLock(){} }) },
     sheet_: (name) => name==='O' ? shO : shI,
