@@ -20,7 +20,7 @@ check('لقينا clearItemRows_', !!clearSrc);
 function بيئة(أوامر, أصناف){
   const O = { rows: [['HEAD']].concat(أوامر.map(r=>r.slice())) };  // [id, ..., status@COL_STATUS]
   const I = { rows: ['HEAD'].concat(أصناف) };
-  const سجل = { رجوع_رصيد: [] };
+  const سجل = { رجوع_رصيد: [], حذف_مسجّل: [] };
   const shO = {
     getLastRow: () => O.rows.length,
     getRange: (r,c,n) => (n===undefined
@@ -43,6 +43,7 @@ function بيئة(أوامر, أصناف){
     sheet_: (name) => name==='O' ? shO : shI,
     findRow_: (sh,id) => { for(let i=1;i<O.rows.length;i++) if(String(O.rows[i][0])===String(id)) return i+1; return -1; },
     restoreStockForOrderId_: (id) => { سجل.رجوع_رصيد.push(String(id)); },
+    recordDeleted327_: (pairs) => { pairs.forEach(p=>سجل.حذف_مسجّل.push(String(p[0]))); },
     reply: (o) => o
   };
   return { ctx, O, I, سجل };
@@ -62,6 +63,7 @@ function احذف(أوامر, أصناف, id){
   check('السطر الملخّص اتمسح', r.أوامر.join('')==='A', r.أوامر.join(''));
   check('سطور الأصناف اتمسحت', r.أصناف.join('')==='A', r.أصناف.join(''));
   check('الرصيد رجع مرة واحدة', r.سجل.رجوع_رصيد.length===1);
+  check('الحذف اتسجّل في سجل المحذوفات (عشان العميل يشيله من تابع طلبك)', r.سجل.حذف_مسجّل.join()==='B', r.سجل.حذف_مسجّل.join()+'');
   check('مش مكتوب إنه كان متحذف قبل كده', r.رد.alreadyGone===false);
 }
 { // ⚠️ بيت القصيد: نداء سابق وقف في نصه — الملخّص راح والأصناف فاضلة
