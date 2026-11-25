@@ -2373,7 +2373,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v330';
+const APP_BUILD = 'v333';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -4744,6 +4744,35 @@ function yield_(ms){
 
 const _paperImgPng_=new Map();
 // بترسم محتوى #paper وترجّع canvas — بتظبط الـ scale لوحدها حسب الطول
+const MAX_TILED_PIXELS = 100e6;   // سقف إجمالي الشرايط (الزمن بيطول جدًا فوقه: 115 مليون بكسل اخد 4 دقايق في الاختبار): فوقه رسالة خطأ واضحة بدل ملف فاضي
+// فحص إن اللوحة (أو كل شريط) فيها حبر فعلًا — بدونه كانفس أكبر من حد الجهاز كان بيطلع صفحات بيضاء ورسالة نجاح.
+function paperCanvasHasInk_(c){
+  try{
+    if(!c||!c.width||!c.height) return false;
+    const pw=48, ph=Math.max(1,Math.min(1500,Math.round(c.height*pw/c.width)));
+    const pr=document.createElement('canvas'); pr.width=pw; pr.height=ph;
+    const x=pr.getContext('2d',{willReadFrequently:true}); x.fillStyle='#ffffff'; x.fillRect(0,0,pw,ph);
+    x.drawImage(c,0,0,c.width,c.height,0,0,pw,ph);
+    const d=x.getImageData(0,0,pw,ph).data;
+    for(let i=0;i<d.length;i+=4){ if(d[i]<246||d[i+1]<246||d[i+2]<246) return true; }
+  }catch(e){ return true; }   // لو الفحص نفسه فشل مانوقفش التصدير
+  return false;
+}
+function assertPaperInk_(canvas){
+  const tiles = canvas._tiles;
+  const bad = tiles ? (tiles.every(t=>!paperCanvasHasInk_(t.c)) || tiles.slice(0,-1).some(t=>!paperCanvasHasInk_(t.c))) : !paperCanvasHasInk_(canvas);
+  if(bad) throw new Error('الجهاز ما قدرش يرسم التقرير (طلع فاضي)، ولم يُنشأ ملف. جرّب تقليل عدد الطلبات أو افتح التطبيق من جهاز أقوى.');
+}
+// رسم صفوف [sy, sy+sh) من كانفس عادي أو من شرايط
+function drawCanvasRows_(ctx, canvas, sy, sh, dx, dy, dw, dh){
+  if(!canvas._tiles){ ctx.drawImage(canvas, 0, sy, canvas.width, sh, dx, dy, dw, dh); return; }
+  const k = dh/sh;
+  for(const t of canvas._tiles){
+    const a=Math.max(sy,t.y), b=Math.min(sy+sh,t.y+t.c.height);
+    if(b<=a) continue;
+    ctx.drawImage(t.c, 0, a-t.y, t.c.width, b-a, dx, dy+(a-sy)*k, dw, (b-a)*k);
+  }
+}
 async function renderPaper_(html, opts){
   const paper = document.getElementById('paper');
   paper.innerHTML = html;
@@ -4793,8 +4822,17 @@ async function renderPaper_(html, opts){
     return [Math.round((r.top-keepTop)*scale), Math.round((r.bottom-keepTop)*scale)];
   });
 
+  // v331: حدود صفوف الجداول — علشان التقطيع العادي ما يقطعش صف بين صفحتين
+  const rowBlocks = Array.from(el.querySelectorAll('tbody tr')).map(n=>{
+    const r = n.getBoundingClientRect();
+    return [Math.round((r.top-keepTop)*scale), Math.round((r.bottom-keepTop)*scale)];
+  }).filter(r=>r[1]>r[0]);
+
   await yield_(0);
-  const canvas = await html2canvas(el, {
+  const hasRunHdr_ = !!el.querySelector('[data-pdf-running-header]');
+  const useTiles_ = !(opts&&opts.tile===false) && !hasRunHdr_ && (w*scale)*(h*scale) > MAX_CANVAS_PIXELS;
+  if(useTiles_ && (w*scale)*(h*scale) > MAX_TILED_PIXELS) throw new Error('التقرير كبير جدًا على الجهاز ('+Math.round(w*scale*h*scale/1e6)+' مليون بكسل). قلّل عدد الطلبات أو اعمل التقرير على أجزاء، ولم يُنشأ ملف.');
+  const h2cOpts_ = {
     scale,
     backgroundColor:'#ffffff',
     useCORS:true,
@@ -4807,7 +4845,23 @@ async function renderPaper_(html, opts){
         if(!n.contains(doc.getElementById('paper'))) n.remove();
       });
     }
-  });
+  };
+  let canvas;
+  if(useTiles_){
+    // التقرير أطول/أكبر من اللي الكانفس الواحد يستحمله: بنرسمه على شرايط ونقطّعه لصفحات من الشرايط.
+    // (السبب القديم: كانفس واحد أكبر من حد المتصفح كان بيطلع صفحات بيضاء مع رسالة نجاح.)
+    const tileCss = Math.max(400, Math.floor(Math.min(12000, 8e6/(w*scale)) / scale));
+    const tiles = []; let devH = 0;
+    for(let y0=0; y0<h; y0+=tileCss){
+      const th = Math.min(tileCss, h-y0);
+      const c = await html2canvas(el, Object.assign({}, h2cOpts_, {y:y0, height:th, windowHeight:Math.max(h, th)}));
+      tiles.push({c, y:devH}); devH += c.height;
+      await yield_(0);
+    }
+    canvas = {width: tiles[0].c.width, height: devH, _tiles: tiles};
+  }else{
+    canvas = await html2canvas(el, h2cOpts_);
+  }
   // Order identity is rendered separately, reserving real space on every PDF page.
   const identity = el.querySelector('[data-pdf-running-header]');
   if(identity){
@@ -4829,6 +4883,8 @@ async function renderPaper_(html, opts){
   }
   paper.innerHTML = '';
   canvas._keep = keepBlocks;
+  canvas._rows = rowBlocks;
+  assertPaperInk_(canvas);
   await yield_(0);
   return { canvas, breaksPx };
 }
@@ -4854,6 +4910,14 @@ async function shareOrDownload_(blob, filename, title){
 // بيرجّع ارتفاع آخر سطر فيه محتوى فعلي على اللوحة (مش خلفية بيضاء) + هامش صغير.
 // بدونه أي سنتيمتر زيادة عن آخر صفحة (هوامش/حشو أبيض) كان بيطلع صفحة أخيرة فاضية تمامًا.
 function contentBottomPx_(canvas, pxPerMm){
+  if(canvas._tiles){
+    for(let i=canvas._tiles.length-1;i>=0;i--){
+      const t=canvas._tiles[i], r=contentBottomPx_(t.c, pxPerMm);
+      const raw = r - Math.round(4*pxPerMm);
+      if(r < t.c.height || paperCanvasHasInk_(t.c)) return Math.min(canvas.height, t.y + (r<t.c.height? r : t.c.height));
+    }
+    return canvas.height;
+  }
   try{
     const w = canvas.width, h = canvas.height, ctx = canvas.getContext('2d');
     const total = w*h, BAND = 128;
@@ -4978,11 +5042,24 @@ async function canvasToPdf_(canvas, filename, opts){
   // فواصل الأقسام وبلوكات keep ممكن تسيب شرائح كلها فراغ أبيض (ذيل مقطع بعد
   // حد صفحة طبيعي مثلاً) فتطلع صفحة فاضية — نفحص كل شريحة ونشيل الفاضي منها.
   const slices = [];
+  // v331: لو صف جدول (أقصر من صفحة) هيتقطع عند حد الصفحة، بننهي الصفحة قبله والصف يبدأ الصفحة اللي بعدها.
+  // الشرايح متتالية بدون فجوة ولا تداخل، فمفيش صف بيتحذف ولا بيتكرر.
+  const rowsPx_ = canvas._rows || [];
   segments.forEach(([s,e])=>{
-    const sub = Math.max(1, Math.ceil((e-s)/pageHpx));
-    for(let j=0;j<sub;j++){
-      const sy = s + j*pageHpx;
-      slices.push([sy, Math.min(pageHpx, e-sy)]);
+    let sy = s;
+    while(sy < e){
+      let end = Math.min(e, sy + pageHpx);
+      if(end < e){
+        for(let pass=0; pass<=rowsPx_.length; pass++){
+          const cut = rowsPx_.filter(([a,b])=>b-a<=pageHpx && a>sy+1 && a<end-1 && b>end+1);
+          if(!cut.length) break;
+          const next = Math.min(...cut.map(r=>r[0]));
+          if(next<=sy+1 || next>=end) break;
+          end = next;
+        }
+      }
+      slices.push([sy, end-sy]);
+      sy = end;
     }
   });
   const probe = document.createElement('canvas');
@@ -4992,7 +5069,7 @@ async function canvasToPdf_(canvas, filename, opts){
     const ph = Math.max(1, Math.round(sh * pw / canvas.width));
     probe.width = pw; probe.height = ph;
     pctx.fillStyle = '#ffffff'; pctx.fillRect(0,0,pw,ph);
-    pctx.drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, pw, ph);
+    drawCanvasRows_(pctx, canvas, sy, sh, 0, 0, pw, ph);
     const d = pctx.getImageData(0,0,pw,ph).data;
     for(let i=0;i<d.length;i+=4){ if(d[i]<246||d[i+1]<246||d[i+2]<246) return false; }
     return true;
@@ -5001,13 +5078,14 @@ async function canvasToPdf_(canvas, filename, opts){
   if(keptSlices.length) slices.length = 0, slices.push(...keptSlices);
 
   const totalPages = slices.length;
+  canvas._pdfSlices = slices.map(x=>x.slice());   // metadata للفحص المستقل فقط
 
   let pageIdx = 0;
   for(const [sy, sh] of slices){
       if(slice.height !== sh) slice.height = sh;
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0,0,slice.width,slice.height);
-      ctx.drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, canvas.width, sh);
+      drawCanvasRows_(ctx, canvas, sy, sh, 0, 0, canvas.width, sh);
 
       if(pageIdx > 0) pdf.addPage();
       pdf.addImage(slice.toDataURL('image/jpeg',0.88), 'JPEG', 0, 0, PW, sh / pxPerMm);
@@ -10181,6 +10259,9 @@ function downloadBlob(blob,name){
      • رفض دائم (شكل الطلب غلط) → إعادة المحاولة عمرها ما هتنجح
    من غير التفرقة دي التطبيق كان هيقول «لسه ما وصلش، هنحاول تاني» ويفضل
    يحاول للأبد على طلب السيرفر رافضه — والموزّع مستني على الفاضي. */
+// v332: backend error codes never reach the user raw. Known codes get plain Arabic; an unknown or in-doubt code means the receipt is UNCERTAIN, so no 'did not arrive' claim is made (empty text selects the uncertain-receipt message).
+function serverMsg332_(code){const c=String(code==null?'':code).trim();const M={CREATE_CONFLICT:'المصنع مسجّل طلب بنفس الرقم ومحتواه مختلف',CREATE_RATE_LIMIT:'محاولات كتير في وقت قصير؛ استنى شوية وراجع',ATOMIC_CREATE_DISABLED:'استلام الطلبات متوقف مؤقتًا عند المصنع',REVISE_ALREADY_REVISED:'الطلب ده اتعدّل قبل كده',REVISE_NOT_OWNER:'التعديل لازم يكون من نفس رقم موبايل صاحب الطلب',REVISE_BASE_NOT_FOUND:'الطلب الأصلي مش موجود عند المصنع',REVISE_BASE_CANCELLED:'الطلب الأصلي ملغي',REVISE_BASE_CHANGED:'الطلب الأصلي اتغيّر عند المصنع؛ راجعه الأول',REVISE_BASE_NO_DISPLAY_NO:'الطلب الأصلي مالوش رقم عند المصنع'};
+ if(Object.prototype.hasOwnProperty.call(M,c))return M[c];if(/^[A-Z][A-Z0-9_ ]{4,}$/.test(c)||/CREATE_IN_DOUBT|UNCONFIRMED|UNCERTAIN/i.test(c))return '';return c;}
 let _lastSendError = null;
 async function sendOrderToServer_(o){
   // التعديل (replacesId) له مساره المنفصل: أكشن newOrder اللي بيورّث رقم الطلب
@@ -10228,7 +10309,7 @@ async function sendEditedOrderToServer_(o){
   if(!orderArtRefs_(o).length && jsonpUrl.length < 7500){
     try{
       const d = await jsonp(jsonpUrl);
-      _lastSendError = (d && !d.ok) ? { msg: d.error || '', permanent: !!d.permanent } : null;
+      _lastSendError = (d && !d.ok) ? { msg: serverMsg332_(d.error), permanent: !!d.permanent } : null;
       if(d && d.ok && d.displayNo){
         o.displayNo = d.displayNo; o.editCount = d.editCount||0;
         const idx = state.orders.findIndex(x=>String(x.id)===String(o.id));
@@ -10264,7 +10345,7 @@ async function reconcile294_(o,id,entry){
  for(const wait of [0,3000,6000,10000,15000]){
   if(wait)await new Promise(r=>setTimeout(r,wait));
   let receipt=null;try{receipt=await createReceiptRead294_(id,entry);}catch(_){receipt=null;}
-  if(receipt&&String(receipt.state||'').indexOf('FAILED')===0){_lastSendError={msg:String(receipt.state).replace(/^FAILED:\s*/,'')||'المصنع رفض الطلب',permanent:true};return false;}
+  if(receipt&&String(receipt.state||'').indexOf('FAILED')===0){_lastSendError={msg:serverMsg332_(String(receipt.state).replace(/^FAILED:\s*/,''))||'المصنع رفض الطلب',permanent:true};return false;}
   if(receipt)return applyCreateReceipt294_(o,receipt);
  }
  return false;
@@ -10289,9 +10370,9 @@ async function transportOrder294_(o){
   const payload=JSON.stringify(wire),url=APPS_SCRIPT_URL+'?action=createOrder294&dev='+encodeURIComponent(deviceId_())+'&id='+encodeURIComponent(id)+'&token='+encodeURIComponent(entry.token)+'&order='+encodeURIComponent(payload);
   if(!orderArtRefs_(o).length&&url.length<7500){
    let d=null;try{d=await jsonp(url,25000);}catch(_){d=null;}   // v324: a slow reply is not a failure; fall through to read-only receipt checks
-   if(d?.ok&&String(d.receipt&&d.receipt.state||'').indexOf('FAILED')===0){_lastSendError={msg:String(d.receipt.state).replace(/^FAILED:\s*/,'')||'المصنع رفض الطلب',permanent:true};return false;}
+   if(d?.ok&&String(d.receipt&&d.receipt.state||'').indexOf('FAILED')===0){_lastSendError={msg:serverMsg332_(String(d.receipt.state).replace(/^FAILED:\s*/,''))||'المصنع رفض الطلب',permanent:true};return false;}
    if(d?.ok&&applyCreateReceipt294_(o,d.receipt))return true;
-   if(d&&!d.ok){_lastSendError={msg:d.error||'لم يتأكد الاستلام',permanent:d.permanent===true};return false;}
+   if(d&&!d.ok){_lastSendError={msg:serverMsg332_(d.error),permanent:d.permanent===true};return false;}
    return await reconcile294_(o,id,entry);
   }
   try{await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},signal:AbortSignal.timeout(20000),body:JSON.stringify({action:'createOrder294',dev:deviceId_(),id,token:entry.token,order:wire})});}catch(_){}
@@ -10521,12 +10602,14 @@ async function syncOrder_(o){
       // بنشيله من المعلّق في كل الأحوال — طلب مرفوض أبدًا مايتبعت لوحده، حتى لو
       // تسجيل الرفض نفسه فشل (وعندها التحذير بيقول للموزّع يراجع يدوي).
       savePendingSync_(loadPendingSync_().filter(id=>String(id)!==String(o.id)));
-      toast('⛔ المصنع رفض الطلب '+orderNoText_(o)+': '+(رفض.msg||'شكل الطلب مش مقبول')+
+      const تعارض_333 = (رفض.msg==='المصنع مسجّل طلب بنفس الرقم ومحتواه مختلف');   // v333: conflict means a factory order already exists; never tell the user to resend
+      if(تعارض_333) toast('⚠️ الطلب '+orderNoText_(o)+' محفوظ على جهازك، والمصنع مسجّل عنده طلب بنفس الرقم بمحتوى مختلف. راجع الطلب عند المصنع قبل أي محاولة جديدة، ولا تعيد الإرسال', 8000);
+      else toast('⛔ المصنع رفض الطلب '+orderNoText_(o)+': '+(رفض.msg||'شكل الطلب مش مقبول')+
             (سجل_الرفض ? ' — عدّل الطلب وابعته تاني'
                        : ' — عدّل الطلب وابعته تاني. تنبيه: الرفض مش متسجّل، راجع الطلب يدوي قبل أي إرسال'), 7000);
     } else if(رفض && رفض.msg){
-      toast('⚠️ الطلب '+orderNoText_(o)+' لسه ما وصلش المصنع: '+رفض.msg+
-            ' — محفوظ للمراجعة، ومش هيتبعت تلقائي', 5200);
+      toast('⚠️ الطلب '+orderNoText_(o)+' محفوظ على جهازك، واستلام المصنع لم يتأكد (ممكن يكون وصل): '+رفض.msg+
+            ' — لا تعيد الإرسال؛ تحقق من الاستلام. ومش هيتبعت تلقائي', 6500);
     } else {
       toast(o.displayNo?'الطلب محفوظ على الجهاز برقم '+orderNoText_(o)+'، لكن استلام المصنع لم يتأكد. لا تعيد الإرسال؛ تحقق من الاستلام.':'الطلب محفوظ على الجهاز واستلام المصنع لم يتأكد. تحقق من الاستلام قبل أي محاولة جديدة',8000);
     }
@@ -10853,7 +10936,7 @@ async function submitOrder(){
         if(وصل_المصنع)
           toast('⚠️ الطلب الجديد '+orderNoText_(o)+' وصل المصنع، لكن لسه ما اتأكدش إلغاء القديم '+prevOrderNoText_(o)+' — راجع شاشة المصنع قبل أي حذف', 8000);
         else
-          toast('⚠️ الطلب الجديد '+orderNoText_(o)+' لسه ما وصلش المصنع. محفوظ على جهازك فقط. ما تعيدش الحفظ؛ افتح «تابع طلبك» واضغط «تحقق من الاستلام»'+(_lastSendError&&_lastSendError.msg?' ('+_lastSendError.msg+')':''), 9000);
+          toast('⚠️ الطلب الجديد '+orderNoText_(o)+' محفوظ على جهازك، واستلام المصنع لم يتأكد (ممكن يكون وصل). ما تعيدش الحفظ؛ افتح «تابع طلبك» واضغط «تحقق من الاستلام»'+(_lastSendError&&_lastSendError.msg?' ('+_lastSendError.msg+')':''), 9000);
       }
       adminLoad();
     })();
