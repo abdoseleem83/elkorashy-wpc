@@ -2373,7 +2373,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v320';
+const APP_BUILD = 'v321';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -11068,11 +11068,11 @@ function docTotalsHTML(o,eco){
     const hasDesign=!!(g.isP||g.isE),twoDesigns=!!(g.isP&&g.isE);
     // An attachment can be a complete door photo. Never stretch that photo onto
     // another photographed door or add a second frame around its own frame.
-    const leafW=hasDesign?64:52,leafH=hasDesign?133:108;
+    const leafW=hasDesign?64:34,leafH=hasDesign?133:72;
     let assembly=`<div data-door-leaf="1" style="position:relative;width:${leafW}px;height:${leafH}px;background:#EFECE5;border:1px solid #777;overflow:hidden;box-sizing:border-box">${photo?`<img data-door-model="${esc(g.code)}" src="${esc(photo)}" style="${imageStyle}">`:'<span style="font-size:10px">ضلفة<br>صورة الموديل غير متاحة</span>'}</div>`;
-    if(g.frame&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-frame="${g.frame}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:5px 5px 0;border:1px solid #746B5F;border-bottom:0;${doorRingStyle_(g.code,photo)}line-height:0">${assembly}</div>`;
-    if(g.dbror&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-bror="${esc(g.dbror)}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:4px 4px 0;border:1px solid #746B5F;border-bottom:0;${doorRingStyle_(g.code,photo)}line-height:0">${assembly}</div>`;
-    const technical=`<div style="${hasDesign?'flex:0 0 108px;width:108px;':''}">${hasDesign?'<div style="font-size:11px;font-weight:800;line-height:1.5;margin:4px 0">الموديل والتجهيز المطلوب</div>':''}<div style="display:flex;align-items:center;justify-content:center;gap:3px;margin:4px 0;height:${hasDesign?'280':'135'}px"><div>${assembly}</div>${g.wh?`<div style="position:relative;width:17px;height:${hasDesign?'158':'126'}px"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg);font-size:10.5px;font-weight:800;white-space:nowrap">${g.wh.h}</span></div>`:''}</div></div>`;
+    if(g.frame&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-frame="${g.frame}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:${hasDesign?'5px 5px 0':'2px 2px 0'};border:1px solid #746B5F;border-bottom:0;${doorRingStyle_(g.code,photo)}line-height:0">${assembly}</div>`;
+    if(g.dbror&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-bror="${esc(g.dbror)}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:${hasDesign?'4px 4px 0':'2px 2px 0'};border:1px solid #746B5F;border-bottom:0;${doorRingStyle_(g.code,photo)}line-height:0">${assembly}</div>`;
+    const technical=`<div style="${hasDesign?'flex:0 0 108px;width:108px;':''}">${hasDesign?'<div style="font-size:11px;font-weight:800;line-height:1.5;margin:4px 0">الموديل والتجهيز المطلوب</div>':''}<div style="display:flex;align-items:center;justify-content:center;gap:${hasDesign?'3px':'1px'};margin:${hasDesign?'4px 0':'3px 0'};height:${hasDesign?'280':'80'}px"><div>${assembly}</div>${g.wh?`<div style="position:relative;width:${hasDesign?17:10}px;height:${hasDesign?'158':'48'}px"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg);font-size:${hasDesign?'10.5px':'8.5px'};font-weight:800;white-space:nowrap">${g.wh.h}</span></div>`:''}</div></div>`;
     const refW=eco?(twoDesigns?132:150):(twoDesigns?148:170);
     const references=hasDesign?previews.map(pr=>{
       const ref=pr.label==='حفر'?g.engraving:g.art;
@@ -11080,13 +11080,13 @@ function docTotalsHTML(o,eco){
       return `<div data-artwork-reference="${pr.label==='حفر'?'engrave':'print'}" style="flex:0 0 ${refW}px;width:${refW}px"><div style="font-size:11px;font-weight:800;line-height:1.5;margin:4px 0">${pr.label==='طباعة'&&g.approved?'الطباعة المعتمدة '+esc(g.approved.code)+(g.approved.sampleColor!==g.code?' · عينة '+esc(g.approved.sampleColor):''):'صورة '+(pr.label==='حفر'?'الحفر':'الطباعة')+' المرفقة'}</div><div style="height:${eco?200:280}px;background:#fff;border:1px solid #CCD4DD;border-radius:5px;overflow:hidden;display:flex;align-items:center;justify-content:center;box-sizing:border-box">${pr.src?`<img data-print-reference="1" src="${esc(pr.src)}" style="display:block;width:100%;height:100%;object-fit:contain">`:`<span data-artwork-missing="1" style="padding:10px;font-size:11px;line-height:1.6;color:#B3261E">${missing}</span>`}</div></div>`;
     }).join(''):'';
     const pictures=eco?'':technical+references;
-    return `<div data-door-drawing="1" class="keep-blk" style="flex:0 1 ${hasDesign?(twoDesigns?'440':'320'):'146'}px;min-width:${hasDesign?(twoDesigns?'430':'300'):'130'}px;background:${bg};border:1.5px solid ${bd};border-radius:10px;padding:7px 5px 6px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
-      <div style="font-size:11px;font-weight:800;line-height:1.3">${g.wh?g.wh.w+' سم':esc(g.base)}</div>
+    return `<div data-door-drawing="1" class="keep-blk" style="${hasDesign?`flex:0 1 ${twoDesigns?'440':'320'}px;min-width:${twoDesigns?'430':'300'}px;padding:7px 5px 6px;`:'flex:0 0 calc((100% - 36px)/10);width:calc((100% - 36px)/10);min-width:0;padding:4px 1px;'}background:${bg};border:1.5px solid ${bd};border-radius:10px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
+      <div style="font-size:${hasDesign?'11px':'9.5px'};font-weight:800;line-height:1.3${hasDesign?'':';min-height:2.6em'}">${g.wh?g.wh.w+' سم':esc(g.base)}</div>
       ${pictures?'<div style="display:flex;justify-content:center;gap:8px">'+pictures+'</div>':''}
       ${hasDesign&&!eco?'<div style="font-size:10px;line-height:1.5;margin:6px 3px;color:#526171">الصورة مرجع للشكل، والمقاسات والتجهيزات المطلوبة كما هو مدوّن.</div>':''}
-      <div dir="ltr" style="font-size:11px;font-weight:800;margin:2px 0">${esc(g.code||'بدون كود')}${g.approved?' · '+esc(g.approved.code)+' / R'+esc(g.approved.rev):''}</div>${g.approved&&g.approved.sampleColor!==g.code?'<div data-approved-source-color style="font-size:11px;line-height:1.6;font-weight:800;padding:5px;margin:4px 0;border:1px solid #D9A441;background:#FFF1D6;border-radius:5px">'+esc(approvedPrintReferenceNote_(g.code,g.approved.sampleColor))+'</div>':''}
-      <div data-door-components="1" style="font-size:10.5px;line-height:1.55;font-weight:800;margin:3px 0;min-height:33px">${g.frame?`<div style="color:#493E31">حلق ${g.frame} سم${g.frameHeight?' · ارتفاع '+g.frameHeight+' سم':''}</div>`:''}${g.dbror?`<div style="color:#493E31">برور <span dir="ltr" style="display:inline-block;direction:ltr">${esc(g.dbror)}</span></div>`:''}${!g.frame&&!g.dbror?'<div>ضلفة فقط</div>':''}</div>
-      <div data-door-quantity="1" style="display:inline-block;background:#fff;border:1px solid ${bd};border-radius:8px;padding:1px 10px;margin-top:2px;font-size:16px;font-weight:900;line-height:1.35">${g.qty} <span style="font-size:11px;font-weight:800">باب</span></div>
+      <div dir="ltr" style="font-size:${hasDesign?'11px':'9.5px'};font-weight:800;margin:2px 0">${esc(g.code||'بدون كود')}${g.approved?' · '+esc(g.approved.code)+' / R'+esc(g.approved.rev):''}</div>${g.approved&&g.approved.sampleColor!==g.code?'<div data-approved-source-color style="font-size:11px;line-height:1.6;font-weight:800;padding:5px;margin:4px 0;border:1px solid #D9A441;background:#FFF1D6;border-radius:5px">'+esc(approvedPrintReferenceNote_(g.code,g.approved.sampleColor))+'</div>':''}
+      <div data-door-components="1" style="font-size:${hasDesign?'10.5px':'8.5px'};line-height:${hasDesign?'1.55':'1.4'};font-weight:800;margin:${hasDesign?'3px 0':'2px 0'};min-height:${hasDesign?'33px':'0'}">${g.frame?`<div style="color:#493E31">حلق ${g.frame} سم${g.frameHeight?' · ارتفاع '+g.frameHeight+' سم':''}</div>`:''}${g.dbror?`<div style="color:#493E31">برور <span dir="ltr" style="display:inline-block;direction:ltr">${esc(g.dbror)}</span></div>`:''}${!g.frame&&!g.dbror?'<div>ضلفة فقط</div>':''}</div>
+      <div data-door-quantity="1" style="display:inline-block;background:#fff;border:1px solid ${bd};border-radius:8px;padding:1px ${hasDesign?'10px':'3px'};margin-top:2px;font-size:${hasDesign?'16px':'10px'};font-weight:900;line-height:1.35">${g.qty} <span style="font-size:${hasDesign?'11px':'8.5px'};font-weight:800">باب</span></div>
       ${twoDesigns?'<div style="font-size:10px">نفس الأبواب، مرجع للطباعة ومرجع للحفر</div>':''}
     </div>`;
   }).join('');
