@@ -1003,7 +1003,7 @@ function doGet(e) {
         // دلوقتي الحذف بقى *مُعاد التنفيذ بأمان*: السطر الملخّص مش موجود؟
         // يبقى اتمسح قبل كده (ورصيده رجع قبل كده) — نكمّل تنظيف الأصناف ونرد ok.
         var stDO = rDO > 0 ? String(shDO.getRange(rDO, COL_STATUS).getValue() || '') : '';
-        var phDO = rDO > 0 ? String(shDO.getRange(rDO, 5).getValue() || '') : '';
+        var phDO = rDO > 0 ? String(shDO.getRange(rDO, COL_PHONE).getValue() || '') : '';
         if (rDO > 0) {
           shDO.deleteRow(rDO);
           recordDeleted327_([[e.parameter.id, phDO]]);
