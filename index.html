@@ -2373,7 +2373,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v321';
+const APP_BUILD = 'v322';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3241,7 +3241,7 @@ async function uploadOrderPrints_(o){
         if(status&&status.ok&&status.ready){ready=true;break;}
       }catch(e){}
       if(attempt===0){
-        await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'uploadPrint',dev:deviceId_(),orderId:o.id,ref,key:rec.key,data:rec.data,thumb:rec.thumb})});
+        try{await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},signal:AbortSignal.timeout(30000),body:JSON.stringify({action:'uploadPrint',dev:deviceId_(),orderId:o.id,ref,key:rec.key,data:rec.data,thumb:rec.thumb})});}catch(_){}
       }
       await new Promise(r=>setTimeout(r,1500*(attempt+1)));
     }
@@ -10182,12 +10182,12 @@ async function transportOrder294_(o){
    if(d?.ok&&applyCreateReceipt294_(o,d.receipt))return true;
    if(d&&!d.ok)_lastSendError={msg:d.error||'لم يتأكد الاستلام',permanent:d.permanent===true};return false;
   }
-  await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'createOrder294',dev:deviceId_(),id,token:entry.token,order:wire})});
+  try{await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},signal:AbortSignal.timeout(45000),body:JSON.stringify({action:'createOrder294',dev:deviceId_(),id,token:entry.token,order:wire})});}catch(_){}
   const receipt=await createReceiptRead294_(id,entry);
   if(receipt&&String(receipt.state||'').indexOf('FAILED')===0){_lastSendError={msg:String(receipt.state).replace(/^FAILED:\s*/,'')||'المصنع رفض الطلب',permanent:true};return false;}
   return receipt?applyCreateReceipt294_(o,receipt):false;
  }catch(e){_lastSendError={msg:e.message||'لم يتأكد استلام الطلب',permanent:false};
-  if(!wireStarted309){if(await rollbackPreWire309_(o))_lastSendError.msg+=' (لم يُرسل أي شيء للمصنع؛ تقدر تبعته يدويًا من «راجع الإرسال للمصنع»)';}
+  if(!wireStarted309){if(await rollbackPreWire309_(o))_lastSendError.msg+=' (الطلب نفسه لم يُرسل للمصنع. قد تكون صورة الطباعة وصلت قبل انتهاء المهلة. تقدر تبعته يدويًا من «راجع الإرسال للمصنع»)';}
   return false;}
 }
 
@@ -10213,7 +10213,7 @@ async function manualSendPreWire309_(o){
  if(!navigator.locks){toast('المتصفح لا يدعم قفل الإرسال؛ لم يُرسل شيء',7000);return false;}
  const busyMsg='فيه محاولة إرسال شغالة لنفس الطلب (يمكن في نافذة تانية). استنى تخلص وبعدين راجع تاني؛ لم يُرسل شيء';
  try{const hit=await readPendingReceipt276_(o);if(hit){toast('المصنع مسجّل الطلب فعلًا؛ بنراجع الاستلام بدون إرسال',7000);return verifyReceipt276_(o);}}catch(err){toast('تعذّر التأكد من المصنع قبل الإرسال؛ لم يُرسل شيء',7000);return false;}
- if(!confirm('الطلب ده محفوظ على جهازك ولم يوصل المصنع (الفشل حصل قبل بدء الإرسال، والمصنع مالوش أثر له). تبعته للمصنع دلوقتي؟'))return false;
+ if(!confirm('الطلب ده محفوظ على جهازك ولم يُرسل للمصنع (الفشل حصل قبل إرسال الطلب نفسه؛ ممكن تكون صورة الطباعة وصلت قبل انتهاء المهلة). تبعته للمصنع دلوقتي؟'))return false;
  const res=await navigator.locks.request('wpc-dispatch294-'+id,{ifAvailable:true},async lock=>{
   if(!lock)return 'busy';
   return navigator.locks.request('wpc-ledger294',()=>{const all=dispatchLedger294_(),en=all[id];
