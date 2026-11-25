@@ -24,7 +24,7 @@ async function addDoor(pg){
   await pg.click('[data-act="pick-door"]'); await pg.waitForTimeout(400);
   await pg.click('[data-act="toggle-size"]'); await pg.waitForTimeout(300);
   await pg.click('[data-act="size-frame"]'); await pg.click('[data-act="size-dbror"]'); await pg.waitForTimeout(300);
-  await pg.click('[data-act="size-qty-plus"]'); await pg.waitForTimeout(250);   // الكمية بقت فاضية في الأول — «إضافة» معطّلة لحد ما تتحدد
+  await pg.click('.flow-qty282 [data-q285="1"]'); await pg.waitForTimeout(250);   // الكمية بقت فاضية في الأول — «إضافة» معطّلة لحد ما تتحدد
   await pg.click('[data-act="add-door"]'); await pg.waitForTimeout(500);
 }
 

@@ -1695,10 +1695,6 @@ html[data-theme="dark"] .dueov .box{background:#141F32}
 .noteBtn .tx{font-size:12.5px;font-weight:800;white-space:nowrap}
 .noteBtn .sb{flex:1;min-width:0;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .noteBtn.has{border-style:solid;border-color:var(--warn-ink)}
-
-.rpv-bank{display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--muted);font-size:12px;font-weight:700}
-.rpv-bank.on{border-color:var(--brand);color:var(--brand)}
-.rpv-bank svg.i{width:15px;height:15px}
 .qty input.qtyEmpty{width:68px}
 input::placeholder,textarea::placeholder{color:#7A8DA6!important}
 html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::placeholder{color:#9FB0C6!important}
@@ -1767,15 +1763,14 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;oversc
 input,textarea,select,.money,.pr,.no{font-variant-numeric:tabular-nums}
 /* انتقالات ناعمة موحّدة لكل العناصر اللي بتتلمس */
 @media (prefers-reduced-motion:no-preference){
-  .btn,.chip,.miniChip,.colchip,.secnav button,.tabs button,.door .leaf,.ord,.card,.sizeCard,.qty,.qty button,
-  input,select,textarea,.stkin,.hgtIn,.noteBtn,.rpv-bank{
+  .btn,.chip,.miniChip,.colchip,.secnav button,.tabs button,.door .leaf,.ord,.card,.sizeCard,.qty,.qty button,input,select,textarea,.stkin,.hgtIn,.noteBtn{
     transition:background-color .18s var(--ease),border-color .18s var(--ease),box-shadow .22s var(--ease),
                transform .14s var(--ease),color .18s var(--ease),opacity .18s}
   .chip.on,.miniChip.on,.colchip.on{transform:translateY(-1px)}
   .door.on .leaf{transform:translateY(-2px)}
 }
 /* إحساس الضغط على الموبايل */
-.btn:active,.chip:active,.miniChip:active,.secnav button:active,.noteBtn:active,.rpv-bank:active{transform:scale(var(--press))}
+.btn:active,.chip:active,.miniChip:active,.secnav button:active,.noteBtn:active{transform:scale(var(--press))}
 .door:active .leaf{transform:scale(.98)}
 .qty button:active{transform:scale(.9)}
 /* كروت: زوايا أنعم وعمق أوضح، وطلبات العملاء تتنفس */
@@ -2260,38 +2255,6 @@ html[data-theme="dark"] .grp-dy{color:#E3BE79}
 /* ============================================================
    الإعدادات
    ============================================================ */
-/* بيانات التحويل البنكي — نص مضغوط بدل الصورة (بيتطبع كامل في الصفحة ومايتقطعش) */
-const BANK_INFO = {
-  factory:'مصنع سمارتي للأبواب',
-  bank:'البنك الأهلي المصري',
-  account:'6533 1721 4717 3901 011',
-  holder:'احمد صلاح عبد العال مجاهد القرشي وشريكه',
-  branch:'ايست هاب'
-};
-function bankCardHTML_(compact){
-  const F = "font-family:Arial,'Helvetica Neue',sans-serif";
-  return `<div style="margin-top:${compact?8:12}px;border-radius:12px;overflow:hidden;border:1.5px solid #9DB8D3;background:#fff;direction:rtl;text-align:right;${F}">
-    <div style="background:#E3EDF8;color:#000;padding:5px 14px;border-bottom:1px solid #B9CCE0;display:flex;justify-content:space-between;align-items:center;gap:8px">
-      <b style="font-size:13px">بيانات التحويل البنكي</b>
-      <span style="font-size:12px;font-weight:700">${BANK_INFO.factory}</span>
-    </div>
-    <div style="padding:6px 14px;display:flex;flex-wrap:wrap;gap:4px 18px;align-items:center;justify-content:space-between">
-      <div style="flex:1 1 100%">
-        <div style="font-size:10.5px;color:#333">${BANK_INFO.bank} — رقم الحساب</div>
-        <div dir="ltr" style="text-align:right;font-size:19px;font-weight:900;letter-spacing:1.5px;color:#000;line-height:1.25">${BANK_INFO.account}</div>
-      </div>
-      <div style="flex:1 1 auto;min-width:0">
-        <div style="font-size:10.5px;color:#333">اسم الحساب</div>
-        <div style="font-size:13px;font-weight:800;color:#000;line-height:1.4">${BANK_INFO.holder}</div>
-      </div>
-      <div style="flex:0 0 auto">
-        <div style="font-size:10.5px;color:#333">الفرع</div>
-        <div style="font-size:13px;font-weight:800;color:#000">${BANK_INFO.branch}</div>
-      </div>
-    </div>
-    <div style="background:#F6F9FC;border-top:1px solid #D5DDE6;padding:4px 14px;font-size:11.5px;color:#000;text-align:center">برجاء إرسال <b>صورة إيصال التحويل</b> بعد إتمام السداد</div>
-  </div>`;
-}
 
 const ASSETS = {
   logo:'img/logo.png',
@@ -2694,7 +2657,6 @@ const ACCESSORIES = [
 // و const مابتترفعش زي الدوال. لما كانت متعرّفة تحت، أي جهاز بياناته مخربة كان
 // بيقع بشاشة بيضا: "Cannot access '_storeProblems_' before initialization".
 const _storeProblems_ = [];
-const LS_SHOWBANK = 'wpc_showbank2';   // مفتاح جديد: يرجّع كارت التحويل ظاهر عند الكل بعد ما كان متخبّي بالغلط
 /* v292: حماية السلة بين النوافذ المفتوحة على نفس الجهاز — نافذة قديمة ما تمسحش شغل نافذة أحدث.
    كل سطر ليه lid ثابت، والمخزّن بيتلفّ بغلاف فيه رقم مراجعة وكاتب. عند الحفظ، لو المراجعة
    المخزّنة أحدث من نسختنا بنعمل دمج ثلاثي ضد نسخة الأساس: إضافات كل نافذة محفوظة، الحذف
@@ -2921,7 +2883,6 @@ const state = {
   cart:    cartLoadItems_(),
   orders:  load(LS_ORDERS, []),
   pick:load('wpc_pick_draft_v265',{code:'',sizes:{},customOn:false,note:'',custom:{w:'',h:'',qty:'',frame:null,frameHeight:'',dbror:null,hafr:false,wood:false,print:false,frameKind:null,frameRodQty:'',frameForDoors:''}}),
-  showBank: load(LS_SHOWBANK, true),   // إظهار ملحوظة العربون + بيانات التحويل في مستند الأوردر (اختياري)
   newSection: load(LS_SECTION, ''),   // '' (لسه محددش) | doors | acc | frame | strip | veneer | mabra | bror | prodium
   // ⚠️ الأطوال (jambCm/headerCm/extra[].cm/rodsCm) بتتخزّن **بالوحدة المكتوبة**
   // (state.fr.unit) مش بالسنتي دايمًا — عشان اللي الموزّع بيكتبه يفضل زي ما هو
@@ -3972,7 +3933,7 @@ function verBar(){ return ''; }   // الإصدار/التحديث/التثبي�
 /* ============================================================
    الصفحة الرئيسية — أول شاشة: ترحيب + آخر أوردر + اختصارات + أوردراتك الشغالة
    ============================================================ */
-const FACTORY_PHONE = '';   // رقم المصنع للاتصال (مثال: '0100xxxxxxx') — لو فاضي زرار «كلّم المصنع» مابيظهرش
+   // رقم المصنع للاتصال (مثال: '0100xxxxxxx') — لو فاضي زرار «كلّم المصنع» مابيظهرش
 function homeLive_(o){ return (state.track.rows||[]).find(r=>String(r.id)===String(o.id)) || null; }
 function homeStatus_(o){ const l = homeLive_(o); return (l && l.status) || o.status || 'New'; }
 function viewHome(){
@@ -3995,27 +3956,6 @@ function viewHome(){
     <div class="hm7-grid">${grid}</div>
     ${verBar()}
   </div>`;
-}
-function showBankOverlay_(){
-  const old = document.getElementById('bankOverlay'); if(old) old.remove();
-  const ov = document.createElement('div'); ov.id='bankOverlay'; ov.className='dueov';
-  ov.innerHTML = `<div class="box"><h3>${ico('money')} بيانات التحويل البنكي</h3>
-    <div class="sub" style="color:var(--danger-ink);font-weight:800;font-size:13px">لا يُبدأ التنفيذ إلا بعد سداد عربون وإرسال إيصال التحويل.</div>
-    ${bankCardHTML_(false)}
-    <button id="bankClose" style="width:100%;margin-top:10px;background:rgba(255,255,255,.12);color:var(--ink);padding:11px;border-radius:12px;font-size:13.5px">إغلاق</button></div>`;
-  document.body.appendChild(ov);
-  const close=()=>ov.remove();
-  document.getElementById('bankClose').onclick=close;
-  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
-}
-function repeatLastOrder_(){
-  const last = [...state.orders].sort((a,b)=>(Number(b.ts)||0)-(Number(a.ts)||0))[0];
-  if(!last || !(last.items||[]).length){ toast('مفيش أوردر سابق تكرره'); return; }
-  if(state.cart.length && !confirm('السلة فيها أصناف دلوقتي — نستبدلها بأصناف آخر أوردر ('+orderNoText_(last)+')؟')) return;
-  state.cart = JSON.parse(JSON.stringify(last.items)); saveCart_();
-  state.editingId = null; state.editingMeta = null;
-  state.tab = 'cart'; render(); window.scrollTo({top:0,behavior:'smooth'});
-  toast('اتحمّلت أصناف الأوردر '+orderNoText_(last)+' في السلة — راجعها وابعت');
 }
 
 // حالة القوائم المنسدلة (في الذاكرة بس) — null = القيمة الافتراضية للقائمة دي
@@ -5370,7 +5310,6 @@ async function adminLoad(){
     if(!state.admin.staleAt) state.admin.open = false;
   }
   state.admin.loading = false; render();
-  maybeShowDueOverlay_();   // أوردرات النهاردة + الطلبات القديمة من غير ميعاد (مرة كل فتحة للتطبيق)
 }
 
 
@@ -5961,47 +5900,10 @@ function showQuoteTierPicker(o){
   });
 }
 
-// بيفتح واتساب من غير رقم محدد — عكس تدفق العميل بالظبط، هنا المصنع هو اللي بيختار
-// يبعت الصورة لمين (موزع/مجموعة/أي حد) بدل ما تتقفل على رقم ثابت.
-function openWhatsAppFree(text){
-  window.open('https://api.whatsapp.com/send?text='+encodeURIComponent(text),'_blank');
-}
 
 // بيجهّز صورة الطلب من شاشة المصنع ويسيب المصنع يختار المستلم بنفسه (زرار "📤 إرسال" في كل كارت)
 async function shareAdminOrderImage(o){
   await withOrderItems_(o, its => shareAdminOrderImageWith_(o, its));
-}
-async function shareAdminOrderImageWith_(o, its){
-  const doc = buildAdminDocOrder_(o, its);
-  const caption = 'طلب أوردر '+orderNoText_(o)+' — '+(o.dist||'');
-
-  try{ await ensureLib_('html2canvas'); }
-  catch(e){
-    openWhatsAppFree(caption);
-    toast('مفيش نت كفاية لتجهيز الصورة — هيتفتح واتساب بالنص بس');
-    return;
-  }
-  busy(true,'جارٍ تجهيز صورة الطلب…');
-  try{
-    await preparePrintDocument_(doc);
-    const {canvas} = await renderPaper_(docHTML(doc,'order'));
-    const blob=await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
-    const file=new File([blob],'طلب_'+orderNoText_(o).replace('/','-')+'.png',{type:'image/png'});
-
-    if(navigator.canShare && navigator.canShare({files:[file]})){
-      // شاشة المشاركة الأصلية بتاعة الموبايل — يختار واتساب وبعدين الشخص/المجموعة بنفسه
-      flowShowImageShare_(blob,'طلب_'+orderNoText_(o).replace('/','-')+'.png','طلب أوردر '+orderNoText_(o));   // v311: fresh tap required after long preparation
-    } else {
-      downloadBlob(blob,'طلب_'+orderNoText_(o).replace('/','-')+'.png');
-      openWhatsAppFree(caption);
-      toast('اتحمّلت صورة الطلب — اختار واتساب والمستلم وارفقها');
-    }
-  }catch(err){
-    if(err && err.name==='AbortError'){ busy(false); return; }
-    toast('تعذّر تجهيز صورة الطلب — هيتفتح واتساب بالنص');
-    openWhatsAppFree(caption);
-  }
-  busy(false);
 }
 
 function toggleOrderItemsLoadOnly_(id){
@@ -7551,7 +7453,7 @@ function showReportPreview_(html, title, orderId, pdfKind){
   ov.innerHTML = `
     <div class="rpv-bar">
       <b>معاينة — ${esc(title||'')}</b>
-      ${html.includes('bankblk')?`<button class="rpv-bank ${state.showBank===false?'':'on'}" data-act="rpv-bank" title="إظهار/إخفاء بيانات التحويل البنكي">${ico('money')}<span>الحساب</span></button>`:''}
+      
       <button class="rpv-pdf" data-act="rpv-pdf" data-name="${esc(title||'')}"${orderId?` data-id="${esc(orderId)}"`:''}${pdfKind?` data-kind="${esc(pdfKind)}"`:''}>${ico('doc')}تصدير PDF</button>
       <button class="rpv-x" data-act="rpv-close" aria-label="إغلاق المعاينة">${ico('x')}</button>
     </div>
@@ -8298,31 +8200,14 @@ function prodTableHTML_(oid, its, a, qtyMode){
    - أول ما المصنع يفتح الشاشة: نافذة بأوردرات النهاردة والمتأخرة،
      ولو فيه طلبات قديمة من غير ميعاد بتطلب منه يكتبهم.
    ============================================================ */
-const DUE_DEFAULT_DAYS = 14;
-const DUE_DONE_STATUSES = ['Delivered','Cancelled'];
-function parseIso_(iso){
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso||'').trim());
-  return m ? new Date(Number(m[1]), Number(m[2])-1, Number(m[3])) : null;
-}
 function fmtIso_(d){
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 function todayIso_(){ return fmtIso_(new Date()); }
-function addDaysIso_(iso, n){
-  const d = parseIso_(iso) || new Date();
-  d.setDate(d.getDate() + n);
-  return fmtIso_(d);
-}
-function daysUntilIso_(iso){
-  const d = parseIso_(iso), t = parseIso_(todayIso_());
-  return (d && t) ? Math.round((d - t) / 86400000) : null;
-}
 // بيرجّع {cls, label, days} لطلب — اللون والكلام حسب قرب الميعاد
 // الشريط الملوّن قدام الأوردر. الضغط عليه بيفتح اختيار التاريخ مباشرة.
-function dueChipHTML_(o, editable){ /* v221: ميعاد التسليم اتلغى من شاشة المصنع نهائيًا */ return '';}
 // ميعاد الاستلام اللي بيتكتب في مستند الأوردر: اللي المصنع حدده لو معروف،
 // وإلا تاريخ الطلب + ١٤ يوم (نفس افتراضي السيرفر)
-function grpDueBadges_(orders){ /* v221: ميعاد التسليم اتلغى من شاشة المصنع نهائيًا */ return '';}
 // حفظ ميعاد واحد — تحديث فوري على الشاشة والرجوع للقديم لو السيرفر رفض
 async function saveDue_(id, iso){
   const o = adminOrderById_(id); if(!o) return;
@@ -8341,74 +8226,7 @@ async function saveDue_(id, iso){
   }
 }
 // حفظ مجموعة مواعيد (للطلبات القديمة) — دفعات صغيرة عشان طول الرابط
-async function saveDueBatch_(map){
-  const ids = Object.keys(map);
-  let ok = 0;
-  for(let i=0; i<ids.length; i+=25){
-    const part = ids.slice(i, i+25).map(id=>({id, due:map[id]}));
-    const d = await jsonp(APPS_SCRIPT_URL + '?action=setDueBatch' + admParams_()
-      + '&payload=' + encodeURIComponent(JSON.stringify(part)), 60000);
-    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل الحفظ');
-    part.forEach(x=>{ const o = adminOrderById_(x.id); if(o) o.due = x.due; });
-    ok += part.length;
-  }
-  saveAdminCache_(state.admin.rows);
-  return ok;
-}
 
-function maybeShowDueOverlay_(force){ /* v221: ميعاد التسليم اتلغى من شاشة المصنع نهائيًا */ return;}
-function showDueOverlay_(today, late, none){
-  const old = document.getElementById('dueOverlay'); if(old) old.remove();
-  const ov = document.createElement('div');
-  ov.id = 'dueOverlay'; ov.className = 'dueov';
-  const rowHtml = o=>`<div class="rw">
-      <div class="t"><b>${esc(orderNoText_(o))}</b> ${statusPill(o.status)}
-        <div>${esc(o.customer||o.dist||'')}${o.customer&&o.dist?' · '+esc(o.dist):''} · ${esc(o.qty||0)} قطعة${o.due&&daysUntilIso_(o.due)<0?' · كان '+esc(dateStr2_(o.due)):''}</div></div>
-    </div>`;
-  const draft = {};
-  none.forEach(o=>{ draft[o.id] = addDaysIso_(o.date || todayIso_(), DUE_DEFAULT_DAYS); });
-  const noneRow = o=>{
-    const قيمة = draft[o.id], معرّف = o.id;
-    return `<div class="rw col">
-      <div class="t"><b>${esc(orderNoText_(o))}</b>
-        <div>${esc(o.customer||o.dist||'')} · طُلب ${esc(dateStr2_(o.date))}</div></div>
-      <input type="date" value="${esc(قيمة)}" data-did="${esc(معرّف)}">
-    </div>`;
-  };
-  ov.innerHTML = `<div class="box">
-    <h3>${ico('clock')} مواعيد التسليم</h3>
-    <div class="sub">${esc(dayNameAr_(todayIso_()))} ${esc(dateStr2_(todayIso_()))}</div>
-    ${today.length?`<div class="sec" style="color:var(--warn-ink)">${ico('truck')} تسليمهم النهاردة (${today.length})</div>${today.map(rowHtml).join('')}`:''}
-    ${late.length?`<div class="sec" style="color:var(--danger-ink)">${ico('warn')} متأخرين (${late.length})</div>${late.map(rowHtml).join('')}`:''}
-    ${!today.length && !late.length?`<div class="note" style="margin:6px 0 0">مفيش أوردرات ميعاد تسليمها النهاردة.</div>`:''}
-    ${none.length?`<div class="sec" style="color:var(--warn-ink)">${ico('edit')} طلبات قديمة من غير ميعاد (${none.length})</div>
-      <div class="sub" style="margin:4px 0 0">اكتب ميعاد التسليم قدام كل طلب (متحط تلقائي أسبوعين من تاريخ الطلب — عدّل اللي يفرق).</div>
-      ${none.map(noneRow).join('')}
-      <button id="dueSaveAll" class="btn brand" style="width:100%;margin-top:10px;padding:12px;font-weight:700">${ico('save')} حفظ مواعيد الطلبات القديمة</button>`:''}
-    <button id="dueClose" style="width:100%;margin-top:10px;background:rgba(255,255,255,.12);color:var(--ink);padding:11px;border-radius:12px;font-size:13.5px">${none.length?'بعدين':'تمام'}</button>
-  </div>`;
-  document.body.appendChild(ov);
-  const close = ()=>ov.remove();
-  document.getElementById('dueClose').onclick = close;
-  ov.addEventListener('click', e=>{ if(e.target===ov) close(); });
-  ov.querySelectorAll('input[data-did]').forEach(inp=>{
-    inp.addEventListener('change', ()=>{ draft[inp.dataset.did] = inp.value; });
-  });
-  const sv = document.getElementById('dueSaveAll');
-  if(sv) sv.onclick = async ()=>{
-    const map = {};
-    Object.keys(draft).forEach(id=>{ if(parseIso_(draft[id])) map[id] = draft[id]; });
-    if(!Object.keys(map).length){ toast('اكتب التواريخ الأول'); return; }
-    sv.disabled = true; sv.textContent = 'جارٍ الحفظ…';
-    try{
-      const n = await saveDueBatch_(map);
-      toast('اتحفظ ميعاد '+n+' طلب'); close(); render();
-    }catch(err){
-      sv.disabled = false; sv.innerHTML = ico('save')+' حفظ مواعيد الطلبات القديمة';
-      toast('تعذّر الحفظ: '+(err.message||err), 6000);
-    }
-  };
-}
 document.addEventListener('change', e=>{
   const el = null;   // v221: مفيش حقل ميعاد في الشاشة
   if(el && el.value) saveDue_(el.dataset.id, el.value);
@@ -8430,7 +8248,6 @@ function groupOrderRowHTML_(o, a){
       title="فتح/إغلاق كارت الطلب ${esc(noTxt)} الكامل" aria-label="فتح/إغلاق كارت الطلب ${esc(noTxt)} الكامل">${esc(hasNo ? noTxt : shortIdText_(o.id))}</button>
     ${o.date?`<span class="grp-dtw"><b class="grp-dm">${esc(dateDM_(o.date))}</b><small class="grp-dy">${esc(dayNameAr_(o.date))}</small></span>`:''}
     <span class="grp-stw">${statusPill(o.status)}</span>
-    ${dueChipHTML_(o, !a.viewArchive)}
     <button class="btn sm grp-b grp-prev" data-act="adm-preview" data-id="${esc(o.id)}" ${busy?'disabled':''}
       title="معاينة الطلب ${esc(noTxt)}" aria-label="معاينة الطلب ${esc(noTxt)}">${ico("search")}${busy?'…':'معاينة'}</button>
   </div>
@@ -8808,7 +8625,7 @@ function viewAdmin(){
       <div class="grp-hd" data-act="adm-toggle-group" data-name="${esc(name)}" data-ini="${esc(_ini)}" style="--av:${_pal[1]}">
         <span style="flex:1;min-width:0">
           <b class="grp-nm" style="font-size:14.5px">${esc(name)}</b>
-          <div style="font-size:11.5px;color:#5B6B80;margin-top:2px">${orders.length} طلب · ${totalQty} قطعة${grpDueBadges_(orders)}</div>
+          <div style="font-size:11.5px;color:#5B6B80;margin-top:2px">${orders.length} طلب · ${totalQty} قطعة</div>
         </span>
         <span class="grp-chev" style="transform:rotate(${open?90:0}deg)">‹</span>
       </div>
@@ -8859,7 +8676,6 @@ document.getElementById('tabs').addEventListener('click',e=>{
   state.tab=b.dataset.tab; render(); window.scrollTo({top:0,behavior:'smooth'});
   if(state.tab==='orders'||state.tab==='home') maybeLoadTrack_();
   if(state.tab==='new') loadStock();
-  if(state.tab==='admin') maybeShowDueOverlay_();
 });
 
 document.addEventListener('click',e=>{
@@ -8871,16 +8687,12 @@ document.addEventListener('click',e=>{
       if(state.tab==='new') loadStock();
       break;
     case 'home-sec': state.tab='new';flowSelectCategory276_(el.dataset.to);loadStock();break;
-    case 'home-repeat': repeatLastOrder_(); break;
-    case 'home-bank': showBankOverlay_(); break;
-    case 'home-call': if(FACTORY_PHONE) location.href = 'tel:'+FACTORY_PHONE; break;
     case 'go-cart': state.tab='cart'; render(); window.scrollTo({top:0}); break;
     case 'pick-door': selectDoor(el.dataset.code); loadStock(); break;
     case 'sec': state.newSection = (state.newSection===el.dataset.s) ? '' : el.dataset.s; save(LS_SECTION,state.newSection); render(); break;
     case 'ord-note-open': showOrdNote_(); break;
     case 'cust-mode': state.custMode = (el.dataset.v==='other') ? 'other' : 'self'; render(); break;
     case 'info-next': if(profileOk() && ownerOk_()){ state.touched=false; state.newStep='items'; render(); window.scrollTo({top:0,behavior:'smooth'}); loadStock(); } else { state.touched=true; render(); } break;
-    case 'info-back': state.newStep='info'; render(); window.scrollTo({top:0,behavior:'smooth'}); break;
     case 'ui-toggle': { const k=el.dataset.k; const cur = (k==='prof') ? uiOpen_('prof', !profileOk() || state.touched) : uiOpen_(k,false); if(k.startsWith('adm-sec-')&&!cur){for(const section of ['adm-sec-tools','adm-sec-bal','adm-sec-reports','adm-sec-cust'])if(section!==k)_ui[section]=false;} _ui[k] = !cur; render(); break; }   // من غير تمرير لفوق — الصفحة تفضل مكانها
     case 'door-preview': showDoorPreview(el.dataset.code); break;
     case 'preview-select':
@@ -8894,10 +8706,6 @@ document.addEventListener('click',e=>{
       render(); break;
     }
     case 'toggle-custom': p.customOn=!p.customOn; render(); break;
-    case 'size-qty-minus': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e && Number(e.qty)>0) e.qty=Math.max(1,Number(e.qty)-1); render(); break; }
-    case 'size-qty-plus':  { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.qty=(Number(e.qty)||0)+1; render(); break; }
-    case 'cust-qty-minus': if(Number(p.custom.qty)>0) p.custom.qty=Math.max(1,Number(p.custom.qty)-1); render(); break;
-    case 'cust-qty-plus':  p.custom.qty=(Number(p.custom.qty)||0)+1; render(); break;
     case 'size-frame': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.frame=Number(el.dataset.cm); render(); break; }
     case 'size-dbror': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.dbror=el.dataset.size; render(); break; }
     case 'size-hafr': { const w=Number(el.dataset.w); const e=p.sizes[w]; if(e) e.hafr=(el.dataset.v==='1'); render(); break; }
@@ -8961,15 +8769,11 @@ document.addEventListener('click',e=>{
     case 'add-pd': addPanel(); break;
     case 'add-sp': addMeter_('strip'); break;
     case 'add-vn': addMeter_('veneer'); break;
-    case 'acc-minus': state.acc[el.dataset.id]=Math.max(0,(state.acc[el.dataset.id]||0)-1); render(); break;
-    case 'acc-plus':  state.acc[el.dataset.id]=(state.acc[el.dataset.id]||0)+1; render(); break;
     case 'add-acc': addAccessories(); break;
     case 'del': state.cart.splice(Number(el.dataset.i),1); saveCart_(); render(); break;
     case 'edit-line': editCartLine(Number(el.dataset.i)); break;
     case 'clear': if(confirm('تفريغ السلة بالكامل؟')){state.cart=[];saveCart_();render();} break;
     case 'submit': submitOrderGuarded_(); break;
-    case 'quote-cart': makeDoc(draftOrder(), 'order'); toast('دي معاينة من السلة، استخراج PDF لا يرسل الطلب للمصنع',6500); break;
-    case 'quote-cart-eco': makeDoc(draftOrder(), 'order', undefined, true); toast('نسخة اقتصادية بلا صور من السلة — استخراج PDF لا يرسل الطلب للمصنع',6500); break;
     case 'ord-pdf':   withOrder(el,o=>makeDoc(mergeProducedFromTrack_(o),'order')); break;
     case 'ord-pdf-eco':withOrder(el,o=>makeDoc(mergeProducedFromTrack_(o),'order',undefined,true)); break;
     case 'ord-xls':   withOrder(el,o=>exportExcel([mergeProducedFromTrack_(o)],'طلب_'+orderNoText_(o).replace('/','-'))); break;
@@ -9079,7 +8883,6 @@ document.addEventListener('click',e=>{
         }
       });
     } break;
-    case 'adm-close-groups': { state.admin.groupOpen={}; render(); } break;
     case 'adm-group-pdf': exportCustomerPdf_(el.dataset.name); break;
     case 'adm-group-img': shareCustomerOrdersImage_(el.dataset.name); break;
     case 'adm-group-preview': previewCustomerOrder_(el.dataset.name); break;
@@ -9097,12 +8900,6 @@ document.addEventListener('click',e=>{
         else toast('الطلب ده مابقاش في الشاشة — اعمل تحديث وجرّب تاني', 4000);
       }
       else exportCustomerPdf_(n);
-      break; }
-    case 'rpv-bank': {
-      state.showBank = (state.showBank===false); save(LS_SHOWBANK, state.showBank);
-      el.classList.toggle('on', state.showBank!==false);
-      document.querySelectorAll('#reportPreviewOverlay .bankblk').forEach(n=>{ n.style.display = (state.showBank===false && !n.dataset.force) ? 'none' : ''; });
-      const ov = document.getElementById('reportPreviewOverlay'); if(ov && ov._fit) ov._fit();
       break; }
     case 'adm-preview': previewOneOrder_(el.dataset.id); break;
     case 'adm-pdf':     { const o=adminOrderById_(el.dataset.id); if(o) exportAdminOrderPdf(o); } break;
@@ -9128,11 +8925,6 @@ document.addEventListener('click',e=>{
       if(state.admin.viewCustRem){ state.admin.viewArchive = false; state.admin.viewStock = false; state.admin.viewReports = false; }
       render();
       if(state.admin.viewCustRem) loadCustRemScreen_(false);
-      break;
-    case 'adm-toggle-reports':
-      state.admin.viewReports = !state.admin.viewReports;
-      if(state.admin.viewReports){ state.admin.viewArchive = false; state.admin.viewStock = false; state.admin.viewCustRem = false; }
-      render();
       break;
     case 'adm-full-pdf':     exportAdminFullReport(); break;
     case 'adm-full-xls':     exportAdminExcel(); break;
@@ -9218,13 +9010,6 @@ document.addEventListener('click',e=>{
       const o=adminOrderById_(id);
       const meta = state.admin.metaEdit[id] || {customer:(o&&o.customer)||'', date:(o&&o.date)||'', region:(o&&o.customerRegion)||''};
       saveOrderMeta_(id, meta.customer, meta.date, meta.region);
-      break;
-    }
-    case 'adm-due-open': {
-      const act = (state.admin.rows||[]).filter(o=>!DUE_DONE_STATUSES.includes(o.status) && !o.superseded);
-      showDueOverlay_(act.filter(o=>o.due && daysUntilIso_(o.due)===0),
-                      act.filter(o=>o.due && daysUntilIso_(o.due)<0 && o.status!=='Ready'),
-                      act.filter(o=>!o.due));
       break;
     }
     case 'adm-logout':
@@ -9417,7 +9202,6 @@ document.addEventListener('input',e=>{
       state.admin.metaEdit[id] = {customer:(o&&o.customer)||'', date:(o&&o.date)||'', region:(o&&o.customerRegion)||''};
     }
     state.admin.metaEdit[id].region = el.value;
-    return;
   }
 });
 
@@ -10293,36 +10077,6 @@ function downloadBlob(blob,name){
 // بيجهّز صورة الطلب (نفس تصميم المستند) وبيفتح شاشة المشاركة الأصلية بتاعة الموبايل —
 // العميل يختار هو المستلم بنفسه (واتساب أو أي حد)، زي تطبيق القطاعات بالظبط.
 // لو الجهاز مبيدعمش المشاركة (كمبيوتر مثلًا)، بننزّل الصورة ويبعتها العميل يدويًا.
-async function shareOrderImage(o){
-  if(!await needLibs_('html2canvas')) return;
-
-  // لو رقم الطلب التسلسلي لسه ما وصلش (رد السيرفر اتأخر أو ضاع)، بنسأل السيرفر عنه
-  // قبل ما نرسم الصورة — عشان ما يظهرش الكود الداخلي الطويل (W261014-...) مكان الرقم.
-  if(!o.displayNo && APPS_SCRIPT_URL){
-    busy(true,'جارٍ تأكيد رقم الطلب…');
-    try{ await verifyOrderArrived_(o, 3); }catch(e){}
-    busy(false);
-  }
-
-  busy(true,'جارٍ تجهيز صورة الطلب…');
-  try{
-    await preparePrintDocument_(o);
-    const {canvas} = await renderPaper_(docHTML(o,'order'));
-    const blob=await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
-    const file=new File([blob],'طلب_'+orderNoText_(o).replace('/','-')+'.png',{type:'image/png'});
-
-    if(navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file], title:'طلب أوردر '+orderNoText_(o)});   // صورة بس، من غير نص مرفق
-    } else {
-      downloadBlob(blob,'طلب_'+orderNoText_(o).replace('/','-')+'.png');
-      toast('اتحمّلت صورة الطلب — افتح واتساب وابعتها من المعرض');
-    }
-  }catch(err){
-    if(err && err.name==='AbortError'){ busy(false); return; }   // العميل قفل شاشة المشاركة
-    toast('تعذّر تجهيز صورة الطلب');
-  }
-  busy(false);
-}
 
 /* ============================================================
    إرسال الطلب للسيرفر مع تأكيد فعلي للوصول (بدل الإرسال الأعمى القديم)
@@ -11936,14 +11690,14 @@ function flowShowImageShare_(blob,filename,title){
  if(action==='send'){button.disabled=true;try{await navigator.share({files:[file],title:title||filename});status.textContent='كمّل الإرسال من التطبيق اللي اخترته.';}catch(err){if(err&&err.name==='AbortError')status.textContent='الصورة لسه جاهزة، تقدر تحاول تاني أو تحفظها.';else status.textContent='المشاركة المباشرة ما كملتش. جرّب تاني، أو احفظ الصورة وأرفقها يدويًا في واتساب.';}finally{button.disabled=false;}}
  });dialog.addEventListener('cancel',ev=>{ev.preventDefault();flowCloseImageShare_();});document.body.appendChild(dialog);if(dialog.showModal)dialog.showModal();else dialog.setAttribute('open','');return current;
 }
-shareOrderImage=async function(o){
+async function shareOrderImage(o){
  if(!await needLibs_('html2canvas'))return;
  if(!o.displayNo&&APPS_SCRIPT_URL){busy(true,'جارٍ تأكيد رقم الطلب…');try{await Promise.race([verifyOrderArrived_(o,3),new Promise(r=>setTimeout(r,15000))]);}catch(e){}finally{busy(false);}}
  busy(true,'جارٍ تجهيز صورة الطلب…');
  try{await preparePrintDocument_(o);const {canvas}=await renderPaper_(docHTML(o,'order'),{scale:3,imageQuality:true});const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png',0.95));const number=String(orderNoText_(o)).replace(/[\\/:*?"<>|]/g,'-');flowShowImageShare_(blob,'طلب_'+number+'.png','طلب أوردر '+orderNoText_(o));}
  catch(err){toast('تعذّر تجهيز صورة الطلب: '+(err&&err.message||''),7000);}finally{busy(false);}
-};
-shareAdminOrderImageWith_=async function(o,items){return shareOrderImage(buildAdminDocOrder_(o,items));};
+}
+async function shareAdminOrderImageWith_(o,items){return shareOrderImage(buildAdminDocOrder_(o,items));}
 
 /* Keep the final drawing row, its notes and counts on the same PDF page when they fit. */
 const flowOriginalRenderPaper_=renderPaper_;
@@ -12338,7 +12092,7 @@ async function factoryItemEdit294_(id,index){
  busy(true,'جارٍ قراءة نسخة الطلب قبل التعديل…');
  try{
   const journal=load('wpc_factory_ops294',{});
-  for(const [op,entry] of Object.entries(journal)){
+  for(const [,entry] of Object.entries(journal)){
    if(entry.id!==id||entry.state==='confirmed')continue;
    const check=await jsonp(APPS_SCRIPT_URL+'?action=factoryEditReceipt294'+admParams_()+'&request='+encodeURIComponent(JSON.stringify(entry.request)));
    if(!check||!check.ok||!check.receipt)throw Error('توجد محاولة تعديل لم يتأكد إيصالها بعد. لن ننشئ محاولة أخرى لهذا الطلب حتى تُراجع.');
