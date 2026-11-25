@@ -2373,7 +2373,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v327';
+const APP_BUILD = 'v328';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3251,16 +3251,18 @@ async function uploadOrderPrints_(o){
   }
   return proofs;
 }
-async function printStatusLinked_(o){
+async function printLinkState327_(o){
   const refs=orderArtRefs_(o);
   for(const ref of refs){
-    const rec=await printGet_(ref);if(!rec)return false;
-    const q=await printSignedQuery_('printStatus',o.id,ref,rec.key);
-    const d=await jsonp(APPS_SCRIPT_URL+'?action=printStatus'+q+'&dev='+encodeURIComponent(deviceId_()),20000);
-    if(!d||!d.ok||!d.linked)return false;
+    let rec=null;try{rec=await withTimeout327_(printGet_(ref),8000,'قراءة التصميم من الجهاز تأخرت');}catch(e){return 'unknown';}
+    if(!rec||!rec.key)return 'unknown';
+    let d=null;try{const q=await printSignedQuery_('printStatus',o.id,ref,rec.key);d=await jsonp(APPS_SCRIPT_URL+'?action=printStatus'+q+'&dev='+encodeURIComponent(deviceId_()),15000);}catch(e){return 'unknown';}
+    if(!d||!d.ok)return 'unknown';
+    if(!d.linked)return 'unlinked';
   }
-  return true;
+  return 'linked';
 }
+async function printStatusLinked_(o){const st=await printLinkState327_(o);_linkState327_[String(o.id)]=st;return st==='linked';}
 const _printPreviewOnly311_=new Set();const _printPending312_=new Set(),_printFailed312_=new Set();let _printNetSlots311_=4;const _printNetWaiters311_=[];
 async function printNetSlot311_(work){
   while(_printNetSlots311_<=0)await new Promise(r=>_printNetWaiters311_.push(r));
@@ -3706,8 +3708,8 @@ async function reconcileReceipt280_(o,hit){
  if(!o||!hit||String(o.id)!==String(hit.id)||!hit.displayNo)return false;
  cacheReceipt277_(o,hit);
  if(String(hit.customerRegion||'')!==String(o.customerRegion||''))return false;
- if(!await printStatusLinked_(o))return false;
- markSent_(o.id);try{const _l=dispatchLedger294_();if(_l[String(o.id)]&&_l[String(o.id)].state!=='confirmed'){_l[String(o.id)].state='confirmed';delete _l[String(o.id)].snapshot;delete _l[String(o.id)].wire;save(LS_DISPATCH294,_l);}}catch(_){}savePendingSync_(loadPendingSync_().filter(id=>String(id)!==String(o.id)));clearOrderToast280_(o.id);
+ if(!await printStatusLinked_(o)){markRecv327_(o,hit);return false;}
+ clearRecv327_(o);markSent_(o.id);try{const _l=dispatchLedger294_();if(_l[String(o.id)]&&_l[String(o.id)].state!=='confirmed'){_l[String(o.id)].state='confirmed';delete _l[String(o.id)].snapshot;delete _l[String(o.id)].wire;save(LS_DISPATCH294,_l);}}catch(_){}savePendingSync_(loadPendingSync_().filter(id=>String(id)!==String(o.id)));clearOrderToast280_(o.id);
  // v308: edit whose confirmation arrived late: the old order is cancelled only now, after the new one is confirmed (the intent was saved at submit time).
  try{await runPendingCancelFor_(o.id);}catch(e){}
  return true;
@@ -4539,7 +4541,7 @@ function cartSubmission295_(){
  const confirmed=confirmedOrder295_(o);
  const rej=rejectedInfo_(o.id);
  if(rej) return `<section class="card ct-compact278" data-submission295="${esc(o.id)}" style="border:1.5px solid rgba(240,115,106,.5)"><h2>⛔ المصنع رفض الطلب ${esc(orderNoText_(o))}</h2><div class="note">${rej.msg?esc(rej.msg)+' — ':''}الطلب محفوظ على جهازك بكل بياناته ولم يُرسل. راجعه من «تابع طلبك»، عدّله، وابعته تاني بقرار منك — مش هيتبعت لوحده.</div><button type="button" class="btn ghost sm" data-act="home-go" data-to="orders">تابع طلبك</button></section>`;
- return `<section class="card ct-compact278" data-submission295="${esc(o.id)}"><h2>${confirmed?'تم تأكيد استلام الطلب '+esc(orderNoText_(o)):'الطلب محفوظ، استلام المصنع لم يتأكد بعد'}</h2><div class="note">${confirmed?'اختار مشاركة الصورة أو تنزيل ملف الطلب. المشاركة لا تُرسل أوردر جديد.':'لا تضغط إرسال مرة ثانية. تحقق من الاستلام قراءة فقط، ولا يعيد إرسال الطلب.'}</div>${orderExports295_(o)}${confirmed?'':`<button type="button" class="btn ghost" data-act="verify-receipt-276" data-id="${esc(o.id)}">${ico('refresh')} تحقق من الاستلام</button>`}<button type="button" class="btn ghost sm" data-act="home-go" data-to="orders">تابع طلبك</button></section>`;
+ return `<section class="card ct-compact278" data-submission295="${esc(o.id)}"><h2>${confirmed?'تم تأكيد استلام الطلب '+esc(orderNoText_(o)):recv327_(o)?'المصنع سجّل الطلب '+esc(orderNoText_(o))+'، وربط التصميم لم يتأكد بعد':'الطلب محفوظ، استلام المصنع لم يتأكد بعد'}</h2><div class="note">${confirmed?'اختار مشاركة الصورة أو تنزيل ملف الطلب. المشاركة لا تُرسل أوردر جديد.':'لا تضغط إرسال مرة ثانية. تحقق من الاستلام قراءة فقط، ولا يعيد إرسال الطلب.'}</div>${orderExports295_(o)}${confirmed?'':`<button type="button" class="btn ghost" data-act="verify-receipt-276" data-id="${esc(o.id)}">${ico('refresh')} تحقق من الاستلام</button>`}<button type="button" class="btn ghost sm" data-act="home-go" data-to="orders">تابع طلبك</button></section>`;
 }
 function viewCart(){
   if(!state.cart.length) return cartSubmission295_() || `<div class="empty"><span class="em">${ico("cart","xl")}</span>
@@ -4674,7 +4676,7 @@ function viewOrders(){
     return `
     <div class="ord" data-q="${esc(_q)}" data-st="${_grp}"${o.restored?' data-restored="1"':''}${ordMatch_(_q,_grp)?'':' hidden'}${معلّق?' style="border:1.5px solid rgba(217,164,65,.55);background:rgba(217,164,65,.09)"':''}${مرفوض?' style="border:1.5px solid rgba(240,115,106,.6);background:rgba(240,115,106,.08)"':''}>
       ${مرفوض?`<div style="font-size:11.5px;font-weight:700;color:var(--danger-ink);margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}⛔ المصنع رفض الطلب${مرفوض.msg?': '+esc(مرفوض.msg):''} — عدّله وابعته تاني؛ مش هيتبعت لوحده</div>`:''}
-      ${معلّق?`<div style="font-size:11.5px;font-weight:700;color:var(--warn-ink);margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}${o.displayNo?'الطلب محفوظ على الجهاز برقم '+esc(orderNoText_(o))+'، لكن استلام المصنع لم يتأكد. لا تعيد الإرسال':((dispatchLedger294_()[String(o.id)]||{}).preWire309?'الطلب لم يصل المصنع: الفشل حصل قبل بدء الإرسال. «راجع الإرسال للمصنع» بيسألك قبل أي إرسال':'استلام المصنع لم يتأكد بعد، الطلب محفوظ على الجهاز ومش هيتبعت تلقائي')}</div>`:''}
+      ${معلّق?`<div style="font-size:11.5px;font-weight:700;color:var(--warn-ink);margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}${recv327_(o)?esc(recvText327_(o)):o.displayNo?'الطلب محفوظ على الجهاز برقم '+esc(orderNoText_(o))+'، لكن استلام المصنع لم يتأكد. لا تعيد الإرسال':((dispatchLedger294_()[String(o.id)]||{}).preWire309?'الطلب لم يصل المصنع: الفشل حصل قبل بدء الإرسال. «راجع الإرسال للمصنع» بيسألك قبل أي إرسال':'استلام المصنع لم يتأكد بعد، الطلب محفوظ على الجهاز ومش هيتبعت تلقائي')}</div>`:''}
       <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:var(--warn-ink);background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:var(--danger-ink);background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${live?statusPill(live.status):''}</div>
       <div class="os">${esc(dateStr(o.ts))} · ${(o.items||[]).filter(x=>!isCutLine_(x)).length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
         ${o.customer?`<br><b style="color:var(--info-ink)">صاحب الأوردر: ${esc(o.customer)}</b>`:''}${o.customerRegion?`<br><b style="color:var(--info-ink)">عنوان العميل: ${esc(o.customerRegion)}</b>`:''}<br>
@@ -5170,6 +5172,14 @@ function jsonp(url, timeout){
 
 
 
+/* v328: every wait on the print-link check is bounded; a timeout is "unknown", never "linked". */
+const _linkState327_={};
+function withTimeout327_(p,ms,msg){let t;return Promise.race([Promise.resolve(p),new Promise((_,rj)=>{t=setTimeout(()=>rj(new Error(msg||'انتهت المهلة')),ms);})]).finally(()=>clearTimeout(t));}
+function recv327_(o){try{const m=load('wpc_recv327',{});return o&&m[String(o.id)]||null;}catch(e){return null;}}
+function markRecv327_(o,hit){try{const m=load('wpc_recv327',{});m[String(o.id)]={no:hit&&hit.displayNo||'',at:Date.now(),link:_linkState327_[String(o.id)]||'unknown'};save('wpc_recv327',m);}catch(e){}}
+function clearRecv327_(o){try{const m=load('wpc_recv327',{});if(m[String(o.id)]){delete m[String(o.id)];save('wpc_recv327',m);}}catch(e){}}
+function recvText327_(o){const r=recv327_(o);if(!r)return '';return 'المصنع سجّل الطلب'+(r.no?' برقم '+r.no:'')+'، لكن ربط التصميم لم يتأكد بعد. الطلب لسه معلّق على جهازك ولا تعيد الإرسال';}
+
 /* v326: an order the factory confirmed and later deleted must leave "My orders", whatever its status.
    Evidence: a successful action=list for the same phone. The server reads the whole Orders sheet for that phone
    (every status, archived and delivered included, no paging), and a row leaves the sheet only when the factory
@@ -5223,7 +5233,7 @@ function applyFactoryTombstones327_(ids,phone){
   const listed=new Set((state.track&&state.track.rows||[]).map(r=>String(r&&r.id)));
   const gone=state.orders.filter(o=>o&&o.id!=null&&dead.has(String(o.id))&&!listed.has(String(o.id))&&String(o.phone||'').replace(/\D/g,'').slice(-9)===key);
   if(!gone.length)return 0;
-  try{const bk=load('wpc_factory_removed_backup326',[]);gone.forEach(o=>bk.unshift({at:Date.now(),order:o}));save('wpc_factory_removed_backup326',bk.slice(0,200));}catch(e){}
+  try{const bk=load('wpc_factory_removed_backup326',[]);gone.forEach(o=>bk.unshift({at:Date.now(),order:o}));if(!save('wpc_factory_removed_backup326',bk.slice(0,200)))return 0;}catch(e){return 0;}   // v328: no backup, no removal
   const goneIds=new Set(gone.map(o=>String(o.id)));
   gone.forEach(o=>markDeleted_(o.id));
   state.orders=state.orders.filter(o=>!goneIds.has(String(o.id)));
@@ -12069,9 +12079,9 @@ viewNew=function(){let html=flowViewBefore276_();const f=doorFlow_;if(!flowAccou
 // Read-only acknowledgement. Never submit, upload artwork, retry or cancel here.
 async function verifyReceipt276_(o){if(!APPS_SCRIPT_URL||!o.phone){toast('رقم الحساب المحفوظ مع الطلب غير متاح؛ لا يمكن التحقق بدقة. الطلب لم يُرسل من التحقق',7000);return;}
  busy(true,'جارٍ التحقق من استلام المصنع، بدون إرسال…');
- try{const e0=dispatchLedger294_()[String(o.id)];if(e0&&e0.digest){const ok0=await reviewAtomicCreate294_(o);if(ok0){render();toast('المصنع أكد استلام الطلب بإيصال الحفظ، بدون إعادة إرسال');return;}}}catch(_){}
- try{const d=await jsonp(APPS_SCRIPT_URL+'?action=list&dev='+encodeURIComponent(deviceId_())+'&phone='+encodeURIComponent(o.phone));if(!d||!d.ok)throw new Error(d&&d.error||'تعذّر قراءة حالة المصنع');const hit=(d.orders||[]).find(x=>String(x.id)===String(o.id));
- const complete=hit?await reconcileReceipt280_(o,hit):false;if(hit&&hit.displayNo)render();const box=document.createElement('div');box.className='dueov';const found=!!hit;box.innerHTML=`<div class="box"><h3>${found?'المصنع مسجّل الطلب':'لم نجد تأكيد استلام لهذا الطلب'}</h3><p><bdi>${esc(o.id)}</bdi></p><p>${found?'رقم المصنع: '+esc(hit.displayNo||'غير متاح')+' · الحالة: '+esc(hit.status||'غير محددة'):'القراءة نجحت، لكن المرجع غير موجود تحت رقم الحساب المحفوظ مع هذا الطلب. لا تعيد الإرسال قبل التأكد من رقم الحساب والطلب الصحيح.'}</p><p>التحقق قراءة فقط، لم يرسل أو يلغِ أي طلب. ${complete?'تم التأكد من عنوان العميل وربط مرفقات هذا الطلب، واتشال من المعلّق على الجهاز.':'وجود سجل لا يؤكد تفاصيل كل تصميم؛ المعلّق يفضل محفوظًا لو التحقق الكامل لم يكتمل.'}</p><button class="btn brand" data-receipt-close276>تمام</button></div>`;box.querySelector('[data-receipt-close276]').onclick=()=>box.remove();document.body.appendChild(box);
+ try{const e0=dispatchLedger294_()[String(o.id)];if(e0&&e0.digest){busy(true,'جارٍ قراءة إيصال المصنع، بدون إرسال…');const ok0=await withTimeout327_(reviewAtomicCreate294_(o),20000,'قراءة الإيصال تأخرت');if(ok0){render();toast('المصنع أكد استلام الطلب بإيصال الحفظ، بدون إعادة إرسال');return;}}}catch(_){}
+ try{busy(true,'جارٍ قراءة قائمة المصنع، بدون إرسال…');const d=await jsonp(APPS_SCRIPT_URL+'?action=list&dev='+encodeURIComponent(deviceId_())+'&phone='+encodeURIComponent(o.phone),25000);if(!d||!d.ok)throw new Error(d&&d.error||'تعذّر قراءة حالة المصنع');const hit=(d.orders||[]).find(x=>String(x.id)===String(o.id));
+ if(hit)busy(true,'جارٍ التحقق من ربط التصميم، بدون إرسال…');let complete=false;if(hit){try{complete=await withTimeout327_(reconcileReceipt280_(o,hit),45000,'التحقق من ربط التصميم تأخر');}catch(_){complete=loadSent_().map(String).includes(String(o.id));if(!complete)_linkState327_[String(o.id)]='unknown';}}if(hit&&hit.displayNo)render();const box=document.createElement('div');box.className='dueov';const found=!!hit;box.innerHTML=`<div class="box"><h3>${found?'المصنع مسجّل الطلب':'لم نجد تأكيد استلام لهذا الطلب'}</h3><p><bdi>${esc(o.id)}</bdi></p><p>${found?'رقم المصنع: '+esc(hit.displayNo||'غير متاح')+' · الحالة: '+esc(hit.status||'غير محددة'):'القراءة نجحت، لكن المرجع غير موجود تحت رقم الحساب المحفوظ مع هذا الطلب. لا تعيد الإرسال قبل التأكد من رقم الحساب والطلب الصحيح.'}</p><p>التحقق قراءة فقط، لم يرسل أو يلغِ أي طلب. ${complete?'تم التأكد من عنوان العميل وربط مرفقات هذا الطلب، واتشال من المعلّق على الجهاز.':(found&&_linkState327_[String(o.id)]==='unlinked'?'المصنع سجّل الطلب، لكن ملف التصميم لم يرتبط بالطلب عند المصنع. الطلب والتصميم محفوظين على جهازك ولا تعيد الإرسال.':found&&_linkState327_[String(o.id)]==='unknown'?'المصنع سجّل الطلب، لكن لم نقدر نتأكد من ربط التصميم الآن (الرد تأخر أو ملف التصميم غير متاح على الجهاز). الطلب لسه معلّق، افتح الشاشة بعد دقيقة، ولا تعيد الإرسال.':'وجود سجل لا يؤكد تفاصيل كل تصميم؛ المعلّق يفضل محفوظًا لو التحقق الكامل لم يكتمل.')}</p><button class="btn brand" data-receipt-close276>تمام</button></div>`;box.querySelector('[data-receipt-close276]').onclick=()=>box.remove();document.body.appendChild(box);
  }catch(e){toast('تعذّر التحقق: '+e.message+'؛ ده مش دليل إن الطلب ما وصلش. لم يُرسل أي شيء',8000);}finally{busy(false);}}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act="verify-receipt-276"]');if(b){const o=state.orders.find(x=>String(x.id)===String(b.dataset.id));if(o)verifyReceipt276_(o);}});
 function stickyOffset276_(){const bar=document.getElementById('appbar');document.documentElement.style.setProperty('--flow-sticky-top276',(bar?bar.getBoundingClientRect().height:0)+'px');}
