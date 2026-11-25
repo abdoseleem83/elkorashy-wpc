@@ -2373,7 +2373,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v326';
+const APP_BUILD = 'v327';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -5212,6 +5212,27 @@ function pruneFactoryDeleted326_(rows,phone,t0){
   return gone.length;
 }
 
+// v327: السيرفر بقى بيرجّع `deleted` (أرقام طلبات المصنع حذفها) مع قايمة الموبايل.
+// ده دليل قاطع إن الطلب كان عند المصنع واتحذف — فبنشيله من «تابع طلبك» حتى لو
+// استلامه ما اتأكدش على الجهاز (الحالة اللي pruneFactoryDeleted326_ بتسيبها لأنها
+// مابتفرّقش بين «اتحذف» و«لسه ماوصلش»).
+function applyFactoryTombstones327_(ids,phone){
+  if(!Array.isArray(ids)||!ids.length)return 0;
+  const key=String(phone||'').replace(/\D/g,'').slice(-9);if(key.length<9)return 0;
+  const dead=new Set(ids.map(String));
+  const listed=new Set((state.track&&state.track.rows||[]).map(r=>String(r&&r.id)));
+  const gone=state.orders.filter(o=>o&&o.id!=null&&dead.has(String(o.id))&&!listed.has(String(o.id))&&String(o.phone||'').replace(/\D/g,'').slice(-9)===key);
+  if(!gone.length)return 0;
+  try{const bk=load('wpc_factory_removed_backup326',[]);gone.forEach(o=>bk.unshift({at:Date.now(),order:o}));save('wpc_factory_removed_backup326',bk.slice(0,200));}catch(e){}
+  const goneIds=new Set(gone.map(o=>String(o.id)));
+  gone.forEach(o=>markDeleted_(o.id));
+  state.orders=state.orders.filter(o=>!goneIds.has(String(o.id)));
+  if(state.track&&state.track.rows)state.track.rows=state.track.rows.filter(r=>!goneIds.has(String(r.id)));
+  try{const pend=loadPendingSync_().filter(id=>!goneIds.has(String(id)));if(pend.length!==loadPendingSync_().length)savePendingSync_(pend);}catch(e){}
+  saveOrders_(state.orders);
+  toast('اتشالت '+gone.length+' طلب اتحذفوا من المصنع من «تابع طلبك»');
+  return gone.length;
+}
 async function loadTrack(){
   if(!APPS_SCRIPT_URL){ state.track.err='مفيش رابط سيرفر متظبّط'; render(); return; }
   state.track.loading = true; state.track.err = ''; render();
@@ -5236,6 +5257,7 @@ async function loadTrack(){
       }
     });
     if(changedLocal) saveOrders_(state.orders);
+    try{applyFactoryTombstones327_(d.deleted,phone);}catch(e){}
     try{pruneFactoryDeleted326_(Array.isArray(d.orders)?state.track.rows:null,phone,t0_326);}catch(e){}
     for(const id of loadPendingSync_()){
       const lo=state.orders.find(o=>String(o.id)===String(id));

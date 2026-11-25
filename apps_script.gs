@@ -607,6 +607,7 @@ function doGet(e) {
           archived: isAdmin ? (String(rows[i][COL_ARCHIVED - 1] || '') === 'Y') : undefined
         });
       }
+      if (phone && !isAdmin) return reply({ ok: true, orders: out, deleted: readDeleted327_(phone.slice(-9)) }, cb);
       return reply({ ok: true, orders: out }, cb);
     }
 
@@ -1002,8 +1003,10 @@ function doGet(e) {
         // دلوقتي الحذف بقى *مُعاد التنفيذ بأمان*: السطر الملخّص مش موجود؟
         // يبقى اتمسح قبل كده (ورصيده رجع قبل كده) — نكمّل تنظيف الأصناف ونرد ok.
         var stDO = rDO > 0 ? String(shDO.getRange(rDO, COL_STATUS).getValue() || '') : '';
+        var phDO = rDO > 0 ? String(shDO.getRange(rDO, 5).getValue() || '') : '';
         if (rDO > 0) {
           shDO.deleteRow(rDO);
+          recordDeleted327_([[e.parameter.id, phDO]]);
           // زي cancelOrder: المسلَّم مالوش رصيد يرجع، والملغي رصيده رجع قبل كده
           if (stDO !== 'Delivered' && stDO !== 'Cancelled') restoreStockForOrderId_(e.parameter.id);
         }
@@ -1027,7 +1030,7 @@ function doGet(e) {
         lockDD.waitLock(15000);
         var shDD = sheet_(SHEET_ORDERS, HEAD_ORDERS);
         var lastDD = shDD.getLastRow();
-        var deletedIds = [];
+        var deletedIds = [], deletedPairs327 = [];
         if (lastDD >= 2) {
           var valsDD = shDD.getRange(2, 1, lastDD - 1, HEAD_ORDERS.length).getValues();
           // من الآخر للأول عشان مسح صف ميغيّرش أرقام الصفوف اللي لسه هنمسحها،
@@ -1038,6 +1041,7 @@ function doGet(e) {
             var endDD = iDD;
             while (iDD >= 0 && String(valsDD[iDD][COL_STATUS - 1]) === 'Delivered') {
               deletedIds.push(String(valsDD[iDD][0]));
+              deletedPairs327.push([String(valsDD[iDD][0]), String(valsDD[iDD][4] || '')]);
               iDD--;
             }
             var startDD = iDD + 1;
@@ -1046,6 +1050,7 @@ function doGet(e) {
         }
         var shIDD = sheet_(SHEET_ITEMS, HEAD_ITEMS);
         if (deletedIds.length) clearItemRowsMany_(shIDD, deletedIds);
+        recordDeleted327_(deletedPairs327);
         return reply({ ok: true, count: deletedIds.length, ids: deletedIds }, cb);
       } finally {
         try { lockDD.releaseLock(); } catch (eDD) {}
@@ -1936,6 +1941,52 @@ function readOrderRows_(sh) {
     out.push(tail ? head[i].concat(blanks, tail[i]) : head[i].concat(blanks));
   }
   return out;
+}
+
+// ===== سجل الطلبات المحذوفة من المصنع (v327) =====
+// ⚠️ العميل كان بيفضل شايف الطلب في «تابع طلبك» بعد ما المصنع يحذفه: الطلب مش
+// بيرجع في قايمة السيرفر، لكن التطبيق مايقدرش يفرّق بين «اتحذف» و«لسه ماوصلش».
+// دلوقتي كل حذف بيتسجّل هنا (رقم الطلب + آخر ٩ أرقام من الموبايل)، و action=list
+// بالموبايل بيرجّع `deleted` بالأرقام دي عشان التطبيق يشيلها من عند العميل.
+var SHEET_DELETED327_ = 'Deleted_Orders';
+var DELETED327_KEEP_DAYS_ = 90;
+function recordDeleted327_(pairs) {
+  try {
+    if (!pairs || !pairs.length) return;
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sh = ss.getSheetByName(SHEET_DELETED327_);
+    if (!sh) {
+      sh = ss.insertSheet(SHEET_DELETED327_);
+      sh.appendRow(['Order ID', 'Phone', 'Deleted At']);
+      sh.setFrozenRows(1);
+    }
+    var now = new Date(), rows = [];
+    for (var i = 0; i < pairs.length; i++) {
+      var d9 = digitsOnly_(pairs[i][1] || '').slice(-9);
+      rows.push([String(pairs[i][0]), 'p' + d9, now]);   // «p» عشان الشيت ما يحوّلهاش لرقم
+    }
+    sh.getRange(sh.getLastRow() + 1, 1, rows.length, 3).setValues(rows);
+  } catch (eRD) { try { logError_(eRD); } catch (eL) {} }   // السجل مش لازم يوقّف الحذف نفسه
+}
+function readDeleted327_(phone9) {
+  try {
+    if (!phone9) return [];
+    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_DELETED327_);
+    if (!sh) return [];
+    var last = sh.getLastRow();
+    if (last < 2) return [];
+    var from = Math.max(2, last - 999);                 // آخر ألف حذف كفاية
+    var vals = sh.getRange(from, 1, last - from + 1, 3).getValues();
+    var cutoff = Date.now() - DELETED327_KEEP_DAYS_ * 86400000;
+    var key = 'p' + String(phone9), out = [];
+    for (var i = 0; i < vals.length; i++) {
+      if (String(vals[i][1]) !== key) continue;
+      var t = vals[i][2] instanceof Date ? vals[i][2].getTime() : 0;
+      if (t && t < cutoff) continue;
+      out.push(String(vals[i][0]));
+    }
+    return out;
+  } catch (eRD2) { return []; }
 }
 
 function findRow_(sh, id) {
