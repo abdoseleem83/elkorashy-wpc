@@ -2106,6 +2106,9 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px color-mix(in srgb,v
 
 /* v285 — تعميم +/− على كل خانات الكمية (خارج .fld أيضًا) */
 :root:root .flow-qty282.qty285{display:grid!important;grid-template-columns:44px minmax(0,1fr) 44px;align-items:stretch;gap:6px;padding:6px;border:1.5px solid var(--fx-qty-bd);border-radius:14px;background:var(--fx-qty-bg)}
+.rodbox:has([data-act="fr-rods"]),.rodbox:has([data-act="fr-extra-qty"]){grid-column:1/-1}
+.rodbox>.row2{grid-template-columns:1fr;gap:8px}
+:root:root .rodrow .flow-qty282.qty285,:root:root .row2>.flow-qty282.qty285{grid-template-columns:34px minmax(46px,1fr) 34px;gap:4px;padding:4px}:root:root .flow-qty282.qty285 input{min-width:46px;font-size:18px;font-weight:800;padding-inline:2px}
 .flow-qty282.qty285 button{border:1px solid var(--fx-qty-bd);border-radius:11px;background:var(--card);color:var(--ink);font-size:24px;font-weight:800;min-height:44px;touch-action:manipulation}
 :root:root .flow-qty282.qty285 input{min-width:0;text-align:center;--fxb:var(--fx-qty-bg);--fxd:var(--fx-qty-bd);--fxf:var(--fx-qty-fc)}
 .tools285{display:flex;gap:10px;justify-content:center;margin:4px 0 10px}
@@ -2373,7 +2376,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v333';
+const APP_BUILD = 'v334';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -4235,7 +4238,7 @@ function viewNew(){
     </div>
     ${frKind==='full' ? `
     <div class="sol-h" style="margin:12px 0 6px">الكمية <span style="font-weight:400;color:var(--muted)">(عدد الأطقم — الطقم = ٢ عود ٢٢٠سم + ١ عود ١١٠سم)</span></div>
-    <div class="row2" style="gap:6px;max-width:220px">
+    <div style="max-width:260px">
       <span class="flow-qty282 qty285" dir="ltr"><button type="button" data-q285="1" aria-label="زيادة الكمية">+</button><input type="text" inputmode="decimal" placeholder="العدد" value="${esc(state.fr.qty)}" data-act="fr-qty"><button type="button" data-q285="-1" aria-label="تقليل الكمية">−</button></span>
     </div>
     <div class="sol-h" style="margin:12px 0 6px">برور مع الحلق <span style="font-weight:400;color:var(--muted)">(اختياري — مقاس البرور)</span></div>
@@ -10883,7 +10886,7 @@ async function submitOrder(){
     if(!wasAdminEdit){
       (async ()=>{
         busy(true, 'جارٍ تأكيد رقم الطلب مع المصنع…');
-        const uiTimer=setTimeout(()=>{busy(false);if(loadSent_().map(String).includes(String(o.id))||loadRejected_().map(String).includes(String(o.id)))return;toast('التأكيد أخد وقت أطول. الطلب محفوظ على جهازك، واستلام المصنع لم يتأكد بعد، والمتابعة شغالة بدون إعادة إرسال. ما تضغطش إرسال تاني؛ راجع تحقق من الاستلام.',10000,o.id);},15000);
+        const uiTimer=setTimeout(()=>{busy(false);if(loadSent_().map(String).includes(String(o.id))||loadRejected_().map(String).includes(String(o.id)))return;toast('الطلب محفوظ على جهازك، وبنتحقق من استلام المصنع. ممكن يكون وصل فعلًا. لا تعيد الإرسال، وهيظهر التأكيد هنا لما يتأكد.',10000,o.id);},15000);
         let received=false;try{received=await syncing;}catch(e){}finally{clearTimeout(uiTimer);busy(false);}
       render();
       if(loadRejected_().map(String).includes(String(o.id)))return;   // الرفض اتعرض برسالته وكارته — ميتركبش فوقها «لم يتأكد»
@@ -11189,13 +11192,13 @@ function docStandaloneDrawingCards_(items, palette,eco){
       const isMabra=it.kind==='mabra';
       const [bgS,bdS]=eco?['#FFFFFF','#C9D2DC']:palette[(i+2)%palette.length];
       const shape=isMabra
-        ? docWoodU_(it.code,44,70,6)
-        : `<div data-part-shape="panel" data-finish-code="${esc(doorCode_(it.code||''))}" style="width:52px;height:70px;${docFinishStyle_(it.code)}border:1px solid #746B5F;box-sizing:border-box"></div>`;
-      return `<div data-standalone-part="${it.kind}" class="keep-blk" style="flex:0 1 164px;min-width:140px;max-width:220px;background:${bgS};border:1.5px solid ${bdS};border-radius:10px;padding:5px 9px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
-        <div style="font-size:12px;font-weight:900">${isMabra?'معبرة':'لوح بروديوم'} <span dir="ltr" style="display:inline-block;font-size:10.5px">${esc(doorCode_(it.code||''))||''}</span></div>
-        <div style="font-size:11px;font-weight:800;margin:2px 0">${docInlineDims_(it.spec||'')}</div>
-        ${eco?'':`<div style="display:flex;align-items:center;justify-content:center;height:76px">${shape}</div>`}
-        <div data-part-quantity="1" style="display:inline-block;background:#fff;border:1.5px solid ${bdS};border-radius:8px;padding:1px 9px;margin-top:3px;font-size:16px;font-weight:900;line-height:1.35">${Number(it.qty)||0} <span style="font-size:11px">${isMabra?'معبرة':'لوح'}</span></div>
+        ? docWoodU_(it.code,34,72,5)
+        : `<div data-part-shape="panel" data-finish-code="${esc(doorCode_(it.code||''))}" style="width:34px;height:72px;${docFinishStyle_(it.code)}border:1px solid #746B5F;box-sizing:border-box"></div>`;
+      return `<div data-standalone-part="${it.kind}" class="keep-blk" style="min-width:0;max-width:none;background:${bgS};border:1.5px solid ${bdS};border-radius:10px;padding:4px 1px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
+        <div style="font-size:9.5px;font-weight:800;line-height:1.3">${isMabra?'معبرة':'لوح بروديوم'} <span dir="ltr" style="display:inline-block;font-size:9px">${esc(doorCode_(it.code||''))||''}</span></div>
+        <div style="font-size:8.5px;line-height:1.4;font-weight:800;margin:2px 0">${docInlineDims_(it.spec||'')}</div>
+        ${eco?'':`<div style="display:flex;align-items:center;justify-content:center;height:72px">${shape}</div>`}
+        <div data-part-quantity="1" style="display:inline-block;background:#fff;border:1.5px solid ${bdS};border-radius:8px;padding:1px 3px;margin-top:2px;font-size:10px;font-weight:900;line-height:1.35">${Number(it.qty)||0} <span style="font-size:8.5px">${isMabra?'معبرة':'لوح'}</span></div>
       </div>`;
     }
     const isFrame=it.kind==='frame', isSet=isFrame&&(!!it.isSet||String(it.unit||'')==='set');
@@ -11212,17 +11215,17 @@ function docStandaloneDrawingCards_(items, palette,eco){
       : isSet?'<div>أطوال الطقم: استاندر</div>'
       : `<div>${rod?'طول العود '+esc(rod)+' سم':'طول العود غير مسجّل'}</div>`;
     const drawing=composed
-      ? docWoodU_(it.code,44,70,6)
-      : `<div data-part-shape="rod" data-finish-code="${esc(doorCode_(it.code||''))}" style="width:${isFrame?19:14}px;height:70px;${paint}border:1px solid #746B5F;box-sizing:border-box"></div>`;
+      ? docWoodU_(it.code,34,72,5)
+      : `<div data-part-shape="rod" data-finish-code="${esc(doorCode_(it.code||''))}" style="width:${isFrame?12:10}px;height:72px;${paint}border:1px solid #746B5F;box-sizing:border-box"></div>`;
     const label=isFrame?(isSet?'حلق كامل':composed?'حلق مفصّل':'حلق أعواد'):'برور';
-    return `<div data-standalone-part="${isFrame?'frame':'bror'}" class="keep-blk" style="flex:0 1 164px;min-width:140px;max-width:220px;background:${bg};border:1.5px solid ${bd};border-radius:10px;padding:5px 9px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
-      <div style="font-size:12px;font-weight:900">${label} <span dir="ltr" style="display:inline-block;font-size:10.5px">${esc(doorCode_(it.code||''))||'بدون كود'}</span></div>
-      <div style="font-size:11px;font-weight:800;margin:2px 0">${isFrame?'مقاس الحلق: ':'مقاس البرور: '}${measure?'<span dir="ltr" style="display:inline-block;direction:ltr">'+esc(measure)+'</span>'+(isFrame?' سم':''):'غير مسجّل'}</div>
-      ${eco?'':`<div style="display:flex;align-items:center;justify-content:center;height:76px">${drawing}</div>`}
-      <div data-part-dimensions="1" style="font-size:10.5px;line-height:1.4;font-weight:700">${detail}${it.doorW?`<div>لباب مقاس ${esc(it.doorW)} سم</div>`:''}</div>
-      ${mismatch?'<div data-part-warning="1" style="font-size:10px;font-weight:800;color:#A32119;margin-top:3px">تفصيل العدد لا يطابق إجمالي الأعواد المسجّل، يُراجع قبل التنفيذ.</div>':''}
-      <div data-part-quantity="1" style="display:inline-block;background:#fff;border:1.5px solid ${bd};border-radius:8px;padding:1px 9px;margin-top:3px;font-size:16px;font-weight:900;line-height:1.35">${qty} <span style="font-size:11px">${isSet?'طقم':'عود'}</span></div>
-      ${isSet?`<div style="font-size:10px;margin-top:2px">= ${qty*RODS_PER_SET} عود حلق</div>`:''}
+    return `<div data-standalone-part="${isFrame?'frame':'bror'}" class="keep-blk" style="min-width:0;max-width:none;background:${bg};border:1.5px solid ${bd};border-radius:10px;padding:4px 1px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
+      <div style="font-size:9.5px;font-weight:800;line-height:1.3">${label} <span dir="ltr" style="display:inline-block;font-size:9px">${esc(doorCode_(it.code||''))||'بدون كود'}</span></div>
+      <div style="font-size:8.5px;line-height:1.4;font-weight:800;margin:2px 0">${isFrame?'مقاس الحلق: ':'مقاس البرور: '}${measure?'<span dir="ltr" style="display:inline-block;direction:ltr">'+esc(measure)+'</span>'+(isFrame?' سم':''):'غير مسجّل'}</div>
+      ${eco?'':`<div style="display:flex;align-items:center;justify-content:center;height:72px">${drawing}</div>`}
+      <div data-part-dimensions="1" style="font-size:8.5px;line-height:1.4;font-weight:700">${detail}${it.doorW?`<div>لباب مقاس ${esc(it.doorW)} سم</div>`:''}</div>
+      ${mismatch?'<div data-part-warning="1" style="font-size:8.5px;font-weight:800;color:#A32119;margin-top:3px">تفصيل العدد لا يطابق إجمالي الأعواد المسجّل، يُراجع قبل التنفيذ.</div>':''}
+      <div data-part-quantity="1" style="display:inline-block;background:#fff;border:1.5px solid ${bd};border-radius:8px;padding:1px 3px;margin-top:2px;font-size:10px;font-weight:900;line-height:1.35">${qty} <span style="font-size:8.5px">${isSet?'طقم':'عود'}</span></div>
+      ${isSet?`<div style="font-size:8.5px;margin-top:2px">= ${qty*RODS_PER_SET} عود حلق</div>`:''}
     </div>`;
   }).join('');
 }
@@ -11255,7 +11258,7 @@ function docTotalsHTML(o,eco){
   const drawKeys=keys;
   const doorsTotal=keys.reduce((s,k)=>s+groups[k].qty,0);
   const PAL=[['#E3F0FF','#9CC3EE'],['#FFF1D6','#EBC46E'],['#E2F6E9','#8ED1A5'],['#F1E6FF','#C4A4EE'],['#FFE5E3','#EE9F98'],['#DFF6F8','#8ACFD8'],['#FDE6F1','#E79DC2'],['#EEF2D4','#C3CF7E']];
-  const cards=drawKeys.map((k,i)=>{
+  const cardsArr_=drawKeys.map((k,i)=>{
     const g=groups[k],[bg,bd]=eco?['#FFFFFF','#C9D2DC']:[sizeGroupColor_(g.base).bg,sizeGroupColor_(g.base).bd];if(g.flow)return flowDrawingCard_(g,eco);const model=DOORS.find(d=>d.code===g.code),photo=model&&model.img||'';
     const outer=doorPhotoOuter_(g.code);
     // Isolate the model's leaf. Frame/trim bands below are conditional schematic highlights.
@@ -11265,37 +11268,38 @@ function docTotalsHTML(o,eco){
     const engraving=_printOriginalThumbs.get(g.engraving)||(/^data:image\/(?:png|jpeg|webp);base64,/i.test(g.engraving)?g.engraving:'');
     const previews=g.isP&&g.isE?[{src:art,ref:g.art,label:'طباعة'},{src:engraving,ref:g.engraving,label:'حفر'}]:[{src:art||engraving,ref:art?g.art:g.engraving,label:g.isP?'طباعة':g.isE?'حفر':''}];
 
-    const hasDesign=!!(g.isP||g.isE),twoDesigns=!!(g.isP&&g.isE);
+    const big=false,hasDesign=!!(g.isP||g.isE),twoDesigns=!!(g.isP&&g.isE);
     // An attachment can be a complete door photo. Never stretch that photo onto
     // another photographed door or add a second frame around its own frame.
-    const leafW=hasDesign?64:34,leafH=hasDesign?133:72;
+    const leafW=big?64:34,leafH=big?133:72;
     let assembly=`<div data-door-leaf="1" style="position:relative;width:${leafW}px;height:${leafH}px;background:#EFECE5;border:1px solid #777;overflow:hidden;box-sizing:border-box">${photo?`<img data-door-model="${esc(g.code)}" src="${esc(photo)}" style="${imageStyle}">`:'<span style="font-size:10px">ضلفة<br>صورة الموديل غير متاحة</span>'}</div>`;
-    if(g.frame&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-frame="${g.frame}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:${hasDesign?'5px 5px 0':'2px 2px 0'};border:1px solid #746B5F;border-bottom:0;${doorRingStyle_(g.code,photo)}line-height:0">${assembly}</div>`;
-    if(g.dbror&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-bror="${esc(g.dbror)}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:${hasDesign?'4px 4px 0':'2px 2px 0'};border:1px solid #746B5F;border-bottom:0;${doorRingStyle_(g.code,photo)}line-height:0">${assembly}</div>`;
-    const technical=`<div style="${hasDesign?'flex:0 0 108px;width:108px;':''}">${hasDesign?'<div style="font-size:11px;font-weight:800;line-height:1.5;margin:4px 0">الموديل والتجهيز المطلوب</div>':''}<div style="display:flex;align-items:center;justify-content:center;gap:${hasDesign?'3px':'1px'};margin:${hasDesign?'4px 0':'3px 0'};height:${hasDesign?'280':'80'}px"><div>${assembly}</div>${g.wh?`<div style="position:relative;width:${hasDesign?17:10}px;height:${hasDesign?'158':'48'}px"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg);font-size:${hasDesign?'10.5px':'8.5px'};font-weight:800;white-space:nowrap">${g.wh.h}</span></div>`:''}</div></div>`;
+    if(g.frame&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-frame="${g.frame}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:${big?'5px 5px 0':'2px 2px 0'};border:1px solid #746B5F;border-bottom:0;${doorRingStyle_(g.code,photo)}line-height:0">${assembly}</div>`;
+    if(g.dbror&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-bror="${esc(g.dbror)}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:${big?'4px 4px 0':'2px 2px 0'};border:1px solid #746B5F;border-bottom:0;${doorRingStyle_(g.code,photo)}line-height:0">${assembly}</div>`;
+    const technical=`<div style="${big?'flex:0 0 108px;width:108px;':''}">${big?'<div style="font-size:11px;font-weight:800;line-height:1.5;margin:4px 0">الموديل والتجهيز المطلوب</div>':''}<div style="display:flex;align-items:center;justify-content:center;gap:${big?'3px':'1px'};margin:${big?'4px 0':'3px 0'};height:${big?'280':'80'}px"><div>${assembly}</div>${g.wh?`<div style="position:relative;width:${big?17:10}px;height:${big?'158':'48'}px"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg);font-size:${big?'10.5px':'8.5px'};font-weight:800;white-space:nowrap">${g.wh.h}</span></div>`:''}</div></div>`;
     const refW=eco?(twoDesigns?132:150):(twoDesigns?148:170);
-    const references=hasDesign?previews.map(pr=>{
-      const ref=pr.label==='حفر'?g.engraving:g.art;
-      const missing=_printExpiredRefs.has(ref)?'انتهت مدة حفظ التصميم':_printPending312_.has(ref)?'جارٍ تحميل التصميم…':_printFailed312_.has(ref)?'تعذّر تحميل التصميم':'التصميم غير محمّل';
-      return `<div data-artwork-reference="${pr.label==='حفر'?'engrave':'print'}" style="flex:0 0 ${refW}px;width:${refW}px"><div style="font-size:11px;font-weight:800;line-height:1.5;margin:4px 0">${pr.label==='طباعة'&&g.approved?'الطباعة المعتمدة '+esc(g.approved.code)+(g.approved.sampleColor!==g.code?' · عينة '+esc(g.approved.sampleColor):''):'صورة '+(pr.label==='حفر'?'الحفر':'الطباعة')+' المرفقة'}</div><div style="height:${eco?200:280}px;background:#fff;border:1px solid #CCD4DD;border-radius:5px;overflow:hidden;display:flex;align-items:center;justify-content:center;box-sizing:border-box">${pr.src?`<img data-print-reference="1" src="${esc(pr.src)}" style="display:block;width:100%;height:100%;object-fit:contain">`:`<span data-artwork-missing="1" style="padding:10px;font-size:11px;line-height:1.6;color:#B3261E">${missing}</span>`}</div></div>`;
-    }).join(''):'';
-    const pictures=eco?'':technical+references;
-    return `<div data-door-drawing="1" class="keep-blk" style="${hasDesign?`flex:0 1 ${twoDesigns?'440':'320'}px;min-width:${twoDesigns?'430':'300'}px;padding:7px 5px 6px;`:'flex:0 0 calc((100% - 36px)/10);width:calc((100% - 36px)/10);min-width:0;padding:4px 1px;'}background:${bg};border:1.5px solid ${bd};border-radius:10px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
-      <div style="font-size:${hasDesign?'11px':'9.5px'};font-weight:800;line-height:1.3${hasDesign?'':';min-height:2.6em'}">${g.wh?g.wh.w+' سم':esc(g.base)}</div>
-      ${pictures?'<div style="display:flex;justify-content:center;gap:8px">'+pictures+'</div>':''}
-      ${hasDesign&&!eco?'<div style="font-size:10px;line-height:1.5;margin:6px 3px;color:#526171">الصورة مرجع للشكل، والمقاسات والتجهيزات المطلوبة كما هو مدوّن.</div>':''}
-      <div dir="ltr" style="font-size:${hasDesign?'11px':'9.5px'};font-weight:800;margin:2px 0">${esc(g.code||'بدون كود')}${g.approved?' · '+esc(g.approved.code)+' / R'+esc(g.approved.rev):''}</div>${g.approved&&g.approved.sampleColor!==g.code?'<div data-approved-source-color style="font-size:11px;line-height:1.6;font-weight:800;padding:5px;margin:4px 0;border:1px solid #D9A441;background:#FFF1D6;border-radius:5px">'+esc(approvedPrintReferenceNote_(g.code,g.approved.sampleColor))+'</div>':''}
-      <div data-door-components="1" style="font-size:${hasDesign?'10.5px':'8.5px'};line-height:${hasDesign?'1.55':'1.4'};font-weight:800;margin:${hasDesign?'3px 0':'2px 0'};min-height:${hasDesign?'33px':'0'}">${g.frame?`<div style="color:#493E31">حلق ${g.frame} سم${g.frameHeight?' · ارتفاع '+g.frameHeight+' سم':''}</div>`:''}${g.dbror?`<div style="color:#493E31">برور <span dir="ltr" style="display:inline-block;direction:ltr">${esc(g.dbror)}</span></div>`:''}${!g.frame&&!g.dbror?'<div>ضلفة فقط</div>':''}</div>
-      <div data-door-quantity="1" style="display:inline-block;background:#fff;border:1px solid ${bd};border-radius:8px;padding:1px ${hasDesign?'10px':'3px'};margin-top:2px;font-size:${hasDesign?'16px':'10px'};font-weight:900;line-height:1.35">${g.qty} <span style="font-size:${hasDesign?'11px':'8.5px'};font-weight:800">باب</span></div>
-      ${twoDesigns?'<div style="font-size:10px">نفس الأبواب، مرجع للطباعة ومرجع للحفر</div>':''}
+    const upl=hasDesign?previews.filter(pr=>pr.src):[];
+    const kindLbl=previews.map(pr=>pr.label).filter(Boolean).join(' + ');
+    const references=upl.map(pr=>`<div data-artwork-reference="${pr.label==='حفر'?'engrave':'print'}" style="margin-top:3px"><div style="font-size:9px;font-weight:800;line-height:1.3">${pr.label}</div><div style="height:${upl.length>1?'60':'124'}px;background:#fff;border:1px solid #CCD4DD;border-radius:4px;overflow:hidden;display:flex;align-items:center;justify-content:center;box-sizing:border-box;margin:1px 2px 0"><img data-print-reference="1" src="${esc(pr.src)}" style="display:block;width:100%;height:100%;object-fit:contain"></div></div>`).join('');
+    const designTag=hasDesign&&!upl.length?`<div data-design-label="1" style="font-size:9px;font-weight:800;line-height:1.3;margin-top:1px">${kindLbl}</div>`:'';
+    const pictures=eco?'':(upl.length?references:technical+designTag);
+    return `<div data-door-drawing="1" class="keep-blk" style="${big?`flex:0 1 ${twoDesigns?'440':'320'}px;min-width:${twoDesigns?'430':'300'}px;padding:7px 5px 6px;`:'min-width:0;padding:4px 1px;'}background:${bg};border:1.5px solid ${bd};border-radius:10px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
+      <div style="font-size:${big?'11px':'9.5px'};font-weight:800;line-height:1.3${big?'':';min-height:2.6em'}">${g.wh?g.wh.w+' سم':esc(g.base)}</div>
+      ${pictures?'<div>'+pictures+'</div>':''}
+      
+      <div dir="ltr" style="font-size:${big?'11px':'9.5px'};font-weight:800;margin:2px 0">${esc(g.code||'بدون كود')}${g.approved?' · '+esc(g.approved.code)+' / R'+esc(g.approved.rev):''}</div>${g.approved&&g.approved.sampleColor!==g.code?'<div data-approved-source-color style="font-size:11px;line-height:1.6;font-weight:800;padding:5px;margin:4px 0;border:1px solid #D9A441;background:#FFF1D6;border-radius:5px">'+esc(approvedPrintReferenceNote_(g.code,g.approved.sampleColor))+'</div>':''}
+      <div data-door-components="1" style="font-size:${big?'10.5px':'8.5px'};line-height:${big?'1.55':'1.4'};font-weight:800;margin:${big?'3px 0':'2px 0'};min-height:${big?'33px':'0'}">${g.frame?`<div style="color:#493E31">حلق ${g.frame} سم${g.frameHeight?' · ارتفاع '+g.frameHeight+' سم':''}</div>`:''}${g.dbror?`<div style="color:#493E31">برور <span dir="ltr" style="display:inline-block;direction:ltr">${esc(g.dbror)}</span></div>`:''}${!g.frame&&!g.dbror?'<div>ضلفة فقط</div>':''}</div>
+      <div data-door-quantity="1" style="display:inline-block;background:#fff;border:1px solid ${bd};border-radius:8px;padding:1px ${big?'10px':'3px'};margin-top:2px;font-size:${big?'16px':'10px'};font-weight:900;line-height:1.35">${g.qty} <span style="font-size:${big?'11px':'8.5px'};font-weight:800">باب</span></div>
+      ${twoDesigns?'':''}
     </div>`;
-  }).join('');
+  });
+  const designCards_=cardsArr_.filter(c=>c.indexOf('data-design-card')>=0).join('');
+  const cards=cardsArr_.filter(c=>c.indexOf('data-design-card')<0).join('');
   const frameItems=standalone.filter(it=>it.kind==='frame'),brorItems=standalone.filter(it=>it.kind==='bror');
   const frameRods=frameItems.reduce((s,it)=>s+(Number(it.qty)||0)*((it.isSet||String(it.unit||'')==='set')?RODS_PER_SET:1),0);
   const brorRods=brorItems.reduce((s,it)=>s+(Number(it.qty)||0),0);
   const sumRow=(label,val,unit)=>`<div style="display:flex;flex:1 1 285px;justify-content:space-between;align-items:baseline;gap:12px;padding:2px 0;font-size:13px;font-weight:800;color:#0A1F44"><span>${label}</span><span>${Math.round(val*10000)/10000} <span style="font-size:12px">${unit}</span></span></div>`;
   return `<div data-order-drawings="1" style="margin-top:10px"><div><div style="font-size:10px;color:#526171;margin-bottom:6px;break-after:avoid">${eco?'ملخص نصي':'رسم توضيحي'}؛ المقاسات والأعداد بالجدول هي المعتمدة.</div>
-    <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:stretch">${cards}${docStandaloneDrawingCards_(items,PAL,eco)}</div></div>
+    ${designCards_?'<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:stretch;margin-bottom:4px">'+designCards_+'</div>':''}<div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));grid-auto-rows:1fr;gap:4px;align-items:stretch">${cards}${docStandaloneDrawingCards_(items,PAL,eco)}</div></div>
     ${docDrawingNotes_(o,eco)}
     <div class="keep-blk" style="display:flex;flex-wrap:wrap;column-gap:22px;margin-top:8px;background:${eco?'#fff':'#F3F6FA'};${eco?'border:1px solid #D5DDE6;':''}border-radius:10px;padding:6px 16px;break-inside:avoid">${doorItems.length?sumRow('إجمالي الأبواب',doorsTotal,'باب'):''}${frameItems.length?sumRow('أعواد الحلق المنفصل',frameRods,'عود'):''}${brorItems.length?sumRow('أعواد البرور المنفصل',brorRods,'عود'):''}</div>
     </div>`;
@@ -11810,7 +11814,7 @@ function flowDrawingCard_(g,eco){
  if(assembly&&g.frame&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-frame="${g.frame}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:2px 2px 0;border:1px solid #746B5F;border-bottom:0;${doorRingStyle_(g.code,src,m.source!=='custom')}line-height:0">${assembly}</div>`;
  if(assembly&&g.dbror&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-bror="${esc(g.dbror)}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:2px 2px 0;border:1px solid #746B5F;border-bottom:0;${doorRingStyle_(g.code,src,m.source!=='custom')}line-height:0">${assembly}</div>`;
  const components=(g.frame||g.dbror)?`<div data-door-components="1" style="font-size:8.5px;line-height:1.4;font-weight:800;margin-top:2px">${g.frame?`<div>حلق ${esc(g.frame)} سم${g.frameHeight?' · ارتفاع '+esc(g.frameHeight)+' سم':''}</div>`:''}${g.dbror?`<div>برور <span dir="ltr" style="display:inline-block;direction:ltr">${esc(g.dbror)}</span></div>`:''}</div>`:'';
- return `<div data-door-drawing="1" data-door-flow="1" class="keep-blk" style="flex:0 0 calc((100% - 36px)/10);width:calc((100% - 36px)/10);min-width:0;box-sizing:border-box;padding:4px 1px;text-align:center;${eco?'background:#fff;border:1.5px solid #93A3B3':'background:#F2F7FC;border:1.5px solid #A9C3DA'};border-radius:10px;color:#000;break-inside:avoid"><div style="font-size:9.5px;font-weight:800;line-height:1.3">${g.wh?esc(g.wh.w)+' سم':esc(g.base)}</div>${eco||noArt?'':`<div style="display:flex;align-items:center;justify-content:center;gap:1px;margin:3px 0"><div>${assembly}</div>${g.wh?`<div style="position:relative;width:10px;height:48px"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg);font-size:8.5px;font-weight:800;white-space:nowrap">${esc(g.wh.h)}</span></div>`:''}</div>`}<div style="font-size:9.5px;font-weight:800;line-height:1.3">${esc(g.code)}${m.pattern?' · '+esc(m.pattern):''}</div>${m.source==='custom'?(src?'<div style="font-size:10px">مرجع خاص، مش تركيبًا على الباب</div>':'<div style="font-size:10px;font-weight:800">رسمة خاصة بلا صورة مرفقة — الاعتماد على الكود والوصف</div>'):''}${components}<div style="display:inline-block;padding:2px 2px;margin-top:3px;${eco?'background:#fff;border:1px solid #C9D2DC':'background:#EAF2FA'};font-size:9px;font-weight:800;line-height:1.3">${method} · ${g.qty} باب</div></div>`;
+ return `<div data-door-drawing="1" data-door-flow="1" class="keep-blk" style="min-width:0;box-sizing:border-box;padding:4px 1px;text-align:center;${eco?'background:#fff;border:1.5px solid #93A3B3':'background:#F2F7FC;border:1.5px solid #A9C3DA'};border-radius:10px;color:#000;break-inside:avoid"><div style="font-size:9.5px;font-weight:800;line-height:1.3">${g.wh?esc(g.wh.w)+' سم':esc(g.base)}</div>${eco||noArt?'':`<div style="display:flex;align-items:center;justify-content:center;gap:1px;margin:3px 0"><div>${assembly}</div>${g.wh?`<div style="position:relative;width:10px;height:48px"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg);font-size:8.5px;font-weight:800;white-space:nowrap">${esc(g.wh.h)}</span></div>`:''}</div>`}<div style="font-size:9.5px;font-weight:800;line-height:1.3">${esc(g.code)}${m.pattern?' · '+esc(m.pattern):''}</div>${m.source==='custom'?(src?'<div style="font-size:10px">مرجع خاص، مش تركيبًا على الباب</div>':'<div style="font-size:10px;font-weight:800">رسمة خاصة بلا صورة مرفقة — الاعتماد على الكود والوصف</div>'):''}${components}<div style="display:inline-block;padding:2px 2px;margin-top:3px;${eco?'background:#fff;border:1px solid #C9D2DC':'background:#EAF2FA'};font-size:9px;font-weight:800;line-height:1.3">${method} · ${g.qty} باب</div></div>`;
 }
 
 const flowNativeFocusKey_=focusKey_;
