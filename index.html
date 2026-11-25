@@ -2373,7 +2373,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v328';
+const APP_BUILD = 'v329';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -2405,9 +2405,19 @@ function frameText_(cm, height){
 // بند مستقل بكميته وسعره (خدمة قص) — مش زيادة مخفية جوه سعر الباب.
 const CUT_SERVICE_NOTE_ = 'خدمة قص';
 const CUT_SERVICE_CODE_ = 'CUT';
+/* ألوان مجموعات المقاس في مستند الطلب: 70 و80 لون، 90 لون، 100 لون، ومقاس الفتحة المعمارية لون مستقل (ألوان هادية) */
+const SIZE_GROUP_COLORS_={a:{bg:'#E6F0FA',bd:'#9DC0E4',hb:'#DCEAF8',tx:'#1D4E89'},b:{bg:'#E5F4EB',bd:'#8DCBA4',hb:'#D9F0E2',tx:'#1E6B3F'},c:{bg:'#FFF2DA',bd:'#E7C377',hb:'#FCEBC9',tx:'#8A5A00'},x:{bg:'#DCF2F2',bd:'#7FC4C6',hb:'#C8EBEC',tx:'#0D6670'}};
+function sizeGroupColor_(label){
+  const t=String(label==null?'':label);
+  if(/مقاس الفتحة المعمارية|مقاس خاص|\d\s*[×x]\s*\d/.test(t)) return SIZE_GROUP_COLORS_.x;
+  const m=/(\d+(?:\.\d+)?)/.exec(t);
+  const w=m?Number(m[1]):0;
+  return w===70||w===80?SIZE_GROUP_COLORS_.a:w===90?SIZE_GROUP_COLORS_.b:w===100?SIZE_GROUP_COLORS_.c:SIZE_GROUP_COLORS_.x;
+}
+function cleanSizeLabel_(s){ return String(s==null?'':s).replace(/مقاس خاص\s*[—–-]\s*مقاس الفتحة المعمارية/g,'مقاس الفتحة المعمارية'); }
 function doorSizeText_(sizeTxt, height){
   // بعض الأصناف (من السيرفر/طلبات قديمة) نص مقاسها فيه الارتفاع أصلًا — ما نكرّرهوش
-  const t=sizeTxt||'';
+  const t=cleanSizeLabel_(sizeTxt||'');
   if(height && /ارتفاع\s*[0-9٠-٩]/.test(t)) return t;
   return t + (height?' (ارتفاع '+height+' سم)':'');
 }
@@ -3971,7 +3981,7 @@ function viewNew(){
       ${s.w} سم${pricesVisible()?`<span class="sub">${money(s.price)}ج</span>`:''}
       ${st>0?`<span class="stk">متوفر ${st}</span>`:''}</button>`;
   }).join('')
-    +`<button class="colchip ${p.customOn?'on':''}" data-act="toggle-custom">خاص${pricesVisible()?`<span class="sub">+${CUSTOM_EXTRA}ج قص</span>`:''}</button>`;
+    +`<button class="colchip ${p.customOn?'on':''}" data-act="toggle-custom">مقاس الفتحة المعمارية${pricesVisible()?`<span class="sub">+${CUSTOM_EXTRA}ج قص</span>`:''}</button>`;
 
   // شبكة صغيرة لاختيار الحلق/البرور جوه كارت كل مقاس — كل مقاس له حلقه وبروره الخاصين بيه
   // w بيبقى رقم المقاس العادي، أو النص 'custom' للمقاس الخاص — وبناءً عليه بنبعت الحدث للـhandler الصح
@@ -4060,7 +4070,7 @@ function viewNew(){
   }).join('');
 
   const customCard = p.customOn ? `<div class="sizeCard">
-      <div class="scHead"><b>مقاس خاص</b></div>
+      <div class="scHead"><b>مقاس الفتحة المعمارية</b></div>
       <div class="row2">
         <label class="fld"><span>العرض (سم)</span><input type="text" inputmode="decimal" value="${esc(p.custom.w)}" placeholder="مثال 85" data-act="cust" data-k="w"></label>
         <label class="fld"><span>الارتفاع (سم)</span><input type="text" inputmode="decimal" value="${esc(p.custom.h)}" placeholder="مثال 215" data-act="cust" data-k="h"></label>
@@ -4346,7 +4356,7 @@ function viewNew(){
     + `<button class="chip ${mbSt.wallCustom?'on':''}" data-act="mb-wall-custom">مقاس آخر</button>`;
   const mbSizeChips = SIZES.map(z=>`
     <button class="chip ${!mbSt.custom&&String(mbSt.doorW)===String(z.w)?'on':''}" data-act="mb-doorw" data-w="${z.w}">${z.w} سم</button>`).join('')
-    + `<button class="chip ${mbSt.custom?'on':''}" data-act="mb-custom">مقاس خاص</button>`;
+    + `<button class="chip ${mbSt.custom?'on':''}" data-act="mb-custom">مقاس الفتحة المعمارية</button>`;
   const secMabra = `
   <section class="card">
     <div class="step"><span class="n">${ico("mabra","lg")}</span><h2>معبرة</h2><span class="hint">بدل الحلق — ديكور من غير باب</span></div>
@@ -4476,13 +4486,13 @@ function currentSummary(){
 
   if(!widths.length && !p.customOn) return 'اختر مقاس واحد على الأقل.';
   for(const w of widths){ if(!(Number(p.sizes[w].qty)>0)) return `اكتب الكمية لمقاس ${w} سم.`; }
-  if(p.customOn && !customReady) return 'اكتب العرض والارتفاع والكمية للمقاس الخاص.';
+  if(p.customOn && !customReady) return 'اكتب العرض والارتفاع والكمية لمقاس الفتحة المعمارية.';
   for(const w of widths){
     const e=p.sizes[w];
     if(e.frame==null) return `اختر الحلق (أو «بدون حلق») لمقاس ${w} سم.`;
     if(e.dbror==null) return `اختر البرور (أو «بدون برور») لمقاس ${w} سم.`;
   }
-  if(customReady && (p.custom.frame==null || p.custom.dbror==null)) return 'اختر الحلق والبرور للمقاس الخاص.';
+  if(customReady && (p.custom.frame==null || p.custom.dbror==null)) return 'اختر الحلق والبرور لمقاس الفتحة المعمارية.';
 
   const parts=[]; let totalQty=0, totalPrice=0;
   widths.forEach(w=>{
@@ -4510,7 +4520,7 @@ function currentSummary(){
     totalQty+=qty; totalPrice+=(priceForWidth(w,p.custom.hafr)*qty)+(CUSTOM_EXTRA*qty)
                               +(p.custom.wood?WOOD_EXTRA*qty:0)
                               +(p.custom.print?PRINT_EXTRA*qty:0);
-    let line=w+'×'+h+' سم (خاص) × '+qty;
+    let line=w+'×'+h+' سم (مقاس الفتحة المعمارية) × '+qty;
     const bits=[CUT_SERVICE_NOTE_];
     if(p.custom.wood) bits.push('تدعيم خشب');
     if(p.custom.print) bits.push('طباعة');
@@ -5745,13 +5755,13 @@ function arabicItemTitle_(it){
 }
 
 // السيرفر بيخزّن المقاس بالإنجليزي ("70 cm" أو "80x210 cm (custom)") — بنحوّله لنفس صيغة
-// العميل العربية ("70 سم" أو "80×210 سم (مقاس خاص)") قبل ما نعرضه في أي مستند
+// العميل العربية ("70 سم" أو "80×210 سم (مقاس الفتحة المعمارية)") قبل ما نعرضه في أي مستند
 function arabicSizeText_(sizeEn){
   const s = String(sizeEn||'').trim();
   let m = /^(\d+(?:\.\d+)?)\s*cm$/i.exec(s);
   if(m) return m[1]+' سم';
   m = /^(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*cm\s*\(custom\)$/i.exec(s);
-  if(m) return m[1]+'×'+m[2]+' سم (مقاس خاص — مقاس الفتحة المعمارية)';
+  if(m) return m[1]+'×'+m[2]+' سم (مقاس الفتحة المعمارية)';
   return s;
 }
 
@@ -6316,7 +6326,7 @@ function mergedCustomerItems_(cust){
     o.widths.forEach(w=>{
       o.groups[w].forEach(it=>{
         const frame = it.frame ? frameText_(it.frame, it.frameHeight) : '';
-        const size = doorSizeText_(it.size || (w==='خاص'?'خاص':w+' سم'), it.doorHeight);
+        const size = doorSizeText_(it.size || (w==='خاص'?'مقاس الفتحة المعمارية':w+' سم'), it.doorHeight);
         const key = [it.code||'', size, frame, it.dbror||''].join('|');
         if(!merged[key]){
           const wh = doorWH_(it.size, it.doorHeight);
@@ -6353,7 +6363,7 @@ function stockStatus_(code, size, qty){
   // وتطبع «غير متاح» أحمر على كل باب مقاس خاص. شارة إنذار غلط دايمًا معناها
   // إن المصنع يبطّل ياخد باله منها خالص.
   if(/\(custom\)/i.test(String(size||'')) || /مقاس خاص/.test(String(size||''))){
-    return { color:'#5B6B7D', bg:'#F0F3F7', label:'مقاس خاص' };
+    return { color:'#5B6B7D', bg:'#F0F3F7', label:'مقاس الفتحة المعمارية' };
   }
   const w = doorWidthGroup_(size);
   const stock = stockFor(code, w!=null ? w : size);
@@ -6624,7 +6634,7 @@ function buildRequiredDoorsData_(orders){
     const gKey = hasW ? String(wh.w) : 'other';
     const g = groups[gKey] || (groups[gKey] = { key:gKey, w:hasW?Number(wh.w):null, rows:{}, qty:0, produced:0 });
     const code = it.code || '—';
-    const sizeLbl = hasW ? (wh.w+' × '+wh.h) : String(it.size||'مقاس خاص');
+    const sizeLbl = hasW ? (wh.w+' × '+wh.h) : String(it.size||'مقاس الفتحة المعمارية');
     const rKey = code+'|'+(special ? 'sp|'+sizeLbl : 'std');
     const r = g.rows[rKey] || (g.rows[rKey] = { code, special, sizeLbl, h:hasW?Number(wh.h):0, qty:0, produced:0 });
     const prod = itemProdPending_(it).produced;
@@ -6658,7 +6668,7 @@ function requiredDoorsHTML_(data){
     const rows = g.rows.map((r,idx)=>{
       const zebra = idx%2===1 ? '#FAFBFC' : '#FFFFFF';
       const typeCell = r.special
-        ? `<span style="display:inline-block;padding:2.5px 10px;border-radius:20px;font-size:11.5px;font-weight:700;background:#FFF4E0;color:#B8790A;white-space:nowrap">خاص — ${esc(r.sizeLbl)}</span>`
+        ? `<span style="display:inline-block;padding:2.5px 10px;border-radius:20px;font-size:11.5px;font-weight:700;background:#FFF4E0;color:#B8790A;white-space:nowrap">مقاس الفتحة المعمارية — ${esc(r.sizeLbl)}</span>`
         : `<span style="display:inline-block;padding:2.5px 10px;border-radius:20px;font-size:11.5px;font-weight:700;background:#E7F6EC;color:#1E8E52">استاندر</span>`;
       return `<tr style="background:${zebra}">
         <td style="${td};font-weight:700;color:#233246">${esc(r.code)} <span style="font-weight:400;color:#8A97A6;font-size:11px">${esc(doorName(r.code))}</span></td>
@@ -6768,7 +6778,7 @@ async function buildRequiredDoorsExcel_(orders){
     g.rows.forEach((r,idx)=>{
       const row = ws.addRow([
         r.code + (doorName(r.code) ? ' ' + doorName(r.code) : ''),
-        r.special ? 'خاص — '+r.sizeLbl : 'استاندر',
+        r.special ? 'مقاس الفتحة المعمارية — '+r.sizeLbl : 'استاندر',
         r.qty, r.produced, r.pending
       ]);
       row.eachCell((c,colNo)=>{
@@ -6908,7 +6918,7 @@ function allocCustomersHTML_(d){
   d.sizes.forEach((g,gi)=>{
     const custs = d.custBy[g]||[];
     const codes = d.codes.filter(c=>custs.some(n=>d.cell(g,c,n)));
-    const title = g==='خاص' ? 'مقاسات خاصة' : 'مقاس '+g+' سم';
+    const title = g==='خاص' ? 'مقاس الفتحة المعمارية' : 'مقاس '+g+' سم';
     const gt = {req:0, got:0, rem:0};
     codes.forEach(c=>{ const s = d.sum(g,c); gt.req+=s.req; gt.got+=s.got; gt.rem+=s.rem; });
     const tint = CUST_TINTS_[gi % CUST_TINTS_.length];
@@ -6984,7 +6994,7 @@ function allocDoorsHTML_(d){
       <td style="${td};font-weight:700;color:#233246;text-align:right">${esc(c)} <span style="font-weight:400;color:#8A97A6;font-size:11px">${esc(doorName(c))}</span></td>
       ${cs}<td style="${td};font-weight:700;font-size:13px;background:#F0F4F8;color:#002050">${rowTot}</td></tr>`;
   }).join('');
-  const head1 = d.sizes.map(g=>`<th style="${th}">${g==='خاص'?'خاص':g}</th>`).join('');
+  const head1 = d.sizes.map(g=>`<th style="${th}">${g==='خاص'?'مقاس الفتحة المعمارية':g}</th>`).join('');
   const head2 = d.sizes.map(()=>`<th style="${th};font-size:11px;font-weight:400">مطلوب</th>`).join('');
   const totRow = d.sizes.map(g=>`<td style="${td};font-weight:700;font-size:13px">${colTot[g]||0}</td>`).join('');
   const stats = `<div style="text-align:left;border-right:1px solid rgba(255,255,255,.25);padding-right:16px">
@@ -7066,7 +7076,7 @@ async function buildAllocCustomersExcel_(d){
     if(!gs.length) return;
     const c1 = gs[0].c, c2 = gs[gs.length-1].c+2;
     ws.mergeCells(3,c1,3,c2);
-    ws.getCell(3,c1).value = g==='خاص' ? 'خاص' : 'مقاس '+g;
+    ws.getCell(3,c1).value = g==='خاص' ? 'مقاس الفتحة المعمارية' : 'مقاس '+g;
     for(let c=c1;c<=c2;c++) style(ws.getCell(3,c), GRP_FILL[gi%GRP_FILL.length], WHITE, true, 12);
   });
   groups.forEach(x=>{
@@ -7132,7 +7142,7 @@ async function buildAllocDoorsExcel_(d){
   ws.getCell(2,1).value = 'المقاس'; style(ws.getCell(2,1), NAVY, WHITE, true);
   ws.getCell(3,1).value = 'الكود';  style(ws.getCell(3,1), NAVY, WHITE, true);
   d.sizes.forEach((g,i)=>{
-    ws.getCell(2,i+2).value = g==='خاص' ? 'خاص' : Number(g);
+    ws.getCell(2,i+2).value = g==='خاص' ? 'مقاس الفتحة المعمارية' : Number(g);
     style(ws.getCell(2,i+2), NAVY, WHITE, true, 12);
     ws.getCell(3,i+2).value = 'مطلوب';
     style(ws.getCell(3,i+2), 'FFE9EEF4', 'FF14243A', true, 10);
@@ -7204,7 +7214,7 @@ function allocCustByCodeHTML_(d){
       <table style="width:100%;border-collapse:collapse;font-size:12.5px">
         <thead><tr style="background:#1B4A78">
           <th style="${th};text-align:right">المتبقي للعملا</th>
-          ${d.sizes.map(g=>`<th style="${th};width:64px">${g==='خاص'?'خاص':g}</th>`).join('')}
+          ${d.sizes.map(g=>`<th style="${th};width:64px">${g==='خاص'?'مقاس الفتحة المعمارية':g}</th>`).join('')}
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -7260,7 +7270,7 @@ async function buildAllocCustByCodeExcel_(d){
     style(ws.getCell(r,1), MID, WHITE, true, 11);
     ws.getCell(r,1).alignment = {horizontal:'right', vertical:'middle'};
     d.sizes.forEach((g,i)=>{
-      ws.getCell(r,i+2).value = g==='خاص' ? 'خاص' : Number(g);
+      ws.getCell(r,i+2).value = g==='خاص' ? 'مقاس الفتحة المعمارية' : Number(g);
       style(ws.getCell(r,i+2), MID, WHITE, true, 11);
     });
     r++;
@@ -8133,7 +8143,7 @@ function viewAdminPrices(){
     ${priTri_('تدعيم خشب (لكل باب)', 'woodExtra', 'woodExtra', pe.woodExtra)}
     ${priTri_('طباعة (لكل باب)', 'printExtra', 'printExtra', pe.printExtra)}
     ${priTri_('إضافة باب حفر', 'hafrExtra', 'hafrExtra', pe.hafrExtra)}
-    <div class="note">سعر الباب مابيتغيّرش بالمقاس الخاص. «${CUT_SERVICE_NOTE_}» بند مستقل بيتضاف تحت الباب بالكمية والسعر — للمقاس الخاص وللارتفاع غير الاستاندر.</div>
+    <div class="note">سعر الباب مابيتغيّرش بمقاس الفتحة المعمارية. «${CUT_SERVICE_NOTE_}» بند مستقل بيتضاف تحت الباب بالكمية والسعر — للمقاس الخاص وللارتفاع غير الاستاندر.</div>
 
     <div class="grp" style="margin-top:14px">أسعار الحلق (للمتر الطولي)</div>
     ${head}
@@ -8510,7 +8520,7 @@ function viewAdmin(){
           <table style="width:100%;border-collapse:collapse;font-size:13px">
             <thead><tr style="color:var(--muted);font-size:11.5px">
               <th style="text-align:right;padding:6px 8px;font-weight:600">المتبقي للعملا</th>
-              ${d.sizes.map(g=>`<th style="padding:6px 4px;width:52px;font-weight:600">${g==='خاص'?'خاص':g}</th>`).join('')}
+              ${d.sizes.map(g=>`<th style="padding:6px 4px;width:52px;font-weight:600">${g==='خاص'?'مقاس الفتحة المعمارية':g}</th>`).join('')}
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>
@@ -9376,7 +9386,7 @@ async function addDoor(){
     // ⚠️ المقاس الخاص كان بيتضاف عليه CUSTOM_EXTRA في السعر. دلوقتي السعر زي
     // سعر المقاس العادي بالظبط، و«خدمة قص» بتتكتب كسطر تحت الصنف — تبان
     // للمصنع وللعميل من غير ما تتحسب في الفلوس.
-    const sizeTxt=w+'×'+h+' سم (مقاس خاص — مقاس الفتحة المعمارية)', sizeEn=w+'x'+h+' cm (custom)', unitPrice=priceForWidth(w,p.custom.hafr);
+    const sizeTxt=w+'×'+h+' سم (مقاس الفتحة المعمارية)', sizeEn=w+'x'+h+' cm (custom)', unitPrice=priceForWidth(w,p.custom.hafr);
     const customFrameKind = p.custom.frame ? (p.custom.frameKind||'full') : null;
     state.cart.push({
       kind:'door',
@@ -10993,7 +11003,7 @@ function docRows(o, priced, showFrameHCol, eco){
 
   let n=0, rows='';
   order.forEach((k,gi)=>{
-    rows += `<tr><td colspan="${colspan}" style="${gi>0?'border-top:2px dashed #5B6B7D;':''}${eco?'background:#fff;color:#14243A':'background:#F9E4DB;color:#A0451F'};padding:2px 12px;font-family:Arial,'Helvetica Neue',sans-serif;font-weight:800;font-size:14px">أبواب مقاس ${esc(String(k).replace(/^أبواب مقاس\s*/,''))}</td></tr>`;
+    rows += `<tr><td colspan="${colspan}" style="${gi>0?'border-top:2px dashed #5B6B7D;':''}${eco?'background:#fff;color:#14243A':'background:'+sizeGroupColor_(k).hb+';color:'+sizeGroupColor_(k).tx};padding:2px 12px;font-family:Arial,'Helvetica Neue',sans-serif;font-weight:800;font-size:14px">أبواب مقاس ${esc(String(k).replace(/^أبواب مقاس\s*/,''))}</td></tr>`;
     groups[k].forEach(it=>{
       const oddFrameW = dominantFrameW!=null && it.frame && String(it.frame)!==dominantFrameW;
       rows += docRowHTML_(it, ++n, priced, showFrameHCol, oddFrameW);
@@ -11157,7 +11167,7 @@ function docTotalsHTML(o,eco){
   const doorsTotal=keys.reduce((s,k)=>s+groups[k].qty,0);
   const PAL=[['#E3F0FF','#9CC3EE'],['#FFF1D6','#EBC46E'],['#E2F6E9','#8ED1A5'],['#F1E6FF','#C4A4EE'],['#FFE5E3','#EE9F98'],['#DFF6F8','#8ACFD8'],['#FDE6F1','#E79DC2'],['#EEF2D4','#C3CF7E']];
   const cards=drawKeys.map((k,i)=>{
-    const [bg,bd]=eco?['#FFFFFF','#C9D2DC']:PAL[i%PAL.length],g=groups[k];if(g.flow)return flowDrawingCard_(g,eco);const model=DOORS.find(d=>d.code===g.code),photo=model&&model.img||'';
+    const g=groups[k],[bg,bd]=eco?['#FFFFFF','#C9D2DC']:[sizeGroupColor_(g.base).bg,sizeGroupColor_(g.base).bd];if(g.flow)return flowDrawingCard_(g,eco);const model=DOORS.find(d=>d.code===g.code),photo=model&&model.img||'';
     const outer=doorPhotoOuter_(g.code);
     // Isolate the model's leaf. Frame/trim bands below are conditional schematic highlights.
     const crop=[outer[0]+outer[2]*.12,outer[1]+outer[3]*.065,outer[2]*.76,outer[3]*.90];
@@ -11638,7 +11648,7 @@ function flowView_(){
  else if(f.stage==='doors')body=`<h2>اختر الباب</h2><div class="flow-doors">${DOORS.map(d=>{const im=`<img src="${FLOW_PLAIN_[d.code]}" alt="الباب ${d.code}">`,inner=DOOR_REALFULL_[doorCode_(d.code)]?im:`<i class="doorcard-frame289 bror289" style="${doorRingStyle_(d.code,FLOW_PLAIN_[d.code])}"><i class="doorcard-frame289 frame289" style="${doorRingStyle_(d.code,FLOW_PLAIN_[d.code])}">${im}</i></i>`;return `<button type="button" class="card" data-flow-code="${d.code}">${inner}<bdi>${d.code}</bdi></button>`}).join('')}</div>${flowButton_('categories','رجوع للأصناف',true)}`;
  else if(f.stage==='source')body=`<h2>الباب ${esc(f.code)}</h2>${flowPhoto_()}<div class="flow-src281"><button type="button" class="flow-src281-b dsn" data-flow-action="with-design"><b>برسمة</b><span>طباعة أو حفر على الباب</span></button><button type="button" class="flow-src281-b pln" data-flow-action="plain"><b>بدون</b><span>سادة من غير رسمة أو طباعة أو حفر</span></button></div>${flowActions_(null,'doors')}`;
  else if(f.stage==='designs')body=`<h2>اختر الرسمة</h2>${flowChoices_('source',[['catalog','كتالوج'],['custom','رسمة خاصة']],f.source)}<div class="note">معاينة توضيحية، مش ملف تشغيل ماكينة ولا ضمانًا لدرجة اللون.</div>${!f.source?'<p class="note">اختار كتالوج التصميمات المعتمدة أو رسمة خاصة من عندك.</p>':f.source==='catalog'?`<div class="flow-designs">${APPROVED_PRINT_CODES_.map(k=>`<button type="button" class="card" data-flow-pattern="${k}"><img src="${FLOW_CATALOG_[f.code+'|'+k]}" alt="${esc(f.code)} ${k}"><bdi>${k}</bdi></button>`).join('')}</div>`:`<label class="btn ghost">اختار صورة الرسمة · اختياري<input type="file" accept="image/png,image/jpeg,image/webp" data-flow-file="1"></label>${f.art&&_printOriginalThumbs.get(f.art)?`<img class="flow-custom" src="${_printOriginalThumbs.get(f.art)}" alt="مرجع الرسمة الخاصة">`:''}<p>مرفق مرجعي واحد للطباعة أو الحفر. الأصل محفوظ كما هو، من غير تركيب تلقائي على الباب.</p>`}${flowActions_('design-next','source')}`;
- else if(f.stage==='dimensions')body=`<h2>المقاسات والكميات</h2>${f.variants.map((v,i)=>`<div class="flow-summary"><h3>المقاس ${i+1}</h3>${flowChoices_('widthPreset',SIZES.map(s=>[s.w,s.w+' سم']).concat([['custom','مقاس خاص']]),v.w===''?'':v.widthPreset==='custom'||!SIZES.some(s=>String(s.w)===String(v.w))?'custom':v.w,i)}${(v.widthPreset==='custom'||(String(v.w||'')!==''&&!SIZES.some(s=>String(s.w)===String(v.w)))||(String(v.h||'').trim()!==''&&String(v.h).trim()!==String(DOOR_STD_HEIGHT)&&!(v.widthPreset!=='custom'&&String(v.w||'')===''&&String(v.h||'').trim()==='')))?'<div class="row2">'+flowNum_('العرض بالسم','w',v.w,i)+flowNum_('الارتفاع بالسم','h',v.h,i)+'</div>':''}${flowNum_('الكمية','qty',v.qty,i)}${f.variants.length>1?`<button type="button" class="btn ghost" data-flow-remove="${i}">حذف المقاس</button>`:''}</div>`).join('')}${flowButton_('add-size','أضف مقاسًا آخر',true)}${flowActions_('dimensions-next',f.source==='plain'?'source':'designs')}`;
+ else if(f.stage==='dimensions')body=`<h2>المقاسات والكميات</h2>${f.variants.map((v,i)=>`<div class="flow-summary"><h3>المقاس ${i+1}</h3>${flowChoices_('widthPreset',SIZES.map(s=>[s.w,s.w+' سم']).concat([['custom','مقاس الفتحة المعمارية']]),v.w===''?'':v.widthPreset==='custom'||!SIZES.some(s=>String(s.w)===String(v.w))?'custom':v.w,i)}${(v.widthPreset==='custom'||(String(v.w||'')!==''&&!SIZES.some(s=>String(s.w)===String(v.w)))||(String(v.h||'').trim()!==''&&String(v.h).trim()!==String(DOOR_STD_HEIGHT)&&!(v.widthPreset!=='custom'&&String(v.w||'')===''&&String(v.h||'').trim()==='')))?'<div class="row2">'+flowNum_('العرض بالسم','w',v.w,i)+flowNum_('الارتفاع بالسم','h',v.h,i)+'</div>':''}${flowNum_('الكمية','qty',v.qty,i)}${f.variants.length>1?`<button type="button" class="btn ghost" data-flow-remove="${i}">حذف المقاس</button>`:''}</div>`).join('')}${flowButton_('add-size','أضف مقاسًا آخر',true)}${flowActions_('dimensions-next',f.source==='plain'?'source':'designs')}`;
  else if(f.stage==='components')body=`<h2>الحلق والبرور</h2>${f.variants.map((v,i)=>`<div class="flow-summary"><b>${esc(v.w)} × ${esc(v.h)} سم · ${esc(v.qty)} باب</b><h3>الحلق</h3>${flowChoices_('frame',[[10,'10 سم'],[15,'15 سم'],[20,'20 سم'],[0,'بدون']],v.frame,i)}${v.frame?flowNum_('ارتفاع الحلق بالسم · اختياري','frameHeight',v.frameHeight,i):''}<h3>البرور</h3>${flowChoices_('dbror',[['6×9','6×9'],['4×8','4×8'],['','بدون']],v.dbror,i)}</div>`).join('')}${flowActions_('components-next','dimensions')}`;
  else if(f.stage==='extras')body=`<h2>طريقة التنفيذ والتدعيم</h2>${f.source!=='plain'?`<div class="flow-src281"><button type="button" class="flow-src281-b prt${f.method==='print'?' on':''}" data-flow-choice="method" data-value="print"><b>طباعة</b><span>الرسمة مطبوعة على الباب</span></button><button type="button" class="flow-src281-b eng${f.method==='engrave'?' on':''}" data-flow-choice="method" data-value="engrave"><b>حفر</b><span>الرسمة محفورة في الباب</span></button></div><p>نفس الرسمة المختارة، مفيش صورة ثانية.</p>`:'<p>بدون رسمة، لا طباعة ولا حفر.</p>'}<h3>التدعيم</h3>${flowChoices_('wood',[[0,'بدون'],[1,'تدعيم خشب']],f.wood?1:0)}${flowActions_('review','components')}`;
  else if(f.stage==='review')body=`<h2>راجع الباب</h2>${flowPhoto_()}<h3 style="text-align:center">${[esc(f.code),esc(f.pattern||''),f.source==='plain'?'بدون رسمة':f.method==='engrave'?'حفر':'طباعة'].filter(x=>x).join(' · ')}</h3>${f.source==='custom'&&_printOriginalThumbs.get(f.art)?`<img class="flow-custom" src="${_printOriginalThumbs.get(f.art)}" alt="مرجع الرسمة الخاصة">`:''}${flowSummary_()}<p>${f.wood?'تدعيم خشب':'بدون تدعيم'}</p><label class="fld"><span>ملاحظات على الباب · اختياري</span><textarea data-flow-input="note">${esc(f.note)}</textarea></label>${flowButton_('add-cart',f.edit?'احفظ تعديل البند':'أضف للسلة')}${flowButton_('extras','رجوع',true)}`;
@@ -11652,7 +11662,7 @@ function flowBuildItems_(f){
  const m={version:1,source:f.source,pattern:f.source==='catalog'?f.pattern:'',color:f.code};
  const marker=' [DW1/'+(f.source==='catalog'?f.pattern:f.source==='plain'?'PLAIN':'CUSTOM')+']';
  return f.variants.map(v=>{const w=Number(v.w),h=Number(v.h),custom=v.widthPreset==='custom'||!SIZES.some(s=>s.w===w),hafr=f.source!=='plain'&&f.method==='engrave',print=f.source!=='plain'&&!hafr;
- return {kind:'door',title:'باب '+d.code+' '+d.name+(hafr?' (حفر)':'')+(print?' (طباعة)':'')+marker,titleEn:'WPC Door '+d.code+' - '+d.en+(hafr?' (Carved)':'')+(print?' (Print)':'')+marker,code:d.code,img:d.img,sizeTxt:custom?w+'×'+h+' سم (مقاس خاص — مقاس الفتحة المعمارية)':w+' سم',sizeEn:custom?w+'x'+h+' cm (custom)':w+' cm',unitPrice:priceForWidth(w,hafr),qty:Number(v.qty),w:custom?'':w,frame:Number(v.frame),dbror:v.dbror,frameHeight:v.frame&&v.frameHeight?Number(v.frameHeight):0,frameKind:v.frame?'full':null,frameRodQty:'',frameForDoors:'',note:f.note||'',doorHeight:custom?0:h,printArt:print?f.art:'',engraveArt:hafr?f.art:'',hafr,wood:!!f.wood,print,millEn:hafr?'Carved':'',doorDesignV1:m};});
+ return {kind:'door',title:'باب '+d.code+' '+d.name+(hafr?' (حفر)':'')+(print?' (طباعة)':'')+marker,titleEn:'WPC Door '+d.code+' - '+d.en+(hafr?' (Carved)':'')+(print?' (Print)':'')+marker,code:d.code,img:d.img,sizeTxt:custom?w+'×'+h+' سم (مقاس الفتحة المعمارية)':w+' سم',sizeEn:custom?w+'x'+h+' cm (custom)':w+' cm',unitPrice:priceForWidth(w,hafr),qty:Number(v.qty),w:custom?'':w,frame:Number(v.frame),dbror:v.dbror,frameHeight:v.frame&&v.frameHeight?Number(v.frameHeight):0,frameKind:v.frame?'full':null,frameRodQty:'',frameForDoors:'',note:f.note||'',doorHeight:custom?0:h,printArt:print?f.art:'',engraveArt:hafr?f.art:'',hafr,wood:!!f.wood,print,millEn:hafr?'Carved':'',doorDesignV1:m};});
 }
 async function flowAttachCatalog_(){const f=doorFlow_,data=FLOW_CATALOG_[f.code+'|'+f.pattern];if(!data)throw new Error('اختار الرسمة');const rec={ref:'pa_'+printRandom_(16),key:printRandom_(32),data,thumb:data,orders:[],created:Date.now(),source:'door-design-v1',design:f.pattern,color:f.code};await printPut_(rec);f.art=rec.ref;_printThumbs.set(rec.ref,data);_printOriginalThumbs.set(rec.ref,data);if(!flowPersist_())throw new Error('تعذّر حفظ مسودة الرسمة، الاختيارات لم تُضف للسلة');}
 async function flowAddCart_(){
@@ -12217,9 +12227,9 @@ async function factoryItemEdit294_(id,index){
   if(!snap||!snap.ok)throw Error(snap&&snap.error||'مسار التعديل الآمن غير متاح في المصنع الحالي');
   const item=snap.items[index];if(!item)throw Error('الصنف غير موجود');
   const ov=document.createElement('div');ov.className='dueov';ov.id='factoryEdit294';
-  ov.innerHTML='<div class="box" dir="rtl"><h3>تعديل بيانات الباب</h3><p>يحافظ على رقم الطلب وتقدم المصنع والمرفقات. لو اتصنّع جزء، يبقى محفوظًا كبند مستقل ويتعدل الباقي فقط.</p><label>نوع المقاس <select data-size-mode294><option value="standard">قياسي</option><option value="custom">مقاس خاص</option></select></label><label>عرض الباب <input data-width294 type="number" min="1"></label><label>ارتفاع الباب <input data-height294 type="number" min="1"></label><label>عرض الحلق <select data-frame294><option value="0">بدون حلق</option><option value="10">10</option><option value="15">15</option><option value="20">20</option></select></label><label>ارتفاع الحلق <input data-frame-height294 type="number" min="0"></label><label>البرور <input data-bror294></label><label>وصف الحفر <input data-mill294></label><label>ملاحظة الصنف <textarea data-note294></textarea></label><button class="btn brand" data-save294>حفظ التعديل الآمن</button><button class="btn ghost" data-close294>رجوع بدون تغيير</button><p data-result294></p></div>';
+  ov.innerHTML='<div class="box" dir="rtl"><h3>تعديل بيانات الباب</h3><p>يحافظ على رقم الطلب وتقدم المصنع والمرفقات. لو اتصنّع جزء، يبقى محفوظًا كبند مستقل ويتعدل الباقي فقط.</p><label>نوع المقاس <select data-size-mode294><option value="standard">قياسي</option><option value="custom">مقاس الفتحة المعمارية</option></select></label><label>عرض الباب <input data-width294 type="number" min="1"></label><label>ارتفاع الباب <input data-height294 type="number" min="1"></label><label>عرض الحلق <select data-frame294><option value="0">بدون حلق</option><option value="10">10</option><option value="15">15</option><option value="20">20</option></select></label><label>ارتفاع الحلق <input data-frame-height294 type="number" min="0"></label><label>البرور <input data-bror294></label><label>وصف الحفر <input data-mill294></label><label>ملاحظة الصنف <textarea data-note294></textarea></label><button class="btn brand" data-save294>حفظ التعديل الآمن</button><button class="btn ghost" data-close294>رجوع بدون تغيير</button><p data-result294></p></div>';
   ov.querySelector('[data-size-mode294]').value=item.sizeMode||'standard';
-  ov.querySelector('[data-width294]').title='القياسي70/80/90/100، المقاس الخاص يحتاج مراجعة القص والسعر';
+  ov.querySelector('[data-width294]').title='القياسي70/80/90/100، مقاس الفتحة المعمارية يحتاج مراجعة القص والسعر';
   ov.querySelector('[data-width294]').value=item.w;ov.querySelector('[data-note294]').value=item.note||'';
   ov.querySelector('[data-height294]').value=item.doorHeight??'';
   ov.querySelector('[data-frame294]').value=item.frame||0;
