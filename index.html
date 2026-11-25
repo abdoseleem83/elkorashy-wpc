@@ -541,7 +541,7 @@ input.bad{box-shadow:0 0 0 3px rgba(179,38,30,.1)}
 
 /* ---------- الحركة: ظهور اللوحات والكروت ---------- */
 @keyframes riseIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
 /* الحركة بتشتغل بس لما المستخدم يبدّل تبويب — مش مع كل ضغطة زرار.
    لو سابناها عامة كانت الكروت هتعيد الحركة مع كل +/- وده هيبان اهتزاز. */
 #view.enter>.card{animation:riseIn var(--t-med) var(--ease-out) both}
@@ -2409,7 +2409,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v316';
+const APP_BUILD = 'v318';
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -4738,7 +4738,7 @@ function viewOrders(){
     return `
     <div class="ord" data-q="${esc(_q)}" data-st="${_grp}"${o.restored?' data-restored="1"':''}${ordMatch_(_q,_grp)?'':' hidden'}${معلّق?' style="border:1.5px solid rgba(217,164,65,.55);background:rgba(217,164,65,.09)"':''}${مرفوض?' style="border:1.5px solid rgba(240,115,106,.6);background:rgba(240,115,106,.08)"':''}>
       ${مرفوض?`<div style="font-size:11.5px;font-weight:700;color:var(--danger-ink);margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}⛔ المصنع رفض الطلب${مرفوض.msg?': '+esc(مرفوض.msg):''} — عدّله وابعته تاني؛ مش هيتبعت لوحده</div>`:''}
-      ${معلّق?`<div style="font-size:11.5px;font-weight:700;color:var(--warn-ink);margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}${o.displayNo?'المصنع سجّله برقم '+esc(o.displayNo)+'، وتأكيد التصميم لسه مش مكتمل. لا تعيد الإرسال':((dispatchLedger294_()[String(o.id)]||{}).preWire309?'الطلب لم يصل المصنع: الفشل حصل قبل بدء الإرسال. «راجع الإرسال للمصنع» بيسألك قبل أي إرسال':'استلام المصنع لم يتأكد بعد، الطلب محفوظ على الجهاز ومش هيتبعت تلقائي')}</div>`:''}
+      ${معلّق?`<div style="font-size:11.5px;font-weight:700;color:var(--warn-ink);margin-bottom:6px;display:flex;align-items:center;gap:5px">${ico("warn")}${o.displayNo?'الطلب محفوظ على الجهاز برقم '+esc(orderNoText_(o))+'، لكن استلام المصنع لم يتأكد. لا تعيد الإرسال':((dispatchLedger294_()[String(o.id)]||{}).preWire309?'الطلب لم يصل المصنع: الفشل حصل قبل بدء الإرسال. «راجع الإرسال للمصنع» بيسألك قبل أي إرسال':'استلام المصنع لم يتأكد بعد، الطلب محفوظ على الجهاز ومش هيتبعت تلقائي')}</div>`:''}
       <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${Number(o.editCount)>0?`<span style="font-size:10px;font-weight:700;color:var(--warn-ink);background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:10.5px;font-weight:700;color:var(--danger-ink);background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${live?statusPill(live.status):''}</div>
       <div class="os">${esc(dateStr(o.ts))} · ${(o.items||[]).filter(x=>!isCutLine_(x)).length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
         ${o.customer?`<br><b style="color:var(--info-ink)">صاحب الأوردر: ${esc(o.customer)}</b>`:''}${o.customerRegion?`<br><b style="color:var(--info-ink)">عنوان العميل: ${esc(o.customerRegion)}</b>`:''}<br>
@@ -10667,7 +10667,7 @@ async function syncOrder_(o){
       toast('⚠️ الطلب '+orderNoText_(o)+' لسه ما وصلش المصنع: '+رفض.msg+
             ' — محفوظ للمراجعة، ومش هيتبعت تلقائي', 5200);
     } else {
-      toast(o.displayNo?'المصنع سجّل الطلب برقم '+orderNoText_(o)+'، لكن تأكيد التصميم لم يكتمل. لا تعيد الإرسال؛ تحقق من الاستلام.':'الطلب محفوظ على الجهاز واستلام المصنع لم يتأكد. تحقق من الاستلام قبل أي محاولة جديدة',8000);
+      toast(o.displayNo?'الطلب محفوظ على الجهاز برقم '+orderNoText_(o)+'، لكن استلام المصنع لم يتأكد. لا تعيد الإرسال؛ تحقق من الاستلام.':'الطلب محفوظ على الجهاز واستلام المصنع لم يتأكد. تحقق من الاستلام قبل أي محاولة جديدة',8000);
     }
   } else {
     markSent_(o.id);   // اتأكد وصوله — الدمج مايرجّعهوش لقايمة المعلّق
@@ -10944,7 +10944,7 @@ async function submitOrder(){
         let received=false;try{received=await syncing;}catch(e){}finally{clearTimeout(uiTimer);busy(false);}
       render();
       if(loadRejected_().map(String).includes(String(o.id)))return;   // الرفض اتعرض برسالته وكارته — ميتركبش فوقها «لم يتأكد»
-        if(received===true||loadSent_().map(String).includes(String(o.id))){clearOrderToast280_(o.id);toast('تأكد استلام المصنع برقم '+orderNoText_(o)+'. مشاركة الصورة وملفات PDF جاهزة باختيارك، لم نفتح مشاركة تلقائيًا.',10000);}else toast(o.displayNo?'المصنع سجّل الطلب برقم '+orderNoText_(o)+'، لكن تأكيد تفاصيل التصميم لم يكتمل. لا تعيد الإرسال؛ راجع الاستلام.':'الطلب محفوظ على جهازك، لكن استلام المصنع لم يتأكد. راجع تابع طلبك؛ لم نفتح المشاركة تلقائيًا',10000);
+        if(received===true||loadSent_().map(String).includes(String(o.id))){clearOrderToast280_(o.id);toast('تأكد استلام المصنع برقم '+orderNoText_(o)+'. مشاركة الصورة وملفات PDF جاهزة باختيارك، لم نفتح مشاركة تلقائيًا.',10000);}else toast(o.displayNo?'الطلب محفوظ على الجهاز برقم '+orderNoText_(o)+'، لكن استلام المصنع لم يتأكد. لا تعيد الإرسال؛ راجع الاستلام.':'الطلب محفوظ على جهازك، لكن استلام المصنع لم يتأكد. راجع تابع طلبك؛ لم نفتح المشاركة تلقائيًا',10000);
       })();
     }
     // ⚠️ باج كان هنا: الكتلة دي بتشتغل في الخلفية، وتحتها على طول كان بيتعمل
@@ -11000,7 +11000,7 @@ async function submitOrder(){
     // ⚠️ نفس باج v137: الرسالة كانت بتكتب الكود الداخلي بينما المستند والواتساب
     // وكل الشاشات بيكتبوا الرقم التسلسلي. الرقم لسه ممكن مايكونش وصل من السيرفر
     // في اللحظة دي، فـ orderNoText_ بترجّع الكود الداخلي لوحدها وقتها.
-    toast((wasEditing?'✅ اتحدّث الطلب ':'اتسجّل طلب الأوردر ') + orderNoText_(o));
+    toast((wasEditing?'اتحفظ تعديل الطلب على الجهاز ':'اتسجّل طلب الأوردر ') + orderNoText_(o) + (wasEditing?'. بانتظار تأكيد استلام المصنع':''));
   } else {
     // الطلب اتبعت للمصنع بس مقدرناش نحفظه على الجهاز — لازم المستخدم يعرف،
     // لأنه هيختفي من «تابع طلبك» أول ما يقفل التطبيق.
