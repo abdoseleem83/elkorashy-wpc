@@ -2376,7 +2376,17 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v334';
+const APP_BUILD = 'v336';
+// v336: private phase timing for order send/preview. Device-local only: fixed labels + durations, no ids/tokens/urls/customer data, last 60 marks, never sent anywhere.
+const _tm335=(()=>{try{const a=JSON.parse(localStorage.getItem('wpc_timing335')||'[]');return Array.isArray(a)?a.filter(x=>Array.isArray(x)&&typeof x[0]==='number'&&typeof x[1]==='string').slice(-60):[];}catch(_){return [];}})();
+let _tmTimer335=0;
+function tmT_(){try{return performance.now();}catch(_){return 0;}}
+function tmMark_(k,t0,x){try{_tm335.push([Date.now(),String(k).slice(0,16),(typeof t0==='number'&&t0>=0)?Math.round(tmT_()-t0):null,x==null?null:String(x).slice(0,8)]);if(_tm335.length>60)_tm335.splice(0,_tm335.length-60);if(!_tmTimer335)_tmTimer335=setTimeout(()=>{_tmTimer335=0;try{localStorage.setItem('wpc_timing335',JSON.stringify(_tm335));}catch(_){}},400);}catch(_){}}
+function tmReport_(){
+  if(!_tm335.length)return '';
+  const f=n=>{const d=new Date(n),z=v=>('0'+v).slice(-2);return z(d.getHours())+':'+z(d.getMinutes())+':'+z(d.getSeconds())+'.'+('00'+d.getMilliseconds()).slice(-3,-2);};
+  return 'WPC timing '+APP_BUILD+' (device clock, ms)\n'+_tm335.map(r=>f(r[0])+' '+r[1]+(r[2]!=null?' '+r[2]:'')+(r[3]!=null?' '+r[3]:'')).join('\n');
+}
 const COMPANY     = 'ELKORASHI DOORS';
 const COMPANY_AR  = 'القرشي لأبواب WPC';
 const WAREHOUSE   = 'مصنع إنشاص';
@@ -3193,15 +3203,17 @@ document.addEventListener('click',async ev=>{
   try{busy(true,'جارٍ استرجاع معاينة الأصل…');await attachPreparedPrintPreview_(entry,b.dataset.printKind==='engrave'?'engraveArt':'printArt',null,true);toast('تم استخدام معاينة الأصل، والطلبات السابقة لم تتغيّر');}
   catch(e){toast(e.message||'تعذّر استرجاع المعاينة',6500);}finally{busy(false);render();}
 });
-async function requireOrderCaps_(o){
+async function requireOrderCaps_(o,capIn){
   const needsAddress=!!o.forceAddress||!!String(o.customerRegion||'').trim();
   const refs=(o.items||[]).filter(it=>artTypes_(it).length);
   const needsEngraving=refs.some(it=>artTypes_(it).includes('engraveArt'));
   if(!needsAddress&&!refs.length)return;
   if(!APPS_SCRIPT_URL)throw new Error('عنوان العميل وتصميمات الطباعة والحفر يحتاجوا اتصال بسيرفر المصنع؛ السلة محفوظة ولم يُرسل الطلب');
   let d;
-  try{d=await jsonp(APPS_SCRIPT_URL+'?action=ping',12000);}
-  catch(e){throw new Error('تعذّر التحقق من سيرفر المصنع؛ السلة محفوظة. رجّع النت وجرّب تاني');}
+  if(capIn&&capIn.ok&&capIn.capabilities){d=capIn;tmMark_('caps_reuse');}   // v336: same send attempt, answer from seconds ago; same checks below
+  else{const tp=tmT_();
+  try{d=await jsonp(APPS_SCRIPT_URL+'?action=ping',12000);tmMark_('ping2',tp);}
+  catch(e){tmMark_('ping2_fail',tp);throw new Error('تعذّر التحقق من سيرفر المصنع؛ السلة محفوظة. رجّع النت وجرّب تاني');}}
   if(!d||!d.ok||(needsAddress&&!(d.capabilities||{}).customerRegionV1)||(refs.length&&(!(d.capabilities||{}).privateArtworkV1||!(d.capabilities||{}).artworkRetentionV1))||(needsEngraving&&!(d.capabilities||{}).engravingArtworkV1)){
     throw new Error('سيرفر المصنع محتاج تحديث لحفظ عنوان العميل وتصميمات الطباعة والحفر؛ السلة محفوظة ولم يُرسل الطلب');
   }
@@ -3242,6 +3254,7 @@ async function hydrateFactoryArtCart_(){
   if(replacements.length&&!saveCart_())throw new Error('تعذّر حفظ مرفقات التعديل محليًا؛ لا تغلق الصفحة');
 }
 async function uploadOrderPrints_(o){
+  const tmU=tmT_();
   const refs=orderArtRefs_(o);
   const proofs={};
   for(const ref of refs){
@@ -3250,11 +3263,11 @@ async function uploadOrderPrints_(o){
     for(let attempt=0;attempt<3;attempt++){
       try{
         const q=await printSignedQuery_('printStatus',o.id,ref,rec.key);
-        const status=await jsonp(APPS_SCRIPT_URL+'?action=printStatus'+q+'&dev='+encodeURIComponent(deviceId_()),20000);
+        const tps=tmT_();const status=await jsonp(APPS_SCRIPT_URL+'?action=printStatus'+q+'&dev='+encodeURIComponent(deviceId_()),20000);tmMark_('print_status',tps,status&&status.ready?'ready':'no');
         if(status&&status.ok&&status.ready){ready=true;break;}
       }catch(e){}
       if(attempt===0){
-        try{await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},signal:AbortSignal.timeout(30000),body:JSON.stringify({action:'uploadPrint',dev:deviceId_(),orderId:o.id,ref,key:rec.key,data:rec.data,thumb:rec.thumb})});}catch(_){}
+        const tpu=tmT_();try{await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},signal:AbortSignal.timeout(30000),body:JSON.stringify({action:'uploadPrint',dev:deviceId_(),orderId:o.id,ref,key:rec.key,data:rec.data,thumb:rec.thumb})});}catch(_){}tmMark_('upload_post',tpu);
       }
       await new Promise(r=>setTimeout(r,1500*(attempt+1)));
     }
@@ -3262,6 +3275,7 @@ async function uploadOrderPrints_(o){
     proofs[ref]=await printMac_(rec.key,['attach',o.id,ref].join('|'));
     if(!rec.orders.includes(o.id)){rec.orders.push(o.id);await printPut_(rec);}
   }
+  tmMark_('upload_all',tmU);
   return proofs;
 }
 async function printLinkState327_(o){
@@ -7498,9 +7512,10 @@ async function previewOneOrder_(id){
   const a=state.admin;
   if(a.orderPreviewBusy || a.groupPreviewBusy){toast('جارٍ تجهيز المعاينة، استنى النتيجة');return;}
   a.orderPreviewBusy=o.id;render();busy(true,'جارٍ تجهيز معاينة الطلب '+orderNoText_(o)+'…');
+  const tpv=tmT_();tmMark_('preview_begin');
   try{
     const doc=await previewWait295_((async()=>{
-      const its=await loadOrderItems_(o.id);
+      const hadItems=!!state.admin.items[o.id];const tpi=tmT_();const its=await loadOrderItems_(o.id);tmMark_('preview_items',tpi,hadItems?'cached':'fetched');
       if(!its.length)throw new Error('مفيش أصناف متاحة في الطلب ده. جرّب تاني لما الاتصال يستقر');
       return buildAdminDocOrder_(o,its);
     })());
@@ -7508,7 +7523,7 @@ async function previewOneOrder_(id){
     // Export from the preview stays disabled until every picture is in, so an incomplete sheet can never be exported or shared from here.
     const refs=orderArtRefs_(doc).filter(r=>!_printOriginalThumbs.has(r));
     refs.forEach(r=>{_printPending312_.add(r);_printFailed312_.delete(r);});
-    showReportPreview_(docHTML(doc,'order'),orderNoText_(o),o.id);
+    showReportPreview_(docHTML(doc,'order'),orderNoText_(o),o.id);tmMark_('preview_shown',tpv);
     const ov=document.getElementById('reportPreviewOverlay');
     if(refs.length&&ov){
       const pdfBtn=ov.querySelector('[data-act="rpv-pdf"]');if(pdfBtn){pdfBtn.disabled=true;pdfBtn.style.opacity='.5';}
@@ -7517,7 +7532,7 @@ async function previewOneOrder_(id){
       let timer=0;const redraw=()=>{timer=0;if(document.getElementById('reportPreviewOverlay')!==ov)return;const pg=ov.querySelector('.rpv-page');if(pg){pg.innerHTML=docHTML(doc,'order');if(ov._fit)ov._fit();}};
       const onRef=()=>{if(document.getElementById('reportPreviewOverlay')!==ov)return;if(!timer)timer=setTimeout(redraw,1200);const left=refs.filter(r=>_printPending312_.has(r)).length;note.textContent='جارٍ تحميل صور الرسومات ('+(refs.length-left)+' / '+refs.length+')… التصدير يتفعّل بعد اكتمالها';};
       preparePrintDocument_(doc,{preview:true,onRef}).then(()=>{
-        if(document.getElementById('reportPreviewOverlay')!==ov)return;clearTimeout(timer);redraw();note.remove();if(pdfBtn){pdfBtn.disabled=false;pdfBtn.style.opacity='';}addArtworkDownloadButtons_(o.id,doc);
+        tmMark_('preview_art',tpv);if(document.getElementById('reportPreviewOverlay')!==ov)return;clearTimeout(timer);redraw();note.remove();if(pdfBtn){pdfBtn.disabled=false;pdfBtn.style.opacity='';}addArtworkDownloadButtons_(o.id,doc);
       }).catch(err=>{
         refs.forEach(r=>{if(_printPending312_.has(r)){_printPending312_.delete(r);_printFailed312_.add(r);}});
         if(document.getElementById('reportPreviewOverlay')!==ov)return;clearTimeout(timer);redraw();
@@ -10347,21 +10362,21 @@ function applyCreateReceipt294_(o,r){
 async function reconcile294_(o,id,entry){
  for(const wait of [0,3000,6000,10000,15000]){
   if(wait)await new Promise(r=>setTimeout(r,wait));
-  let receipt=null;try{receipt=await createReceiptRead294_(id,entry);}catch(_){receipt=null;}
+  const trr=tmT_();let receipt=null;try{receipt=await createReceiptRead294_(id,entry);}catch(_){receipt=null;}tmMark_('receipt_read',trr,receipt?(String(receipt.state||'').indexOf('FAILED')===0?'failed':'done'):'none');
   if(receipt&&String(receipt.state||'').indexOf('FAILED')===0){_lastSendError={msg:serverMsg332_(String(receipt.state).replace(/^FAILED:\s*/,''))||'المصنع رفض الطلب',permanent:true};return false;}
   if(receipt)return applyCreateReceipt294_(o,receipt);
  }
  return false;
 }
 async function transportOrder294_(o){
- _lastSendError=null;
+ _lastSendError=null;tmMark_('attempt');
  let wireStarted309=false;
  try{
-  const cap=await jsonp(APPS_SCRIPT_URL+'?action=ping',12000);
+  const tp1=tmT_();const cap=await jsonp(APPS_SCRIPT_URL+'?action=ping',12000);tmMark_('ping',tp1);
   if(!cap?.ok||!cap.capabilities?.atomicCreate294)throw Error('المصنع يحتاج تحديث مسار الاستلام الآمن؛ الطلب محفوظ ولم يُرسل');
   if(o.replacesId&&cap.capabilities?.reviseOrder294!==true)throw Error('تعديل الطلب يحتاج تحديث مسار المصنع؛ التعديل محفوظ ولم يُرسل');
   let base294=null;if(o.replacesId){const ls=await jsonp(APPS_SCRIPT_URL+'?action=list&dev='+encodeURIComponent(deviceId_())+'&phone='+encodeURIComponent(o.phone||''),20000);const prev=ls&&ls.ok?(ls.orders||[]).find(r=>String(r.id)===String(o.replacesId)):null;if(!prev)throw Error(ls&&ls.ok?'الطلب الأصلي مش موجود عند المصنع (ممكن اتحذف أو اتسلّم). التعديل لم يُرسل ومحفوظ على جهازك؛ اعمل طلب جديد بدل التعديل':'تعذّر قراءة الطلب الأصلي من المصنع؛ التعديل محفوظ ولم يُرسل');base294=Number(prev.editCount)||0;}
-  await requireOrderCaps_(o);await requirePrintLocal_(o.items);
+  await requireOrderCaps_(o,cap);await requirePrintLocal_(o.items);
   const proofs=await uploadOrderPrints_(o),wire=Object.assign({},o,{artProofs:proofs},base294===null?{}:{baseEditCount:base294}),digest=await wireDigest294_(wire),id=String(o.id);
   const entry=await navigator.locks.request('wpc-ledger294',()=>{
    const all=dispatchLedger294_(),e=all[id];if(!e||e.state!=='dispatched_unconfirmed')return null;
@@ -10372,13 +10387,15 @@ async function transportOrder294_(o){
   wireStarted309=true;
   const payload=JSON.stringify(wire),url=APPS_SCRIPT_URL+'?action=createOrder294&dev='+encodeURIComponent(deviceId_())+'&id='+encodeURIComponent(id)+'&token='+encodeURIComponent(entry.token)+'&order='+encodeURIComponent(payload);
   if(!orderArtRefs_(o).length&&url.length<7500){
-   let d=null;try{d=await jsonp(url,25000);}catch(_){d=null;}   // v324: a slow reply is not a failure; fall through to read-only receipt checks
+   const tcg=tmT_();let d=null;try{d=await jsonp(url,25000);}catch(_){d=null;}tmMark_('create_get',tcg,d&&d.ok?'ok':'no');   // v324: a slow reply is not a failure; fall through to read-only receipt checks
    if(d?.ok&&String(d.receipt&&d.receipt.state||'').indexOf('FAILED')===0){_lastSendError={msg:serverMsg332_(String(d.receipt.state).replace(/^FAILED:\s*/,''))||'المصنع رفض الطلب',permanent:true};return false;}
    if(d?.ok&&applyCreateReceipt294_(o,d.receipt))return true;
    if(d&&!d.ok){_lastSendError={msg:serverMsg332_(d.error),permanent:d.permanent===true};return false;}
    return await reconcile294_(o,id,entry);
   }
+  const tcp=tmT_();
   try{await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},signal:AbortSignal.timeout(20000),body:JSON.stringify({action:'createOrder294',dev:deviceId_(),id,token:entry.token,order:wire})});}catch(_){}
+  tmMark_('create_post',tcp);
   return await reconcile294_(o,id,entry);
  }catch(e){_lastSendError={msg:e.message||'لم يتأكد استلام الطلب',permanent:false};
   if(!wireStarted309){if(await rollbackPreWire309_(o))_lastSendError.msg+=' (الطلب نفسه لم يُرسل للمصنع. قد تكون صورة الطباعة وصلت قبل انتهاء المهلة. تقدر تبعته يدويًا من «راجع الإرسال للمصنع»)';}
@@ -10594,9 +10611,10 @@ async function syncOrder_(o){
   const pending = loadPendingSync_();
   if(!pending.includes(o.id)){ pending.push(o.id); if(!savePendingSync_(pending)){toast('تعذّر حفظ انتظار الإرسال؛ الطلب محفوظ ولم يُرسل. لا تمسح بيانات التطبيق.',7000);return false;} }
   _sendingNow.add(String(o.id));
-  let ok;
+  let ok;const tsn=tmT_();tmMark_('send_begin');
   try{ ok = await sendOrderToServer_(o); }
   finally{ _sendingNow.delete(String(o.id)); }
+  tmMark_('send_end',tsn,ok===true?'ok':'no');
   if(ok !== true){
     const رفض = _lastSendError;
     if(رفض && رفض.permanent){
@@ -10886,11 +10904,11 @@ async function submitOrder(){
     if(!wasAdminEdit){
       (async ()=>{
         busy(true, 'جارٍ تأكيد رقم الطلب مع المصنع…');
-        const uiTimer=setTimeout(()=>{busy(false);if(loadSent_().map(String).includes(String(o.id))||loadRejected_().map(String).includes(String(o.id)))return;toast('الطلب محفوظ على جهازك، وبنتحقق من استلام المصنع. ممكن يكون وصل فعلًا. لا تعيد الإرسال، وهيظهر التأكيد هنا لما يتأكد.',10000,o.id);},15000);
+        const uiTimer=setTimeout(()=>{tmMark_('ui_timer');busy(false);if(loadSent_().map(String).includes(String(o.id))||loadRejected_().map(String).includes(String(o.id)))return;toast('الطلب محفوظ على جهازك، وبنتحقق من استلام المصنع. ممكن يكون وصل فعلًا. لا تعيد الإرسال، وهيظهر التأكيد هنا لما يتأكد.',10000,o.id);},15000);
         let received=false;try{received=await syncing;}catch(e){}finally{clearTimeout(uiTimer);busy(false);}
       render();
       if(loadRejected_().map(String).includes(String(o.id)))return;   // الرفض اتعرض برسالته وكارته — ميتركبش فوقها «لم يتأكد»
-        if(received===true||loadSent_().map(String).includes(String(o.id))){clearOrderToast280_(o.id);toast('تأكد استلام المصنع برقم '+orderNoText_(o)+'. مشاركة الصورة وملفات PDF جاهزة باختيارك، لم نفتح مشاركة تلقائيًا.',10000);}else toast(o.displayNo?'الطلب محفوظ على الجهاز برقم '+orderNoText_(o)+'، لكن استلام المصنع لم يتأكد. لا تعيد الإرسال؛ راجع الاستلام.':'الطلب محفوظ على جهازك، لكن استلام المصنع لم يتأكد. راجع تابع طلبك؛ لم نفتح المشاركة تلقائيًا',10000);
+        if(received===true||loadSent_().map(String).includes(String(o.id))){clearOrderToast280_(o.id);tmMark_('confirm_toast');toast('تأكد استلام المصنع برقم '+orderNoText_(o)+'. مشاركة الصورة وملفات PDF جاهزة باختيارك، لم نفتح مشاركة تلقائيًا.',10000);}else toast(o.displayNo?'الطلب محفوظ على الجهاز برقم '+orderNoText_(o)+'، لكن استلام المصنع لم يتأكد. لا تعيد الإرسال؛ راجع الاستلام.':'الطلب محفوظ على جهازك، لكن استلام المصنع لم يتأكد. راجع تابع طلبك؛ لم نفتح المشاركة تلقائيًا',10000);
       })();
     }
     // ⚠️ باج كان هنا: الكتلة دي بتشتغل في الخلفية، وتحتها على طول كان بيتعمل
@@ -11682,6 +11700,15 @@ if(savedPw){ state.admin.pw = savedPw; queueMicrotask(()=>{ adminLoad(); startAd
 document.getElementById('hdrLogo').src = ASSETS.logo;
 document.documentElement.style.setProperty('--mark', 'url('+ASSETS.mark+')');
 document.getElementById('vsVer').textContent = APP_BUILD;
+// v336: long-press the version label (about 1 s) to copy the private timing report. No button, no network.
+(()=>{const el=document.getElementById('vsVer');if(!el)return;let t0=0;el.style.webkitTouchCallout='none';el.style.webkitUserSelect='none';el.style.userSelect='none';
+  el.addEventListener('pointerdown',()=>{t0=Date.now();});
+  el.addEventListener('contextmenu',e=>e.preventDefault());
+  el.addEventListener('pointerup',async()=>{if(!t0||Date.now()-t0<900){t0=0;return;}t0=0;
+    const txt=tmReport_();if(!txt){toast('لا يوجد تقرير توقيت بعد');return;}
+    let ok=false;try{await navigator.clipboard.writeText(txt);ok=true;}catch(_){try{const ta=document.createElement('textarea');ta.value=txt;ta.style.cssText='position:fixed;top:0;left:0;opacity:0';document.body.appendChild(ta);ta.select();ok=document.execCommand('copy');ta.remove();}catch(__){ok=false;}}
+    toast(ok?'تم نسخ تقرير التوقيت':'تعذّر النسخ');});
+  el.addEventListener('pointercancel',()=>{t0=0;});})();
 
 // خانة أي رقم — لما تدوس عليها تتحدد كلها عشان تكتب على طول من غير ما تمسح بإيدك
 document.addEventListener('focusin', e => {
