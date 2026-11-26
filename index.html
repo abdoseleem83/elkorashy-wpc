@@ -2446,7 +2446,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v351';
+const APP_BUILD = 'v352';
 // v337: the capability answer from the submit-time check is handed to THIS order's send once (same endpoint and device, same order id, under 20 s old, still online, needed capabilities present). Anything else: a normal ping.
 let _capPre337_=null;
 function takeCapPre337_(o){const c=_capPre337_;_capPre337_=null;try{
@@ -11341,7 +11341,8 @@ function docWoodU_(code,width,height,thickness){
   const paint=docFinishStyle_(code),edge='border:1px solid #746B5F;box-sizing:border-box;';
   return `<div data-part-shape="frame-set" data-finish-code="${esc(doorCode_(code||''))}" style="width:${width}px;height:${height}px;position:relative"><div style="position:absolute;left:0;top:0;width:${thickness}px;height:100%;${paint}${edge}"></div><div style="position:absolute;right:0;top:0;width:${thickness}px;height:100%;${paint}${edge}"></div><div style="position:absolute;left:0;top:0;width:100%;height:${thickness}px;${paint}${edge}"></div></div>`;
 }
-function ltrDims_(value){return esc(value).replace(/(\d+(?:\.\d+)?)\s*[×xX]\s*(\d+(?:\.\d+)?)/g,'<span dir="ltr" style="display:inline-flex;flex-direction:row;direction:ltr;white-space:nowrap;unicode-bidi:isolate"><span>$1</span><span>×</span><span>$2</span></span>');}
+function brSwap352_(a,b){a=String(a);b=String(b);return (a==='6'&&b==='9')||(a==='4'&&b==='8')?[b,a]:[a,b];}
+function ltrDims_(value){return esc(value).replace(/(\d+(?:\.\d+)?)\s*[×xX*]\s*(\d+(?:\.\d+)?)/g,(m,a,b)=>{const q=brSwap352_(a,b);return '<span dir="ltr" style="display:inline-flex;flex-direction:row;direction:ltr;white-space:nowrap;unicode-bidi:isolate"><span>'+q[0]+'</span><span>×</span><span>'+q[1]+'</span></span>';});}
 function docInlineDims_(value){return ltrDims_(value);}
 function docInlineDimsOld_(value){
   return esc(value).replace(/(\d+(?:\.\d+)?\s*[×xX]\s*\d+(?:\.\d+)?)/g,'<span dir="ltr" style="display:inline-block;direction:ltr">$1</span>');
@@ -11565,7 +11566,9 @@ function docPageIdentityHTML_(o,mode){
   </div>`;
 }
 
-function docHTML(o,mode,priced,eco){
+function docHTML(o,mode,priced,eco){return docTxt352_(docHTMLraw352_(o,mode,priced,eco));}
+function docTxt352_(h){return String(h).replace(/>([^<]+)</g,(m,t)=>'>'+t.replace(/(?<![\d.])(6|4)(\s*)[×xX*](\s*)(9|8)(?![\d.])/g,(mm,a,x,y,b)=>{if(!((a==='6'&&b==='9')||(a==='4'&&b==='8')))return mm;return '<span dir="ltr" style="display:inline-flex;flex-direction:row;direction:ltr;white-space:nowrap;unicode-bidi:isolate"><span>'+b+'</span><span>×</span><span>'+a+'</span></span>';})+'<');}
+function docHTMLraw352_(o,mode,priced,eco){
   const isQuote = mode==='quote';
   // «خدمة قص» بند تسعير — بيبان في عرض السعر بس. ورقة الأوردر اللي بتروح
   // للمصنع مالهاش دعوة بيه: هي ورقة شغل، والمصنع بيقرا القص من المقاس نفسه.
@@ -12685,6 +12688,15 @@ document.addEventListener('click',e=>{
  const exit=el.dataset.tab&&el.dataset.tab!=='new'||el.dataset.act==='go-cart'||el.dataset.act==='home-go'&&el.dataset.to!=='new';
  if(exit&&!freshItem296_()){e.preventDefault();e.stopImmediatePropagation();}
 },true);
+
+(function(){const RX=/(?<![\d.])(6|4)(\s*)[×xX*](\s*)(9|8)(?![\d.])/g;
+function fix(n){if(n.nodeType===3){const t=n.nodeValue;if(!t||t.indexOf('\u2066')>=0&&false)return;RX.lastIndex=0;if(!RX.test(t))return;RX.lastIndex=0;const p=n.parentNode;if(!p)return;const tg=p.nodeName;if(tg==='SCRIPT'||tg==='STYLE'||tg==='TEXTAREA'||tg==='INPUT'||tg==='OPTION')return;if(p.closest&&p.closest('[data-no-swap352],[contenteditable]'))return;
+const nv=t.replace(RX,(m,a,x,y,b)=>((a==='6'&&b==='9')||(a==='4'&&b==='8'))?'\u2066'+b+'×'+a+'\u2069':m);if(nv!==t)n.nodeValue=nv;}
+else if(n.nodeType===1){const tg=n.nodeName;if(tg==='SCRIPT'||tg==='STYLE'||tg==='TEXTAREA'||tg==='INPUT')return;for(let c=n.firstChild;c;c=c.nextSibling)fix(c);}}
+function run(){try{fix(document.body)}catch(e){}}
+const mo=new MutationObserver(ms=>{for(const m of ms){if(m.type==='characterData')fix(m.target);else m.addedNodes.forEach(fix);}});
+function start(){run();mo.observe(document.body,{childList:true,subtree:true,characterData:true});}
+if(document.body)start();else document.addEventListener('DOMContentLoaded',start);})();
 </script>
 </body>
 </html>
