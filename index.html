@@ -2183,7 +2183,7 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px color-mix(in srgb,v
 .cfg345 .cfg345-pn{padding:6px;margin-top:4px}.cfg345 .flow-designs{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:5px!important}.cfg345 .flow-designs .card{padding:4px 2px!important}.cfg345 .flow-designs img{height:78px!important}
 .cfg345 .sel347{padding:4px 6px;gap:8px;margin-top:4px}.cfg345 .sel347 img{height:44px}.cfg345 .sel347 bdi{font-size:15px}
 .cfg345 .ok345{margin:6px 0;padding:6px 10px;font-size:12px}.cfg345 .custom341{padding:6px 8px;margin:4px 0}.cfg345 .custom341 p{margin:2px 0;font-size:11.5px}
-.cfg345 .add345{bottom:78px;padding:4px 0}.cfg345 .add345 .btn{padding:10px;min-height:0}
+.cfg345 .add345{bottom:var(--nav350,78px);padding:4px 0}.cfg345 .add345 .btn{padding:10px;min-height:0}
 .cfg345 .btn.ghost{padding:6px 10px;min-height:0}
 .flow-root:has(.cfg345){padding:8px}.flow-root:has(.cfg345) .flow-backbar284{margin:0 0 2px}.flow-root:has(.cfg345) .flow-back284{padding:3px 10px;min-height:0}
 .flow-root:has(.cfg345){overflow:visible!important}
@@ -2446,7 +2446,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v349';
+const APP_BUILD = 'v350';
 // v337: the capability answer from the submit-time check is handed to THIS order's send once (same endpoint and device, same order id, under 20 s old, still online, needed capabilities present). Anything else: a normal ping.
 let _capPre337_=null;
 function takeCapPre337_(o){const c=_capPre337_;_capPre337_=null;try{
@@ -11341,7 +11341,9 @@ function docWoodU_(code,width,height,thickness){
   const paint=docFinishStyle_(code),edge='border:1px solid #746B5F;box-sizing:border-box;';
   return `<div data-part-shape="frame-set" data-finish-code="${esc(doorCode_(code||''))}" style="width:${width}px;height:${height}px;position:relative"><div style="position:absolute;left:0;top:0;width:${thickness}px;height:100%;${paint}${edge}"></div><div style="position:absolute;right:0;top:0;width:${thickness}px;height:100%;${paint}${edge}"></div><div style="position:absolute;left:0;top:0;width:100%;height:${thickness}px;${paint}${edge}"></div></div>`;
 }
-function docInlineDims_(value){
+function ltrDims_(value){return esc(value).replace(/(\d+(?:\.\d+)?)\s*[×xX]\s*(\d+(?:\.\d+)?)/g,'<span dir="ltr" style="display:inline-flex;flex-direction:row;direction:ltr;white-space:nowrap;unicode-bidi:isolate"><span>$1</span><span>×</span><span>$2</span></span>');}
+function docInlineDims_(value){return ltrDims_(value);}
+function docInlineDimsOld_(value){
   return esc(value).replace(/(\d+(?:\.\d+)?\s*[×xX]\s*\d+(?:\.\d+)?)/g,'<span dir="ltr" style="display:inline-block;direction:ltr">$1</span>');
 }
 function docDrawingNotes_(o,eco){
@@ -11369,6 +11371,7 @@ function docDrawingParts_(it){
   }
   return parts;
 }
+function docRealThumb350_(code,tag,w){const k=doorCode_(code||''),m=DOORS.find(x=>x.code===k),p=m&&m.img||'';return `<div data-part-shape="${tag}" data-real-photo="${p?1:0}" data-finish-code="${esc(k)}" style="width:${w||40}px;height:76px;box-sizing:border-box;border:1px solid #746B5F;${p?doorRingStyle_(code,p):docFinishStyle_(code)}"></div>`;}
 function docStandaloneDrawingCards_(items, palette,eco){
   return items.filter(it=>it.kind==='frame'||it.kind==='bror'||it.kind==='mabra'||it.kind==='panel').map((it,i)=>{
     // المعبرة والبروديوم المطلوبان مستقلًا كانا بيختفوا من رسم الملخص خالص —
@@ -11378,8 +11381,8 @@ function docStandaloneDrawingCards_(items, palette,eco){
       const isMabra=it.kind==='mabra';
       const [bgS,bdS]=eco?['#FFFFFF','#C9D2DC']:palette[(i+2)%palette.length];
       const shape=isMabra
-        ? docWoodU_(it.code,34,72,5)
-        : `<div data-part-shape="panel" data-finish-code="${esc(doorCode_(it.code||''))}" style="width:34px;height:72px;${docFinishStyle_(it.code)}border:1px solid #746B5F;box-sizing:border-box"></div>`;
+        ? docRealThumb350_(it.code,'mabra')
+        : docRealThumb350_(it.code,'panel');
       return `<div data-standalone-part="${it.kind}" class="keep-blk" style="min-width:0;max-width:none;background:${bgS};border:1.5px solid ${bdS};border-radius:10px;padding:4px 1px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
         <div style="font-size:9.5px;font-weight:800;line-height:1.3">${isMabra?'معبرة':'لوح بروديوم'} <span dir="ltr" style="display:inline-block;font-size:9px">${esc(doorCode_(it.code||''))||''}</span></div>
         <div style="font-size:8.5px;line-height:1.4;font-weight:800;margin:2px 0">${docInlineDims_(it.spec||'')}</div>
@@ -11400,13 +11403,11 @@ function docStandaloneDrawingCards_(items, palette,eco){
       ? parts.map(p=>`<div>${esc(p.label)} ${esc(p.cm)} سم${mismatch?'':` × ${esc(p.qty)}`}</div>`).join('')
       : isSet?'<div>أطوال الطقم: استاندر</div>'
       : `<div>${rod?'طول العود '+esc(rod)+' سم':'طول العود غير مسجّل'}</div>`;
-    const drawing=composed
-      ? docWoodU_(it.code,34,72,5)
-      : `<div data-part-shape="rod" data-finish-code="${esc(doorCode_(it.code||''))}" style="width:${isFrame?12:10}px;height:72px;${paint}border:1px solid #746B5F;box-sizing:border-box"></div>`;
+    const drawing=docRealThumb350_(it.code,composed?'frame-set':'rod');
     const label=isFrame?(isSet?'حلق كامل':composed?'حلق مفصّل':'حلق أعواد'):'برور';
     return `<div data-standalone-part="${isFrame?'frame':'bror'}" class="keep-blk" style="min-width:0;max-width:none;background:${bg};border:1.5px solid ${bd};border-radius:10px;padding:4px 1px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
       <div style="font-size:9.5px;font-weight:800;line-height:1.3">${label} <span dir="ltr" style="display:inline-block;font-size:9px">${esc(doorCode_(it.code||''))||'بدون كود'}</span></div>
-      <div style="font-size:8.5px;line-height:1.4;font-weight:800;margin:2px 0">${isFrame?'مقاس الحلق: ':'مقاس البرور: '}${measure?'<span dir="ltr" style="display:inline-block;direction:ltr">'+esc(measure)+'</span>'+(isFrame?' سم':''):'غير مسجّل'}</div>
+      <div style="font-size:8.5px;line-height:1.4;font-weight:800;margin:2px 0">${isFrame?'مقاس الحلق: ':'مقاس البرور: '}${measure?ltrDims_(measure)+(isFrame?' سم':''):'غير مسجّل'}</div>
       ${eco?'':`<div style="display:flex;align-items:center;justify-content:center;height:72px">${drawing}</div>`}
       <div data-part-dimensions="1" style="font-size:8.5px;line-height:1.4;font-weight:700">${detail}${it.doorW?`<div>لباب مقاس ${esc(it.doorW)} سم</div>`:''}</div>
       ${mismatch?'<div data-part-warning="1" style="font-size:8.5px;font-weight:800;color:#A32119;margin-top:3px">تفصيل العدد لا يطابق إجمالي الأعواد المسجّل، يُراجع قبل التنفيذ.</div>':''}
@@ -11473,7 +11474,7 @@ function docTotalsHTML(o,eco){
       ${pictures?'<div>'+pictures+'</div>':''}
       
       <div dir="ltr" style="font-size:${big?'11px':'9.5px'};font-weight:800;margin:2px 0">${esc(g.code||'بدون كود')}${g.approved?' · '+esc(g.approved.code)+' / R'+esc(g.approved.rev):''}</div>${g.approved&&g.approved.sampleColor!==g.code?'<div data-approved-source-color style="font-size:11px;line-height:1.6;font-weight:800;padding:5px;margin:4px 0;border:1px solid #D9A441;background:#FFF1D6;border-radius:5px">'+esc(approvedPrintReferenceNote_(g.code,g.approved.sampleColor))+'</div>':''}
-      <div data-door-components="1" style="font-size:${big?'10.5px':'8.5px'};line-height:${big?'1.55':'1.4'};font-weight:800;margin:${big?'3px 0':'2px 0'};min-height:${big?'33px':'0'}">${g.frame?`<div style="color:#493E31">حلق ${g.frame} سم${g.frameHeight?' · ارتفاع '+g.frameHeight+' سم':''}</div>`:''}${g.dbror?`<div style="color:#493E31">برور <span dir="ltr" style="display:inline-block;direction:ltr">${esc(g.dbror)}</span></div>`:''}${!g.frame&&!g.dbror?'<div>ضلفة فقط</div>':''}</div>
+      <div data-door-components="1" style="font-size:${big?'10.5px':'8.5px'};line-height:${big?'1.55':'1.4'};font-weight:800;margin:${big?'3px 0':'2px 0'};min-height:${big?'33px':'0'}">${g.frame?`<div style="color:#493E31">حلق ${g.frame} سم${g.frameHeight?' · ارتفاع '+g.frameHeight+' سم':''}</div>`:''}${g.dbror?`<div style="color:#493E31">برور ${ltrDims_(g.dbror)}</div>`:''}${!g.frame&&!g.dbror?'<div>ضلفة فقط</div>':''}</div>
       <div data-door-quantity="1" style="display:inline-block;background:#fff;border:1px solid ${bd};border-radius:8px;padding:1px ${big?'10px':'3px'};margin-top:2px;font-size:${big?'16px':'10px'};font-weight:900;line-height:1.35">${g.qty} <span style="font-size:${big?'11px':'8.5px'};font-weight:800">باب</span></div>
       ${twoDesigns?'':''}
     </div>`;
@@ -11908,7 +11909,7 @@ function flowPersist_(){const ok=save(FLOW_KEY_,doorFlow_);if(!ok)toast('تعذ�
 function flowProductPersist_(){const p={};for(const k of ['fr','br','sp','vn','mb','pd','acc'])p[k]=state[k];const ok=save(FLOW_PRODUCTS_KEY_,p);if(!ok)toast('تعذّر حفظ آخر التغييرات. البيانات القديمة محفوظة؛ ما تقفلش الصفحة وفضّي مساحة',7000);return ok;}
 function flowGo_(stage){doorFlow_.stage=stage;flowPersist_();render();window.scrollTo({top:0});}
 function flowNum_(label,key,value,i){const input=`<input type="number" step="any" min="0" inputmode="decimal" data-flow-input="${key}" ${i==null?'':`data-flow-index="${i}"`} value="${esc(value)}">`;return `<label class="fld"><span>${label}</span>${key==='qty'?`<span class="flow-qty282" dir="ltr"><button type="button" data-flow-step282="1" data-flow-index="${i}" aria-label="زيادة الكمية">+</button>${input}<button type="button" data-flow-step282="-1" data-flow-index="${i}" aria-label="تقليل الكمية">−</button></span>`:input}</label>`;}
-function flowChoices_(key,values,selected,i){return `<div class="flow-chips">${values.map(([value,label])=>`<button type="button" class="chip ${String(value)===String(selected)?'on':''}" data-flow-choice="${key}" data-value="${esc(value)}" ${i==null?'':`data-flow-index="${i}"`}>${label}</button>`).join('')}</div>`;}
+function flowChoices_(key,values,selected,i){return `<div class="flow-chips">${values.map(([value,label])=>`<button type="button" class="chip ${String(value)===String(selected)?'on':''}" data-flow-choice="${key}" data-value="${esc(value)}" ${i==null?'':`data-flow-index="${i}"`}>${String(label).replace(/(\d+\s*×\s*\d+)/g,'<bdi dir="ltr">$1</bdi>')}</button>`).join('')}</div>`;}
 function flowButton_(action,label,ghost=false){return `<button type="button" class="btn ${ghost?'ghost':'brand'}" data-flow-action="${action}">${label}</button>`;}
 function flowActions_(next,back){return `<div class="btnrow">${back?flowButton_(back,'رجوع',true):''}${next?flowButton_(next,'التالي'):''}</div>`;}
 function flowThumb_(){const f=doorFlow_;return f.source==='catalog'&&f.pattern?FLOW_CATALOG_[f.code+'|'+f.pattern]:FLOW_PLAIN_[f.code];}
@@ -11939,13 +11940,18 @@ function flowNotes344_(v){
  return out.map(t=>'<div class="note pv344-note">'+t+'</div>').join('');
 }
 /* v346: شاشة واحدة للباب زي الفيديو: بعد اختيار الباب تظهر تحته الرسمة (بدون / كتالوج / رسمة خاصة) والمقاسات والكمية والحلق والبرور. عرض وتجميع شاشات بس، نفس الحقول ونفس التحقق ونفس الحفظ. */
+function layout350_(){try{const h=document.querySelector('header.top'),bn=document.querySelector('#tryBanner348,#tryBanner349'),nv=document.getElementById('tabs');let t=h?h.getBoundingClientRect().bottom:0;if(bn)t=Math.max(t,bn.getBoundingClientRect().bottom);const r=document.documentElement.style;r.setProperty('--hdr348',Math.max(0,Math.round(t))+'px');if(nv){const b=Math.round(innerHeight-nv.getBoundingClientRect().top)+6;r.setProperty('--nav350',Math.max(60,b)+'px');}}catch(e){}}
+addEventListener('resize',()=>setTimeout(layout350_,50));
 function flowPhotoPlain346_(f){const src=flowThumb_();if(!src)return '';const v=f.variants[0]||{};
  const fr=Number(v.frame)||0,br=v.dbror?1:0,ft=fr?({10:6,15:9,20:12}[fr]||8):0,bt=br?(v.dbror==='4×8'?7:9):0;
- let leaf=`<img src="${src}" alt="الباب ${esc(f.code)}" style="height:${DOOR_REALFULL_[doorCode_(f.code)]?150:125}px;display:block">`;
- if(ft)leaf=`<div class="rg348 fr" style="${docFinishStyle_(f.code)}padding:${ft}px ${ft}px 0;border:1px solid #5d5245;border-bottom:0">${leaf}</div>`;
- if(bt)leaf=`<div class="rg348 br" style="${docFinishStyle_(f.code)}padding:${bt}px ${bt}px 0;border:1px solid #5d5245;border-bottom:0">${leaf}</div>`;
- const lg=(fr?`<span class="lg348 fr">حلق ${fr} سم</span>`:'')+(v.dbror?`<span class="lg348 br">برور ${esc(v.dbror)}</span>`:'');
- try{setTimeout(()=>{const h=document.querySelector('header.top'),bn=document.getElementById('tryBanner348');let t=h?h.getBoundingClientRect().bottom:0;if(bn)t=Math.max(t,bn.getBoundingClientRect().bottom);document.documentElement.style.setProperty('--hdr348',Math.round(t)+'px')},0);}catch(e){}
+ const mdl=DOORS.find(x=>x.code===doorCode_(f.code)),mp=mdl&&mdl.img||'';
+ const ringSt=mp?doorRingStyle_(f.code,mp):docFinishStyle_(f.code);
+ const ph=(DOOR_REALFULL_[doorCode_(f.code)]?150:125)*(innerHeight<720?.84:1);
+ let leaf=`<img src="${src}" alt="الباب ${esc(f.code)}" style="height:${Math.round(ph)}px;display:block">`;
+ if(ft)leaf=`<div class="rg348 fr" style="${ringSt}padding:${ft}px ${ft}px 0;border:1px solid #5d5245;border-bottom:0">${leaf}</div>`;
+ if(bt)leaf=`<div class="rg348 br" style="${ringSt}padding:${bt}px ${bt}px 0;border:1px solid #5d5245;border-bottom:0">${leaf}</div>`;
+ const lg=(fr?`<span class="lg348 fr">حلق ${fr} سم</span>`:'')+(v.dbror?`<span class="lg348 br">برور <bdi dir="ltr">${esc(v.dbror)}</bdi></span>`:'');
+ setTimeout(layout350_,0);setTimeout(layout350_,400);
  return `<div class="pv348"><b class="w348">${v.w?esc(v.w)+' سم':'اختار المقاس'}</b><div class="row348"><div class="door348">${leaf}</div>${v.h?`<span class="h348">${esc(v.h)}</span>`:''}</div>${lg?`<div class="lgs348">${lg}</div>`:''}</div>`;}
 let _catOpen347=false;
 function flowOk345_(f){let m='';try{if(f.source==='catalog'&&!f.pattern)m='اختار رسمة من الكتالوج، أو اقفل الطباعة.';else if(!flowValidateDims_())m='راجع المقاس والكمية.';else if(!flowValidate_())m='اختار الحلق والبرور لكل مقاس، حتى لو بدون.';}catch(e){m='راجع الاختيارات.';}
@@ -12046,11 +12052,11 @@ function flowDrawingCard_(g,eco){
  const m=g.flow,src=m.source==='catalog'?FLOW_CATALOG_[g.code+'|'+m.pattern]:m.source==='plain'?FLOW_PLAIN_[g.code]:_printOriginalThumbs.get(g.art||g.engraving),method=m.source==='plain'?'بدون رسمة':g.isE?'حفر':'طباعة';
  // الحلق/البرور المختاران بيتركبوا على الرسمة زي الكارت القديم — ورقة الأوردر
  // لازم تعرض اختيارات العميل الفعلية، مش الضلفة عارية والقيم في الجدول بس.
- const noArt=false,icon=m.source!=='plain',iconSw=(DOORS.find(x=>x.code===doorCode_(g.code))||{}).name,iconSwv=DOOR_COLOR_SWATCH[iconSw]||{bg:'#F1F1EF',border:'#9AA3AB'},iconBg=iconSwv.bg,iconBd=iconSwv.border;
+ const noArt=false,icon=false,iconSw=(DOORS.find(x=>x.code===doorCode_(g.code))||{}).name,iconSwv=DOOR_COLOR_SWATCH[iconSw]||{bg:'#F1F1EF',border:'#9AA3AB'},iconBg=iconSwv.bg,iconBd=iconSwv.border;
  let assembly=icon?`<div data-door-leaf="1" data-fixed-icon="1" style="width:43px;height:72px;line-height:0;filter:drop-shadow(0 1.5px 1.5px rgba(0,0,0,.28))">${doorIcon3d_(g.code,{frame:!!g.frame,bror:!!g.dbror})}</div>`:`<div data-door-leaf="1" style="position:relative;width:34px;height:72px;background:#EFECE5;border:1px solid #777;overflow:hidden;box-sizing:border-box;line-height:0">${src?`<img src="${esc(src)}" alt="${esc(g.code)}" style="display:block;width:100%;height:100%;object-fit:contain">`:'<span style="font-size:11px;color:#B3261E;line-height:1.5">المرجع غير محمّل أو انتهت مدة حفظه</span>'}</div>`;
- if(!icon&&assembly&&g.frame&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-frame="${g.frame}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:2px 2px 0;border:1px solid ${icon?iconBd:'#746B5F'};border-bottom:0;${icon?'background-color:'+iconBg+';':doorRingStyle_(g.code,src,m.source!=='custom')}line-height:0">${assembly}</div>`;
- if(!icon&&assembly&&g.dbror&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-bror="${esc(g.dbror)}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:2px 2px 0;border:1px solid ${icon?iconBd:'#746B5F'};border-bottom:0;${icon?'background-color:'+iconBg+';':doorRingStyle_(g.code,src,m.source!=='custom')}line-height:0">${assembly}</div>`;
- const components=(g.frame||g.dbror)?`<div data-door-components="1" style="font-size:8.5px;line-height:1.4;font-weight:800;margin-top:2px">${g.frame?`<div>حلق ${esc(g.frame)} سم${g.frameHeight?' · ارتفاع '+esc(g.frameHeight)+' سم':''}</div>`:''}${g.dbror?`<div>برور <span dir="ltr" style="display:inline-block;direction:ltr">${esc(g.dbror)}</span></div>`:''}</div>`:'';
+ if(!icon&&assembly&&g.frame&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-frame="${g.frame}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:2px 2px 0;border:1px solid ${icon?iconBd:'#746B5F'};border-bottom:0;${doorRingStyle_(g.code,(DOORS.find(x=>x.code===doorCode_(g.code))||{}).img||src)}line-height:0">${assembly}</div>`;
+ if(!icon&&assembly&&g.dbror&&!DOOR_REALFULL_[doorCode_(g.code)])assembly=`<div data-door-bror="${esc(g.dbror)}" data-finish-code="${esc(g.code)}" style="display:inline-block;padding:2px 2px 0;border:1px solid ${icon?iconBd:'#746B5F'};border-bottom:0;${doorRingStyle_(g.code,(DOORS.find(x=>x.code===doorCode_(g.code))||{}).img||src)}line-height:0">${assembly}</div>`;
+ const components=(g.frame||g.dbror)?`<div data-door-components="1" style="font-size:8.5px;line-height:1.4;font-weight:800;margin-top:2px">${g.frame?`<div>حلق ${esc(g.frame)} سم${g.frameHeight?' · ارتفاع '+esc(g.frameHeight)+' سم':''}</div>`:''}${g.dbror?`<div>برور ${ltrDims_(g.dbror)}</div>`:''}</div>`:'';
  return `<div data-door-drawing="1" data-door-flow="1" class="keep-blk" style="min-width:0;box-sizing:border-box;padding:4px 1px;text-align:center;${eco?'background:#fff;border:1.5px solid #93A3B3':'background:#F2F7FC;border:1.5px solid #A9C3DA'};border-radius:10px;color:#000;break-inside:avoid">${eco||!g.wh?`<div data-dim-w style="display:inline-block;border:1.5px solid #178a4a;color:#178a4a;border-radius:9px;padding:1px 6px;font-size:10px;font-weight:800;line-height:1.3">${g.wh?esc(g.wh.w):esc(g.base)}</div>`:''}${eco?'':`<div style="display:flex;align-items:flex-end;justify-content:center;gap:1px;margin:3px 0"><div style="text-align:center">${g.wh?`<div data-dim-w style="display:inline-block;margin-bottom:3px;border:1.5px solid #178a4a;color:#178a4a;border-radius:9px;padding:1px 6px;font-size:10px;font-weight:800;line-height:1.3">${esc(g.wh.w)}</div>`:''}<div>${assembly}</div></div>${g.wh?`<div data-dim-h style="position:relative;width:20px;height:72px"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg);border:1.5px solid #2a5a8c;color:#2a5a8c;border-radius:9px;padding:0 6px;font-size:10px;font-weight:800;white-space:nowrap;line-height:1.4">${esc(g.wh.h)}</span></div>`:''}</div>`}<div style="font-size:9.5px;font-weight:800;line-height:1.3">${m.pattern?esc(m.pattern)+' • ':''}${esc(g.code)}</div>${m.source==='custom'?(src?'<div style="font-size:10px">مرجع خاص، مش تركيبًا على الباب</div>':'<div style="font-size:10px;font-weight:800;color:#B3261E">رسمة خاصة</div>'):''}${components}<div style="display:inline-block;padding:2px 2px;margin-top:3px;${eco?'background:#fff;border:1px solid #C9D2DC':'background:#EAF2FA'};font-size:9px;font-weight:800;line-height:1.3">${method} · ${g.qty} باب</div></div>`;
 }
 
