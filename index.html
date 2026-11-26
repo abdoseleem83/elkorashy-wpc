@@ -2446,7 +2446,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v354';
+const APP_BUILD = 'v356';
 // v337: the capability answer from the submit-time check is handed to THIS order's send once (same endpoint and device, same order id, under 20 s old, still online, needed capabilities present). Anything else: a normal ping.
 let _capPre337_=null;
 function takeCapPre337_(o){const c=_capPre337_;_capPre337_=null;try{
@@ -8754,7 +8754,7 @@ function viewAdmin(){
     const rows=[];let tr=0,tg=0,tm=0;
     d.sizes.forEach(g=>d.codes.forEach(c=>{const x=d.cell(g,c,name);if(x){rows.push([c,g,x]);tr+=x.req;tg+=x.got;tm+=x.rem;}}));
     const key=o=>String(o.customer||'').trim()||o.dist||'—';
-    const ords=(d.pending||[]).filter(o=>key(o)===name);
+    const ords=(d.pending||[]).filter(o=>key(o)===name).slice().sort((x,y)=>String(x.date||'').localeCompare(String(y.date||''))||String(x.id||'').localeCompare(String(y.id||'')));
     const stAr=o=>(STATUS[o.status]&&STATUS[o.status].ar)||o.status||'';
     const chip=(t,v,col)=>`<div style="flex:1;text-align:center;border:1px solid var(--line);border-radius:10px;padding:6px 2px"><div style="font-size:11px;color:var(--muted)">${t}</div><div style="font-size:18px;font-weight:800;color:${col}">${v}</div></div>`;
     const tbl=rows.length?`<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px"><thead><tr style="color:var(--muted);font-size:11.5px"><th style="text-align:right;padding:5px 6px;font-weight:600">الكود</th><th style="font-weight:600">المقاس</th><th style="font-weight:600">مطلوب</th><th style="font-weight:600">متاح</th><th style="font-weight:600">ناقص</th></tr></thead><tbody>${rows.map(([c,g,x])=>`<tr style="border-top:1px solid var(--line);text-align:center"><td style="padding:6px;text-align:right;font-weight:700">${esc(c)}</td><td>${g==='خاص'?'خاص':esc(g)}</td><td>${x.req}</td><td style="color:var(--ok-ink);font-weight:700">${x.got||'—'}</td><td style="color:${x.rem>0?'var(--danger-ink)':'var(--muted)'};font-weight:800">${x.rem>0?x.rem:'—'}</td></tr>`).join('')}</tbody></table>`:'<div class="note">مفيش أبواب معلّقة للعميل ده.</div>';
@@ -8780,6 +8780,7 @@ function viewAdmin(){
         const custs = [];
         d.sizes.forEach(g=>(d.custBy[g]||[]).forEach(n=>{ const x=d.cell(g,c,n); if(!custs.includes(n) && x && x.rem>0) custs.push(n); }));
         if(!custs.length) return '';
+        custs.sort((x,y)=>String((d.dateBy||{})[c+'|'+x]||'9999').localeCompare(String((d.dateBy||{})[c+'|'+y]||'9999'))||String(x).localeCompare(String(y),'ar'));   // v356: الأقدم أولاً بالتاريخ فقط
         const dn = (DOORS.find(x=>x.code===c)||{}).name || '';
         const dsw = DOOR_COLOR_SWATCH[dn] || null;   // لون الكود الحقيقي — نفس سواتش شيبس الأكواد في التطبيق
         const rows = custs.map(n=>{
