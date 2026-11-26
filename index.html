@@ -2446,7 +2446,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v350';
+const APP_BUILD = 'v351';
 // v337: the capability answer from the submit-time check is handed to THIS order's send once (same endpoint and device, same order id, under 20 s old, still online, needed capabilities present). Anything else: a normal ping.
 let _capPre337_=null;
 function takeCapPre337_(o){const c=_capPre337_;_capPre337_=null;try{
@@ -11371,7 +11371,11 @@ function docDrawingParts_(it){
   }
   return parts;
 }
-function docRealThumb350_(code,tag,w){const k=doorCode_(code||''),m=DOORS.find(x=>x.code===k),p=m&&m.img||'';return `<div data-part-shape="${tag}" data-real-photo="${p?1:0}" data-finish-code="${esc(k)}" style="width:${w||40}px;height:76px;box-sizing:border-box;border:1px solid #746B5F;${p?doorRingStyle_(code,p):docFinishStyle_(code)}"></div>`;}
+function docTex351_(code){const k=doorCode_(code||''),m=DOORS.find(x=>x.code===k),ph=m&&m.img||'';const base=docFinishStyle_(code);if(!ph)return base;const o=doorPhotoOuter_(code),kx=4,ky=2.5;const cx=o[0]+o[2]*.45,cy=o[1]+o[3]*.5;const px=Math.max(0,Math.min(100,100*(cx-.5/kx)/(1-1/kx))),py=Math.max(0,Math.min(100,100*(cy-.5/ky)/(1-1/ky)));return base+`background-image:url('${ph}');background-size:${kx*100}% ${ky*100}%;background-position:${px.toFixed(1)}% ${py.toFixed(1)}%;background-repeat:no-repeat;`;}
+function docRealThumb350_(code,tag,w){const k=doorCode_(code||''),m=DOORS.find(x=>x.code===k),p=m&&m.img||'';const tex=docTex351_(code),edge='border:1px solid #746B5F;box-sizing:border-box;';const wrap=(inner,ww,hh)=>`<div data-part-shape="${tag}" data-real-photo="${p?1:0}" data-finish-code="${esc(k)}" style="width:${ww}px;height:${hh}px;position:relative">${inner}</div>`;
+ if(tag==='frame-set'){const W=w||52,H=72,t=11;return wrap(`<div style="position:absolute;left:0;top:0;width:${t}px;height:100%;${tex}${edge}"></div><div style="position:absolute;right:0;top:0;width:${t}px;height:100%;${tex}${edge}"></div><div style="position:absolute;left:0;top:0;width:100%;height:${t}px;${tex}${edge}"></div>`,W,H);}
+ if(tag==='rod'){return wrap(`<div style="position:absolute;left:0;top:0;width:100%;height:100%;${tex}${edge}"></div>`,16,76);}
+ return wrap(`<div style="position:absolute;left:0;top:0;width:100%;height:100%;${tex}${edge}"></div>`,w||40,tag==='mabra'?30:76);}
 function docStandaloneDrawingCards_(items, palette,eco){
   return items.filter(it=>it.kind==='frame'||it.kind==='bror'||it.kind==='mabra'||it.kind==='panel').map((it,i)=>{
     // المعبرة والبروديوم المطلوبان مستقلًا كانا بيختفوا من رسم الملخص خالص —
@@ -11403,7 +11407,7 @@ function docStandaloneDrawingCards_(items, palette,eco){
       ? parts.map(p=>`<div>${esc(p.label)} ${esc(p.cm)} سم${mismatch?'':` × ${esc(p.qty)}`}</div>`).join('')
       : isSet?'<div>أطوال الطقم: استاندر</div>'
       : `<div>${rod?'طول العود '+esc(rod)+' سم':'طول العود غير مسجّل'}</div>`;
-    const drawing=docRealThumb350_(it.code,composed?'frame-set':'rod');
+    const drawing=docRealThumb350_(it.code,isFrame?'frame-set':'rod');
     const label=isFrame?(isSet?'حلق كامل':composed?'حلق مفصّل':'حلق أعواد'):'برور';
     return `<div data-standalone-part="${isFrame?'frame':'bror'}" class="keep-blk" style="min-width:0;max-width:none;background:${bg};border:1.5px solid ${bd};border-radius:10px;padding:4px 1px;text-align:center;color:#000;box-sizing:border-box;break-inside:avoid;overflow-wrap:anywhere">
       <div style="font-size:9.5px;font-weight:800;line-height:1.3">${label} <span dir="ltr" style="display:inline-block;font-size:9px">${esc(doorCode_(it.code||''))||'بدون كود'}</span></div>
