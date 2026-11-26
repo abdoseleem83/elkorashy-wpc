@@ -2377,7 +2377,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v342';
+const APP_BUILD = 'v343';
 // v337: the capability answer from the submit-time check is handed to THIS order's send once (same endpoint and device, same order id, under 20 s old, still online, needed capabilities present). Anything else: a normal ping.
 let _capPre337_=null;
 function takeCapPre337_(o){const c=_capPre337_;_capPre337_=null;try{
@@ -11104,13 +11104,22 @@ function docRowHTML_(it, idx, priced, showFrameHCol, oddFrameW, titleTxt){
 
 // بيرتّب مفاتيح مقاسات الأبواب (نص عربي زي "70 سم") تصاعديًا، والمقاسات الخاصة آخر القايمة
 function sortSizeKeys_(keys){
-  return keys.sort((a,b)=>{
-    const aStd=/^\d+\s*سم$/.test(a), bStd=/^\d+\s*سم$/.test(b);
-    if(aStd&&bStd) return parseInt(a)-parseInt(b);
-    if(aStd) return -1;
-    if(bStd) return 1;
-    return 0;
-  });
+  // ثابت: 70 ثم 80 ثم 90 (ثم 100) بالارتفاع الستاندرد، وأي مقاس غير ستاندرد
+  // (عرض/ارتفاع مختلف أو خاص) دايمًا تحت، بغض النظر عن ترتيب اختيار المستخدم.
+  const info=k=>{
+    const s=String(k).replace(/[٠-٩]/g,c=>'٠١٢٣٤٥٦٧٨٩'.indexOf(c));
+    const w=(s.match(/^\s*(?:أبواب مقاس\s*)?(\d+)\s*سم/)||[])[1];
+    const h=(s.match(/ارتفاع\s*(\d+)/)||[])[1];
+    const W=w?parseInt(w):NaN, H=h?parseInt(h):DOOR_STD_HEIGHT;
+    const std=!isNaN(W) && [70,80,90,100].indexOf(W)>=0 && H===DOOR_STD_HEIGHT;
+    return {std, W:isNaN(W)?1e9:W, H};
+  };
+  return keys.map((k,i)=>({k,i,v:info(k)})).sort((a,b)=>{
+    if(a.v.std!==b.v.std) return a.v.std?-1:1;
+    if(a.v.W!==b.v.W) return a.v.W-b.v.W;
+    if(a.v.H!==b.v.H) return a.v.H-b.v.H;
+    return a.i-b.i;
+  }).map(x=>x.k);
 }
 
 function docRows(o, priced, showFrameHCol, eco){
@@ -11144,7 +11153,7 @@ function docRows(o, priced, showFrameHCol, eco){
 
   let n=0, rows='';
   order.forEach((k,gi)=>{
-    rows += `<tr><td colspan="${colspan}" style="${gi>0?'border-top:2px dashed #5B6B7D;':''}${eco?'background:#fff;color:#14243A':'background:'+sizeGroupColor_(k).hb+';color:'+sizeGroupColor_(k).tx};padding:2px 12px;font-family:Arial,'Helvetica Neue',sans-serif;font-weight:800;font-size:14px">أبواب مقاس ${esc(String(k).replace(/^أبواب مقاس\s*/,''))}</td></tr>`;
+    rows += `<tr><td colspan="${colspan}" style="${gi>0?'border-top:2px dashed #5B6B7D;':''}${eco?'background:#fff;color:#14243A':'background:'+sizeGroupColor_(k).hb+';color:'+sizeGroupColor_(k).tx};padding:2px 12px;font-family:Arial,'Helvetica Neue',sans-serif;font-weight:800;font-size:14px">أبواب مقاس ${esc(String(k).replace(/^أبواب مقاس\s*/,'').replace(new RegExp('\\s*\\(ارتفاع\\s*'+DOOR_STD_HEIGHT+'\\s*سم\\)'),''))}</td></tr>`;
     groups[k].forEach(it=>{
       const oddFrameW = dominantFrameW!=null && it.frame && String(it.frame)!==dominantFrameW;
       rows += docRowHTML_(it, ++n, priced, showFrameHCol, oddFrameW);
