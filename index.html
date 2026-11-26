@@ -2187,7 +2187,7 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px color-mix(in srgb,v
 .cfg345 .btn.ghost{padding:6px 10px;min-height:0}
 .flow-root:has(.cfg345){padding:8px}.flow-root:has(.cfg345) .flow-backbar284{margin:0 0 2px}.flow-root:has(.cfg345) .flow-back284{padding:3px 10px;min-height:0}
 .flow-root:has(.cfg345){overflow:visible!important}
-</style>
+.cr353-name{all:unset;font-weight:700;color:var(--brand,#1d6fd1);text-decoration:underline;cursor:pointer;padding:6px 0;display:block;width:100%}</style>
 <style>
 /* v4 home — هادئة ونظيفة */
 .hm4{padding:2px 2px 0}
@@ -2446,7 +2446,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v352';
+const APP_BUILD = 'v353';
 // v337: the capability answer from the submit-time check is handed to THIS order's send once (same endpoint and device, same order id, under 20 s old, still online, needed capabilities present). Anything else: a normal ping.
 let _capPre337_=null;
 function takeCapPre337_(o){const c=_capPre337_;_capPre337_=null;try{
@@ -7125,7 +7125,7 @@ function buildAllocationData_(orders){
   };
   const grand = {req:0, got:0, rem:0};
   sizes.forEach(g=>codes.forEach(c=>{ const s = sum(g,c); grand.req+=s.req; grand.got+=s.got; grand.rem+=s.rem; }));
-  return { sizes, codes, custBy, cell, sum, grand, avail };
+  return { sizes, codes, custBy, cell, sum, grand, avail, pending };
 }
 
 // بيحمّل الرصيد + الطلبات المعلّقة ويحسب التوزيع (null لو فيه مشكلة وفي toast بيوضّحها)
@@ -8748,9 +8748,25 @@ function viewAdmin(){
   // ---------- محتوى «المتبقي للعملاء» و«أرصدة المخزن» — بيفتحوا جوّه قسم الأرصدة ----------
   const tools285_=(btns)=>`<div class="tools285">${btns}</div>`;
   const toolBtn285_=(act,icon,label,aria)=>`<button type="button" class="tool285" data-act="${act}" aria-label="${aria||label}">${ico(icon)}<span>${label}</span></button>`;
+  const custRemDetail353_ = (d,name) => {
+    const rows=[];let tr=0,tg=0,tm=0;
+    d.sizes.forEach(g=>d.codes.forEach(c=>{const x=d.cell(g,c,name);if(x){rows.push([c,g,x]);tr+=x.req;tg+=x.got;tm+=x.rem;}}));
+    const key=o=>String(o.customer||'').trim()||o.dist||'—';
+    const ords=(d.pending||[]).filter(o=>key(o)===name);
+    const stAr=o=>(STATUS[o.status]&&STATUS[o.status].ar)||o.status||'';
+    const chip=(t,v,col)=>`<div style="flex:1;text-align:center;border:1px solid var(--line);border-radius:10px;padding:6px 2px"><div style="font-size:11px;color:var(--muted)">${t}</div><div style="font-size:18px;font-weight:800;color:${col}">${v}</div></div>`;
+    const tbl=rows.length?`<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px"><thead><tr style="color:var(--muted);font-size:11.5px"><th style="text-align:right;padding:5px 6px;font-weight:600">الكود</th><th style="font-weight:600">المقاس</th><th style="font-weight:600">مطلوب</th><th style="font-weight:600">متاح</th><th style="font-weight:600">ناقص</th></tr></thead><tbody>${rows.map(([c,g,x])=>`<tr style="border-top:1px solid var(--line);text-align:center"><td style="padding:6px;text-align:right;font-weight:700">${esc(c)}</td><td>${g==='خاص'?'خاص':esc(g)}</td><td>${x.req}</td><td style="color:var(--ok-ink);font-weight:700">${x.got||'—'}</td><td style="color:${x.rem>0?'var(--danger-ink)':'var(--muted)'};font-weight:800">${x.rem>0?x.rem:'—'}</td></tr>`).join('')}</tbody></table>`:'<div class="note">مفيش أبواب معلّقة للعميل ده.</div>';
+    const ordHtml=ords.map(o=>{const its=(o.items||[]).filter(it=>it.type==='Door'&&(Number(it.qty)||0)>0).map(it=>`${esc(String(it.code||'').trim()||'—')} · ${esc(it.size||'')} × ${esc(it.qty)}`).join('<br>');return `<div style="border-top:1px solid var(--line);padding:7px 2px;font-size:12.5px"><div style="display:flex;justify-content:space-between;gap:6px"><b>${esc(o.id||'')}</b><span style="color:var(--muted)">${esc(String(o.date||'').slice(0,10))} · ${esc(stAr(o))}</span></div><div style="color:var(--muted);margin-top:2px">${its||'—'}</div></div>`;}).join('');
+    return `<div data-custrem-detail="1" style="margin-top:10px"><div style="display:flex;align-items:center;gap:8px"><button type="button" class="btn act-tool sm" data-act="custrem-back" style="flex:none;width:auto">رجوع</button><b style="font-size:15px">${esc(name)}</b></div>
+      <div style="display:flex;gap:6px;margin-top:10px">${chip('مطلوب',tr,'var(--ink)')}${chip('متاح',tg,'var(--ok-ink)')}${chip('ناقص',tm,tm>0?'var(--danger-ink)':'var(--muted)')}</div>${tbl}
+      <div style="margin-top:12px;font-weight:800;font-size:13px">طلباته (${ords.length})</div>${ordHtml||'<div class="note">مفيش طلبات.</div>'}</div>`;
+  };
   const custRemBody_ = () => {
     const d = a.custRem;
     let body;
+    if(d && a.custRemSel){
+      return `${tools285_(toolBtn285_('custrem-reload','refresh',a.custRemLoading?'بيحدّث…':'تحديث'))}${custRemDetail353_(d,a.custRemSel)}`;
+    }
     if(a.custRemLoading && !d){
       body = `<div class="empty"><span class="em">${ico("clock","xl")}</span><p>جارٍ تحميل المتبقي للعملاء…</p></div>`;
     }else if(a.custRemErr&&!d){
@@ -8771,7 +8787,7 @@ function viewAdmin(){
             return `<td style="padding:7px 4px;text-align:center;font-weight:700;font-size:14px;color:${v>0?'var(--ink)':'var(--muted)'}">${v>0?v:'—'}</td>`;
           }).join('');
           return `<tr style="border-top:1px solid var(--line)">
-            <td style="padding:7px 8px;font-weight:700">${esc(n)}</td>${cs}</tr>`;
+            <td style="padding:7px 8px;font-weight:700"><button type="button" class="cr353-name" data-act="custrem-cust" data-n="${esc(n)}">${esc(n)}</button></td>${cs}</tr>`;
         }).join('');
         return `<div style="margin-top:12px;border:1px solid var(--line);border-radius:12px;overflow:hidden">
           <div style="padding:9px 12px;font-weight:800;font-size:14px;background:${dsw?dsw.bg:'var(--surface-2)'};${dsw?`border-bottom:2px solid ${dsw.border};`:''}color:${dsw?'#3D2E17':'var(--ink)'}"><b>${esc(c)}</b> <span style="color:${dsw?'rgba(61,46,23,.72)':'var(--muted)'};font-size:12px;font-weight:400">${esc(dn)}</span></div>
@@ -9267,6 +9283,8 @@ document.addEventListener('click',e=>{
     case 'adm-allocbycode-pdf':  exportAllocCustByCodePdf_(); break;
     case 'adm-allocbycode-xls':  exportAllocCustByCodeExcel_(); break;
     case 'custrem-reload':       loadCustRemScreen_(true); break;
+    case 'custrem-cust':         state.admin.custRemSel=el.dataset.n||''; render(); try{window.scrollTo({top:0})}catch(e){} break;
+    case 'custrem-back':         state.admin.custRemSel=''; render(); break;
     case 'adm-toggle-custrem':
       state.admin.viewCustRem = !state.admin.viewCustRem;
       if(state.admin.viewCustRem){ state.admin.viewArchive = false; state.admin.viewStock = false; state.admin.viewReports = false; }
