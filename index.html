@@ -2446,7 +2446,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v353';
+const APP_BUILD = 'v354';
 // v337: the capability answer from the submit-time check is handed to THIS order's send once (same endpoint and device, same order id, under 20 s old, still online, needed capabilities present). Anything else: a normal ping.
 let _capPre337_=null;
 function takeCapPre337_(o){const c=_capPre337_;_capPre337_=null;try{
@@ -7082,12 +7082,13 @@ async function exportRequiredDoorsExcel_(){
 // الرصيد = المطلوب تصنيعه. المقاس الخاص مش متتبّع في المخزن فبيتصنّع كله.
 // المطلوب = الكمية - الجاهز (نفس منطق «مطلوب لعملاء» في شاشة الأرصدة).
 // ============================================================
+function crDate354_(iso){const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso||''));return m?m[3]+'/'+m[2]+'/'+m[1].slice(2):'—';}
 function buildAllocationData_(orders){
   const pending = (orders||[])
     .filter(o=>o.status!=='Cancelled' && o.status!=='Delivered')
     .slice()
     .sort((a,b)=> String(a.date||'').localeCompare(String(b.date||'')) || String(a.id||'').localeCompare(String(b.id||'')));
-  const left = {}, avail = {}, cells = {}, custBy = {}, sizeSet = new Set(), codeSet = new Set();
+  const left = {}, avail = {}, cells = {}, custBy = {}, sizeSet = new Set(), codeSet = new Set(), dateBy = {};
   pending.forEach(o=>{
     const cust = String(o.customer||'').trim() || o.dist || '—';
     (o.items||[]).forEach(it=>{
@@ -7105,6 +7106,7 @@ function buildAllocationData_(orders){
         got = Math.min(remain, left[sk]);
         left[sk] -= got;
       }
+      { const dk = code+'|'+cust, dv = String(o.date||'').slice(0,10); if(dv && (!dateBy[dk] || dv<dateBy[dk])) dateBy[dk]=dv; }
       const ck = g+'|'+code+'|'+cust;
       const c = cells[ck] || (cells[ck] = {req:0, got:0, rem:0});
       c.req += remain; c.got += got; c.rem += remain-got;
@@ -7125,7 +7127,7 @@ function buildAllocationData_(orders){
   };
   const grand = {req:0, got:0, rem:0};
   sizes.forEach(g=>codes.forEach(c=>{ const s = sum(g,c); grand.req+=s.req; grand.got+=s.got; grand.rem+=s.rem; }));
-  return { sizes, codes, custBy, cell, sum, grand, avail, pending };
+  return { sizes, codes, custBy, cell, sum, grand, avail, pending, dateBy };
 }
 
 // بيحمّل الرصيد + الطلبات المعلّقة ويحسب التوزيع (null لو فيه مشكلة وفي toast بيوضّحها)
@@ -8787,13 +8789,14 @@ function viewAdmin(){
             return `<td style="padding:7px 4px;text-align:center;font-weight:700;font-size:14px;color:${v>0?'var(--ink)':'var(--muted)'}">${v>0?v:'—'}</td>`;
           }).join('');
           return `<tr style="border-top:1px solid var(--line)">
-            <td style="padding:7px 8px;font-weight:700"><button type="button" class="cr353-name" data-act="custrem-cust" data-n="${esc(n)}">${esc(n)}</button></td>${cs}</tr>`;
+            <td style="padding:7px 8px;font-weight:700"><button type="button" class="cr353-name" data-act="custrem-cust" data-n="${esc(n)}">${esc(n)}</button></td><td class="cr354-date" style="padding:7px 3px;text-align:center;font-size:11.5px;color:var(--muted);white-space:nowrap">${esc(crDate354_((d.dateBy||{})[c+'|'+n]))}</td>${cs}</tr>`;
         }).join('');
         return `<div style="margin-top:12px;border:1px solid var(--line);border-radius:12px;overflow:hidden">
           <div style="padding:9px 12px;font-weight:800;font-size:14px;background:${dsw?dsw.bg:'var(--surface-2)'};${dsw?`border-bottom:2px solid ${dsw.border};`:''}color:${dsw?'#3D2E17':'var(--ink)'}"><b>${esc(c)}</b> <span style="color:${dsw?'rgba(61,46,23,.72)':'var(--muted)'};font-size:12px;font-weight:400">${esc(dn)}</span></div>
           <table style="width:100%;border-collapse:collapse;font-size:13px">
             <thead><tr style="color:var(--muted);font-size:11.5px">
               <th style="text-align:right;padding:6px 8px;font-weight:600">المتبقي للعملا</th>
+              <th style="padding:6px 3px;width:58px;font-weight:600">تاريخ الطلب</th>
               ${d.sizes.map(g=>`<th style="padding:6px 4px;width:52px;font-weight:600">${g==='خاص'?'مقاس الفتحة المعمارية':g}</th>`).join('')}
             </tr></thead>
             <tbody>${rows}</tbody>
