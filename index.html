@@ -2499,7 +2499,24 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v371';
+const APP_BUILD = 'v372';
+var _nm372={edit:false};
+function accNameHTML372_(){
+ const ib='display:flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);color:var(--brand);cursor:pointer;flex:none;';
+ const pen='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+ const ok='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+ const head='<div id="accName370" style="margin:6px 0 10px"><div style="font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:4px">اسم الحساب (بيظهر على الأوردرات الجديدة)</div>';
+ if(_nm372.edit) return head+'<div style="display:flex;gap:8px;align-items:center"><input id="nm372-input" type="text" value="'+esc(state.profile.name)+'" placeholder="اكتب الاسم الجديد" style="flex:1;min-width:0"><button type="button" data-nm372="save" aria-label="حفظ الاسم" title="حفظ" style="'+ib+'background:var(--brand);color:#fff;border-color:var(--brand)">'+ok+'</button></div></div>';
+ return head+'<div style="display:flex;gap:8px;align-items:center"><div style="flex:1;min-width:0;font-weight:800;font-size:17px;color:var(--ink);padding:8px 2px;overflow-wrap:anywhere">'+esc(state.profile.name)+'</div><button type="button" data-nm372="edit" aria-label="تعديل الاسم" title="تعديل" style="'+ib+'">'+pen+'</button></div></div>';
+}
+document.addEventListener('click',function(e){const b=e.target.closest&&e.target.closest('[data-nm372]');if(!b)return;e.preventDefault();
+ if(b.dataset.nm372==='edit'){_nm372.edit=true;render();setTimeout(function(){const i=document.getElementById('nm372-input');if(i){i.focus();i.select();}},50);return;}
+ const i=document.getElementById('nm372-input');const v=String(i?i.value:'').trim();
+ if(!v){toast('اكتب الاسم الأول',2600);return;}
+ state.profile.name=v;if(!save(LS_PROFILE,state.profile)){toast('الاسم ماتحفظش، جرب تاني',3000);return;}
+ _nm372.edit=false;render();toast('اتحفظ الاسم: '+v,2600);
+},true);
+
 // v337: the capability answer from the submit-time check is handed to THIS order's send once (same endpoint and device, same order id, under 20 s old, still online, needed capabilities present). Anything else: a normal ping.
 let _capPre337_=null;
 function takeCapPre337_(o){const c=_capPre337_;_capPre337_=null;try{
@@ -12029,7 +12046,7 @@ function flowPhoto_(){const f=doorFlow_,v=f.variants[0]||{},src=flowThumb_();if(
  return `<div class="flow-photo">${v.w?`<b>${esc(v.w)} سم</b>`:''}<div class="flow-photo-row">${leaf}${v.h?`<span>${esc(v.h)}</span>`:''}</div><small>معاينة المقاس الأول، كل المقاسات في الملخص</small></div>`;}
 function flowSummary_(){const f=doorFlow_;return f.variants.map((v,i)=>`<div class="flow-summary"><b>المقاس ${i+1} · ${esc(v.w)} × ${esc(v.h)} سم · ${esc(v.qty)} باب</b><div>حلق ${v.frame?esc(v.frame)+' سم'+(v.frameHeight?' · ارتفاع '+esc(v.frameHeight)+' سم':' · استاندر'):'بدون'} · برور <bdi>${esc(v.dbror||'بدون')}</bdi></div></div>`).join('');}
 function fOwnerChoice278_(){return doorFlow_.ownerChoice278||(doorFlow_.ownerConfirmedV276?state.custMode:'');}
-function flowOwnerHTML_(){return `<div class="note">الحساب: <bdi>${esc(state.profile.phone)}</bdi></div><label class="fld" id="accName370"><span>اسم الحساب (بيظهر على الأوردرات الجديدة)</span><input type="text" data-act="prof" data-k="name" value="${esc(state.profile.name)}" placeholder="اكتب الاسم الجديد"></label><h3>الأوردر لحساب مين؟</h3>${flowChoices_('owner',[['self','لحسابي'],['other','عميل آخر']],fOwnerChoice278_())}${fOwnerChoice278_()==='other'?`<label class="fld"><span>اسم العميل *</span><input type="text" data-act="cust-name" value="${esc(state.customer.name)}"></label><label class="fld"><span>رقم العميل · اختياري</span><input type="tel" data-act="cust-phone" value="${esc(state.customer.phone)}"></label><label class="fld"><span>عنوان العميل · اختياري</span><input type="text" data-act="cust-region" value="${esc(state.customer.region||'')}"></label>` :fOwnerChoice278_()==='self'?'<p>بنفس بيانات حسابك، من غير كتابتها تاني.</p>':'<p>اختار صاحب الطلب عشان تبدأ.</p>'}${state.cart.length?'<p>السلة الحالية محفوظة. الاختيار ينطبق على الطلب الحالي بدون تغيير أي بند.</p>':''}${fOwnerChoice278_()==='other'?flowButton_('owner-next','التالي — اختيار الأصناف'):''}`;}
+function flowOwnerHTML_(){return `<div class="note">الحساب: <bdi>${esc(state.profile.phone)}</bdi></div>${accNameHTML372_()}<h3>الأوردر لحساب مين؟</h3>${flowChoices_('owner',[['self','لحسابي'],['other','عميل آخر']],fOwnerChoice278_())}${fOwnerChoice278_()==='other'?`<label class="fld"><span>اسم العميل *</span><input type="text" data-act="cust-name" value="${esc(state.customer.name)}"></label><label class="fld"><span>رقم العميل · اختياري</span><input type="tel" data-act="cust-phone" value="${esc(state.customer.phone)}"></label><label class="fld"><span>عنوان العميل · اختياري</span><input type="text" data-act="cust-region" value="${esc(state.customer.region||'')}"></label>` :fOwnerChoice278_()==='self'?'<p>بنفس بيانات حسابك، من غير كتابتها تاني.</p>':'<p>اختار صاحب الطلب عشان تبدأ.</p>'}${state.cart.length?'<p>السلة الحالية محفوظة. الاختيار ينطبق على الطلب الحالي بدون تغيير أي بند.</p>':''}${fOwnerChoice278_()==='other'?flowButton_('owner-next','التالي — اختيار الأصناف'):''}`;}
 function flowRegistrationHTML_(){return `<h2>بيانات الحساب</h2><label class="fld"><span>الاسم *</span><input type="text" data-act="prof" data-k="name" value="${esc(state.profile.name)}"></label><label class="fld"><span>رقم الموبايل *</span><input type="tel" data-act="prof" data-k="phone" value="${esc(state.profile.phone)}"></label><label class="fld"><span>المنطقة · اختياري</span><input type="text" data-act="prof" data-k="region" value="${esc(state.profile.region)}"></label><p>بتتحفظ على الجهاز، مش هنطلبها مع كل أوردر.</p>${flowButton_('register','احفظ الحساب واختار الأصناف')}`;}
 function flowValidateDims_(f=doorFlow_){return f.variants.length&&f.variants.every(v=>Number(v.w)>0&&Number(v.h)>0&&Number.isInteger(Number(v.qty))&&Number(v.qty)>0);}
 function flowValidate_(f=doorFlow_){return flowValidateDims_(f)&&f.variants.every(v=>v.frame!==''&&v.frame!=null&&[0,10,15,20].includes(Number(v.frame))&&v.dbror!==null&&v.dbror!==undefined&&['','6×9','4×8'].includes(v.dbror)&&(!v.frameHeight||Number(v.frameHeight)>0));}
