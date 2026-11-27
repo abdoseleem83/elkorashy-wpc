@@ -2499,7 +2499,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v363';
+const APP_BUILD = 'v365';
 // v337: the capability answer from the submit-time check is handed to THIS order's send once (same endpoint and device, same order id, under 20 s old, still online, needed capabilities present). Anything else: a normal ping.
 let _capPre337_=null;
 function takeCapPre337_(o){const c=_capPre337_;_capPre337_=null;try{
@@ -3182,8 +3182,8 @@ async function printSignedQuery_(action,orderId,ref,key){
   return '&orderId='+encodeURIComponent(orderId)+'&ref='+encodeURIComponent(ref)+'&ts='+ts+'&nonce='+nonce+'&proof='+proof;
 }
 function printDataUrl_(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result));r.onerror=()=>reject(new Error('تعذّر قراءة الصورة؛ اختارها تاني'));r.readAsDataURL(file);});}
-async function printHasAlpha_(data){
-  const im=new Image();im.src=data;await im.decode();
+async function printHasAlpha_(data,pre){
+  const im=pre||new Image();if(!pre){im.src=data;await im.decode();}
   if(!im.width||!im.height||im.width*im.height>50000000)throw new Error('أبعاد الصورة كبيرة؛ اختار صورة أصغر');
   const c=document.createElement('canvas');c.width=96;c.height=96;
   const g=c.getContext('2d');g.drawImage(im,0,0,96,96);
@@ -3197,7 +3197,7 @@ async function rememberPrintMotif_(ref,data){
 async function printPreview_(data){
   const img=new Image();img.src=data;await img.decode();
   if(!img.width||!img.height||img.width*img.height>50000000) throw new Error('أبعاد الصورة كبيرة؛ اختار صورة أصغر');
-  const alpha=await printHasAlpha_(data);
+  const alpha=await printHasAlpha_(data,img);
   const scale=Math.min(1,1200/Math.max(img.width,img.height)),c=document.createElement('canvas');
   c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));
   const g=c.getContext('2d');if(!alpha){g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);}g.drawImage(img,0,0,c.width,c.height);
@@ -3417,7 +3417,7 @@ async function uploadOrderPrints_(o){
   };
   try{
     for(const ref of refs){
-      const rec=await printGet_(ref);if(!rec||!rec.key||!rec.data)throw new Error('ملف الطباعة غير متاح على الجهاز؛ الطلب محفوظ ولم يصل للمصنع');
+      sndNote345_('جارٍ رفع صورة الطباعة '+(refs.indexOf(ref)+1)+' من '+refs.length+'، الصورة بتتأكد على سيرفر المصنع');const rec=await printGet_(ref);if(!rec||!rec.key||!rec.data)throw new Error('ملف الطباعة غير متاح على الجهاز؛ الطلب محفوظ ولم يصل للمصنع');
       const skip=(rec.orders||[]).length===0&&!upMark337_(o.id,ref,false);
       if(!skip&&await statusReady(rec,ref)){await finish(rec,ref);continue;}
       upMark337_(o.id,ref,true);
@@ -3427,7 +3427,7 @@ async function uploadOrderPrints_(o){
     }
   }catch(e){await Promise.all(pending);throw e;}
   const res=await Promise.all(pending);
-  const bad=res.find(Boolean);if(bad)throw bad;
+  const bad=res.find(Boolean);if(bad)throw bad;sndNote345_('الصورة وصلت المصنع. بيسجّل الأوردر دلوقتي، ممكن ياخد لحد دقيقة ولا تقفل الصفحة');
   tmMark_('upload_all',tmU);
   return proofs;
 }
@@ -4156,12 +4156,13 @@ function cartGroups344_(arr){
 let _doorColF344='';
 /* v345: شاشة مراحل الإرسال (محفوظ، بيتبعت من غير صور، المصنع استلم). عرض بس، ما بتبعت ولا بتغيّر حاجة. */
 let _snd345T=null;
-function snd345_(stage,no){
+function sndNote345_(t){try{window._sndNote345=t||'';const s=document.querySelector('#snd345.on .sd345.act small');if(s)s.textContent=t;}catch(e){}}
+function snd345_(stage,no){if(stage===0||stage===2||stage==='fail')window._sndNote345='';
  try{
   let el=document.getElementById('snd345');
   if(!el){el=document.createElement('div');el.id='snd345';document.body.appendChild(el);}
   clearTimeout(_snd345T);
-  const S=[['حُفظ على جهازك','الأوردر في أمان حتى لو النت قطع'],['بيتبعت للمصنع','بدون صور: الباب بالكود، والرسمة الخاصة معلّمة'],['المصنع استلم'+(no?' برقم '+no:''),'تقدر تتابعه من «تابع طلبك»']];
+  const S=[['حُفظ على جهازك','الأوردر في أمان حتى لو النت قطع'],['بيتبعت للمصنع',(window._sndNote345||'بدون صور: الباب بالكود، والرسمة الخاصة معلّمة')],['المصنع استلم'+(no?' برقم '+no:''),'تقدر تتابعه من «تابع طلبك»']];
   const fail=stage==='fail';const cur=fail?1:stage;
   const rows=S.map((s,i)=>{const done=(fail&&i===0)||(!fail&&i<cur)||(!fail&&stage===2&&i===2);const act=!fail&&i===cur&&stage<2;
    return '<div class="sd345 '+(done?'ok':act?'act':fail&&i===1?'bad':'')+'"><b>'+(done?'✓':act?'<u></u>':fail&&i===1?'!':'')+'</b><span><strong>'+(fail&&i===1?'لسه مش متأكد إن المصنع استلم':s[0])+'</strong><small>'+(fail&&i===1?'الأوردر محفوظ على جهازك وما اتبعتش تاني لوحده. افتح «تابع طلبك» وراجع الإرسال.':s[1])+'</small></span></div>';}).join('');
@@ -6586,22 +6587,6 @@ function availTxt357_(it,m){
   }
   return {t:'متاح',c:''};
 }
-
-document.addEventListener('click',async ev=>{
-  const b=ev.target.closest&&ev.target.closest('[data-art361]');if(!b)return;
-  ev.preventDefault();ev.stopPropagation();
-  const f=doorFlow_,k=b.dataset.art361;
-  try{
-    if(k==='clear'){f.art='';flowPersist_();render();return;}
-    if(k==='save'){
-      const rec=f.art&&await printGet_(f.art);if(!rec||!rec.data)throw new Error('الصورة مش موجودة على الجهاز');
-      const m=/^data:(image\/(?:png|jpeg|webp));base64,(.*)$/.exec(rec.data);if(!m)throw new Error('صيغة الصورة غير مدعومة');
-      const bin=atob(m[2]),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
-      const ext=m[1]==='image/png'?'png':m[1]==='image/webp'?'webp':'jpg';
-      await shareOrDownload_(new Blob([u],{type:m[1]}),'رسمة_الطباعة_'+(f.code||'')+'.'+ext,'رسمة الطباعة');
-    }
-  }catch(err){toast(err.message,5000);}
-},true);
 async function buildFullReportPdf_(orders){
   orders = (orders||[]).filter(o=>o.status!=='Cancelled');   // v330: الملغي مايدخلش الإجماليات
   if(!orders.length){ toast('مفيش طلبات نشطة'); return; }
@@ -12083,7 +12068,7 @@ function flowConfig345_(f){
  const print=`<div class="cfg345-sec"><button type="button" class="tg345${on?' on':''}" data-flow-choice="source" data-value="${on?'plain':'catalog'}"><span class="tt"><b>طباعة أو حفر برسمة</b><small>${on?(f.source==='custom'?'رسمة خاصة':f.pattern?'من الكتالوج: '+esc(f.pattern):'اختار الرسمة'):'الصورة بالكود'}</small></span><i class="sw"></i></button>`
   +(on?`<div class="cfg345-pn"><div class="flow-chips"><button type="button" class="chip ${f.source==='catalog'?'on':''}" data-flow-choice="source" data-value="catalog">من الكتالوج</button><button type="button" class="chip ${f.source==='custom'?'on':''}" data-flow-choice="source" data-value="custom">رسمة خاصة (صورتي)</button></div>`
    +(f.source==='catalog'&&f.pattern&&!_catOpen347?'':f.source==='catalog'?`<div class="flow-designs">${APPROVED_PRINT_CODES_.map(k=>`<button type="button" class="card${f.pattern===k?' on':''}" data-flow-pattern="${k}"><img src="${FLOW_CATALOG_[f.code+'|'+k]}" alt="${esc(f.code)} ${k}"><bdi>${k}</bdi></button>`).join('')}</div>${f.pattern?'':'<p class="note">اختار رسمة من الكتالوج.</p>'}`
-    :`<div class="art361"><label class="btn outline" style="display:flex;justify-content:center;gap:6px;cursor:pointer;position:relative">${f.art?'تغيير صورة الرسمة':'ارفع صورة الرسمة (اختياري)'}<input type="file" accept="image/png,image/jpeg,image/webp" data-flow-file="1" style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer"></label>${f.art&&_printOriginalThumbs.get(f.art)?`<div class="art361p"><img src="${_printOriginalThumbs.get(f.art)}" alt="رسمة الطباعة"><div><button type="button" class="chip" data-art361="save">حفظ الصورة</button><button type="button" class="chip" data-art361="clear">إزالة</button></div></div>`:'<div class="art361n">من غير صورة الطلب يتبعت عادي بالكود</div>'}</div>`)
+    :`<div class="note custom341"><b>رسمة خاصة</b> · هتبعتها للمصنع برّه التطبيق</div>`)
    +`<div class="flow-chips"><button type="button" class="chip ${f.method==='print'?'on':''}" data-flow-choice="method" data-value="print">طباعة</button><button type="button" class="chip ${f.method==='engrave'?'on':''}" data-flow-choice="method" data-value="engrave">حفر</button>${f.source==='catalog'&&f.pattern&&!_catOpen347?`<button type="button" class="chip" data-flow-action="catalog-open347">الرسمة ${esc(f.pattern)} · تغيير</button>`:''}</div></div>`:'')+'</div>';
  const vs=f.variants.map((v,i)=>`<div class="flow-summary cfg345-v">${f.variants.length>1?`<h3>المقاس ${i+1}</h3>`:''}${'<div class="szrow357">'+flowChoices_('widthPreset',SIZES.map(s=>[s.w,String(s.w)]).concat([['custom','فتحة معمارية']]),v.w===''?'':v.widthPreset==='custom'||!SIZES.some(s=>String(s.w)===String(v.w))?'custom':v.w,i)+'</div>'}${(v.widthPreset==='custom'||(String(v.w||'')!==''&&!SIZES.some(s=>String(s.w)===String(v.w)))||(String(v.h||'').trim()!==''&&String(v.h).trim()!==String(DOOR_STD_HEIGHT)&&!(v.widthPreset!=='custom'&&String(v.w||'')===''&&String(v.h||'').trim()==='')))?'<div class="row2">'+flowNum_('العرض بالسم','w',v.w,i)+flowNum_('الارتفاع بالسم','h',v.h,i)+'</div>':''}${flowNotes344_(v)}<div class="rw348"><h3>الحلق</h3>${flowChoices_('frame',[[10,'10'],[15,'15'],[20,'20'],[0,'بدون']],v.frame,i)}</div>${v.frame?`<details class="dd357"${String(v.frameHeight||'').trim()!==''?' open':''}><summary>ارتفاع الحلق: ${String(v.frameHeight||'').trim()!==''?esc(v.frameHeight)+' سم':'عادي'}</summary>${flowNum_('ارتفاع الحلق بالسم','frameHeight',v.frameHeight,i)}</details>`:''}<div class="rw348"><h3>البرور</h3>${flowChoices_('dbror',[['6×9','6×9'],['4×8','4×8'],['','بدون']],v.dbror,i)}</div>${flowNum_('الكمية','qty',v.qty,i)}${f.variants.length>1?`<button type="button" class="btn ghost" data-flow-remove="${i}">حذف المقاس</button>`:''}</div>`).join('');
  return `<div class="cfg345"><h2>الباب ${esc(f.code)}</h2>${flowPhotoPlain346_(f)}${print}${vs}${flowButton_('add-size','أضف مقاسًا آخر',true)}<div class="cfg345-sec"><button type="button" class="tg345${f.wood?' on':''}" data-flow-choice="wood" data-value="${f.wood?'0':'1'}"><span class="tt"><b>تدعيم خشب</b><small>${f.wood?'مع تدعيم':'بدون تدعيم'}</small></span><i class="sw"></i></button></div>${flowOk345_(f)}<label class="fld"><span>ملاحظات على الباب · اختياري</span><textarea data-flow-input="note">${esc(f.note)}</textarea></label><div class="add345">${flowButton_('add-cart-345',f.edit?'احفظ تعديل البند':'إضافة للأوردر')}</div></div>`;
@@ -12215,7 +12200,7 @@ document.addEventListener('click',async ev=>{
  }catch(err){toast(err.message||'تعذّر حفظ الاختيار',6500);}finally{_flowBusy_=false;}
 });
 document.addEventListener('input',ev=>{const x=ev.target.closest&&ev.target.closest('[data-flow-input]');if(x){const k=x.dataset.flowInput;if(x.dataset.flowIndex!=null)doorFlow_.variants[Number(x.dataset.flowIndex)][k]=x.value;else doorFlow_[k]=x.value;flowPersist_();}queueMicrotask(flowProductPersist_);});
-document.addEventListener('change',async ev=>{const x=ev.target.closest&&ev.target.closest('[data-flow-file]');if(!x||!x.files[0])return;window._flowFileBusy281=true;try{const file=x.files[0];if(!/^image\/(png|jpeg|webp)$/.test(file.type)||!file.size||file.size>5*1024*1024)throw new Error('اختار صورة حتى٥ ميجا');const data=await printDataUrl_(file),thumb=await printPreview_(data),rec={ref:'pa_'+printRandom_(16),key:printRandom_(32),data,thumb,orders:[],created:Date.now()};await printPut_(rec);doorFlow_.art=rec.ref;_printThumbs.set(rec.ref,thumb);_printOriginalThumbs.set(rec.ref,thumb);if(!flowPersist_())throw new Error('الصورة محفوظة لكن تعذّر حفظ المسودة، لا تغلق الصفحة');render();}catch(err){toast(err.message,6500);}finally{window._flowFileBusy281=false;}});
+document.addEventListener('change',async ev=>{const x=ev.target.closest&&ev.target.closest('[data-flow-file]');if(!x||!x.files[0])return;window._flowFileBusy281=true;try{const file=x.files[0];busy(true,'جارٍ حفظ الصورة على الجهاز…');if(!/^image\/(png|jpeg|webp)$/.test(file.type)||!file.size||file.size>5*1024*1024)throw new Error('اختار صورة حتى٥ ميجا');const data=await printDataUrl_(file),thumb=await printPreview_(data),rec={ref:'pa_'+printRandom_(16),key:printRandom_(32),data,thumb,orders:[],created:Date.now()};await printPut_(rec);doorFlow_.art=rec.ref;_printThumbs.set(rec.ref,thumb);_printOriginalThumbs.set(rec.ref,thumb);if(!flowPersist_())throw new Error('الصورة محفوظة لكن تعذّر حفظ المسودة، لا تغلق الصفحة');render();}catch(err){toast(err.message,6500);}finally{window._flowFileBusy281=false;busy(false);}});
 function flowDisplayTitle_(s){return String(s||'').replace(/\s*\[DW1\/(PLAIN|CUSTOM|EK[1-9])\]/g,(_,k)=>' · '+(k==='PLAIN'?'بدون رسمة':k==='CUSTOM'?'رسمة خاصة':k));}
 function flowDrawingCard_(g,eco){
  const m=g.flow,src=m.source==='catalog'?FLOW_CATALOG_[g.code+'|'+m.pattern]:m.source==='plain'?FLOW_PLAIN_[g.code]:_printOriginalThumbs.get(g.art||g.engraving),method=m.source==='plain'?'بدون رسمة':g.isE?'حفر':'طباعة';
