@@ -2499,8 +2499,20 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v372';
+const APP_BUILD = 'v374';
 var _nm372={edit:false};
+var _hid373=0;
+document.addEventListener('visibilitychange',function(){
+ if(document.hidden){_hid373=Date.now();return;}
+ if(!_hid373)return;var away=Date.now()-_hid373;_hid373=0;
+ if(away<2000)return;
+ try{
+  if(state.editingId||state.editingMeta||(typeof _pulledLine!=='undefined'&&_pulledLine)||(doorFlow_&&doorFlow_.edit))return;
+  if(typeof _autoUpd281!=='undefined'&&_autoUpd281&&_autoUpd281.reloading)return;
+  state.tab='home';state.newSection='';save(LS_SECTION,'');doorFlow_.stage='categories';doorFlow_.ownerConfirmedV276=false;doorFlow_.ownerChosen=false;doorFlow_.ownerChoice278='';render();window.scrollTo(0,0);
+ }catch(e){}
+});
+
 function accNameHTML372_(){
  const ib='display:flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);color:var(--brand);cursor:pointer;flex:none;';
  const pen='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
@@ -12338,7 +12350,8 @@ canvasToDocPdf_=async function(canvas,filename,opts){
 };
 
 /* v286: لو الريلود ده جاي من تحديث تلقائي، رجّع المستخدم لنفس الشاشة اللي كان واقف فيها. التخزين محفوظ في كل الحالات؛ دي استعادة للشاشة المرئية بس، وبتتجاهل لو عدّى عليها أكتر من ١٠ دقايق. */
-try{const _r281=JSON.parse(sessionStorage.getItem('wpc_resume281')||'null');sessionStorage.removeItem('wpc_resume281');if(_r281&&Date.now()-(_r281.at||0)<10*60*1000){state.tab=_r281.tab||state.tab;state.newSection=_r281.section||'';save(LS_TAB,state.tab);save(LS_SECTION,state.newSection);}}catch(e){}
+var _res373=false;try{const _r281=JSON.parse(sessionStorage.getItem('wpc_resume281')||'null');sessionStorage.removeItem('wpc_resume281');if(_r281&&Date.now()-(_r281.at||0)<10*60*1000){_res373=true;state.tab=_r281.tab||state.tab;state.newSection=_r281.section||'';save(LS_TAB,state.tab);save(LS_SECTION,state.newSection);}}catch(e){}
+if(!_res373&&!state.editingId&&!state.editingMeta&&!(doorFlow_&&doorFlow_.edit)){state.tab='home';state.newSection='';try{save(LS_SECTION,'');}catch(e){}doorFlow_.stage='categories';doorFlow_.ownerConfirmedV276=false;doorFlow_.ownerChosen=false;doorFlow_.ownerChoice278='';}
 renderNow();
 setTimeout(loadStock,3000);   // أرصدة المخزن بتتحمّل في الخلفية من غير ما تعطّل فتح التطبيق
 if(state.orders.length || phoneKey_()) setTimeout(maybeLoadTrack_, 4500);   // حالة الأوردرات للصفحة الرئيسية
