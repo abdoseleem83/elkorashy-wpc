@@ -1,6 +1,6 @@
 /* App assets only. Orders, accounts, artwork and server requests never enter this cache. */
-const SHELL_CACHE='wpc-shell-v357';
-const RES_CACHE='wpc-resources-v357';
+const SHELL_CACHE='wpc-shell-v360';
+const RES_CACHE='wpc-resources-v360';
 const CORE=['./index.html','./offline.html','./manifest.json','./img/logo.png','./img/mark.png','./html2canvas.js','./jspdf.js','./exceljs.js','./data-images.js',...['A01','A02','A03','A04','A05','A06','A07','A08','A09','A010','A013'].map(c=>'./img/doors/'+c+'.jpg')];
 // no-cache: بدونه ممكن التثبيت يلتقط index قديم من كاش HTTP فيختلط القديم بالجديد (اتلاحظ في اختبار الترحيل v286→v287)
 self.addEventListener('install',event=>{event.waitUntil((async()=>{const c=await caches.open(SHELL_CACHE);await c.addAll(CORE.map(u=>new Request(u,{cache:'no-cache'})));})());});

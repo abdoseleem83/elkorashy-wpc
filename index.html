@@ -2321,6 +2321,12 @@ html[data-theme="dark"] .ex357{background:#3B2F19;color:#F7DBA1}
 #fileReady357{position:fixed;inset:auto 10px 96px 10px;margin:0;border:1px solid var(--line,#ccc);border-radius:16px;padding:12px;width:auto;max-width:none;z-index:9999;background:var(--card,#fff);color:var(--ink,#111);box-shadow:0 10px 30px rgba(0,0,0,.3)}
 #fileReady357::backdrop{background:rgba(0,0,0,.25)}
 #fileReady357 .fr-n{font-size:12px;word-break:break-all;margin:6px 0 10px;direction:ltr;text-align:left;opacity:.85}
+.cfg345 .tg345{background:#FFF1D6!important;border:2px solid #E08A00!important;box-shadow:0 2px 8px rgba(224,138,0,.28)!important;padding:9px 12px!important}
+.cfg345 .tg345 .tt b{color:#7A4300!important;font-size:14px!important}
+.cfg345 .tg345 .tt small{color:#8A5A12!important;font-weight:700!important}
+.cfg345 .tg345.on{background:#FFE3A8!important;border-color:#C96F00!important}
+.pc357{display:inline-flex;align-items:center;gap:3px;background:#FFF1D6;border:1px solid #E0B25A;border-radius:8px;padding:1px 5px;margin:2px 1px;font-size:11px;font-weight:800;color:#7A4300}
+.pc357 i{display:inline-block;background:#8A5A12;border-radius:1px}.pc357 .pv,.pc357 i.pv{width:4px;height:14px}.pc357 i.ph{width:12px;height:4px}
 </style>
 </head>
 <body>
@@ -2492,7 +2498,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v357';
+const APP_BUILD = 'v360';
 // v337: the capability answer from the submit-time check is handed to THIS order's send once (same endpoint and device, same order id, under 20 s old, still online, needed capabilities present). Anything else: a normal ping.
 let _capPre337_=null;
 function takeCapPre337_(o){const c=_capPre337_;_capPre337_=null;try{
@@ -4787,9 +4793,9 @@ function viewCart(){
       {const ex=[];if(it.wood)ex.push('تدعيم خشب');if(it.hafr)ex.push('حفر');else if(it.print)ex.push('طباعة');if(doorNeedsCut_(it))ex.push('قص مقاس خاص');if(ex.length)spec+='<br>'+ex.map(x=>'<span class="ex357">'+x+'</span>').join('');}
       if(it.note) spec+='<br><span style="color:var(--warn-ink)">'+esc(it.note)+'</span>';
     } else if(it.kind==='frame'||it.kind==='bror'){
-      spec = it.isSet ? (it.qty+' طقم'+(priced?' — '+money(it.price)+' ج/طقم':''))
+      spec = it.isSet ? (it.qty+' طقم'+(priced?' — '+money(it.price)+' ج/طقم':'')+'<br><span class="pc357"><i class="pv"></i>'+(2*(Number(it.qty)||0))+' قائم × 2.15 م</span> <span class="pc357"><i class="ph"></i>'+(Number(it.qty)||0)+' عارضة × 1.1 م</span><br><small>= '+(+(2.5*(Number(it.qty)||0)).toFixed(2))+' عود</small>')
                        : it.customSet ? (it.qty+' عود'+(priced?' — '+money(linePrice(it))+' ج':'')+'<br>'+esc(it.spec))
-                       : (it.qty+' عود'+(it.rodCm?' × '+(+(it.rodCm/100).toFixed(3))+' م':'')+(priced?' — '+money(it.price)+' ج/عود':''));
+                       : (it.qty+' عود'+(it.rodCm?' × '+(+(it.rodCm/100).toFixed(3))+' م'+(it.kind==='frame'?(it.rodCm<150?' · <b>عارضة</b>':' · <b>قائم</b>'):''):'')+(priced?' — '+money(it.price)+' ج/عود':''));
     } else if(it.kind==='mabra'){
       spec = it.qty+' معبرة — '+esc(it.spec||'')+(priced&&it.price>0?' — '+money(it.price)+' ج/معبرة':'');
     } else if(METER_KINDS_[it.kind]){
@@ -6403,7 +6409,7 @@ function reportHTML(orders){
   </div>`;
 
   // ---------- ٢) تفاصيل حسب العميل ----------
-  const data = buildAdminOrdersDetail_(orders);
+  const data = buildAdminOrdersDetail_(orders); const AVM357=availMap357_(orders);
   const custBlocks = data.map(cust=>{
     const ordBlocks = cust.orders.map(o=>{
       const st = STATUS[o.status] || {ar:o.status||'—'};
@@ -6425,7 +6431,7 @@ function reportHTML(orders){
           <td style="${td}"><b>${Number(it.qty)||0}</b></td>
           <td style="${td};color:#1E8E52">${pp.produced}</td>
           <td style="${td};${pp.pending>0?'color:#B3261E;font-weight:700':''}">${pp.pending}</td>
-          <td style="${td};${unavail?'color:#B3261E;font-weight:700':''}">${unavail?'غير متاح':'متاح'}</td>
+          <td style="${td};font-weight:700;font-size:11px;color:${availTxt357_(it,AVM357).c||'inherit'}">${availTxt357_(it,AVM357).t}</td>
         </tr>`;
       }).join('');
       return `<div class="rpt-order-block keep-blk" style="margin-top:8px;padding-top:2px">
@@ -6548,6 +6554,34 @@ function reportHTML(orders){
   </div>`;
 }
 
+function availMap357_(orders){
+  const m=new Map();
+  try{
+    if(!state.stock||!state.stock.rows) return m;
+    const left={};
+    (orders||[]).filter(o=>o.status!=='Cancelled'&&o.status!=='Delivered').slice()
+      .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.id||'').localeCompare(String(b.id||'')))
+      .forEach(o=>(o.items||[]).forEach(it=>{
+        if(it.type!=='Door') return;
+        const q=Math.max(0,Number(it.qty)||0); if(q<=0) return;
+        const w=doorWidthGroup_(it.size); if(w==null) return;
+        const sk=(String(it.code||'').trim()||'—')+'|'+w;
+        if(!(sk in left)) left[sk]=Math.max(0,Number(stockFor(String(it.code||'').trim(),w))||0);
+        const got=Math.min(q,left[sk]); left[sk]-=got; m.set(it,got);
+      }));
+  }catch(e){}
+  return m;
+}
+function availTxt357_(it,m){
+  if(it.avail===false) return {t:'غير متاح',c:'#B3261E'};
+  if(it.type==='Door'&&m&&m.has(it)){
+    const got=m.get(it), q=Number(it.qty)||0;
+    if(got>=q) return {t:'متاح '+q,c:'#1E8E52'};
+    if(got>0) return {t:'متاح '+got+' من '+q,c:'#B26A00'};
+    return {t:'غير متاح (0 من '+q+')',c:'#B3261E'};
+  }
+  return {t:'متاح',c:''};
+}
 async function buildFullReportPdf_(orders){
   orders = (orders||[]).filter(o=>o.status!=='Cancelled');   // v330: الملغي مايدخلش الإجماليات
   if(!orders.length){ toast('مفيش طلبات نشطة'); return; }
@@ -8097,7 +8131,7 @@ async function buildAdminOrdersExcel_(orders){
   addHeaderBand_(wsDet, detLastCol, 'تفاصيل الطلبات حسب العميل', COMPANY_AR+' — '+new Date().toLocaleDateString('ar-EG'));
   wsDet.addRow([]);
 
-  const data = buildAdminOrdersDetail_(orders);
+  const data = buildAdminOrdersDetail_(orders); const AVM357=availMap357_(orders);
   // ترقيم الأعمدة ديناميكي حسب ظهور عمود "ارتفاع الحلق" — عشان تلوين الخلايا الصح، وبيستخدمه
   // كل من صفوف الأصناف وصفوف إجمالي الكود مع بعض.
   const BROR_COL = showFrameHCol?9:8, QTY_COL2 = BROR_COL+2, PRO_COL2 = QTY_COL2+1, PEND_COL2 = PRO_COL2+1, AVAIL_COL2 = PEND_COL2+1;
@@ -8123,12 +8157,12 @@ async function buildAdminOrdersExcel_(orders){
         const wh = {w:sp.w, h:sp.h}, frameW = sp.frameW, frameH = sp.frameH, brorTxt = sp.bror;
         const pp = itemProdPending_(it);
         const cells = ['', itemTypeAr_(it.type), it.code||'—', itemNameAr_(it), wh.w||'—', wh.h||'—', frameW]
-          .concat(showFrameHCol?[frameH]:[]).concat([brorTxt, itemUnitAr_(it.unit), Number(it.qty)||0, pp.produced, pp.pending, it.avail===false?'غير متاح':'متاح']);
+          .concat(showFrameHCol?[frameH]:[]).concat([brorTxt, itemUnitAr_(it.unit), Number(it.qty)||0, pp.produced, pp.pending, availTxt357_(it,AVM357).t]);
         const row = wsDet.addRow(cells);
         row.eachCell((c,i)=>{ if(i===1) return; c.border=border; c.font={name:FONT,size:10}; c.alignment={horizontal:'center'};
           if(i===PRO_COL2) c.font={name:FONT,size:10,color:{argb:'FF1E8E52'}};
           if(i===PEND_COL2 && pp.pending>0) c.font={name:FONT,size:10,color:{argb:'FFB3261E'},bold:true};
-          if(i===AVAIL_COL2 && it.avail===false) c.font={name:FONT,size:10,color:{argb:'FFB3261E'},bold:true}; });
+          if(i===AVAIL_COL2 && availTxt357_(it,AVM357).c) c.font={name:FONT,size:10,color:{argb:'FF'+availTxt357_(it,AVM357).c.slice(1)},bold:true}; });
       });
     });
 
