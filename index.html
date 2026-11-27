@@ -2276,7 +2276,53 @@ html:not([data-theme="dark"]) .grp-dy{color:#7A5A10}
 html[data-theme="dark"] .grp-dy{color:#E3BE79}
 .cust-detail277 h3{font-size:16.5px}
 </style>
-<style>/* v314: order-card action buttons wrap to rows instead of squeezing 9 into one 25px-wide row (labels were clipped at 360px) */.cardacts{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));overflow-x:visible}.cardacts .btn{min-width:0;flex:none;overflow-wrap:anywhere}</style></head>
+<style>/* v314: order-card action buttons wrap to rows instead of squeezing 9 into one 25px-wide row (labels were clipped at 360px) */.cardacts{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));overflow-x:visible}.cardacts .btn{min-width:0;flex:none;overflow-wrap:anywhere}</style><style id="v357">
+#offlineReady280{display:none!important}
+header.top{padding:4px 8px 5px!important;border-radius:0 0 12px 12px!important}
+header.top .top-row{flex-wrap:nowrap!important;gap:5px!important;align-items:center!important}
+header.top img.logo{height:22px!important;padding:2px 4px!important;border-radius:6px!important}
+header.top .t1{font-size:12px!important;line-height:1.2!important}
+header.top .t2{font-size:9px!important;margin:0!important}
+header.top .wh-chip{padding:1px 5px!important;font-size:8px!important;line-height:1.2!important}
+header.top .wh-chip b{font-size:9px!important;display:inline!important;margin-inline-start:3px}
+header.top .verstrip{margin:0!important;gap:3px!important}
+header.top .verstrip button{min-width:28px!important;min-height:28px!important;padding:3px!important}
+header.top .verstrip button.vs-install{font-size:0!important;min-width:28px!important}
+.pv348{position:static!important;box-shadow:none!important;margin:0 0 4px!important;padding:2px 0!important;border-radius:12px!important}
+.szrow357{background:#E8F0F9;border:1.5px solid var(--brand,#1F6FEB);border-radius:12px;padding:4px;margin:2px 0}
+html[data-theme="dark"] .szrow357{background:#16243A}
+.szrow357 .flow-chips{flex-wrap:nowrap!important;gap:3px!important;justify-content:space-between!important}
+.szrow357 .chip:last-child{flex:1.7 1 0!important;font-size:11px!important}
+.szrow357 .chip{flex:1 1 0!important;min-width:0;padding:6px 1px!important;font-size:12px!important;white-space:nowrap!important;text-align:center}
+.chips>.chip[data-cc357-open]{grid-column:1/-1;width:100%;white-space:nowrap}
+.dd357{border:1px solid var(--line,#d6dde6);border-radius:10px;margin:4px 0;background:var(--card,#fff)}
+.dd357>summary{cursor:pointer;list-style:none;padding:7px 10px;font-size:12.5px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.dd357>summary::-webkit-details-marker{display:none}
+.dd357>summary::after{content:"▾";font-size:13px;opacity:.7}
+.dd357[open]>summary::after{content:"▴"}
+.dd357>div,.dd357>label{padding:0 10px 8px}
+.auto357{background:#EEF6EE;border:1px solid #9CC9A6;color:#1F5A33;border-radius:10px;padding:6px 10px;margin:6px 0;font-size:12.5px;font-weight:700}
+html[data-theme="dark"] .auto357{background:#15301F;border-color:#2E6B44;color:#9FDDB2}
+.ex357{display:inline-block;background:#FFF1D6;border:1px solid #D9A441;color:#7A4B00;border-radius:8px;padding:0 7px;margin:2px 3px 0 0;font-size:11px;font-weight:700}
+html[data-theme="dark"] .ex357{background:#3B2F19;color:#F7DBA1}
+.cartgrid357{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media(min-width:560px){.cartgrid357{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.cartgrid357 .gh344{grid-column:1/-1;margin:2px 0 0}
+.cartgrid357 .line{flex-direction:column;align-items:center;text-align:center;gap:4px;margin:0!important;padding:8px 6px!important;position:relative}
+.cartgrid357 .line img,.cartgrid357 .line .ic{width:46px!important;height:60px!important}
+.cartgrid357 .line .info2{width:100%}
+.cartgrid357 .line .info2 b{font-size:12.5px!important}
+.cartgrid357 .line .info2 .spec{font-size:11px!important;line-height:1.45!important}
+.cartgrid357 .line .lineacts{position:absolute;top:4px;inset-inline-start:4px;flex-direction:row!important;gap:2px!important}
+.ct-hero .ct-steps{display:none!important}
+.ct-hero{padding:8px 12px!important;min-height:0!important}
+.sendbar357{position:sticky;bottom:calc(var(--nav350,78px) + 6px);z-index:30;padding:6px 0;background:linear-gradient(to top,var(--bg,#F5F2EC) 70%,transparent)}
+.sendbar357 .btn{width:100%}
+#fileReady357{position:fixed;inset:auto 10px 96px 10px;margin:0;border:1px solid var(--line,#ccc);border-radius:16px;padding:12px;width:auto;max-width:none;z-index:9999;background:var(--card,#fff);color:var(--ink,#111);box-shadow:0 10px 30px rgba(0,0,0,.3)}
+#fileReady357::backdrop{background:rgba(0,0,0,.25)}
+#fileReady357 .fr-n{font-size:12px;word-break:break-all;margin:6px 0 10px;direction:ltr;text-align:left;opacity:.85}
+</style>
+</head>
 <body>
 
 
@@ -2446,7 +2492,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v356';
+const APP_BUILD = 'v357';
 // v337: the capability answer from the submit-time check is handed to THIS order's send once (same endpoint and device, same order id, under 20 s old, still online, needed capabilities present). Anything else: a normal ping.
 let _capPre337_=null;
 function takeCapPre337_(o){const c=_capPre337_;_capPre337_=null;try{
@@ -4142,7 +4188,7 @@ function viewHome(){
 const _ui = {};
 function uiOpen_(k, dflt){ return _ui[k]==null ? !!dflt : !!_ui[k]; }
 
-function viewNew(){
+function viewNew(){ensureMeter357_();
   const p=state.pick, bad=state.touched;
   const selWidths = Object.keys(p.sizes).map(Number).sort((a,b)=>a-b);
 
@@ -4391,22 +4437,20 @@ function viewNew(){
   const secFrame = `
   <section class="card">
     <div class="step"><span class="n">${ico("frame","lg")}</span><h2>حلق فقط</h2><span class="hint">ارتفاع الأعواد قابل للتعديل</span></div>
-    <div class="note" style="margin:0 0 10px">الحلق بيتطلب لوحده — <b>مش لازم تختار باب</b>. اللي لازم تحدده هو <b>اللون</b> (كود الباب) عشان المصنع يعرف يصنّعه بأنهي لون. عايز حتة حلق متر بس؟ اختار «أعواد»، خلّي الوحدة «متر»، واكتب الطول ١ والعدد ١.</div>
+    
     <div class="sol-h" style="margin-bottom:6px">المقاس</div>
     <div class="chips">${frChips}</div>
     <div class="sol-h" style="margin:12px 0 6px">اللون (كود الباب) <b class="req">*</b></div>
-    <div class="chips">${frCodeChips}</div>
-    <div class="sol-h" style="margin:12px 0 6px">لباب مقاس كام؟ <span style="font-weight:400;color:var(--muted)">(اختياري — يوضح للمصنع)</span></div>
-    <div class="chips">${frDoorWChips}</div>
-    <div class="sol-h" style="margin:12px 0 6px">وحدة الطول <span style="font-weight:400;color:var(--muted)">(اكتب بالسم أو بالمتر — زي ما يريحك)</span></div>
-    <div class="miniChips">${unitChips_(state.fr.unit==='m'?'m':'cm','fr-unit')}</div>
+    ${colorPick357_('fr',state.fr.code,'fr-code')}
+    <details class="dd357"><summary>لباب مقاس: ${state.fr.doorW?state.fr.doorW+' سم':'غير محدد'}</summary><div class="chips">${frDoorWChips}</div></details>
+    
     <div class="sol-h" style="margin:12px 0 6px">نوع الحلق</div>
     <div class="miniChips">
       <button class="miniChip iconChip ${frKind==='full'?'on':''}" data-act="fr-kind" data-k="full">${ico('door')}<span>حلق كامل</span></button>
       <button class="miniChip iconChip ${frKind==='rods'?'on':''}" data-act="fr-kind" data-k="rods">${ico('ruler')}<span>أعواد</span></button>
     </div>
     ${frKind==='full' ? `
-    <div class="sol-h" style="margin:12px 0 6px">الكمية <span style="font-weight:400;color:var(--muted)">(عدد الأطقم — الطقم = ٢ عود ٢٢٠سم + ١ عود ١١٠سم)</span></div>
+    <div class="sol-h" style="margin:12px 0 6px">الكمية (طقم)</div><div class="auto357">الطقم: عودين ${+(((frJambCm===220?215:frJambCm))/100).toFixed(3)} م + عود ${+(frHeaderCm/100).toFixed(3)} م (= ${frJambCm===220&&frHeaderCm===110?"٢.٥":"—"} عود)</div>
     <div style="max-width:260px">
       <span class="flow-qty282 qty285" dir="ltr"><button type="button" data-q285="1" aria-label="زيادة الكمية">+</button><input type="text" inputmode="decimal" placeholder="العدد" value="${esc(state.fr.qty)}" data-act="fr-qty"><button type="button" data-q285="-1" aria-label="تقليل الكمية">−</button></span>
     </div>
@@ -4418,26 +4462,26 @@ function viewNew(){
     ${frBrOn?`
     <label class="fld" style="margin-top:9px;max-width:220px"><span>عدد البرور لكل طقم</span>
       <span class="flow-qty282 qty285" dir="ltr"><button type="button" data-q285="1" aria-label="زيادة الكمية">+</button><input type="text" inputmode="decimal" placeholder="اكتب العدد" value="${esc(state.fr.brQty)}" data-act="fr-brqty"><button type="button" data-q285="-1" aria-label="تقليل الكمية">−</button></span></label>
-    <label class="fld" style="margin-top:9px;max-width:220px"><span>ارتفاع البرور (${frUnit}) <span style="font-weight:400;color:var(--muted)">— فاضي = ${BROR_ROD_CM} سم</span></span>
+    <label class="fld" style="margin-top:9px;max-width:220px"><span>طول عود البرور (${frUnit})</span>
       <input type="text" inputmode="decimal" placeholder="${lenFromCm_(BROR_ROD_CM, state.fr.unit)}" value="${esc(state.fr.brLen)}" data-act="fr-brlen"></label>
-    <div class="note" style="margin-top:6px">الإجمالي: <b>${frBrTotal||0}</b> عود برور ${esc(state.fr.brSize)} — ارتفاع العود <b>${frBrLenCm} سم</b>، وبتتسجل في الطلب كسطر برور بنفس لون الحلق.</div>`:''}
+    <div class="auto357">${frBrTotal||0} عود برور ${esc(state.fr.brSize)} — طول العود ${+(frBrLenCm/100).toFixed(3)} م</div>`:''}
     ${pricesVisible()&&frQty>0?`<div class="rp" style="margin-top:6px">${money(frJambPrice)} ج/عود ٢٢٠سم — ${money(frHeaderPrice)} ج/عود ١١٠سم</div>`:''}
     <button class="btn ghost sm" style="margin-top:9px" data-act="fr-nonstd-toggle">${frNonStd?'إخفاء الارتفاع المخصوص':'الارتفاع مش استاندر؟'}</button>
     ${frNonStd ? `
     <div class="rodrow" style="margin-top:9px">
       <div class="rodbox">
-        <div class="rl">الطول الأول<small>افتراضي ٢٢٠سم = ${esc(frJambCm)} سم</small></div>
+        <div class="rl">الطول الأول<small>افتراضي ${+(frJambCm/100).toFixed(3)} م</small></div>
         <input type="text" inputmode="decimal" placeholder="${frUnit}" value="${esc(state.fr.jambCm)}" data-act="fr-jambCm">
       </div>
       <div class="rodbox">
-        <div class="rl">الطول التاني<small>افتراضي ١١٠سم = ${esc(frHeaderCm)} سم</small></div>
+        <div class="rl">الطول التاني<small>افتراضي ${+(frHeaderCm/100).toFixed(3)} م</small></div>
         <input type="text" inputmode="decimal" placeholder="${frUnit}" value="${esc(state.fr.headerCm)}" data-act="fr-headerCm">
       </div>
       ${frExtraRows}
     </div>
     <button class="btn ghost sm" style="margin-top:9px" data-act="fr-extra-add">${ico("plus")} عود بارتفاع تاني</button>
     ` : ''}
-    <div class="note" style="margin-top:9px">الباب الواحد بياخد ٢ عود ٢٢٠سم + ١ عود ١١٠سم — لو الارتفاع مختلف عن الاستاندر دوس "الارتفاع مش استاندر؟" وغيّره.</div>
+    
     ` : `
     <div class="sol-h" style="margin:12px 0 6px">الكمية والطول</div>
     <div class="rodrow">
@@ -4447,14 +4491,14 @@ function viewNew(){
           <input type="text" inputmode="decimal" placeholder="الطول (${frUnit})" value="${esc(state.fr.rodsCm)}" data-act="fr-rodsCm">
           <span class="flow-qty282 qty285" dir="ltr"><button type="button" data-q285="1" aria-label="زيادة الكمية">+</button><input type="text" inputmode="decimal" placeholder="العدد" value="${esc(state.fr.rods)}" data-act="fr-rods"><button type="button" data-q285="-1" aria-label="تقليل الكمية">−</button></span>
         </div>
-        ${frRodsCm>0?`<div class="rp">${esc(frRodsCm)} سم${(pricesVisible())?' — '+money(rodPrice(frSel.price,frRodsCm))+' ج/عود':''}</div>`:''}
+        ${frRodsCm>0?`<div class="rp">${+(frRodsCm/100).toFixed(3)} م${(pricesVisible())?' — '+money(rodPrice(frSel.price,frRodsCm))+' ج/عود':''}</div>`:''}
       </div>
     </div>
-    <div class="note" style="margin-top:9px">اكتب عدد الأعواد وطولها اللي محتاجها — مفيش قيمة افتراضية. الطول والعدد الاتنين بيقبلوا كسور (٢.٥ عود، ٢٢٠.٥ سم).</div>
+    
     `}
     <label class="fld" style="margin-top:9px">
       <span>ملحوظة <span style="font-weight:400;color:var(--muted)">(اختياري)</span></span>
-      <input type="text" placeholder="مثال: عارضة حلق علوية تكملة 60 سم" value="${esc(state.fr.note||'')}" data-act="fr-note">
+      <input type="text" placeholder="ملحوظة" value="${esc(state.fr.note||'')}" data-act="fr-note">
     </label>
     <div data-sumlabel="add-fr" style="margin:9px 2px 0;font-size:13px;font-weight:700;color:#5A6B7C;text-align:center">${!state.fr.code ? 'اختر اللون الأول (كود الباب)'
         : (frRods>0 ? (
@@ -4469,20 +4513,19 @@ function viewNew(){
   const secBror = `
   <section class="card">
     <div class="step"><span class="n">${ico("bror","lg")}</span><h2>برور فقط</h2><span class="hint">العود ${BROR_ROD_M_DEFAULT} م افتراضيًا</span></div>
-    <div class="note" style="margin:0 0 10px">البرور بيتطلب لوحده — <b>مش لازم تختار باب</b>. اللي لازم تحدده هو <b>اللون</b> (كود الباب).</div>
+    
     <div class="sol-h" style="margin-bottom:6px">المقاس</div>
     <div class="chips">${brChips}</div>
     <div class="sol-h" style="margin:12px 0 6px">اللون (كود الباب) <b class="req">*</b></div>
-    <div class="chips">${brCodeChips}</div>
-    <div class="sol-h" style="margin:12px 0 6px">وحدة الطول <span style="font-weight:400;color:var(--muted)">(اكتب بالسم أو بالمتر — زي ما يريحك)</span></div>
-    <div class="miniChips">${unitChips_(state.br.unit==='cm'?'cm':'m','br-unit')}</div>
+    ${colorPick357_('br',state.br.code,'br-code')}
+    
     <div class="rodrow">
       <label class="fld"><span>عدد العيدان</span>
         <span class="flow-qty282 qty285" dir="ltr"><button type="button" data-q285="1" aria-label="زيادة الكمية">+</button><input type="text" inputmode="decimal" value="${esc(state.br.rods)}" placeholder="مثال 3 أو 2.5" data-act="br-rods"><button type="button" data-q285="-1" aria-label="تقليل الكمية">−</button></span></label>
       <label class="fld"><span>طول العود (${brUnit})</span>
         <input type="text" inputmode="decimal" value="${esc(state.br.len)}" placeholder="${state.br.unit==='m'?'مثال 2.265':'مثال 226.5'}" data-act="br-len"></label>
     </div>
-    <div class="note" style="margin-top:9px">الطول القياسي ${BROR_ROD_M_DEFAULT} م — غيّره لو حد طلب عيدان مقاس مختلف (مثلاً ١٠ عيدان مقاس ٣م). الطول والعدد الاتنين بيقبلوا كسور — الطول الحالي ${brRodCm} سم.${pricesVisible()?' السعر: '+money(brLinePrice)+' ج/عود':''}</div>
+    <div class="auto357">طول العود ${+(brRodCm/100).toFixed(3)} م${pricesVisible()?' — السعر: '+money(brLinePrice)+' ج/عود':''}</div>
     <div data-sumlabel="add-br" style="margin:9px 2px 0;font-size:13px;font-weight:700;color:#5A6B7C;text-align:center">${!state.br.code ? 'اختر اللون الأول (كود الباب)' : (brRods>0 ? `أضف ${brRods} عود برور ${brSel.size} — ${brRodCm} سم — ${esc(state.br.code)}` : 'اكتب عدد العيدان')}</div>
     <button class="btn brand" style="margin-top:9px;width:100%;font-size:16px;padding:13px" data-act="add-br" ${brRods>0&&state.br.code?'':'disabled'}>التالي</button>
   </section>`;
@@ -4491,8 +4534,8 @@ function viewNew(){
   <section class="card">
     <div class="step"><span class="n">${ico("panel","lg")}</span><h2>ألواح بروديوم</h2><span class="hint">اللوح ${money(PRODIUM_PRICE)} ج</span></div>
     <div class="sol-h" style="margin-bottom:6px">اللون (كود الباب) <b class="req">*</b></div>
-    <div class="chips">${pdCodeChips}</div>
-    <label class="fld" style="margin-top:12px"><span>عدد الألواح</span>
+    ${colorPick357_('pd',state.pd.code,'pd-code')}
+    <label class="fld" style="margin-top:12px"><span>عدد الألواح (اللوح = ١ م²)</span>
       <span class="flow-qty282 qty285" dir="ltr"><button type="button" data-q285="1" aria-label="زيادة الكمية">+</button><input type="number" inputmode="numeric" min="1" step="1" value="${esc(state.pd.qty)}" placeholder="مثال 2" data-act="pd-qty"><button type="button" data-q285="-1" aria-label="تقليل الكمية">−</button></span></label>
     <div data-sumlabel="add-pd" style="margin:9px 2px 0;font-size:13px;font-weight:700;color:#5A6B7C;text-align:center">${!state.pd.code ? 'اختر اللون الأول (كود الباب)' : (pdQty>0 ? `أضف ${pdQty} لوح بروديوم — ${esc(state.pd.code)}` : 'اكتب عدد الألواح')}</div>
     <button class="btn brand" style="width:100%;font-size:16px;padding:13px" data-act="add-pd" ${pdQty>0&&state.pd.code?'':'disabled'}>التالي</button>
@@ -4508,12 +4551,12 @@ function viewNew(){
   <section class="card">
     <div class="step"><span class="n">${ico(m.icon,"lg")}</span><h2>${m.ar}</h2><span class="hint">${pricesVisible()&&m.price()>0?'المتر '+money(m.price())+' ج':'بالمتر'}</span></div>
     <div class="sol-h" style="margin-bottom:6px">اللون (كود الباب) <b class="req">*</b></div>
-    <div class="chips">${chips}</div>
-    <label class="fld" style="margin-top:12px"><span>الكمية بالمتر</span>
+    ${colorPick357_(m.st,st.code,m.st+'-code')}
+    <label class="fld" style="margin-top:12px"><span>${k==='strip'?'الكمية بالمتر المربع (م²)':'الكمية بالمتر (عرض اللوح ١.٢٦ م)'}</span>
       <span class="flow-qty282 qty285" dir="ltr"><button type="button" data-q285="1" aria-label="زيادة الكمية">+</button><input type="text" inputmode="decimal" value="${esc(st.qty)}" placeholder="مثال 2.5" data-act="${m.st}-qty"><button type="button" data-q285="-1" aria-label="تقليل الكمية">−</button></span></label>
-    <div class="note" style="margin-top:9px">الكمية بتقبل كسور (٢.٥ متر، ٠.٧٥ متر).</div>
-    <div data-sumlabel="add-${m.st}" style="margin:9px 2px 0;font-size:13px;font-weight:700;color:#5A6B7C;text-align:center">0&&st.code?'':'disabled'}>
-      ${!st.code ? 'اختر اللون الأول (كود الباب)' : (q>0 ? `أضف ${q} متر ${m.ar} — ${esc(st.code)}` : 'اكتب الكمية بالمتر')}</div>
+    
+    <div data-sumlabel="add-${m.st}" style="margin:9px 2px 0;font-size:13px;font-weight:700;color:#5A6B7C;text-align:center">
+      ${!st.code ? 'اختر اللون الأول (كود الباب)' : (q>0 ? `أضف ${q} ${k==='strip'?'م²':'متر'} ${m.ar} — ${esc(st.code)}` : 'اكتب الكمية بالمتر')}</div>
     <button class="btn brand" style="margin-top:9px;width:100%;font-size:16px;padding:13px" data-act="add-${m.st}" ${q>0&&st.code?'':'disabled'}>التالي</button>
   </section>`;
   };
@@ -4533,13 +4576,13 @@ function viewNew(){
   <section class="card">
     <div class="step"><span class="n">${ico("mabra","lg")}</span><h2>معبرة</h2><span class="hint">بدل الحلق — ديكور من غير باب</span></div>
     <div class="sol-h" style="margin-bottom:6px">اللون (كود الباب) <b class="req">*</b></div>
-    <div class="chips">${mbCodeChips}</div>
-    <div class="sol-h" style="margin:12px 0 6px">سمك الحيطة <span style="font-weight:400;color:var(--muted)">(زي مقاس الحلق)</span></div>
+    ${colorPick357_('mb',mbSt.code,'mb-code')}
+    <div class="sol-h" style="margin:12px 0 6px">سمك الحيطة</div>
     <div class="chips">${mbWallChips}</div>
     ${mbSt.wallCustom?`
     <label class="fld" style="margin-top:9px"><span>سمك الحيطة (سم) <b class="req">*</b></span>
       <input type="text" inputmode="decimal" value="${esc(mbSt.wallTxt)}" placeholder="مثال 12" data-act="mb-wall-txt"></label>`:''}
-    <div class="sol-h" style="margin:12px 0 6px">العرض <b class="req">*</b> <span style="font-weight:400;color:var(--muted)">(الارتفاع الاستاندر ${DOOR_STD_HEIGHT} سم)</span></div>
+    <div class="sol-h" style="margin:12px 0 6px">العرض <b class="req">*</b></div>
     <div class="chips">${mbSizeChips}</div>
     ${mbSt.custom?`
     <div class="rodrow">
@@ -4548,7 +4591,7 @@ function viewNew(){
       <label class="fld"><span>الارتفاع (سم)</span>
         <input type="text" inputmode="decimal" value="${esc(mbSt.h)}" placeholder="مثال ${DOOR_STD_HEIGHT}" data-act="mb-h"></label>
     </div>`:''}
-    <label class="fld" style="margin-top:12px"><span>العدد</span>
+    ${(()=>{const w=mbSt.custom?Number(mbSt.w):Number(mbSt.doorW),h=mbSt.custom?Number(mbSt.h):DOOR_STD_HEIGHT;return w>0&&h>0?`<div class="auto357">العرض ${+(w/100).toFixed(3)} م × الارتفاع ${+(h/100).toFixed(3)} م</div>`:'';})()}<label class="fld" style="margin-top:12px"><span>العدد</span>
       <span class="flow-qty282 qty285" dir="ltr"><button type="button" data-q285="1" aria-label="زيادة الكمية">+</button><input type="text" inputmode="numeric" value="${esc(mbSt.qty)}" placeholder="مثال 2" data-act="mb-qty"><button type="button" data-q285="-1" aria-label="تقليل الكمية">−</button></span></label>
     <div data-sumlabel="add-mb" style="margin:9px 2px 0;font-size:13px;font-weight:700;color:#5A6B7C;text-align:center">${mbBtnLabel_()}</div>
 <button class="btn brand" style="margin-top:9px;width:100%;font-size:16px;padding:13px" data-act="add-mb">التالي</button>
@@ -4741,21 +4784,23 @@ function viewCart(){
       spec=doorSizeText_(it.sizeTxt,it.doorHeight)+(priced?' · '+money(it.unitPrice)+' ج':'')+' × '+it.qty;
       const inc=[]; if(it.frame) inc.push('حلق '+frameText_(it.frame,it.frameHeight)); if(it.dbror) inc.push('برور '+it.dbror);
       if(inc.length) spec+='<br>شامل: '+inc.join(' + ')+(priced?' — بدون سعر':'');
+      {const ex=[];if(it.wood)ex.push('تدعيم خشب');if(it.hafr)ex.push('حفر');else if(it.print)ex.push('طباعة');if(doorNeedsCut_(it))ex.push('قص مقاس خاص');if(ex.length)spec+='<br>'+ex.map(x=>'<span class="ex357">'+x+'</span>').join('');}
       if(it.note) spec+='<br><span style="color:var(--warn-ink)">'+esc(it.note)+'</span>';
     } else if(it.kind==='frame'||it.kind==='bror'){
       spec = it.isSet ? (it.qty+' طقم'+(priced?' — '+money(it.price)+' ج/طقم':''))
                        : it.customSet ? (it.qty+' عود'+(priced?' — '+money(linePrice(it))+' ج':'')+'<br>'+esc(it.spec))
-                       : (it.qty+' عود'+(it.rodCm?' × '+it.rodCm+' سم':'')+(priced?' — '+money(it.price)+' ج/عود':''));
+                       : (it.qty+' عود'+(it.rodCm?' × '+(+(it.rodCm/100).toFixed(3))+' م':'')+(priced?' — '+money(it.price)+' ج/عود':''));
     } else if(it.kind==='mabra'){
       spec = it.qty+' معبرة — '+esc(it.spec||'')+(priced&&it.price>0?' — '+money(it.price)+' ج/معبرة':'');
     } else if(METER_KINDS_[it.kind]){
-      spec = it.qty+' متر'+(priced?' — '+money(it.price)+' ج/متر':'');
+      spec = it.qty+(it.kind==='strip'?' م²':it.kind==='veneer'?' م (عرض 1.26 م)':' متر')+(priced?' — '+money(it.price)+' ج/متر':'');
     } else spec=(priced?money(it.price)+' ج × ':'× ')+it.qty;
 
     // ⚠️ بند «خدمة قص» بيتولّد تلقائي من الأبواب. لو سبنا زراير التعديل/الحذف
     // شغالة عليه، الحذف كان بيشيله والحفظ بيرجّعه في نفس اللحظة — زرار بيوهم
     // المستخدم إنه عمل حاجة وهي مش بتحصل. بيتشال بشيل الباب اللي طالبه.
     const cut = isCutLine_(it);
+    if(cut&&state.cart.some(x=>x.kind==='door'&&!isCutLine_(x)))return '';
     if(cut) spec += '<br><span style="color:var(--warn-ink)">بيتحسب تلقائي مع الباب — بيتشال لما الباب يتشال</span>';
     return `<div class="line">${th}<div class="info2"><b>${esc(flowDisplayTitle_(it.title))}</b>
       <div class="spec">${spec}</div>${priced?`<div class="pr">${money(linePrice(it))} ج</div>`:''}</div>
@@ -4796,21 +4841,21 @@ function viewCart(){
         <button class="btn ghost sm" data-act="cancel-edit">إلغاء التعديل</button>
       </div>
     </div>`:''}
-    ${lines}
+    <div class="cartgrid357">${lines}</div>
     ${priced?`<div class="total"><span class="lbl">الإجمالي التقديري</span><span class="val">${money(cartTotal())} <small>ج</small></span></div>
     <div class="note">${esc(PRICE_NOTE)}<br>تقدر تتابع حالة طلبك بعد الإرسال من تبويب «تابع طلبك».</div>`
-    :`<div class="note" style="margin-top:12px">هيتواصل معاك المصنع بالتفاصيل والسعر بعد إرسال الطلب — تقدر تتابع حالته من تبويب «تابع طلبك».</div>`}
+    :''}
   </section>
 
   <section class="card ct-compact278">
     <div class="step"><span class="n">↗</span><h2>${editing?'حفظ التعديل':'إرسال طلب أوردر'}</h2></div>
     ${ok?'':`<button class="ct-fix" data-act="home-go" data-to="new">${ico('warn')} ${state.custMode==='other'?'كمّل الاسم ورقم الموبايل واسم العميل الأول':'كمّل الاسم ورقم الموبايل الأول'}</button>`}
-    ${ordNoteBoxHTML_('margin-bottom:12px')}
-    <button class="btn brand ct-send" data-act="submit">${editing?ico("save")+' حفظ التعديل وإرسال واتساب':ico("send")+' إرسال الأوردر للمصنع'}</button>
+    ${ordNoteBoxHTML_('margin-bottom:12px')}
     <div class="btnrow" style="margin-top:9px">
       <button class="btn ghost sm" data-act="clear">تفريغ السلة</button>
     </div>
   </section>
+  <div class="sendbar357"><button class="btn brand ct-send" data-act="submit">${editing?ico("save")+' حفظ التعديل وإرسال واتساب':ico("send")+' إرسال الأوردر للمصنع'}</button></div>
   ${verBar()}`;
 }
 
@@ -5066,18 +5111,8 @@ async function renderPaper_(html, opts){
 
 // بيحاول يشارك الملف مباشرة (بيظهر واتساب في شاشة المشاركة لو متاحة)، ولو مش متاحة بينزّله عادي
 async function shareOrDownload_(blob, filename, title){
-  try{
-    const file = new File([blob], filename, {type: blob.type});
-    if(navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file], title: title||filename});
-      return true;
-    }
-  }catch(err){
-    if(err && err.name==='AbortError') return true;   // العميل قفل شاشة المشاركة، مش خطأ
-  }
-  downloadBlob(blob, filename);
-  toast('اتحمّل الملف — افتح واتساب وابعته من المرفقات');
-  return false;
+  fileReadyDialog357_(blob, filename, title);
+  return true;
 }
 
 // بيرجّع ارتفاع آخر سطر فيه محتوى فعلي على اللوحة (مش خلفية بيضاء) + هامش صغير.
@@ -9040,6 +9075,7 @@ document.getElementById('tabs').addEventListener('click',e=>{
   const b=e.target.closest('button[data-tab]'); if(!b) return;
   // سايب شاشة «طلب جديد» وفيه صنف مسحوب للتعديل ما اتكملش؟ رجّعه للسلة بدل ما يضيع
   if(b.dataset.tab!=='new') restorePulledLine_();
+  if(b.dataset.tab==='new'&&state.tab==='home')fresh357_();
   state.tab=b.dataset.tab; render(); window.scrollTo({top:0,behavior:'smooth'});
   if(state.tab==='orders'||state.tab==='home') maybeLoadTrack_();
   if(state.tab==='new') loadStock();
@@ -11089,7 +11125,7 @@ async function submitOrder(){
         let received=false;try{received=await syncing;}catch(e){}finally{clearTimeout(uiTimer);busy(false);try{if(received===true||loadSent_().map(String).includes(String(o.id)))snd345_(2,orderNoText_(o));else snd345_('fail');}catch(e){}}
       render();
       if(loadRejected_().map(String).includes(String(o.id)))return;   // الرفض اتعرض برسالته وكارته — ميتركبش فوقها «لم يتأكد»
-        if(received===true||loadSent_().map(String).includes(String(o.id))){clearOrderToast280_(o.id);tmMark_('confirm_toast');toast('تأكد استلام المصنع برقم '+orderNoText_(o)+'. مشاركة الصورة وملفات PDF جاهزة باختيارك، لم نفتح مشاركة تلقائيًا.',10000);}else toast(o.displayNo?'الطلب محفوظ على الجهاز برقم '+orderNoText_(o)+'، لكن استلام المصنع لم يتأكد. لا تعيد الإرسال؛ راجع الاستلام.':'الطلب محفوظ على جهازك، لكن استلام المصنع لم يتأكد. راجع تابع طلبك؛ لم نفتح المشاركة تلقائيًا',10000);
+        if(received===true||loadSent_().map(String).includes(String(o.id))){clearOrderToast280_(o.id);tmMark_('confirm_toast');toast('تأكد استلام المصنع برقم '+orderNoText_(o)+'. صورة الطلب ظهرت، احفظها أو شاركها من هناك.',6000);try{shareOrderImage(o);}catch(e){}}else toast(o.displayNo?'الطلب محفوظ على الجهاز برقم '+orderNoText_(o)+'، لكن استلام المصنع لم يتأكد. لا تعيد الإرسال؛ راجع الاستلام.':'الطلب محفوظ على جهازك، لكن استلام المصنع لم يتأكد. راجع تابع طلبك؛ لم نفتح المشاركة تلقائيًا',10000);
       })();
     }
     // ⚠️ باج كان هنا: الكتلة دي بتشتغل في الخلفية، وتحتها على طول كان بيتعمل
@@ -11964,8 +12000,8 @@ function flowPreview344_(){
 }
 function flowNotes344_(v){
  const w=String(v.w||'').trim(),h=String(v.h||'').trim(),out=[];
- if(h!==''&&Number(h)!==DOOR_STD_HEIGHT)out.push('الارتفاع '+esc(h)+' سم مش الستاندرد ('+DOOR_STD_HEIGHT+'). هيتضاف بند «خدمة قص» تلقائي، والارتفاع هيظهر في عنوان المجموعة بورقة الأوردر.');
- if(w!==''&&!SIZES.some(s=>String(s.w)===w))out.push('المقاس '+esc(w)+' مش من المقاسات الجاهزة. هيظهر لوحده في ورقة الأوردر تحت المقاسات العادية.');
+ if(h!==''&&Number(h)!==DOOR_STD_HEIGHT)out.push('الارتفاع '+esc(h)+' سم، هيتضاف بند قص.');
+ if(w!==''&&!SIZES.some(s=>String(s.w)===w))out.push('المقاس '+esc(w)+' خارج المقاسات الجاهزة.');
  return out.map(t=>'<div class="note pv344-note">'+t+'</div>').join('');
 }
 /* v346: شاشة واحدة للباب زي الفيديو: بعد اختيار الباب تظهر تحته الرسمة (بدون / كتالوج / رسمة خاصة) والمقاسات والكمية والحلق والبرور. عرض وتجميع شاشات بس، نفس الحقول ونفس التحقق ونفس الحفظ. */
@@ -11975,7 +12011,7 @@ function flowPhotoPlain346_(f){const src=flowThumb_();if(!src)return '';const v=
  const fr=Number(v.frame)||0,br=v.dbror?1:0,ft=fr?({10:6,15:9,20:12}[fr]||8):0,bt=br?(v.dbror==='4×8'?7:9):0;
  const mdl=DOORS.find(x=>x.code===doorCode_(f.code)),mp=mdl&&mdl.img||'';
  const ringSt=mp?doorRingStyle_(f.code,mp):docFinishStyle_(f.code);
- const ph=(DOOR_REALFULL_[doorCode_(f.code)]?150:125)*(innerHeight<720?.84:1);
+ const ph=(DOOR_REALFULL_[doorCode_(f.code)]?100:84)*(innerHeight<720?.84:1);
  let leaf=`<img src="${src}" alt="الباب ${esc(f.code)}" style="height:${Math.round(ph)}px;display:block">`;
  if(ft)leaf=`<div class="rg348 fr" style="${ringSt}padding:${ft}px ${ft}px 0;border:1px solid #5d5245;border-bottom:0">${leaf}</div>`;
  if(bt)leaf=`<div class="rg348 br" style="${ringSt}padding:${bt}px ${bt}px 0;border:1px solid #5d5245;border-bottom:0">${leaf}</div>`;
@@ -11991,10 +12027,10 @@ function flowConfig345_(f){
  const on=f.source!=='plain';
  const print=`<div class="cfg345-sec"><button type="button" class="tg345${on?' on':''}" data-flow-choice="source" data-value="${on?'plain':'catalog'}"><span class="tt"><b>طباعة أو حفر برسمة</b><small>${on?(f.source==='custom'?'رسمة خاصة':f.pattern?'من الكتالوج: '+esc(f.pattern):'اختار الرسمة'):'الصورة بالكود'}</small></span><i class="sw"></i></button>`
   +(on?`<div class="cfg345-pn"><div class="flow-chips"><button type="button" class="chip ${f.source==='catalog'?'on':''}" data-flow-choice="source" data-value="catalog">من الكتالوج</button><button type="button" class="chip ${f.source==='custom'?'on':''}" data-flow-choice="source" data-value="custom">رسمة خاصة (صورتي)</button></div>`
-   +(f.source==='catalog'&&f.pattern&&!_catOpen347?`<div class="sel347"><img src="${FLOW_CATALOG_[f.code+'|'+f.pattern]}" alt=""><span><b>الرسمة المختارة</b><bdi>${esc(f.pattern)}</bdi></span><button type="button" class="btn ghost sm" data-flow-action="catalog-open347">تغيير الرسمة</button></div>`:f.source==='catalog'?`<div class="flow-designs">${APPROVED_PRINT_CODES_.map(k=>`<button type="button" class="card${f.pattern===k?' on':''}" data-flow-pattern="${k}"><img src="${FLOW_CATALOG_[f.code+'|'+k]}" alt="${esc(f.code)} ${k}"><bdi>${k}</bdi></button>`).join('')}</div>${f.pattern?'':'<p class="note">اختار رسمة من الكتالوج.</p>'}`
-    :`<div class="note custom341"><b>رسمة خاصة</b><p>هتتسجل في الأوردر باسم «رسمة خاصة». الموزع هو اللي يبعت صورة الرسمة للمصنع برّه التطبيق، ومفيش رفع صور من هنا.</p></div>`)
-   +`<div class="flow-chips"><button type="button" class="chip ${f.method==='print'?'on':''}" data-flow-choice="method" data-value="print">طباعة</button><button type="button" class="chip ${f.method==='engrave'?'on':''}" data-flow-choice="method" data-value="engrave">حفر</button></div></div>`:'')+'</div>';
- const vs=f.variants.map((v,i)=>`<div class="flow-summary cfg345-v">${f.variants.length>1?`<h3>المقاس ${i+1}</h3>`:''}${flowChoices_('widthPreset',SIZES.map(s=>[s.w,s.w+' سم']).concat([['custom','مقاس الفتحة المعمارية']]),v.w===''?'':v.widthPreset==='custom'||!SIZES.some(s=>String(s.w)===String(v.w))?'custom':v.w,i)}${(v.widthPreset==='custom'||(String(v.w||'')!==''&&!SIZES.some(s=>String(s.w)===String(v.w)))||(String(v.h||'').trim()!==''&&String(v.h).trim()!==String(DOOR_STD_HEIGHT)&&!(v.widthPreset!=='custom'&&String(v.w||'')===''&&String(v.h||'').trim()==='')))?'<div class="row2">'+flowNum_('العرض بالسم','w',v.w,i)+flowNum_('الارتفاع بالسم','h',v.h,i)+'</div>':''}${flowNotes344_(v)}<div class="rw348"><h3>الحلق</h3>${flowChoices_('frame',[[10,'10'],[15,'15'],[20,'20'],[0,'بدون']],v.frame,i)}</div>${v.frame?flowNum_('ارتفاع الحلق بالسم · اختياري','frameHeight',v.frameHeight,i):''}<div class="rw348"><h3>البرور</h3>${flowChoices_('dbror',[['6×9','6×9'],['4×8','4×8'],['','بدون']],v.dbror,i)}</div>${flowNum_('الكمية','qty',v.qty,i)}${f.variants.length>1?`<button type="button" class="btn ghost" data-flow-remove="${i}">حذف المقاس</button>`:''}</div>`).join('');
+   +(f.source==='catalog'&&f.pattern&&!_catOpen347?'':f.source==='catalog'?`<div class="flow-designs">${APPROVED_PRINT_CODES_.map(k=>`<button type="button" class="card${f.pattern===k?' on':''}" data-flow-pattern="${k}"><img src="${FLOW_CATALOG_[f.code+'|'+k]}" alt="${esc(f.code)} ${k}"><bdi>${k}</bdi></button>`).join('')}</div>${f.pattern?'':'<p class="note">اختار رسمة من الكتالوج.</p>'}`
+    :`<div class="note custom341"><b>رسمة خاصة</b> · هتبعتها للمصنع برّه التطبيق</div>`)
+   +`<div class="flow-chips"><button type="button" class="chip ${f.method==='print'?'on':''}" data-flow-choice="method" data-value="print">طباعة</button><button type="button" class="chip ${f.method==='engrave'?'on':''}" data-flow-choice="method" data-value="engrave">حفر</button>${f.source==='catalog'&&f.pattern&&!_catOpen347?`<button type="button" class="chip" data-flow-action="catalog-open347">الرسمة ${esc(f.pattern)} · تغيير</button>`:''}</div></div>`:'')+'</div>';
+ const vs=f.variants.map((v,i)=>`<div class="flow-summary cfg345-v">${f.variants.length>1?`<h3>المقاس ${i+1}</h3>`:''}${'<div class="szrow357">'+flowChoices_('widthPreset',SIZES.map(s=>[s.w,String(s.w)]).concat([['custom','فتحة معمارية']]),v.w===''?'':v.widthPreset==='custom'||!SIZES.some(s=>String(s.w)===String(v.w))?'custom':v.w,i)+'</div>'}${(v.widthPreset==='custom'||(String(v.w||'')!==''&&!SIZES.some(s=>String(s.w)===String(v.w)))||(String(v.h||'').trim()!==''&&String(v.h).trim()!==String(DOOR_STD_HEIGHT)&&!(v.widthPreset!=='custom'&&String(v.w||'')===''&&String(v.h||'').trim()==='')))?'<div class="row2">'+flowNum_('العرض بالسم','w',v.w,i)+flowNum_('الارتفاع بالسم','h',v.h,i)+'</div>':''}${flowNotes344_(v)}<div class="rw348"><h3>الحلق</h3>${flowChoices_('frame',[[10,'10'],[15,'15'],[20,'20'],[0,'بدون']],v.frame,i)}</div>${v.frame?`<details class="dd357"${String(v.frameHeight||'').trim()!==''?' open':''}><summary>ارتفاع الحلق: ${String(v.frameHeight||'').trim()!==''?esc(v.frameHeight)+' سم':'عادي'}</summary>${flowNum_('ارتفاع الحلق بالسم','frameHeight',v.frameHeight,i)}</details>`:''}<div class="rw348"><h3>البرور</h3>${flowChoices_('dbror',[['6×9','6×9'],['4×8','4×8'],['','بدون']],v.dbror,i)}</div>${flowNum_('الكمية','qty',v.qty,i)}${f.variants.length>1?`<button type="button" class="btn ghost" data-flow-remove="${i}">حذف المقاس</button>`:''}</div>`).join('');
  return `<div class="cfg345"><h2>الباب ${esc(f.code)}</h2>${flowPhotoPlain346_(f)}${print}${vs}${flowButton_('add-size','أضف مقاسًا آخر',true)}<div class="cfg345-sec"><button type="button" class="tg345${f.wood?' on':''}" data-flow-choice="wood" data-value="${f.wood?'0':'1'}"><span class="tt"><b>تدعيم خشب</b><small>${f.wood?'مع تدعيم':'بدون تدعيم'}</small></span><i class="sw"></i></button></div>${flowOk345_(f)}<label class="fld"><span>ملاحظات على الباب · اختياري</span><textarea data-flow-input="note">${esc(f.note)}</textarea></label><div class="add345">${flowButton_('add-cart-345',f.edit?'احفظ تعديل البند':'إضافة للأوردر')}</div></div>`;
 }
 function flowView_(){
@@ -12060,7 +12096,56 @@ async function flowAction_(a){const f=doorFlow_;
  if(a==='categories'||a==='categories-clear'){f.legacyChoice=false;state.newSection='';save(LS_SECTION,'');flowGo_('categories');return;}
  flowGo_(a);
 }
+
+/* v357 */
+const _cc357={};
+function colorPick357_(key,sel,act){
+  const all=DOORS.map(d=>`<button class="chip ${sel===d.code?'on':''}" data-cc357="${key}" data-act="${act}" data-code="${d.code}"${doorChipStyle_(d.code,sel===d.code)}>${d.code} — ${esc(d.name)}</button>`).join('');
+  if(sel&&!_cc357[key]){const d=DOORS.find(x=>x.code===sel);return `<div class="chips"><button class="chip on" data-cc357-open="${key}">${esc(sel)} — ${esc(d?d.name:'')} · تغيير</button></div>`;}
+  return `<div class="chips">${all}</div>`;
+}
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-cc357],[data-cc357-open]');if(!t)return;if(t.dataset.cc357)_cc357[t.dataset.cc357]=false;else{_cc357[t.dataset.cc357Open]=true;render();}},true);
+function ensureMeter357_(){
+  try{
+    const fr=state.fr;
+    if(fr.unit!=='m'){
+      const h=v=>(v===''||v==null)?'':lenFromCm_(lenToCm_(v,'cm'),'m');
+      fr.jambCm=h(fr.jambCm);fr.headerCm=h(fr.headerCm);fr.rodsCm=h(fr.rodsCm);fr.brLen=h(fr.brLen);
+      fr.extra=(fr.extra||[]).map(x=>({...x,cm:h(x.cm)}));fr.unit='m';
+    }
+    if(fr.kind==='rods'&&(fr.rodsCm===''||fr.rodsCm==null))fr.rodsCm=lenFromCm_(217,'m');
+    const br=state.br;
+    if(br.unit!=='m'){br.len=(br.len===''||br.len==null)?'':lenFromCm_(lenToCm_(br.len,'cm'),'m');br.unit='m';}
+  }catch(e){}
+}
+function fileReadyDialog357_(blob,filename,title){
+  try{const o=document.getElementById('fileReady357');if(o)o.remove();}catch(e){}
+  const file=new File([blob],filename,{type:blob.type});let native=false;try{native=!!(navigator.canShare&&navigator.canShare({files:[file]}));}catch(e){}
+  const dlg=document.createElement('dialog');dlg.id='fileReady357';dlg.dir='rtl';
+  dlg.innerHTML='<b>الملف جاهز</b><div class="fr-n"></div><p class="flow-image-status" role="status" style="font-size:12px;margin:0 0 8px"></p><div class="btnrow"><button type="button" class="btn brand" data-fr357="send">مشاركة</button><button type="button" class="btn ghost" data-fr357="save">حفظ</button><button type="button" class="btn ghost" data-fr357="close">إغلاق</button></div>';
+  dlg.querySelector('.fr-n').textContent=filename;
+  dlg.querySelector('[data-fr357="send"]').hidden=!native;
+  const st=dlg.querySelector('[role="status"]');st.textContent=native?'احفظ الملف أو شاركه من هنا.':'احفظ الملف وأرفقه من الملفات في واتساب.';
+  dlg.addEventListener('click',async ev=>{const b=ev.target.closest('[data-fr357]');if(!b)return;const a=b.dataset.fr357;
+    if(a==='close'){dlg.close();dlg.remove();return;}
+    if(a==='save'){downloadBlob(blob,filename);st.textContent='اتحفظ الملف على الجهاز.';return;}
+    if(a==='send'){b.disabled=true;try{await navigator.share({files:[file],title:title||filename});st.textContent='كمّل من التطبيق اللي اخترته.';}catch(err){st.textContent=(err&&err.name==='AbortError')?'الملف لسه جاهز، تقدر تحفظه.':'المشاركة ما كملتش. احفظ الملف وأرفقه يدويًا.';}finally{b.disabled=false;}}
+  });
+  dlg.addEventListener('cancel',ev=>{ev.preventDefault();dlg.close();dlg.remove();});
+  document.body.appendChild(dlg);if(dlg.showModal)dlg.showModal();else dlg.setAttribute('open','');
+}
+function fresh357_(){
+  try{
+    if(state.editingId||state.editingMeta||(typeof _pulledLine!=='undefined'&&_pulledLine))return;
+    const f=doorFlow_;
+    resetPickerFor_('door');
+    ['frame','bror','mabra','panel','strip','veneer','acc'].forEach(resetPickerFor_);
+    doorFlow_=Object.assign(flowBlank_(),{ownerChosen:!!f.ownerChosen,ownerConfirmedV276:f.ownerConfirmedV276,ownerChoice278:f.ownerChoice278,stage:state.newSection==='doors'?'doors':'categories'});
+    save('wpc_pick_draft_v265',state.pick);flowPersist_();flowProductPersist_();
+  }catch(e){}
+}
 viewNew=flowView_;
+try{fresh357_();}catch(e){}
 document.addEventListener('click',async ev=>{
  const b=ev.target.closest&&ev.target.closest('[data-flow-action],[data-flow-choice],[data-flow-category],[data-flow-code],[data-flow-colf],[data-flow-pattern],[data-flow-remove]');if(!b)return;ev.preventDefault();if(_flowBusy_)return;
  try{
