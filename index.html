@@ -2499,14 +2499,29 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v375';
+const APP_BUILD = 'v376';
 var _nm372={edit:false};
 var _hid373=0;
+/* v376: طالما فيه أوردر شغّال (سلة فيها بنود، باب بدأ يتختار، بيانات عميل متكتبة، أو تعديل مفتوح) التطبيق مبيرجعش للرئيسية ومبيقفلش. */
+function inProgress376_(){
+ try{
+  if(state.cart&&state.cart.length)return true;
+  if(state.editingId||state.editingMeta)return true;
+  const f=doorFlow_;
+  if(f&&(f.code||f.art||f.note||f.stage==='review'))return true;
+  const p=state.pick;
+  if(p&&(p.code||(p.sizes&&Object.keys(p.sizes||{}).length)||(p.customOn&&p.custom&&(String(p.custom.w||'').trim()||String(p.custom.h||'').trim()))))return true;
+  const c=state.customer;
+  if(c&&(String(c.name||'').trim()||String(c.phone||'').trim()))return true;
+  return false;
+ }catch(_){return false;}
+}
 document.addEventListener('visibilitychange',function(){
  if(document.hidden){_hid373=Date.now();return;}
  if(!_hid373)return;var away=Date.now()-_hid373;_hid373=0;
  if(away<2000)return;
  try{
+  if(inProgress376_())return;
   if(state.editingId||state.editingMeta||(typeof _pulledLine!=='undefined'&&_pulledLine)||(doorFlow_&&doorFlow_.edit))return;
   if(typeof _autoUpd281!=='undefined'&&_autoUpd281&&_autoUpd281.reloading)return;
   state.tab='home';state.newSection='';save(LS_SECTION,'');doorFlow_.stage='categories';doorFlow_.ownerConfirmedV276=false;doorFlow_.ownerChosen=false;doorFlow_.ownerChoice278='';render();window.scrollTo(0,0);
@@ -12357,7 +12372,8 @@ canvasToDocPdf_=async function(canvas,filename,opts){
 
 /* v286: لو الريلود ده جاي من تحديث تلقائي، رجّع المستخدم لنفس الشاشة اللي كان واقف فيها. التخزين محفوظ في كل الحالات؛ دي استعادة للشاشة المرئية بس، وبتتجاهل لو عدّى عليها أكتر من ١٠ دقايق. */
 var _res373=false;try{const _r281=JSON.parse(sessionStorage.getItem('wpc_resume281')||'null');sessionStorage.removeItem('wpc_resume281');if(_r281&&Date.now()-(_r281.at||0)<10*60*1000){_res373=true;state.tab=_r281.tab||state.tab;state.newSection=_r281.section||'';save(LS_TAB,state.tab);save(LS_SECTION,state.newSection);}}catch(e){}
-if(!_res373&&!state.editingId&&!state.editingMeta&&!(doorFlow_&&doorFlow_.edit)){state.tab='home';state.newSection='';try{save(LS_SECTION,'');}catch(e){}doorFlow_.stage='categories';doorFlow_.ownerConfirmedV276=false;doorFlow_.ownerChosen=false;doorFlow_.ownerChoice278='';}
+if(!_res373&&inProgress376_()){try{const _t376=String(load(LS_TAB,'home')||'home');if(_t376==='cart'||_t376==='new'){state.tab=_t376;state.newSection=load(LS_SECTION,state.newSection)||'';}}catch(e){}}
+else if(!_res373&&!state.editingId&&!state.editingMeta&&!(doorFlow_&&doorFlow_.edit)){state.tab='home';state.newSection='';try{save(LS_SECTION,'');}catch(e){}doorFlow_.stage='categories';doorFlow_.ownerConfirmedV276=false;doorFlow_.ownerChosen=false;doorFlow_.ownerChoice278='';}
 renderNow();
 setTimeout(loadStock,3000);   // أرصدة المخزن بتتحمّل في الخلفية من غير ما تعطّل فتح التطبيق
 if(state.orders.length || phoneKey_()) setTimeout(maybeLoadTrack_, 4500);   // حالة الأوردرات للصفحة الرئيسية
