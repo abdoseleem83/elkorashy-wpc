@@ -2499,7 +2499,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v374';
+const APP_BUILD = 'v375';
 var _nm372={edit:false};
 var _hid373=0;
 document.addEventListener('visibilitychange',function(){
@@ -2653,6 +2653,10 @@ function isCutLine_(it){ return isServiceLine_(it); }
 // ملف الإكسل، ورقة الأوردر) لازم يفضل مبيّن التدعيم — وإلا المصنع ينفّذ
 // الباب من غير تدعيم وهو متحاسب عليه. عدّ القطع بس هو اللي بيستبعد الاتنين.
 function quoteOnlyLine_(it){ const d = serviceDefFor_(it); return !!(d && d.quoteOnly); }
+// v375: بند «تدعيم خشب» سعره صفر وبيتولّد تلقائيًا مع المقاس الخاص، فمش بيتعرض
+// في المستند ولا رسالة الواتساب ولا كشوف الإكسل. البيانات والإجمالي والكميات زي ما هما.
+function woodServiceLine_(it){ if(!it) return false; const c=String(it.code||it.id||''); if(c==='WOOD') return true;
+  const d=serviceDefFor_(it); if(d&&d.code==='WOOD') return true; return /تدعيم\s*خشب/.test(String(it.title||'')); }
 function serviceTitle_(label, sizeLabel){ return label + ' — ' + sizeLabel; }
 function cutServiceTitle_(label){ return serviceTitle_(CUT_SERVICE_NOTE_, label); }
 function cutLineLabel_(it){
@@ -4893,7 +4897,8 @@ function viewCart(){
   <section class="card ct-compact278">
     <div class="step"><span class="n">↗</span><h2>${editing?'حفظ التعديل':'إرسال طلب أوردر'}</h2></div>
     ${ok?'':`<button class="ct-fix" data-act="home-go" data-to="new">${ico('warn')} ${state.custMode==='other'?'كمّل الاسم ورقم الموبايل واسم العميل الأول':'كمّل الاسم ورقم الموبايل الأول'}</button>`}
-    ${ordNoteBoxHTML_('margin-bottom:12px')}
+    ${ordNoteBoxHTML_('margin-bottom:12px')}
+
     <div class="btnrow" style="margin-top:9px">
       <button class="btn ghost sm" data-act="clear">تفريغ السلة</button>
     </div>
@@ -8189,7 +8194,7 @@ async function buildAdminOrdersExcel_(orders){
       const hdr = wsDet.addRow(hdrCells);
       hdr.eachCell((c,i)=>{ if(i===1) return; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}}; c.font={bold:true,color:{argb:NAVY},name:FONT,size:10}; c.alignment={horizontal:'center'}; c.border=border; });
 
-      (o.items||[]).filter(it=>!quoteOnlyLine_(it)).forEach(it=>{
+      (o.items||[]).filter(it=>!quoteOnlyLine_(it)&&!woodServiceLine_(it)).forEach(it=>{
         const sp = itemSpecCells_(it);
         const wh = {w:sp.w, h:sp.h}, frameW = sp.frameW, frameH = sp.frameH, brorTxt = sp.bror;
         const pp = itemProdPending_(it);
@@ -10522,7 +10527,7 @@ function buildMessage(o){
   m+='——————\n';
   // «خدمة قص» بتبان في عرض السعر بس. «تدعيم خشب» بيفضل — دي رسالة بتروح
   // للمصنع كمان، ولازم يعرف إن الباب ده عليه تدعيم.
-  (o.items||[]).filter(it=>!quoteOnlyLine_(it)).forEach((it,i)=>{
+  (o.items||[]).filter(it=>!quoteOnlyLine_(it)&&!woodServiceLine_(it)).forEach((it,i)=>{
     m+=(i+1)+'. '+flowDisplayTitle_(it.title)+'\n';
     if(it.kind==='door'){
       m+='   المقاس: '+doorSizeText_(it.sizeTxt,it.doorHeight)+' — الكمية: '+it.qty+'\n';
@@ -11380,7 +11385,8 @@ function sortSizeKeys_(keys){
 }
 
 function docRows(o, priced, showFrameHCol, eco){
-  const items=o.items||[];
+  // v375: صفوف «تدعيم خشب» مش بتتعرض في ورقة الأوردر/الـPDF (البند لسه في الطلب).
+  const items=(o.items||[]).filter(it=>!woodServiceLine_(it));
   const doorItems=items.filter(it=>it.kind==='door');
   const otherItems=items.filter(it=>it.kind!=='door');
   // ⚠️ عمودين «جاهز/متبقي» اتشالوا من ورقة الأوردر — الأرقام دي شغل مصنع
@@ -11679,7 +11685,7 @@ function withCutLines_(o){
 // الورقة، فلازم يفضل باين في ورقة الشغل زي ما هو.
 function withoutCutLines_(o){
   if(!o || !(o.items||[]).some(quoteOnlyLine_)) return o;
-  return Object.assign({}, o, { items:(o.items||[]).filter(it=>!quoteOnlyLine_(it)) });
+  return Object.assign({}, o, { items:(o.items||[]).filter(it=>!quoteOnlyLine_(it)&&!woodServiceLine_(it)) });
 }
 
 function docNumberForPresentation_(o,quote){return o.displayNo?orderNoText_(o):(quote?'مسودة عرض سعر':'لم يتأكد بعد');}
@@ -11829,7 +11835,7 @@ async function exportExcel(orders,fname){
     orders.forEach(o=>{
       // بنود «خدمة قص» بتبان في عرض السعر بس — الإكسل ده كشف أصناف للمصنع
       // كشف أصناف للمصنع: القص (بند تسعير) بيتشال، والتدعيم بيفضل
-      const its = (o.items||[]).filter(it=>!quoteOnlyLine_(it));
+      const its = (o.items||[]).filter(it=>!quoteOnlyLine_(it)&&!woodServiceLine_(it));
       const sumRow=[o.id, xlDate_(o.ts), o.name||'', String(o.phone||''), o.region||'', o.warehouse||WAREHOUSE, o.status||'', its.length];
       if(priced) sumRow.push(Number(o.total)||0);
       sum.push(sumRow);
@@ -12077,7 +12083,7 @@ function flowNotes344_(v){
  return out.map(t=>'<div class="note pv344-note">'+t+'</div>').join('');
 }
 /* v346: شاشة واحدة للباب زي الفيديو: بعد اختيار الباب تظهر تحته الرسمة (بدون / كتالوج / رسمة خاصة) والمقاسات والكمية والحلق والبرور. عرض وتجميع شاشات بس، نفس الحقول ونفس التحقق ونفس الحفظ. */
-function layout350_(){try{const h=document.querySelector('header.top'),bn=document.querySelector('#tryBanner348,#tryBanner349'),nv=document.getElementById('tabs');let t=h?h.getBoundingClientRect().bottom:0;if(bn)t=Math.max(t,bn.getBoundingClientRect().bottom);const r=document.documentElement.style;r.setProperty('--hdr348',Math.max(0,Math.round(t))+'px');if(nv){const b=Math.round(innerHeight-nv.getBoundingClientRect().top)+6;r.setProperty('--nav350',Math.max(60,b)+'px');}}catch(e){}}
+function layout350_(){try{const h=document.querySelector('header.top'),bn=document.querySelector('#tryBanner348,#tryBanner349'),nv=document.getElementById('tabs');let t=h?h.getBoundingClientRect().bottom:0;if(bn)t=Math.max(t,bn.getBoundingClientRect().bottom);const r=document.documentElement.style;r.setProperty('--hdr348',Math.max(0,Math.round(t))+'px');if(nv){const nb=nv.getBoundingClientRect();const atBottom=nb.top>innerHeight/2;const b=atBottom?Math.round(innerHeight-nb.top)+6:0;r.setProperty('--nav350',(atBottom?Math.max(60,b):0)+'px');}}catch(e){}}
 addEventListener('resize',()=>setTimeout(layout350_,50));
 function flowPhotoPlain346_(f){const src=flowThumb_();if(!src)return '';const v=f.variants[0]||{};
  const fr=Number(v.frame)||0,br=v.dbror?1:0,ft=fr?({10:6,15:9,20:12}[fr]||8):0,bt=br?(v.dbror==='4×8'?7:9):0;
@@ -12103,7 +12109,7 @@ function flowConfig345_(f){
     :`<div class="note custom341"><b>رسمة خاصة</b> · هتبعتها للمصنع برّه التطبيق</div>`)
    +`<div class="flow-chips"><button type="button" class="chip ${f.method==='print'?'on':''}" data-flow-choice="method" data-value="print">طباعة</button><button type="button" class="chip ${f.method==='engrave'?'on':''}" data-flow-choice="method" data-value="engrave">حفر</button>${f.source==='catalog'&&f.pattern&&!_catOpen347?`<button type="button" class="chip" data-flow-action="catalog-open347">الرسمة ${esc(f.pattern)} · تغيير</button>`:''}</div></div>`:'')+'</div>';
  const vs=f.variants.map((v,i)=>`<div class="flow-summary cfg345-v">${f.variants.length>1?`<h3>المقاس ${i+1}</h3>`:''}${'<div class="szrow357">'+flowChoices_('widthPreset',SIZES.map(s=>[s.w,String(s.w)]).concat([['custom','مقاس خاص']]),v.w===''?'':v.widthPreset==='custom'||!SIZES.some(s=>String(s.w)===String(v.w))?'custom':v.w,i)+'</div>'}${(v.widthPreset==='custom'||(String(v.w||'')!==''&&!SIZES.some(s=>String(s.w)===String(v.w)))||(String(v.h||'').trim()!==''&&String(v.h).trim()!==String(DOOR_STD_HEIGHT)&&!(v.widthPreset!=='custom'&&String(v.w||'')===''&&String(v.h||'').trim()==='')))?'<div class="row2">'+flowNum_('العرض بالسم','w',v.w,i)+flowNum_('الارتفاع بالسم','h',v.h,i)+'</div>':''}${flowNotes344_(v)}<div class="rw348"><h3>الحلق</h3>${flowChoices_('frame',[[10,'10'],[15,'15'],[20,'20'],[0,'بدون']],v.frame,i)}</div>${v.frame?`<details class="dd357"${String(v.frameHeight||'').trim()!==''?' open':''}><summary>ارتفاع الحلق: ${String(v.frameHeight||'').trim()!==''?esc(v.frameHeight)+' سم':'عادي'}</summary>${flowNum_('ارتفاع الحلق بالسم','frameHeight',v.frameHeight,i)}</details>`:''}<div class="rw348"><h3>البرور</h3>${flowChoices_('dbror',[['6×9','6×9'],['4×8','4×8'],['','بدون']],v.dbror,i)}</div>${flowNum_('الكمية','qty',v.qty,i)}${f.variants.length>1?`<button type="button" class="btn ghost" data-flow-remove="${i}">حذف المقاس</button>`:''}</div>`).join('');
- return `<div class="cfg345"><h2>الباب ${esc(f.code)}</h2>${flowPhotoPlain346_(f)}${print}${vs}${flowButton_('add-size','أضف مقاسًا آخر',true)}${f.variants.some(v=>v.widthPreset==='custom'||!SIZES.some(s=>s.w===Number(v.w)))?`<div class=\"auto357\">تدعيم خشب إجباري تلقائي للمقاس الخاص${pricesVisible()?' · سعره داخل خدمة القص':''}</div>`:''}${flowOk345_(f)}<label class="fld"><span>ملاحظات على الباب · اختياري</span><textarea data-flow-input="note">${esc(f.note)}</textarea></label><div class="add345">${flowButton_('add-cart-345',f.edit?'احفظ تعديل البند':'إضافة للأوردر')}</div></div>`;
+ return `<div class="cfg345"><h2>الباب ${esc(f.code)}</h2>${flowPhotoPlain346_(f)}${print}${vs}${flowButton_('add-size','أضف مقاسًا آخر',true)}${flowOk345_(f)}<label class="fld"><span>ملاحظات على الباب · اختياري</span><textarea data-flow-input="note">${esc(f.note)}</textarea></label><div class="add345">${flowButton_('add-cart-345',f.edit?'احفظ تعديل البند':'إضافة للأوردر')}</div></div>`;
 }
 function flowView_(){
  const f=doorFlow_;if(!flowAccountOk_())return `<section class="card">${flowRegistrationHTML_()}</section>`;
