@@ -2499,7 +2499,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v376';
+const APP_BUILD = 'v377';
 var _nm372={edit:false};
 var _hid373=0;
 /* v376: طالما فيه أوردر شغّال (سلة فيها بنود، باب بدأ يتختار، بيانات عميل متكتبة، أو تعديل مفتوح) التطبيق مبيرجعش للرئيسية ومبيقفلش. */
@@ -2569,7 +2569,7 @@ const WAREHOUSE   = 'مصنع إنشاص';
 // إن حد نسخ apps_script.gs مرة وماعملش Deploy ▸ New version بعد كده — التطبيق
 // شغّال والسيرفر ناقص حاجة، وده بيطلع على شكل باجات غريبة (رصيد باب مش لاقيه،
 // تعديل صنف بيترفض). بنسأل السيرفر عن نسخته ونقول للمصنع بدل ما يخمّن.
-const SRV_BUILD_WANT = 'v294r3';
+const SRV_BUILD_WANT = 'v294r4';
 
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2aVRVaUVubR3w4a3weiQTHGp03SvMozh83NY3OtBD14n1YugCjbcWdYEJUPJb-s3E/exec';
 
@@ -5810,11 +5810,39 @@ async function unarchiveOrder(id){
   a.archBusy = null; render();
 }
 
+// استرجاع طلب من أرشيف المحذوف (v377) — السيرفر بيرجّع رصيد المخزون لو كان اترجع وقت الحذف
+async function restoreDeletedOrder(id){
+  const a = state.admin;
+  a.archBusy = id; render();
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL
+      + '?action=restoreDeleted' + admParams_()
+      + '&id=' + encodeURIComponent(id));
+    if(!d || !d.ok) throw new Error((d && d.error) || 'فشل الاسترجاع');
+    const o = (a.archRows||[]).find(x=>String(x.id)===String(id));
+    a.archRows = (a.archRows||[]).filter(x=>String(x.id)!==String(id));
+    if(o){ delete o.deletedAt; o.deletedAtMs=0; o.archived=false; a.rows = a.rows || []; a.rows.unshift(o); }
+    toast('الطلب '+(o?orderNoText_(o):('#'+id))+' رجع للطلبات النشطة');
+  }catch(err){
+    toast('تعذّر الاسترجاع: ' + (err.message || err));
+  }
+  a.archBusy = null; render();
+}
+
 // بيشيل الطلب من كل نسخ الشاشة (النشط + الأرشيف + الأصناف المحمّلة)
-function forgetOrderLocally_(id){
-  _deletedIds.set(String(id), Date.now());
+function forgetOrderLocally_(id, softDeleted){
+  if(!softDeleted) _deletedIds.set(String(id), Date.now());   // النقل للمحذوف (v377) مش إخفاء — لازم يظهر في الأرشيف فورًا
+  const moved = softDeleted ? (state.admin.rows||[]).find(o=>String(o.id)===String(id)) : null;
   state.admin.rows = (state.admin.rows||[]).filter(o=>String(o.id)!==String(id));
-  if(state.admin.archRows) state.admin.archRows = state.admin.archRows.filter(o=>String(o.id)!==String(id));
+  if(state.admin.archRows){
+    state.admin.archRows = state.admin.archRows.filter(o=>String(o.id)!==String(id));
+    if(moved){   // حدّث نسخة الأرشيف محليًا عشان تظهر من غير انتظار تحميل
+      moved.archived = true; moved.deletedAt = moved.deletedAt || 'النهارده';
+      moved.deletedAtMs = moved.deletedAtMs || Date.now(); moved.archivedAtMs = moved.archivedAtMs || Date.now();
+      moved.autoPurge = true;
+      state.admin.archRows.unshift(moved);
+    }
+  }
   delete state.admin.items[id]; delete state.admin.itemsOpen[id]; deleteAdmItemsEntry_(id);
   saveAdminCache_(state.admin.rows||[]);
 }
@@ -5833,15 +5861,35 @@ async function deleteOrderCall_(id){
   const d = await jsonp(APPS_SCRIPT_URL
     + '?action=deleteOrder' + admParams_()
     + '&id=' + encodeURIComponent(id), DELETE_TIMEOUT_MS);
-  if(d && d.ok) return { gone:true, already:!!d.alreadyGone };
+  if(d && d.ok) return { gone:true, already:!!(d.alreadyGone||d.already), archived:!!d.archived };
   const msg = (d && d.error) || 'فشل الحذف';
   if(/مش موجود/.test(msg)) return { gone:true, already:true };   // اتمسح قبل كده
   // رد فعلي من السيرفر (كلمة سر غلط مثلاً) — إعادة المحاولة مش هتفيد
   const err = new Error(msg); err.fromServer = true; throw err;
 }
 
+// v377: سطر بيانات الأرشيف — «محذوف» + تاريخ الأرشفة + الأيام الباقية على المسح النهائي.
+// المسح التلقائي بيعتمد على تاريخ الأرشفة من السيرفر؛ الأرشيف القديم من غير تاريخ
+// ما بيظهرش له عدّاد لأنه مش بيتمسح أوتوماتيك.
+function archMeta377_(o){
+  let s = 'أُرشف '+esc(dateStr2_(o.updated||o.date))+(o.date&&o.updated&&o.date!==o.updated?' · الطلب '+esc(dateStr2_(o.date)):'');
+  if(o.deletedAt) s = '<b style="color:var(--danger-ink)">محذوف '+esc(o.deletedAt)+'</b> · '+s;
+  // العدّاد بس للي المسح التلقائي شايله (اتأرشف بعد التفعيل) — القديم بيتمسح يدوي بس
+  const base = Number(o.deletedAtMs||0)||Number(o.archivedAtMs||0);
+  if(base>0 && o.autoPurge){
+    const left = 30 - Math.floor((Date.now()-base)/86400000);
+    s += left>0 ? ' · <b style="color:var(--warn-ink)">باقي '+left+' يوم على المسح النهائي</b>'
+                : ' · <b style="color:var(--danger-ink)">بيتمسح نهائي عند أول مسح تلقائي</b>';
+  }
+  return s;
+}
+
 async function deleteOrder(id){
-  if(!confirm('تأكيد حذف الطلب '+adminOrderNoText_(id)+'؟ الإجراء ده نهائي ومش هيترجع.')) return;
+  // v377: السيرفر الجديد (v294r4) بينقل للمحذوف بدل المسح النهائي — النص لازم يطابق السلوك
+  const softDel377_ = state.admin && state.admin.srv === 'v294r4';
+  if(!confirm(softDel377_
+    ? 'نقل الطلب '+adminOrderNoText_(id)+' لأرشيف المحذوف؟ هيفضل هناك ٣٠ يوم وتقدر ترجّعه من شاشة الأرشيف، وبعدها بينمسح نهائي.'
+    : 'تأكيد حذف الطلب '+adminOrderNoText_(id)+'؟ الإجراء ده نهائي ومش هيترجع.')) return;
   const رقم_الطلب = adminOrderNoText_(id);
   state.admin.delBusy = id; render();
   try{
@@ -5855,8 +5903,9 @@ async function deleteOrder(id){
       // التانية هترجع «اتمسح خلاص»، ولو ما نجحتش هتكمّل الشغل اللي وقف
       r = await deleteOrderCall_(id);
     }
-    forgetOrderLocally_(id);
+    forgetOrderLocally_(id, !!(r && r.archived));
     toast(r.already ? ('الطلب ' + رقم_الطلب + ' كان متحذف خلاص — اتشال من القايمة')
+                    : r.archived ? ('الطلب ' + رقم_الطلب + ' اتنقل لأرشيف المحذوف — ترجّعه من شاشة الأرشيف خلال ٣٠ يوم')
                     : ('اتحذف الطلب ' + رقم_الطلب));
   }catch(err){
     toast('تعذّر الحذف: ' + (err.message || err));
@@ -8784,6 +8833,7 @@ function viewAdmin(){
         <button class="btn act-money sm" data-act="adm-prices-open">${ico("money")}الأسعار</button>
       </div>
       ${viewingArchive?`<div class="ad-row"><button class="btn act-del sm" data-act="adm-clear-delivered">${ico("trash")}حذف المؤرشف</button></div>`:''}
+      ${viewingArchive?`<div class="note" style="margin-top:6px">أي طلب يتأرشف من دلوقتي بينمسح نهائي بعد ٣٠ يوم من أرشفته. الأرشيف القديم (من قبل التحديث ده) بيفضل موجود لحد ما تمسحه يدوي من الزرار فوق.</div>`:''}
       <div class="ad-row ad-end">
         <button class="btn act-tool sm" data-act="adm-reload">${ico("refresh")}${a.loading?'بيحدّث…':'تحديث'}</button>
         <button class="btn act-tool sm" data-act="adm-logout">${ico("lock")}خروج</button>
@@ -9065,7 +9115,7 @@ function viewAdmin(){
       <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}
         ${o.customer?`<br><b style="color:var(--info-ink)">صاحب الأوردر: ${esc(o.customer)}</b>`:''}
         ${o.customerRegion?`<br><span style="color:var(--info-ink)">عنوان العميل: ${esc(o.customerRegion)}</span>`:''}
-        <br>${viewingArchive ? 'أُرشف '+esc(dateStr2_(o.updated||o.date))+(o.date&&o.updated&&o.date!==o.updated?' · الطلب '+esc(dateStr2_(o.date)):'') : esc(dateStr2_(o.date))} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''} · ${money(o.total||0)} ج</div>
+        <br>${viewingArchive ? archMeta377_(o) : esc(dateStr2_(o.date))} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''} · ${money(o.total||0)} ج</div>
       ${o.ordNote?`<div class="ordnote">${ico("warn")}<span><b>ملاحظات:</b> ${esc(o.ordNote)}</span></div>`:''}
       ${o.superseded?`<div style="margin-top:8px;padding:9px 12px;background:rgba(240,115,106,.13);border:1.5px solid rgba(240,115,106,.42);border-radius:9px;
         font-size:13px;font-weight:700;color:var(--danger-ink);display:flex;align-items:flex-start;gap:6px;line-height:1.6">
@@ -9073,7 +9123,9 @@ function viewAdmin(){
         راجع النسخة الجديدة واحذف السطر ده بنفسك من زرار «حذف» تحت.</span></div>`:''}
       <div class="chips chips-line" style="margin-top:10px;gap:6px">${btns}</div>
       ${busy?'<div class="note">جارٍ الحفظ…</div>':''}
-      ${viewingArchive?`<button class="btn brand" data-act="adm-unarchive" data-id="${esc(o.id)}" ${archBusy?'disabled':''} style="width:100%;margin-top:10px;padding:10px;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px">${ico("refresh")}${archBusy?'جارٍ الإرجاع…':'رجّع من الأرشيف للطلبات النشطة'}</button>`:''}
+      ${viewingArchive? (o.deletedAt
+        ? `<button class="btn act-del" data-act="adm-restore-del" data-id="${esc(o.id)}" ${archBusy?'disabled':''} style="width:100%;margin-top:10px;padding:10px;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px">${ico("undo")}${archBusy?'جارٍ الاسترجاع…':'استرجاع من المحذوف للطلبات النشطة'}</button>`
+        : `<button class="btn brand" data-act="adm-unarchive" data-id="${esc(o.id)}" ${archBusy?'disabled':''} style="width:100%;margin-top:10px;padding:10px;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px">${ico("refresh")}${archBusy?'جارٍ الإرجاع…':'رجّع من الأرشيف للطلبات النشطة'}</button>`) :''}
       <div class="cardacts">${actionBtns}</div>
       ${itemsHtml}
     </div>`;
@@ -9427,6 +9479,7 @@ document.addEventListener('click',e=>{
     case 'adm-clear-delivered': clearDeliveredOrders(); break;
     case 'adm-del':     deleteOrder(el.dataset.id); break;
     case 'adm-unarchive': unarchiveOrder(el.dataset.id); break;
+    case 'adm-restore-del': restoreDeletedOrder(el.dataset.id); break;
     case 'adm-toggle-archive':
       state.admin.viewArchive = !state.admin.viewArchive;
       if(state.admin.viewArchive){
