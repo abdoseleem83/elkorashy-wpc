@@ -2499,7 +2499,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v378';
+const APP_BUILD = 'v379';
 var _nm372={edit:false};
 var _hid373=0;
 /* v376: طالما فيه أوردر شغّال (سلة فيها بنود، باب بدأ يتختار، بيانات عميل متكتبة، أو تعديل مفتوح) التطبيق مبيرجعش للرئيسية ومبيقفلش. */
@@ -3073,7 +3073,7 @@ const state = {
   stock:{rows:null, at:0, loading:false},   // أرصدة المخزن — الجاهز للتسليم خلال ٤٨ ساعة
   admin:{open:false, pw:'', loading:false, rows:null, err:'', busy:null,
     itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null,
-    viewArchive:false, archRows:null, archLoading:false, archBusy:null,
+    archOpen:false, groupOpenA:null, focusOrderA:null, archRows:null, archLoading:false, archBusy:null,
     viewStock:false, stockBusy:null, stockDraft:{}, stockPdfBusy:false,
     viewCustRem:false, custRem:null, custRemAt:0, custRemLoading:false,
     viewReports:false,
@@ -5792,6 +5792,7 @@ async function setStatus(id, st){
       // تسليم الطلب بيأرشفه أوتوماتيك — يتشال من القايمة النشطة على طول
       state.admin.rows = (state.admin.rows||[]).filter(o=>String(o.id)!==String(id));
       state.admin.archRows = null;   // الكاش بقى قديم، هيتحمّل تاني لما المصنع يفتح الأرشيف
+      if(state.admin.archOpen) loadArchive();
       toast('اتحدّثت حالة الطلب ' + رقم_الطلب + ' → ' + (STATUS[st] ? STATUS[st].ar : st) + ' — واتأرشف تلقائي');
     } else {
       toast('اتحدّثت حالة الطلب ' + رقم_الطلب + ' → ' + (STATUS[st] ? STATUS[st].ar : st));
@@ -5832,6 +5833,57 @@ async function unarchiveOrder(id){
   }catch(err){
     toast('تعذّر الإرجاع: ' + (err.message || err));
   }
+  a.archBusy = null; render();
+}
+
+// v379: أرشفة يدوية لأي طلب نشط من كارته — السيرفر (archiveOrder archived=1) بيسجّل
+// تاريخ الأرشفة، فبتدخل قاعدة المسح التلقائي بعد ٣٠ يوم زي أي أرشيف جديد، وبتترجّع
+// من شاشة الأرشيف بزرار «رجّع من الأرشيف». الطلب بيختفي من النشط والتقارير فورًا.
+async function archiveOrderManual_(id){
+  const a = state.admin;
+  const o = (a.rows||[]).find(x=>String(x.id)===String(id));
+  if(!confirm('أرشفة الطلب '+adminOrderNoText_(id)+'؟ هيختفي من الطلبات النشطة والتقارير وهتلاقيه في شاشة الأرشيف (زرار «الأرشيف» فوق)، وتقدر ترجّعه من هناك في أي وقت. زي أي أرشيف جديد: بينمسح نهائي بعد ٣٠ يوم من الأرشفة.')) return;
+  a.archBusy = id; render();
+  try{
+    const d = await jsonp(APPS_SCRIPT_URL
+      + '?action=archiveOrder' + admParams_()
+      + '&id=' + encodeURIComponent(id) + '&archived=1');
+    if(!d || !d.ok) throw new Error((d && d.error) || 'فشلت الأرشفة');
+    a.rows = (a.rows||[]).filter(x=>String(x.id)!==String(id));
+    a.archRows = null;   // كاش الأرشيف بقى قديم — هيتحمّل من جديد أول ما يفتح شاشة الأرشيف
+    if(state.admin.archOpen) loadArchive();
+    toast('الطلب '+(o?orderNoText_(o):('#'+id))+' اتأرشف — هتلاقيه في شاشة الأرشيف');
+  }catch(err){
+    toast('تعذّرت الأرشفة: ' + (err.message || err));
+  }
+  a.archBusy = null; render();
+}
+
+// v379: أرشفة جماعية للطلبات المسلّمة اللي ظهرت في القايمة النشطة بالغلط (نسخة
+// محفوظة قديمة على الجهاز أو تسليم اتسجّل من الشيت مباشرة) — زي الأرشفة اليدوية
+// بالظبط: archived=1 على السيرفر، فبتدخل قاعدة المسح التلقائي بعد ٣٠ يوم
+// وبتترجّع من شاشة الأرشيف.
+async function archiveAllDelivered_(){
+  const a = state.admin;
+  const ids = (a.rows||[]).filter(o=>o && o.status==='Delivered').map(o=>o.id);
+  if(!ids.length){ toast('مفيش طلبات مسلّمة في القايمة النشطة'); return; }
+  if(!confirm('أرشفة '+ids.length+' طلب مسلّم ظاهرين في القايمة النشطة؟ هيختفوا من النشط والتقارير وهتلاقيهم في شاشة الأرشيف، وتقدر ترجّع أي واحد منهم في أي وقت. زي أي أرشيف جديد: بينمسحوا نهائي بعد ٣٠ يوم من الأرشفة.')) return;
+  a.archBusy = 'bulk'; render();
+  let done = 0, failed = 0;
+  for(const id of ids){
+    try{
+      const d = await jsonp(APPS_SCRIPT_URL
+        + '?action=archiveOrder' + admParams_()
+        + '&id=' + encodeURIComponent(id) + '&archived=1');
+      if(d && d.ok){ done++; a.rows = (a.rows||[]).filter(x=>String(x.id)!==String(id)); }
+      else failed++;
+    }catch(e){ failed++; }
+  }
+  a.archRows = null;   // كاش الأرشيف بقى قديم — هيتحمّل من جديد أول ما يفتح شاشة الأرشيف
+  if(state.admin.archOpen) loadArchive();
+  if(done) saveAdminCache_(a.rows||[]);
+  toast(done ? ('اتأرشف '+done+' طلب مسلّم — هتلاقيهم في شاشة الأرشيف' + (failed ? ' · تعذّر أرشفة '+failed+' — جرّب «أرشفتهم كلهم» تاني' : ''))
+             : 'تعذّرت الأرشفة — جرّب تاني');
   a.archBusy = null; render();
 }
 
@@ -7841,11 +7893,11 @@ function previewWait295_(work, ms=65000){
   let timer;
   return Promise.race([work, new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('المعاينة اتأخرت. البيانات محفوظة، جرّب العدسة تاني لما الاتصال يستقر')),ms);})]).finally(()=>clearTimeout(timer));
 }
-async function previewCustomerOrder_(name){
+async function previewCustomerOrder_(name, isArch){
   if(!name) return;
   const a=state.admin;
   if(a.groupPreviewBusy || a.orderPreviewBusy){toast('جارٍ تجهيز المعاينة، استنى النتيجة');return;}
-  const list=(a.viewArchive?a.archRows:a.rows)||[];
+  const list=isArch?(a.archRows||[]):(a.rows||[]).filter(o=>!o||o.status!=='Delivered');
   const mine=list.filter(o=>(String(o.customer||'').trim()||'بدون اسم')===name);
   if(!mine.length){toast('مفيش طلبات للعميل ده في الشاشة');return;}
   a.groupPreviewBusy=name; render(); busy(true,'جارٍ تجهيز معاينة '+name+'…');
@@ -8038,9 +8090,9 @@ function closeReportPreview_(){
 
 // بيبني مستندات طلبات عميل واحد بصيغة eco (بدون صور الأبواب) — أساس المعاينة
 // والـ PDF والصورة. بيرمي خطأ برسالة واضحة لو أصناف أي طلب مااتحمّلتش.
-async function buildCustomerDocsEco_(name){
+async function buildCustomerDocsEco_(name, isArch){
   const a=state.admin;
-  const list=(a.viewArchive?a.archRows:a.rows)||[];
+  const list=isArch?(a.archRows||[]):(a.rows||[]).filter(o=>!o||o.status!=='Delivered');
   const mine=list.filter(o=>(String(o.customer||'').trim()||'بدون اسم')===name);
   if(!mine.length) return null;
   await loadOrderItemsMany_(mine.map(o=>o.id));
@@ -8057,14 +8109,14 @@ async function buildCustomerDocsEco_(name){
 
 // PDF واحد فيه كل طلبات العميل بدون صور الأبواب — ده المقصود بـ«PDF» في صف العميل.
 // (تقرير الأبواب المعلّقة لسه موجود في قسم التقارير زي ما كان.)
-async function exportCustomerPdf_(name){
+async function exportCustomerPdf_(name, isArch){
   if(!name) return;
   const a=state.admin;
   if(a.groupPdfBusy||a.groupImgBusy){toast('جارٍ تجهيز ملف، استنى النتيجة');return;}
   a.groupPdfBusy=name; render(); busy(true,'جارٍ تجهيز PDF طلبات '+name+'…');
   try{
     if(!await needLibs_('html2canvas','jspdf')) return;
-    const html=await buildCustomerDocsEco_(name);
+    const html=await buildCustomerDocsEco_(name, isArch);
     if(html==null){ toast('مفيش طلبات للعميل ده في الشاشة'); return; }
     const {canvas}=await renderPaper_(html);
     await canvasToPdf_(canvas,'طلبات_'+name+'.pdf');
@@ -8073,14 +8125,14 @@ async function exportCustomerPdf_(name){
 }
 
 // صورة واحدة فيها كل طلبات العميل بدون صور الأبواب — بتتشارك أو بتنزّل PNG.
-async function shareCustomerOrdersImage_(name){
+async function shareCustomerOrdersImage_(name, isArch){
   if(!name) return;
   const a=state.admin;
   if(a.groupPdfBusy||a.groupImgBusy){toast('جارٍ تجهيز ملف، استنى النتيجة');return;}
   a.groupImgBusy=name; render(); busy(true,'جارٍ تجهيز صورة طلبات '+name+'…');
   try{
     if(!await ensureLib_('html2canvas')) throw new Error('مكتبة الصور مش متاحة');
-    const html=await buildCustomerDocsEco_(name);
+    const html=await buildCustomerDocsEco_(name, isArch);
     if(html==null){ toast('مفيش طلبات للعميل ده في الشاشة'); return; }
     const {canvas}=await renderPaper_(html);
     const blob=await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
@@ -8781,7 +8833,7 @@ document.addEventListener('change', e=>{
   if(el && el.value) saveDue_(el.dataset.id, el.value);
 });
 
-function groupOrderRowHTML_(o, a){
+function groupOrderRowHTML_(o, a, isArch){
   const busy = a.orderPreviewBusy === o.id;
   const noTxt = orderNoText_(o);
   const hasNo = !!o.displayNo;
@@ -8794,9 +8846,9 @@ function groupOrderRowHTML_(o, a){
   // الشريطة flex:1 بحد أدنى 0 واختصار بنقاط — ممنوع التداخل أو اللفّ الطويل.
   return `<div class="grp-ord${o.ordNote?' hasnote':''}">
     <button type="button" class="grp-num" data-act="adm-open-order" data-id="${esc(o.id)}" aria-expanded="${String(a.focusOrder)===String(o.id)?'true':'false'}"
-      title="فتح/إغلاق كارت الطلب ${esc(noTxt)} الكامل" aria-label="فتح/إغلاق كارت الطلب ${esc(noTxt)} الكامل">${esc(hasNo ? noTxt : shortIdText_(o.id))}</button>
+      title="فتح/إغلاق كارت الطلب ${esc(noTxt)} الكامل" aria-label="فتح/إغلاق كارت الطلب ${esc(noTxt)} الكامل" data-scope="${isArch?1:0}">${esc(hasNo ? noTxt : shortIdText_(o.id))}</button>
     ${o.date?`<span class="grp-dtw"><b class="grp-dm">${esc(dateDM_(o.date))}</b><small class="grp-dy">${esc(dayNameAr_(o.date))}</small></span>`:''}
-    <span class="grp-stw">${statusPill(o.status)}</span>
+    <span class="grp-stw">${isArch?`<span style="font-size:11px;font-weight:800;color:var(--ink);background:rgba(140,160,190,.25);border:1px solid rgba(140,160,190,.55);border-radius:20px;padding:1px 8px;display:inline-flex;align-items:center;gap:4px;flex:none">${ico("archive")}مؤرشف</span>`:''}${statusPill(o.status)}</span>
     <button class="btn sm grp-b grp-prev" data-act="adm-preview" data-id="${esc(o.id)}" ${busy?'disabled':''}
       title="معاينة الطلب ${esc(noTxt)}" aria-label="معاينة الطلب ${esc(noTxt)}">${ico("search")}${busy?'…':'معاينة'}</button>
   </div>
@@ -8815,7 +8867,7 @@ function viewAdmin(){
 
   // شاشة الانتظار بتظهر بس لو مفيش أي حاجة نعرضها. لو عندنا نسخة محفوظة،
   // بنعرضها فورًا والتحديث ماشي في الخلفية (شريط التنبيه فوق بيوضّح ده).
-  if(a.loading && !(a.rows||[]).length && !(a.viewArchive && (a.archRows||[]).length))
+  if(a.loading && !(a.rows||[]).length)
     return `<div class="empty"><span class="em">${ico("clock","xl")}</span><p>جارٍ التحميل…</p></div>`;
 
   if(!a.open){
@@ -8830,9 +8882,11 @@ function viewAdmin(){
     </section>${verBar()}`;
   }
 
-  const viewingArchive = !!a.viewArchive;
-  const list = viewingArchive ? a.archRows : a.rows;
-  const lst = list || [];
+  // v379: الطلب المسلّم مكانه الأرشيف — لو ظهر في القايمة النشطة (نسخة محفوظة قديمة
+  // على الجهاز، أو تسليم اتسجّل من الشيت مباشرة) ما يتلخبطش مع الشغّال: بنشيله من
+  // العرض وبنعلّم عليه في شريط لوحده مع زرار أرشفة جماعية.
+  const leakedDelivered = (a.rows||[]).filter(o=>o && o.status==='Delivered');
+  const lst = (a.rows||[]).filter(o=>!o || o.status!=='Delivered');
 
   // شريط بيوضّح إن المعروض نسخة محفوظة وإن التحديث شغّال — عشان المصنع ما ياخدش
   // قرار على أرقام قديمة وهو فاكرها لحظية
@@ -8852,17 +8906,34 @@ function viewAdmin(){
   // والمتبقي للعملاء، التقارير، العملاء وطلباتهم. كل قسم ليه عنوان وأيقونة —
   // تضغط عليه يفتح محتواه تحته، وتضغط تاني يتلم. المحتوى كله مقفول في البداية.
   // أدوات العرض: الأرشيف والأسعار + تحديث وخروج (وحذف المؤرشف جوّه الأرشيف)
+  // v379: الأرشيف بقى جوّه قسم «أدوات العرض» نفسه (بطلب صاحب التطبيق) — مش وضع
+  // منفصل بأيقونة تانية. زرار «الأرشيف» بيفتح القايمة المؤرشفة تحت الأزرار على
+  // طول، مع بانر واضح وزرار رجوع. قسم «العملاء وطلباتهم» يفضل دايمًا للشغّال بس.
   const toolsBody_ = () => `<div class="ad-tools">
       <div class="ad-row">
-        <button class="btn ${viewingArchive?'brand':'act-edit'} sm" data-act="adm-toggle-archive">${ico("folder")}${viewingArchive?'رجوع للطلبات':'الأرشيف'}</button>
+        <button class="btn ${a.archOpen?'brand':'act-edit'} sm" data-act="adm-toggle-archive">${ico("folder")}${a.archOpen?'إخفاء الأرشيف':'الأرشيف'}</button>
         <button class="btn act-money sm" data-act="adm-prices-open">${ico("money")}الأسعار</button>
       </div>
-      ${viewingArchive?`<div class="ad-row"><button class="btn act-del sm" data-act="adm-clear-delivered">${ico("trash")}حذف المؤرشف</button></div>`:''}
-      ${viewingArchive?`<div class="note" style="margin-top:6px">أي طلب يتأرشف من دلوقتي بينمسح نهائي بعد ٣٠ يوم من أرشفته. الأرشيف القديم (من قبل التحديث ده) بيفضل موجود لحد ما تمسحه يدوي من الزرار فوق.</div>`:''}
       <div class="ad-row ad-end">
         <button class="btn act-tool sm" data-act="adm-reload">${ico("refresh")}${a.loading?'بيحدّث…':'تحديث'}</button>
         <button class="btn act-tool sm" data-act="adm-logout">${ico("lock")}خروج</button>
       </div>
+      ${a.archOpen?`<div style="margin-top:10px;padding-top:10px;border-top:2px dashed rgba(140,160,190,.5)">
+        <div style="padding:12px 13px;border-radius:12px;background:rgba(140,160,190,.16);border:2px solid rgba(140,160,190,.5)">
+          <div style="font-size:14.5px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:7px;line-height:1.7">${ico("archive")} الأرشيف — الطلبات دي اتسلّمت وخلصت، مش شغالة</div>
+          <button class="btn brand" data-act="adm-toggle-archive" style="width:100%;margin-top:10px;padding:10px 12px;font-size:14.5px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:7px">${ico("undo")} إخفاء الأرشيف والرجوع للطلبات</button>
+        </div>
+        <div class="note" style="margin-top:8px">أي طلب يتأرشف من دلوقتي بينمسح نهائي بعد ٣٠ يوم من أرشفته. الأرشيف القديم (من قبل التحديث ده) بيفضل موجود لحد ما تمسحه يدوي.</div>
+        <div style="display:flex;gap:7px;margin-top:8px">
+          <button class="btn act-tool sm" data-act="adm-reload-arch" ${a.archLoading?'disabled':''}>${ico("refresh")}${a.archLoading?'بيحدّث…':'تحديث الأرشيف'}</button>
+          <button class="btn act-del sm" data-act="adm-clear-delivered">${ico("trash")}حذف المؤرشف</button>
+        </div>
+        ${a.archLoading && !(a.archRows||[]).length
+          ? `<div class="empty" style="margin-top:10px"><span class="em">${ico("clock","xl")}</span><p>جارٍ تحميل الأرشيف…</p></div>`
+          : !(a.archRows||[]).length
+            ? `<div class="empty" style="margin-top:10px"><span class="em">${ico("clip","xl")}</span><p>مفيش طلبات مؤرشفة.</p></div>`
+            : `<div style="margin-top:10px">${groupsHtml_(a.archRows, true)}</div>`}
+      </div>`:''}
     </div>${srvBuildNote_()}`;
 
   // الأرصدة والمتبقي للعملاء: زرارين بيبدّلوا المحتوى اللي تحتهم في نفس المكان،
@@ -8880,16 +8951,19 @@ function viewAdmin(){
   // العملاء وطلباتهم: البحث + كروت العملاء. مكان الكروت بيفضل ماركر بيتبدّل
   // بعد بناء الكروت (نفس نظام التحديث الجزئي الموجود).
   const custBody_ = () => `
-      
+      ${leakedDelivered.length?`<div class="note" style="margin:0 0 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(217,164,65,.12);border:1.5px solid var(--warn-line);color:var(--warn-ink)">
+        ${ico("warn")} فيه ${leakedDelivered.length} طلب «تم التسليم» لسه متأرشفش — مكانهم الأرشيف مش القايمة دي.
+        <button class="btn act-tool sm" data-act="adm-archive-delivered-all" ${a.archBusy?'disabled':''}>${ico("archive")}${a.archBusy?'جارٍ الأرشفة…':'أرشفتهم كلهم'}</button>
+      </div>`:''}
       <div style="display:flex;gap:7px;align-items:center">
       <input type="search" id="admQ" class="ad-q" placeholder="اكتب اسم العميل…" value="${esc(_admQ)}" autocomplete="off" style="flex:1;min-width:0">
       <button type="button" class="btn act-tool sm" data-act="adm-reload" ${(a.loading||a.archLoading)?'disabled':''} style="flex:none;width:auto"
         title="تحديث الطلبات من السيرفر من غير ما تطلع من الشاشة" aria-label="تحديث الطلبات">${ico("refresh")}${(a.loading||a.archLoading)?'بيحدّث…':'تحديث الطلبات'}</button>
       </div>
-      <div class="note" style="margin-top:8px">${viewingArchive?'الطلبات المؤرشفة (اتسلمت أو اتأرشفت يدوي) — مش بتظهر في التقارير.':'اضغط اسم العميل عشان تركّز عليه وتشوف طلباته بس، واضغطه تاني ترجع القايمة كلها، واضغط رقم الطلب يفتحلك كارته الكامل بكل وظائفه.'}</div>
+      <div class="note" style="margin-top:8px">اضغط اسم العميل عشان تركّز عليه وتشوف طلباته بس، واضغطه تاني ترجع القايمة كلها، واضغط رقم الطلب يفتحلك كارته الكامل بكل وظائفه.</div>
       <div class="ad-legend"><span><i class="g"></i>جاهز</span><span><i class="a"></i>تحت التنفيذ</span><span><i class="r"></i>لسه ما بدأش</span></div>
       ${!lst.length
-        ? `<div class="empty"><span class="em">${ico("clip","xl")}</span><p>${viewingArchive?'مفيش طلبات مؤرشفة.':'مفيش طلبات نشطة لسه.'}</p></div>`
+        ? `<div class="empty"><span class="em">${ico("clip","xl")}</span><p>مفيش طلبات نشطة لسه.</p></div>`
         : ADMIN_CARDS_MARK}`;
 
   // الكروت المربعة: كل اتنين جمب بعض في مربع، وضغطة على الكارت تفتح محتوى
@@ -8899,7 +8973,7 @@ function viewAdmin(){
     ['adm-sec-tools','filter','أدوات العرض','الأرشيف · الأسعار · تحديث · خروج', toolsBody_, 't-blue'],
     ['adm-sec-bal','box','الأرصدة والمتبقي للعملاء','أرصدة المخزن · المتبقي للعملاء', balBody_, 't-green'],
     ['adm-sec-reports','report','التقارير','تقارير الطلبات والمخزن والتصدير', reportsBody_, 't-violet'],
-    ['adm-sec-cust','user',viewingArchive?'عملاء الأرشيف':'العملاء وطلباتهم','دوّر على عميل وتابع طلباته', custBody_, 't-gold'],
+    ['adm-sec-cust','user','العملاء وطلباتهم','دوّر على عميل وتابع طلباته', custBody_, 't-gold'],
   ];
   const secsGrid_ = () => `<div class="ad-grid">${secDefs_().map(d=>{
       const on = uiOpen_(d[0],false);
@@ -8918,14 +8992,6 @@ function viewAdmin(){
     </section>`).join('');
 
   if(a.pricesOpen) return viewAdminPrices() + verBar();
-
-  if(viewingArchive && a.archLoading){
-    return `<section class="card">
-      <div class="step"><span class="n">${ico("folder","lg")}</span><h2>الأرشيف</h2></div>
-      <div class="btnrow"><button class="btn act-edit" data-act="adm-toggle-archive">${ico("back")}رجوع للطلبات</button></div>
-    </section>
-    <div class="empty"><span class="em">${ico("clock","xl")}</span><p>جارٍ تحميل الأرشيف…</p></div>${verBar()}`;
-  }
 
   // ---------- شاشة التقارير والتصدير — كل التقارير في مكان واحد بدل قوائم متفرقة ----------
   const reportsBody_ = () => {
@@ -9069,7 +9135,7 @@ function viewAdmin(){
   };
 
 
-  const orderCardHTML_ = o=>{
+  const orderCardHTML_ = (o, isArch)=>{
     const busy = a.busy === o.id;
     const delBusy = a.delBusy === o.id;
     const prevBusy = a.orderPreviewBusy === o.id;
@@ -9133,14 +9199,15 @@ function viewAdmin(){
          <button class="btn act-edit sm" data-act="adm-add-items" data-id="${esc(o.id)}">${ico("plus")}إضافة</button>
          <button class="btn act-send sm" data-act="adm-share" data-id="${esc(o.id)}">${ico("send")}إرسال</button>
          <button class="btn act-money sm" data-act="adm-quote" data-id="${esc(o.id)}">${ico("money")}سعر</button>
+         ${isArch?'':`<button class="btn act-tool sm" data-act="adm-archive" data-id="${esc(o.id)}" ${archBusy?'disabled':''} title="أرشفة الطلب ${esc(orderNoText_(o))} — بيختفي من الطلبات النشطة وبيتنقل للأرشيف (قسم أدوات العرض)" aria-label="أرشفة الطلب ${esc(orderNoText_(o))}">${ico("archive")}${archBusy?'…':'أرشفة'}</button>`}
          <button class="btn act-del sm" data-act="adm-del" data-id="${esc(o.id)}" ${delBusy?'disabled':''}>${ico("trash")}${delBusy?'…':'حذف'}</button>`;
 
     return `<div class="ord" data-oid="${esc(o.id)}">
-      <div class="oh">${Number(o.editCount)>0?`<span style="font-size:11.5px;font-weight:700;color:var(--warn-ink);background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:12px;font-weight:700;color:var(--danger-ink);background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${statusPill(o.status)}</div>
+      <div class="oh">${isArch?`<span style="font-size:12.5px;font-weight:800;color:var(--ink);background:rgba(140,160,190,.22);border:1.5px solid rgba(140,160,190,.55);border-radius:20px;padding:3px 12px;display:inline-flex;align-items:center;gap:5px">${ico("archive")}مؤرشف</span>`:''}${Number(o.editCount)>0?`<span style="font-size:11.5px;font-weight:700;color:var(--warn-ink);background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.4);border-radius:20px;padding:1px 8px">معدّل</span>`:''}${o.replacesId?`<span title="الكود الداخلي للطلب القديم: ${esc(o.replacesId)}" style="font-size:12px;font-weight:700;color:var(--danger-ink);background:rgba(240,115,106,.15);border-radius:20px;padding:2px 9px;display:inline-flex;align-items:center;gap:4px">${ico("undo")}تعديل على ${esc(prevOrderNoText_(o))}</span>`:''}${statusPill(o.status)}</div>
       <div class="os">${esc(o.dist||'')} · ${esc(o.region||'')} · ${esc(o.phone||'')}
         ${o.customer?`<br><b style="color:var(--info-ink)">صاحب الأوردر: ${esc(o.customer)}</b>`:''}
         ${o.customerRegion?`<br><span style="color:var(--info-ink)">عنوان العميل: ${esc(o.customerRegion)}</span>`:''}
-        <br>${viewingArchive ? archMeta377_(o) : esc(dateStr2_(o.date))} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''} · ${money(o.total||0)} ج</div>
+        <br>${isArch ? archMeta377_(o) : esc(dateStr2_(o.date))} · ${esc(o.qty||0)} قطعة${o.rods?' · '+esc(o.rods)+' عود':''} · ${money(o.total||0)} ج</div>
       ${o.ordNote?`<div class="ordnote">${ico("warn")}<span><b>ملاحظات:</b> ${esc(o.ordNote)}</span></div>`:''}
       ${o.superseded?`<div style="margin-top:8px;padding:9px 12px;background:rgba(240,115,106,.13);border:1.5px solid rgba(240,115,106,.42);border-radius:9px;
         font-size:13px;font-weight:700;color:var(--danger-ink);display:flex;align-items:flex-start;gap:6px;line-height:1.6">
@@ -9148,7 +9215,7 @@ function viewAdmin(){
         راجع النسخة الجديدة واحذف السطر ده بنفسك من زرار «حذف» تحت.</span></div>`:''}
       <div class="chips chips-line" style="margin-top:10px;gap:6px">${btns}</div>
       ${busy?'<div class="note">جارٍ الحفظ…</div>':''}
-      ${viewingArchive? (o.deletedAt
+      ${isArch? (o.deletedAt
         ? `<button class="btn act-del" data-act="adm-restore-del" data-id="${esc(o.id)}" ${archBusy?'disabled':''} style="width:100%;margin-top:10px;padding:10px;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px">${ico("undo")}${archBusy?'جارٍ الاسترجاع…':'استرجاع من المحذوف للطلبات النشطة'}</button>`
         : `<button class="btn brand" data-act="adm-unarchive" data-id="${esc(o.id)}" ${archBusy?'disabled':''} style="width:100%;margin-top:10px;padding:10px;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px">${ico("refresh")}${archBusy?'جارٍ الإرجاع…':'رجّع من الأرشيف للطلبات النشطة'}</button>`) :''}
       <div class="cardacts">${actionBtns}</div>
@@ -9160,14 +9227,19 @@ function viewAdmin(){
   // v262 — قسم «العملاء وطلباتهم» مقفول في البداية، فمانبنيش كروت العملاء
   // (أغلى جزء في الرسمة) غير لما القسم يكون مفتوح فعلًا.
   const custSecOpen = uiOpen_('adm-sec-cust', false);
-  let rows = '';
-  let بالكارت = [];
-  if(custSecOpen && lst.length){
+  // v379: باني قوائم العملاء مشترك بين قسم «العملاء وطلباتهم» (الطلبات النشطة
+  // دايمًا) والأرشيف المدمج جوّه «أدوات العرض» — isArch بيفرّق الاتنين: الجروبات
+  // المفتوحة والكارت المفتوح ليهم حالة منفصلة، والبادجات والأكشنز بتتظبط عليه.
+  const groupsHtml_ = (listFor, isArch)=>{
+  const scopeAttr = isArch?' data-scope="1"':'';
+  const gOpen = isArch ? (a.groupOpenA||(a.groupOpenA={})) : a.groupOpen;
+  const focusId = isArch ? a.focusOrderA : a.focusOrder;
+  {
   // مقاسة من صورة التصميم A3 المعتمدة نفسها (بكسلات الكروت والأفاتار)
   const _CUST_PALETTE_ = [['#EEF4FF','#1B5CC2'],['#FFF4E8','#D9822B'],['#ECF9F1','#2E9E5B'],['#F3EEFB','#8B4FC9'],['#FDEEF0','#C94F6D'],['#EAF7FA','#1B8AA5'],['#FDF8E0','#A9861B'],['#EFF3F6','#5B7186']];
   const groups = {};
   const order = [];
-  list.forEach(o=>{
+  listFor.forEach(o=>{
     const key = String(o.customer||'').trim() || 'بدون اسم';
     if(!groups[key]){ groups[key]=[]; order.push(key); }
     groups[key].push(o);
@@ -9175,14 +9247,14 @@ function viewAdmin(){
 
   // وضع التركيز: ضغطة اسم العميل بتخفي باقي العملاء ويفضّل هو بطلباته بس،
   // وضغطة تانية على نفس الاسم بترجع القايمة كلها (groupOpen بتفضى فوق).
-  const _focusName = Object.keys(a.groupOpen)[0] || null;
+  const _focusName = Object.keys(gOpen)[0] || null;
   const _visibleNames = _focusName ? order.filter(n=>n===_focusName) : order;
 
   // كل كارت عميل بيتبني لوحده وبيتخزّن بمفتاحه — عشان الرسمة الجاية تقدر
   // تحدّث الكارت اللي اتغيّر بس بدل ما تستبدل الشاشة كلها.
-  rows = _visibleNames.map(name=>{
+  return _visibleNames.map(name=>{
     const orders = groups[name];
-    const open = !!a.groupOpen[name];
+    const open = !!gOpen[name];
     const totalQty = orders.reduce((s,o)=>s+(Number(o.qty)||0),0);
     const pdfBusy = a.groupPdfBusy === name;
     const prevBusy = a.groupPreviewBusy === name;
@@ -9192,7 +9264,7 @@ function viewAdmin(){
     // لكل عميل من هاش اسمه (بدل عجلة الألوان اللي كانت بتطلع درجات طينية).
     const _pal = _CUST_PALETTE_[[...String(name)].reduce((h,c)=>(h*31+c.charCodeAt(0)),0) % _CUST_PALETTE_.length];
     const كارت = `<div class="ord grpa" data-grp="${esc(name)}" style="padding:0;overflow:hidden;--av:${_pal[1]};--cardtint:${_pal[0]}">
-      <div class="grp-hd" data-act="adm-toggle-group" data-name="${esc(name)}" data-ini="${esc(_ini)}" style="--av:${_pal[1]}">
+      <div class="grp-hd" data-act="adm-toggle-group" data-name="${esc(name)}"${scopeAttr} data-ini="${esc(_ini)}" style="--av:${_pal[1]}">
         <span style="flex:1;min-width:0">
           <b class="grp-nm" style="font-size:14.5px">${esc(name)}</b>
           <div style="font-size:11.5px;color:#5B6B80;margin-top:2px">${orders.length} طلب · ${totalQty} قطعة</div>
@@ -9205,24 +9277,24 @@ function viewAdmin(){
            بعض — والسطور كانت متداخلة مع الأزرار في نفس الصف فالشكل بيتلخبط. -->
       ${open&&orders.length>1?`<div class="grp-all">
         <span>كل طلبات العميل مع بعض (بدون صور الأبواب):</span>
-        <button class="btn act-tool sm grp-b" data-act="adm-group-preview" data-name="${esc(name)}" ${prevBusy?'disabled':''}
+        <button class="btn act-tool sm grp-b" data-act="adm-group-preview" data-name="${esc(name)}"${scopeAttr} ${prevBusy?'disabled':''}
           title="معاينة كل طلبات ${esc(name)} بدون صور الأبواب">${ico("search")}${prevBusy?'…':'معاينة'}</button>
-        <button class="btn act-tool sm grp-b" data-act="adm-group-img" data-name="${esc(name)}" ${imgBusy?'disabled':''}
+        <button class="btn act-tool sm grp-b" data-act="adm-group-img" data-name="${esc(name)}"${scopeAttr} ${imgBusy?'disabled':''}
           title="صورة كل طلبات ${esc(name)} بدون صور الأبواب">${ico("share")}${imgBusy?'…':'صورة'}</button>
-        <button class="btn act-report sm grp-b" data-act="adm-group-pdf" data-name="${esc(name)}" ${pdfBusy?'disabled':''}
+        <button class="btn act-report sm grp-b" data-act="adm-group-pdf" data-name="${esc(name)}"${scopeAttr} ${pdfBusy?'disabled':''}
           title="PDF كل طلبات ${esc(name)} بدون صور الأبواب">${ico("doc")}${pdfBusy?'…':'PDF'}</button>
       </div>`:''}
-      ${open?`<div class="grp-list">${orders.map(o=>groupOrderRowHTML_(o, a)).join('')}</div>`:''}
-      ${open&&a.focusOrder&&orders.some(o=>String(o.id)===String(a.focusOrder))?`<div style="padding:0 10px 10px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line)">
-        <div style="height:1px"></div>${orderCardHTML_(orders.find(o=>String(o.id)===String(a.focusOrder)))}
+      ${open?`<div class="grp-list">${orders.map(o=>groupOrderRowHTML_(o, a, isArch)).join('')}</div>`:''}
+      ${open&&focusId&&orders.some(o=>String(o.id)===String(focusId))?`<div style="padding:0 10px 10px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line)">
+        <div style="height:1px"></div>${orderCardHTML_(orders.find(o=>String(o.id)===String(focusId)), isArch)}
       </div>`:''}
     </div>`;
-    بالكارت.push({ مفتاح: name, html: كارت });
     return كارت;
   }).join('');
   // قائمة كروت العملاء المباشرة (الشكل القديم المعتمد) بدل شبكة البلاطات — البلاطات كانت بتخبي الطلبات ورا ضغطتين وبتعبّي العين في البحث عن عميل.
-
   }
+  };
+  const rows = (custSecOpen && lst.length) ? groupsHtml_(lst, false) : '';
   _adminCards = null;
 
   const _cn = {new:0,prog:0,ready:0,done:0};
@@ -9401,8 +9473,7 @@ document.addEventListener('click',e=>{
       // في الحالة فبيستمروا بعد التحديث.
       if(state.admin.loading || state.admin.archLoading) break;
       (async()=>{
-        if(state.admin.viewArchive){ await loadArchive(true); toast('اتحدّثت الطلبات'); }
-        else {
+        {
           // تحديث يدوي من زرار القسم: فشل الشبكة ميقفلش الشاشة على المصنع
           // — البيانات المعروضة تفضل قدامه مع رسالة الخطأ (نفس فلسفة النسخة
           // المحفوظة في adminLoad، بس للجلسة الشغّالة كمان).
@@ -9430,7 +9501,10 @@ document.addEventListener('click',e=>{
     case 'adm-toggle-items': { const o=adminOrderById_(el.dataset.id); if(o) toggleOrderItemsPreview(o); } break;
     case 'adm-toggle-qtymode': { const o=adminOrderById_(el.dataset.id); if(o) toggleQtyEditMode_(o); } break;
     case 'adm-add-items': { const o=adminOrderById_(el.dataset.id); if(o) adminEditOrder(o); } break;
-    case 'adm-toggle-group': { const n=el.dataset.name; const open=!state.admin.groupOpen[n];state.admin.groupOpen={};if(open)state.admin.groupOpen[n]=true;state.admin.focusOrder=null;render(); } break;
+    case 'adm-toggle-group': { const n=el.dataset.name; const arch=el.dataset.scope==='1';
+      if(arch){ const open=!(state.admin.groupOpenA&&state.admin.groupOpenA[n]); state.admin.groupOpenA={}; if(open)state.admin.groupOpenA[n]=true; state.admin.focusOrderA=null; }
+      else { const open=!state.admin.groupOpen[n];state.admin.groupOpen={};if(open)state.admin.groupOpen[n]=true;state.admin.focusOrder=null; }
+      render(); } break;
     case 'adm-open-order': {
       // ضغطة على رقم الطلب في سطر العميل: تفتح جروب العميل وتنزّل على الكارت
       // الكامل بتاع الطلب ده بالذات (فيه كل الأكشنز: حالة، أصناف، PDF، تعديل…)
@@ -9440,9 +9514,13 @@ document.addEventListener('click',e=>{
       if(!ord) break;
       const n = String(ord.customer||'').trim() || 'بدون اسم';
       // v311: the number toggles its own full card — a second tap closes it (the customer group stays open).
-      if(String(state.admin.focusOrder)===String(ord.id) && state.admin.groupOpen && state.admin.groupOpen[n] && document.querySelector('.ord[data-oid="'+String(id).replace(/"/g,'')+'"]')){ state.admin.focusOrder = null; render(); break; }
-      state.admin.groupOpen = {}; state.admin.groupOpen[n] = true;
-      state.admin.focusOrder = ord.id;
+      const archScope = el.dataset.scope==='1';
+      const gBox = archScope ? state.admin.groupOpenA : state.admin.groupOpen;
+      const fKey = archScope ? 'focusOrderA' : 'focusOrder';
+      if(String(state.admin[fKey])===String(ord.id) && gBox && gBox[n] && document.querySelector('.ord[data-oid="'+String(id).replace(/"/g,'')+'"]')){ state.admin[fKey] = null; render(); break; }
+      if(archScope){ state.admin.groupOpenA = {}; state.admin.groupOpenA[n] = true; }
+      else { state.admin.groupOpen = {}; state.admin.groupOpen[n] = true; }
+      state.admin[fKey] = ord.id;
       render();
       requestAnimationFrame(()=>{
         const card = document.querySelector('.ord[data-oid="'+String(id).replace(/"/g,'')+'"]');
@@ -9454,9 +9532,9 @@ document.addEventListener('click',e=>{
         }
       });
     } break;
-    case 'adm-group-pdf': exportCustomerPdf_(el.dataset.name); break;
-    case 'adm-group-img': shareCustomerOrdersImage_(el.dataset.name); break;
-    case 'adm-group-preview': previewCustomerOrder_(el.dataset.name); break;
+    case 'adm-group-pdf': exportCustomerPdf_(el.dataset.name, el.dataset.scope==='1'); break;
+    case 'adm-group-img': shareCustomerOrdersImage_(el.dataset.name, el.dataset.scope==='1'); break;
+    case 'adm-group-preview': previewCustomerOrder_(el.dataset.name, el.dataset.scope==='1'); break;
     case 'rpv-close': closeReportPreview_(); break;
     case 'rpv-pdf': {
       // المعاينة ممكن تكون لطلب واحد أو لكل طلبات العميل — زرار التصدير بيتبع
@@ -9495,7 +9573,7 @@ document.addEventListener('click',e=>{
     case 'custrem-back':         state.admin.custRemSel=''; render(); break;
     case 'adm-toggle-custrem':
       state.admin.viewCustRem = !state.admin.viewCustRem;
-      if(state.admin.viewCustRem){ state.admin.viewArchive = false; state.admin.viewStock = false; state.admin.viewReports = false; }
+      if(state.admin.viewCustRem){ state.admin.viewStock = false; state.admin.viewReports = false; }
       render();
       if(state.admin.viewCustRem) loadCustRemScreen_(false);
       break;
@@ -9504,21 +9582,21 @@ document.addEventListener('click',e=>{
     case 'adm-clear-delivered': clearDeliveredOrders(); break;
     case 'adm-del':     deleteOrder(el.dataset.id); break;
     case 'adm-unarchive': unarchiveOrder(el.dataset.id); break;
+    case 'adm-archive': archiveOrderManual_(el.dataset.id); break;
+    case 'adm-archive-delivered-all': archiveAllDelivered_(); break;
     case 'adm-restore-del': restoreDeletedOrder(el.dataset.id); break;
     case 'adm-toggle-archive':
-      state.admin.viewArchive = !state.admin.viewArchive;
-      if(state.admin.viewArchive){
-        state.admin.viewStock = false;
-        state.admin.viewCustRem = false;
-        state.admin.viewReports = false;
-        if(!state.admin.archRows) state.admin.archLoading = true;   // نمنع ومضة "مفيش طلبات" قبل ما التحميل يخلص
-      }
+      state.admin.archOpen = !state.admin.archOpen;
+      if(state.admin.archOpen && !state.admin.archRows) state.admin.archLoading = true;   // نمنع ومضة "مفيش طلبات" قبل ما التحميل يخلص
       render();
-      if(state.admin.viewArchive) loadArchive();
+      if(state.admin.archOpen) loadArchive();
+      break;
+    case 'adm-reload-arch':
+      if(!state.admin.archLoading) loadArchive(true).then(()=>toast('اتحدّث الأرشيف'));
       break;
     case 'adm-toggle-stock':
       state.admin.viewStock = !state.admin.viewStock;
-      if(state.admin.viewStock){ state.admin.viewArchive = false; state.admin.viewCustRem = false; state.admin.viewReports = false; }
+      if(state.admin.viewStock){ state.admin.viewCustRem = false; state.admin.viewReports = false; }
       state.admin.stockDraft = {};
       render();
       if(state.admin.viewStock){ loadStock(true); loadReserved(true); }
@@ -9590,7 +9668,7 @@ document.addEventListener('click',e=>{
       clearAdminCache_();   // مانسيبش بيانات المصنع على الجهاز بعد الخروج
       state.admin={open:false, pw:'', loading:false, rows:null, err:'', busy:null,
         itemsOpen:{}, items:{}, itemsLoading:null, itemBusy:null, delBusy:null, pendingCount:0,
-        viewArchive:false, archRows:null, archLoading:false, archBusy:null,
+        archOpen:false, groupOpenA:null, focusOrderA:null, archRows:null, archLoading:false, archBusy:null,
         viewStock:false, stockBusy:null, stockDraft:{},
         viewCustRem:false, custRem:null, custRemAt:0, custRemLoading:false,
     viewReports:false,
