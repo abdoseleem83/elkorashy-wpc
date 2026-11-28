@@ -2499,7 +2499,7 @@ function warmExportLibs_(){
   (window.requestIdleCallback || (fn=>setTimeout(fn,1500)))(go, {timeout:4000});
 }
 
-const APP_BUILD = 'v377';
+const APP_BUILD = 'v378';
 var _nm372={edit:false};
 var _hid373=0;
 /* v376: طالما فيه أوردر شغّال (سلة فيها بنود، باب بدأ يتختار، بيانات عميل متكتبة، أو تعديل مفتوح) التطبيق مبيرجعش للرئيسية ومبيقفلش. */
@@ -4185,8 +4185,8 @@ function orderStepper344_(o){
  return '<div class="st344" data-st344="'+s.cls+'"><div class="st344-top">'+statusChip344_(o)+(s.step<0&&s.cls==='s-saved'?'<small>مش هيتبعت لوحده</small>':'')+'</div><div class="stp344">'+ST344.map((t,i)=>'<i class="'+(i<=s.step?'on':'')+(i===s.step?' cur':'')+'"><b></b><em>'+t+'</em></i>').join('')+'</div></div>';
 }
 function homeStrip344_(){
- const os=(state.orders||[]).slice(0,3);if(!os.length)return '';
  let pend=0;try{pend=loadPendingSync_().length;}catch(e){}
+ const os=(state.orders||[]).filter(o=>ordGroup_(homeStatus_(o))!=='done').slice(0,3);if(!os.length&&!pend)return '';   // v378: المُسلّم اتأرشف — مش مكانه شريط الرئيسية
  return '<div class="hm344"><div class="hm344-h"><b>أوردراتي</b><button type="button" data-act="home-go" data-to="orders">عرض الكل</button></div>'
   +(pend?'<div class="hm344-b">عندك '+pend+' أوردر محفوظ على الجهاز ولسه استلام المصنع ما اتأكدش. مش هيتبعت لوحده.</div>':'')
   +os.map(o=>'<button type="button" class="hm344-o" data-act="home-go" data-to="orders"><span class="hm344-n">أوردر '+esc(orderNoText_(o))+'</span>'+statusChip344_(o)+'<small>'+((o.items||[]).filter(x=>x&&!isCutLine_(x)).length)+' صنف · '+esc(dateStr(o.ts))+'</small></button>').join('')+'</div>';
@@ -4948,7 +4948,12 @@ function viewOrders(){
       ${ico('warn')} فيه ${pendingIds.size} طلب تأكيده لسه مش مكتمل — محفوظين على الجهاز بدون إعادة إرسال تلقائي.
       «تحقق من الاستلام» قراءة فقط ولا يرسل شيئًا. «راجع الإرسال للمصنع» بيقرأ المصنع الأول، ولا يعرض إرسالًا يدويًا إلا لطلب ثبت إنه ما بدأ إرساله، وبعد تأكيدك الصريح.</div>` : '';
 
-  const cards = state.orders.map(o=>{
+  // v378: الطلبات المُسلّمة بتتأرشف عند المصنع — فبتتشال من القايمة النشطة هنا كمان
+  // وتتحط في قسم منفصل تحت («اتسلّمت واتأرشفت») عشان الموزّع ما يتوهش بينها.
+  const _isDone378 = o => ordGroup_(homeStatus_(o))==='done';
+  const _active378 = state.orders.filter(o=>!_isDone378(o));
+  const _done378 = state.orders.filter(_isDone378);
+  const cards = _active378.map(o=>{
     const live = liveById[String(o.id)];
     const locked = isOrderLocked_(live);
     const editBtn = locked
@@ -4988,9 +4993,29 @@ function viewOrders(){
     </div>`;
   }).join('');
 
+  // v378: كروت المُسلّم — مبسّطة ومن غير أزرار تعديل/حذف/مشاركة (الطلب خلاص اتأرشف عند المصنع)
+  const doneCards378 = _done378.map(o=>{
+    const live = liveById[String(o.id)];
+    const _q = ordNorm_([orderNoText_(o), o.customer, o.note, live&&live.note, dateStr(o.ts),
+      (o.items||[]).filter(x=>x&&!isCutLine_(x)).map(x=>x.title).join(' ')].join(' '));
+    return `
+    <div class="ord" data-q="${esc(_q)}" data-st="done"${ordMatch_(_q,'done')?'':' hidden'} style="opacity:.72">
+      <div class="oh"><span class="oid" title="الكود الداخلي: ${esc(o.id)}">${esc(orderNoText_(o))}</span>${statusPill('Delivered')}</div>
+      <div class="os">${esc(dateStr(o.ts))} · ${(o.items||[]).filter(x=>!isCutLine_(x)).length} صنف${priced?' · إجمالي '+money(o.total)+' ج':''}
+        ${o.customer?`<br><b style="color:var(--info-ink)">صاحب الأوردر: ${esc(o.customer)}</b>`:''}</div>
+      <div class="oa">
+        <button class="btn ghost sm" data-act="ord-again" data-id="${esc(o.id)}">${ico("refresh")} اطلب تاني</button>
+        <button class="btn ghost sm" data-act="ord-pdf"   data-id="${esc(o.id)}">${ico("doc")} PDF</button>
+      </div>
+    </div>`;
+  }).join('');
+  const doneSec378 = _done378.length ? `<details id="ordDone378" style="margin-top:14px;border:1px solid rgba(140,160,190,.3);border-radius:10px;padding:9px 11px;background:rgba(140,160,190,.07)">
+    <summary style="cursor:pointer;font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:7px">${ico('truck')} ${_done378.length} طلب اتسلّم واتأرشف عند المصنع — اضغط للعرض</summary>
+    <div style="margin-top:10px">${doneCards378}</div></details>` : '';
+
   return ordFilterBar_() + refreshBtn
     + `<button class="btn ghost sm" data-act="all-xls" style="margin-bottom:12px">${ico("sheet")} تصدير كل الطلبات إكسيل</button>`
-    + errNote + pendingNote + cards + `<div id="ordNone" class="empty" hidden><p>مفيش طلبات مطابقة للبحث ده.</p></div>`
+    + errNote + pendingNote + cards + doneSec378 + `<div id="ordNone" class="empty" hidden><p>مفيش طلبات مطابقة للبحث ده.</p></div>`
     + verBar();
 }
 
@@ -12609,8 +12634,10 @@ function ordGroup_(st){ st=String(st||'New'); return /^(New|Received)$/i.test(st
 function ordNorm_(v){ return toLatinDigits_(v).toLowerCase().replace(/[\u064B-\u0652\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ').trim(); }
 function ordMatch_(q,grp){ return (!_ordF.st || grp===_ordF.st) && (!_ordF.q || q.includes(ordNorm_(_ordF.q))); }
 function ordFilterBar_(){
-  const cnt = {}; (state.orders||[]).forEach(o=>{ const g=ordGroup_(homeStatus_(o)); cnt[g]=(cnt[g]||0)+1; });
-  const chips = ORD_GROUPS_.map(([k,t])=>{ const n = k ? (cnt[k]||0) : (state.orders||[]).length;
+  // v378: المُسلّم اتنقل لقسمه المنفصل — «الكل» بتعد النشط بس، و«اتسلّم» بتعد المؤرشف
+  const cnt = {}; let doneN378=0, actN378=0;
+  (state.orders||[]).forEach(o=>{ const g=ordGroup_(homeStatus_(o)); if(g==='done'){ doneN378++; return; } actN378++; cnt[g]=(cnt[g]||0)+1; });
+  const chips = ORD_GROUPS_.map(([k,t])=>{ const n = k==='done' ? doneN378 : k ? (cnt[k]||0) : actN378;
     return (k && !n) ? '' : `<button type="button" class="chip ordChip${_ordF.st===k?' on':''}" data-ofst="${k}">${t} <b>${n}</b></button>`; }).join('');
   return `<div class="ordFilter"><input type="search" id="ordQ" placeholder="ابحث برقم الطلب أو الاسم أو الصنف…" value="${esc(_ordF.q)}" autocomplete="off"><div class="ordChips">${chips}</div></div>`;
 }
@@ -12619,6 +12646,13 @@ function applyOrdFilter_(){
   document.querySelectorAll('.ord[data-q]').forEach(c=>{ total++; const ok=ordMatch_(c.dataset.q,c.dataset.st); c.hidden=!ok; if(ok) shown++; });
   const none=document.getElementById('ordNone'); if(none) none.hidden = !(total && !shown);
   document.querySelectorAll('.ordChip').forEach(b=>b.classList.toggle('on', b.dataset.ofst===_ordF.st));
+  // v378: قسم المُسلّم — بيفتح مع فلتر «اتسلّم» أو لو البحث مطابق لطلب مؤرشف، وبيقفل مع باقي الفلاتر
+  const done=document.getElementById('ordDone378');
+  if(done){
+    if(_ordF.st==='done'){ done.open=true; try{done.scrollIntoView({block:'nearest'});}catch(_){}}
+    else if(_ordF.st){ done.open=false; }
+    else if(_ordF.q && [...done.querySelectorAll('.ord[data-q]')].some(c=>!c.hidden)){ done.open=true; }
+  }
 }
 document.addEventListener('input',e=>{ if(e.target && e.target.id==='ordQ'){ _ordF.q=e.target.value; applyOrdFilter_(); } });
 document.addEventListener('click',e=>{ const b=e.target.closest && e.target.closest('[data-ofst]'); if(b){ _ordF.st=b.dataset.ofst; applyOrdFilter_(); } });
